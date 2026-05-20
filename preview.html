@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DROP IT | 스튜디오 편집기</title>
+<style>
+:root {
+    --primary: #007AFF;
+    --primary-gradient: linear-gradient(135deg, #007AFF, #00C6FF);
+    --danger: #dc2626;
+    --success: #84cc16;
+    --bg: #121214;
+    --panel-bg: #1e1e22;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+    margin: 0; padding: 0; background: var(--bg); color: #fff; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    min-height: 100vh; display: flex; justify-content: center; align-items: center;
+}
+.main-container {
+    width: 100%; max-width: 420px; height: 100vh; padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.order-box {
+    background: rgba(255,255,255,.06); padding: 12px; border-radius: 12px;
+    font-size: 13px; color: #ccc; text-align: center; border: 1px solid rgba(255,255,255,.05);
+    line-height: 1.6;
+}
+
+/* 🖼️ 편집 뷰어 영역: 회전 시 잘림 방지를 위해 모서리 라운딩 완전 제거 (직사각형) */
+.viewer-zone {
+    width: 100%; background: #000; border-radius: 0px; position: relative;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    aspect-ratio: 1/1; flex: 1; cursor: pointer;
+}
+.canvas-wrap { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+canvas { display: none; touch-action: none; }
+
+/* 📁 파일 업로드 박스 디자인 (직사각형) */
+.upload-box-wrapper {
+    position: absolute; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; width: calc(100% - 40px); height: calc(100% - 40px);
+    border: 2px dashed rgba(0, 122, 255, 0.4); border-radius: 0px;
+    background: rgba(255, 255, 255, 0.02); padding: 20px; transition: all 0.3s ease;
+}
+.viewer-zone:hover .upload-box-wrapper {
+    border-color: var(--primary); background: rgba(0, 122, 255, 0.05);
+}
+.upload-icon-circle {
+    width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 122, 255, 0.1);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+    box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
+}
+.upload-icon {
+    font-size: 28px; background: var(--primary-gradient);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.upload-box-wrapper b {
+    font-size: 16px; color: #fff; display: block; margin-bottom: 6px; letter-spacing: -0.5px;
+}
+.upload-box-wrapper p {
+    margin: 0; font-size: 12px; color: #8a8a93; text-align: center; line-height: 1.5;
+}
+
+/* ⏳ 업로드 프로그레스 바 UI */
+.progress-wrap {
+    display: none; position: absolute; bottom: 20px; left: 20px; right: 20px;
+    background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255,255,255,0.1);
+    padding: 14px; border-radius: 14px; z-index: 100;
+}
+.progress-bar { width: 100%; height: 8px; background: #333; overflow: hidden; border-radius: 4px; }
+.progress-fill { width: 0%; height: 100%; background: var(--primary); transition: 0.2s; }
+#progress-text { display: block; text-align: center; margin-top: 8px; color: var(--primary); font-size: 12px; font-weight: bold; }
+
+/* 줌 컨트롤 */
+.zoom-controls {
+    display: none; position: absolute; bottom: 16px; right: 16px; z-index: 50;
+    background: rgba(30,30,34,.85); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.1); padding: 6px 10px; border-radius: 30px; align-items: center; gap: 8px;
+}
+.studio-mode .zoom-controls { display: flex; }
+.zoom-btn { background: rgba(255,255,255,.1); border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; cursor: pointer; }
+#zoom-text { font-size: 11px; min-width: 42px; text-align: center; }
+
+/* 🛠️ 상단 고정 툴바 레이아웃 */
+.studio-sidebar { display: none; }
+.studio-mode .studio-sidebar { display: flex; gap: 8px; height: 110px; order: 1; margin-bottom: 2px; }
+.studio-mode .viewer-zone { order: 2; } 
+
+.action-column { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.sidebar-btn { flex: 1; border: none; border-radius: 12px; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; }
+.re-pic-label { background: var(--success); display: flex; justify-content: center; align-items: center; }
+.cart-btn { background: var(--danger); }
+.panel-column { background: var(--panel-bg); border-radius: 12px; padding: 6px 8px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.tool-list { display: flex; flex-direction: column; gap: 4px; }
+.text-btn { background: transparent; border: none; color: #fff; font-size: 12px; cursor: pointer; text-align: left; padding: 4px 0; }
+.slider-section { display: flex; flex-direction: column; gap: 6px; }
+.slider-section label { font-size: 11px; color: #aaa; }
+input[type="range"] { width: 100%; }
+</style>
+</head>
+
+<body>
+
+<div class="main-container" id="main-container">
+    <div id="order-info-panel" class="order-box">주문 정보를 불러오는 중...</div>
+
+    <div class="studio-sidebar">
+        <div class="action-column">
+            <label for="file-input" class="sidebar-btn re-pic-label">다른사진 변경</label>
+            <button class="sidebar-btn cart-btn" onclick="addToCart()">장바구니 담기</button>
+        </div>
+
+        <div class="panel-column">
+            <div class="tool-list">
+                <button class="text-btn" onclick="rotateImage()">🔄 이미지 회전</button>
+                <button class="text-btn" onclick="flipImage()">↔ 좌우반전</button>
+                <button class="text-btn" onclick="crop2mm()">✂ 2mm 재단</button>
+                <button class="text-btn" onclick="resetImage()">⟲ 원본복원</button>
+            </div>
+        </div>
+
+        <div class="panel-column">
+            <div class="slider-section">
+                <label>💡 밝기 조절</label>
+                <input type="range" id="brightness" min="50" max="150" value="100" oninput="changeBrightness(this.value)">
+            </div>
+        </div>
+    </div>
+
+    <div class="viewer-zone" id="viewer-box" onclick="handleViewerClick(event)">
+        <div class="canvas-wrap">
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div id="empty-msg" class="upload-box-wrapper">
+            <div class="upload-icon-circle">
+                <span class="upload-icon">⇪</span>
+            </div>
+            <b>파일 업로드하기</b>
+            <p>기기에 있는 이미지 파일(.jpg, .png)<br>선택하거나 여기로 끌어다 놓으세요.</p>
+        </div>
+
+        <div class="progress-wrap" id="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <span id="progress-text">업로드 준비중...</span>
+        </div>
+
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomAction(-0.2)">－</button>
+            <span id="zoom-text">100%</span>
+            <button class="zoom-btn" onclick="zoomAction(0.2)">＋</button>
+            <button class="zoom-btn" onclick="zoomReset()">⌕</button>
+        </div>
+    </div>
+
+    <input type="file" id="file-input" accept=".jpg,.jpeg,.png" style="display:none;">
+</div>
+
+<script>
+/* ================= 📄 1. 주문 정보 연동 파트 ================= */
+const params = new URLSearchParams(location.search);
+
+const 주문정보 = {
+    width: params.get('w') || '0',
+    height: params.get('h') || '0',
+    qty: params.get('qty') || '0',
+    price: params.get('price') || '0',
+    name: params.get('name') || '미입력',
+    item: params.get('item') || '선택 품목 없음'
+};
+
+document.getElementById('order-info-panel').innerHTML = `
+    <b>주문 정보</b> | 품명: ${주문정보.item}<br>
+    주문자: ${주문정보.name} &nbsp;&nbsp; 사이즈: ${주문정보.width} × ${주문정보.height} &nbsp;&nbsp; 수량: ${주문정보.qty}장<br>
+    <b>결제 금액: ${Number(주문정보.price).toLocaleString()}원</b>
+`;
+
+/* ================= 🖼️ 2. Canvas 객체 초기 제어 파트 ================= */
+const fileInput = document.getElementById('file-input');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const img = new Image();
+
+let state = { scale: 1, offsetX: 0, offsetY: 0, rotation: 0, flipX: 1, brightness: 100 };
+let isDragging = false, startX = 0, startY = 0;
+
+function handleViewerClick(e) {
+    if(img.src) return e.preventDefault();
+    fileInput.click();
+}
+
+fileInput.onchange = function() {
+    const file = fileInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        // 기본 상태로 초기화 (자동 회전 효과를 보여주기 위해 회전값은 0에서 시작)
+        state = { scale: 1, offsetX: 0, offsetY: 0, rotation: 0, flipX: 1, brightness: 100 };
+        document.getElementById('brightness').value = 100;
+        
+        img.src = e.target.result;
+        document.getElementById('empty-msg').style.display = 'none';
+        canvas.style.display = 'block';
+        document.getElementById('main-container').classList.add('studio-mode');
+    };
+    reader.readAsDataURL(file);
+};
+
+img.onload = function() {
+    resizeCanvas();
+    fitImageToScreen();
+    // [NEW] 파일이 완전히 로드된 후 0.15초 간격으로 3회 자동 회전 트리거 호출
+    autoRotateThreeTimes();
+};
+
+function resizeCanvas() {
+    const viewer = document.getElementById('viewer-box');
+    canvas.width = viewer.clientWidth;
+    canvas.height = viewer.clientHeight;
+}
+
+function fitImageToScreen() {
+    state.scale = 1; state.offsetX = 0; state.offsetY = 0;
+    document.getElementById('zoom-text').innerText = '100%';
+    draw();
+}
+
+/* 🔄 [NEW] 업로드시 3회 자동 회전 연출 함수 (0.15초 간격) */
+function autoRotateThreeTimes() {
+    let count = 0;
+    const interval = setInterval(() => {
+        if (count < 3) {
+            rotateImage(); // 90도씩 회전 및 리사이징 적용 함수 호출
+            count++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 150); // 150ms 간격으로 경쾌하게 회전함
+}
+
+/* ================= 🎨 3. 렌더링 및 조작 파트 ================= */
+function draw() {
+    if(!img.src) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+
+    ctx.filter = `brightness(${state.brightness}%)`;
+    ctx.translate(canvas.width/2 + state.offsetX, canvas.height/2 + state.offsetY);
+    ctx.rotate(state.rotation * Math.PI / 180);
+
+    const rad = state.rotation * Math.PI / 180;
+    const boundingW = Math.abs(img.width * Math.cos(rad)) + Math.abs(img.height * Math.sin(rad));
+    const boundingH = Math.abs(img.width * Math.sin(rad)) + Math.abs(img.height * Math.cos(rad));
+
+    const fitScale = Math.min(canvas.width / boundingW, canvas.height / boundingH) * state.scale;
+    ctx.scale(fitScale * state.flipX, fitScale);
+
+    ctx.drawImage(img, -img.width/2, -img.height/2);
+    ctx.restore();
+}
+
+function zoomAction(amount) {
+    state.scale = Math.max(0.2, Math.min(8, state.scale + amount));
+    document.getElementById('zoom-text').innerText = `${Math.round(state.scale*100)}%`;
+    draw();
+}
+function zoomReset() { fitImageToScreen(); }
+
+function rotateImage() {
+    state.rotation = (state.rotation + 90) % 360;
+    fitImageToScreen(); 
+}
+
+function flipImage() { state.flipX *= -1; draw(); }
+
+function crop2mm() {
+    state.scale *= 1.04; 
+    draw(); 
+}
+
+function changeBrightness(val) { state.brightness = val; draw(); }
+
+function resetImage() {
+    state = { scale: 1, offsetX: 0, offsetY: 0, rotation: 0, flipX: 1, brightness: 100 };
+    document.getElementById('brightness').value = 100;
+    fitImageToScreen();
+}
+
+/* ================= 🖱️ 4. 모바일 터치 & 그래그 제어 파트 ================= */
+const getPos = e => e.touches ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : {x: e.clientX, y: e.clientY};
+
+function dragStart(e) {
+    if(state.scale <= 1) return;
+    isDragging = true;
+    const pos = getPos(e);
+    startX = pos.x - state.offsetX; startY = pos.y - state.offsetY;
+}
+function dragMove(e) {
+    if(!isDragging) return;
+    if(e.cancelable) e.preventDefault();
+    const pos = getPos(e);
+    state.offsetX = pos.x - startX; state.offsetY = pos.y - startY;
+    draw();
+}
+
+canvas.addEventListener('mousedown', dragStart); window.addEventListener('mousemove', dragMove); window.addEventListener('mouseup', () => isDragging = false);
+canvas.addEventListener('touchstart', dragStart, {passive:false}); canvas.addEventListener('touchmove', dragMove, {passive:false}); canvas.addEventListener('touchend', () => isDragging = false);
+window.addEventListener('resize', () => { if(img.src) { resizeCanvas(); draw(); } });
+
+
+/* ================= 🚀 5. 구글드라이브 업로드 & Cafe24 연동 파트 ================= */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
+
+async function addToCart() {
+    if(!img.src) {
+        alert("편집할 이미지를 먼저 업로드해주세요.");
+        return;
+    }
+
+    document.getElementById('progress-wrap').style.display = 'block';
+
+    canvas.toBlob(async (blob) => {
+        const fileName = `${주문정보.name}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+            const base64Data = e.target.result.split(',')[1];
+            const body = new URLSearchParams({
+                data: base64Data,
+                filename: fileName,
+                mimetype: 'image/jpeg'
+            });
+
+            /* Fake Progress Engine */
+            let p = 0;
+            const iv = setInterval(() => {
+                if (p >= 90) {
+                    clearInterval(iv);
+                } else {
+                    p += 2;
+                    document.getElementById('progress-fill').style.width = p + '%';
+                    document.getElementById('progress-text').innerText = `업로드 중... ${p}%`;
+                }
+            }, 80);
+
+            try {
+                const res = await fetch(WEB_APP_URL, { method: 'POST', body });
+                const data = await res.json();
+
+                clearInterval(iv);
+
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('progress-text').innerText = '업로드 완료';
+
+                const optionText = `${주문정보.item}\n수량: ${주문정보.qty}장\n사이즈: ${주문정보.width} × ${주문정보.height}\n파일: ${data.url}`;
+                const cafe24Url = `https://sowonnamoo1004.cafe24.com/skin-skin7/product/mm-%EB%A7%9E%EC%B6%A4-%EC%A0%9C%EC%9E%91-%EA%B2%B0%EC%A0%9C/215/category/1/display/2/?p=${encodeURIComponent(주문정보.price)}&d=${encodeURIComponent(optionText)}`;
+
+                location.href = cafe24Url;
+
+            } catch (error) {
+                clearInterval(iv);
+                alert("업로드 중 오류가 발생했습니다. 다시 시도해 주세요.");
+                document.getElementById('progress-wrap').style.display = 'none';
+            }
+        };
+
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.95);
+}
+</script>
+</body>
+</html>
