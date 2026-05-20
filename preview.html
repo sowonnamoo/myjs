@@ -356,9 +356,21 @@ async function addToCart() {
                 document.getElementById('progress-text').innerText = '업로드 완료';
 
                 const optionText = `${주문정보.item}\n수량: ${주문정보.qty}장\n사이즈: ${주문정보.width} × ${주문정보.height}\n파일: ${data.url}`;
-const cartUrl = `https://sowonnamoo.github.io/myjs/cart?w=${encodeURIComponent(주문정보.width)}&h=${encodeURIComponent(주문정보.height)}&qty=${encodeURIComponent(주문정보.qty)}&price=${encodeURIComponent(주문정보.price)}&name=${encodeURIComponent(주문정보.name)}&item=${encodeURIComponent(주문정보.item)}&file=${encodeURIComponent(data.url)}`;
+const cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-location.href = cartUrl;
+cart.push({
+    item: 주문정보.item,
+    qty: 주문정보.qty,
+    width: 주문정보.width,
+    height: 주문정보.height,
+    price: 주문정보.price,
+    imageUrl: data.url,
+    customerName: 주문정보.name
+});
+
+localStorage.setItem("cart", JSON.stringify(cart));
+
+location.href = "https://sowonnamoo.github.io/myjs/cart";
 
             } catch (error) {
                 clearInterval(iv);
