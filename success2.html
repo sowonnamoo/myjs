@@ -47,7 +47,7 @@
             <button class="btn-sub" onclick="printReceipt('간이영수증')">간이영수증 출력</button>
         </div>
     </div>
-    <button class="btn-main" onclick="location.href='index.html'">확인</button>
+<button class="btn-main" onclick="location.href='https://sowonnamoo.github.io/myjs/'">확인</button>
 </div>
 
 <div id="print-area" style="display:none; font-family: 'Apple SD Gothic Neo', sans-serif;">
@@ -70,6 +70,10 @@
 
 <script>
     const orderData = JSON.parse(localStorage.getItem("latestOrder"));
+    if (!orderData) {
+    alert("주문 정보를 찾을 수 없습니다.");
+    location.href = "https://sowonnamoo.github.io/myjs/";
+}
     const container = document.getElementById("order-details");
 
     if (orderData) {
@@ -92,19 +96,25 @@
         navigator.clipboard.writeText("123456789012").then(() => alert("계좌번호가 복사되었습니다!"));
     }
 
-    function printReceipt(title) {
-        if (!orderData) return alert("주문 정보가 없습니다.");
-        document.getElementById('print-title').innerText = title;
-        document.getElementById('receipt-items').innerHTML = orderData.items.map(item => `
-            <tr>
-                <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${item.item}</td>
-                <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${item.qty}</td>
-                <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${Number(item.price).toLocaleString()}원</td>
-            </tr>
-        `).join('');
-        document.getElementById('receipt-total').innerText = orderData.total.toLocaleString() + "원";
-        window.print();
-    }
+function printReceipt(title) {
+    if (!orderData) return alert("주문 정보가 없습니다.");
+
+    document.getElementById('print-title').innerText = title;
+    document.getElementById('receipt-items').innerHTML = orderData.items.map(item => `
+        <tr>
+            <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${item.item}</td>
+            <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${item.qty}</td>
+            <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${Number(item.price).toLocaleString()}원</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('receipt-total').innerText =
+        orderData.total.toLocaleString() + "원";
+
+    window.print();
+}
+
+localStorage.removeItem("cart");
 </script>
 </body>
 </html>
