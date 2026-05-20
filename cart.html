@@ -8,14 +8,11 @@
         body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; }
         .wrap { max-width: 600px; margin: 0 auto; padding: 20px; }
         h1 { margin-bottom: 20px; font-size: 24px; }
-        
         .cart-item { background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .info { flex: 1; line-height: 1.6; font-size: 14px; }
         .del-btn { background: #ff3b30; color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 10px; }
-        
         .form-box { background: #fff; padding: 20px; border-radius: 15px; margin-top: 20px; }
         input { width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        
         .bottom { margin-top: 20px; background: #fff; padding: 20px; border-radius: 15px; }
         .total { font-size: 20px; font-weight: bold; color: #e31e23; margin-bottom: 15px; }
         .pay-btn { width: 100%; padding: 15px; background: #007AFF; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
@@ -64,7 +61,6 @@
     let cart = JSON.parse(localStorage.getItem("cart")) || [];
     let total = 0;
 
-    // 삭제 기능 추가
     window.deleteItem = function(index) {
         cart.splice(index, 1);
         localStorage.setItem("cart", JSON.stringify(cart));
@@ -75,7 +71,6 @@
         const list = document.getElementById("cart-list");
         list.innerHTML = "";
         total = 0;
-
         cart.forEach((item, index) => {
             total += Number(item.price);
             list.innerHTML += `
@@ -91,25 +86,44 @@
         document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
     }
 
-    // 카드 결제 함수 생략 (기존과 동일)
+    // 카드 결제: 결제 성공 시 데이터와 함께 페이지 이동
     window.goCard = function () {
         const name = document.getElementById("name").value;
         const phone = document.getElementById("phone").value;
-        if(!name || !phone) return alert("정보를 입력해주세요.");
+        const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
+        if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
+
+        const orderData = { name, phone, address, total, items: cart, payMethod: "card" };
+        localStorage.setItem("pendingOrder", JSON.stringify(orderData)); // 데이터 임시 저장
+
         const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-        tossPayments.requestPayment("카드", { amount: total, orderId: "ORD_" + Date.now(), orderName: "주문 상품", customerName: name, successUrl: window.location.origin + "/success.html", failUrl: window.location.origin + "/fail.html" });
+        tossPayments.requestPayment("카드", { 
+            amount: total, 
+            orderId: "ORD_" + Date.now(), 
+            orderName: "주문 상품", 
+            customerName: name, 
+            successUrl: "https://sowonnamoo.github.io/myjs/success", 
+            failUrl: window.location.origin + "/fail.html" 
+        });
     };
 
+    // 무통장 입금: 데이터 저장 후 success2 페이지로 이동
     window.goBankTransfer = async function(){
         const name = document.getElementById("name").value;
         const phone = document.getElementById("phone").value;
-        const address = document.getElementById("address").value;
-        if(!name || !phone || !address) return alert("필수 정보를 입력해주세요.");
+        const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
+        if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
         
-        const orderData = { orderId: "ORD_" + Date.now(), name, phone, address: address + " " + document.getElementById("detailAddress").value, total, items: cart, createdAt: new Date().toISOString() };
+        const orderData = { 
+            orderId: "ORD_" + Date.now(), 
+            name, phone, address, total, items: cart, payMethod: "bank",
+            createdAt: new Date().toISOString() 
+        };
+        
         await addDoc(collection(db, "orders"), orderData);
+        localStorage.setItem("lastOrderData", JSON.stringify(orderData)); // 결과 페이지에서 읽을 데이터 저장
         localStorage.removeItem("cart");
-        location.href = "order-complete.html";
+        location.href = "https://sowonnamoo.github.io/myjs/success2";
     };
 
     render();
