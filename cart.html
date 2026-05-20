@@ -93,8 +93,18 @@
         const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
         if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
 
-        const orderData = { name, phone, address, total, items: cart, payMethod: "card" };
-        localStorage.setItem("pendingOrder", JSON.stringify(orderData)); // 데이터 임시 저장
+const orderData = {
+    orderId: "ORD_" + Date.now(),
+    name,
+    phone,
+    address,
+    total,
+    items: cart,
+    payMethod: "card",
+    createdAt: new Date().toISOString()
+};
+
+localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
         const tossPayments = TossPayments(TOSS_CLIENT_KEY);
         tossPayments.requestPayment("카드", { 
@@ -121,7 +131,7 @@
         };
         
         await addDoc(collection(db, "orders"), orderData);
-        localStorage.setItem("lastOrderData", JSON.stringify(orderData)); // 결과 페이지에서 읽을 데이터 저장
+       localStorage.setItem("latestOrder", JSON.stringify(orderData)); // 결과 페이지에서 읽을 데이터 저장
         localStorage.removeItem("cart");
         location.href = "https://sowonnamoo.github.io/myjs/success2";
     };
