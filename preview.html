@@ -356,9 +356,9 @@ async function addToCart() {
                 document.getElementById('progress-text').innerText = '업로드 완료';
 
                 const optionText = `${주문정보.item}\n수량: ${주문정보.qty}장\n사이즈: ${주문정보.width} × ${주문정보.height}\n파일: ${data.url}`;
-                const cafe24Url = `https://sowonnamoo1004.cafe24.com/skin-skin7/product/mm-%EB%A7%9E%EC%B6%A4-%EC%A0%9C%EC%9E%91-%EA%B2%B0%EC%A0%9C/215/category/1/display/2/?p=${encodeURIComponent(주문정보.price)}&d=${encodeURIComponent(optionText)}`;
+const cartUrl = `https://sowonnamoo.github.io/myjs/cart?w=${encodeURIComponent(주문정보.width)}&h=${encodeURIComponent(주문정보.height)}&qty=${encodeURIComponent(주문정보.qty)}&price=${encodeURIComponent(주문정보.price)}&name=${encodeURIComponent(주문정보.name)}&item=${encodeURIComponent(주문정보.item)}&file=${encodeURIComponent(data.url)}`;
 
-                location.href = cafe24Url;
+location.href = cartUrl;
 
             } catch (error) {
                 clearInterval(iv);
