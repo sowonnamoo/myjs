@@ -1,254 +1,140 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>주문작성</title>
-
-<style>
-body{
-    margin:0;
-    background:#f5f5f7;
-    font-family:'Apple SD Gothic Neo',sans-serif;
-}
-.wrap{max-width:1200px;margin:0 auto;padding:30px;}
-h1{margin-bottom:20px;}
-
-.cart-item{
-    background:#fff;
-    border-radius:20px;
-    padding:20px;
-    margin-bottom:15px;
-    display:flex;
-    gap:20px;
-    align-items:center;
-}
-
-.thumb{
-    width:160px;
-    height:160px;
-    object-fit:contain;
-    background:#fafafa;
-    border-radius:12px;
-}
-
-.info{flex:1;line-height:1.8;}
-
-.form-box{
-    background:#fff;
-    padding:25px;
-    border-radius:20px;
-    margin-top:30px;
-}
-
-input{
-    width:100%;
-    padding:14px;
-    margin-bottom:10px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    font-size:16px;
-}
-
-.bottom{
-    margin-top:30px;
-    background:#fff;
-    padding:25px;
-    border-radius:20px;
-}
-
-.total{
-    font-size:28px;
-    font-weight:bold;
-    color:#e31e23;
-    margin-bottom:20px;
-}
-
-.pay-btn{
-    width:100%;
-    padding:18px;
-    background:#007AFF;
-    color:#fff;
-    border:none;
-    border-radius:12px;
-    font-size:18px;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.bank-btn{
-    width:100%;
-    padding:18px;
-    margin-top:10px;
-    background:#111;
-    color:#fff;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문작성</title>
+    <style>
+        body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 30px; }
+        h1 { margin-bottom: 20px; }
+        .cart-item { background: #fff; border-radius: 20px; padding: 20px; margin-bottom: 15px; display: flex; gap: 20px; align-items: center; }
+        .thumb { width: 160px; height: 160px; object-fit: contain; background: #fafafa; border-radius: 12px; }
+        .info { flex: 1; line-height: 1.8; }
+        .form-box { background: #fff; padding: 25px; border-radius: 20px; margin-top: 30px; }
+        input { width: 100%; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .bottom { margin-top: 30px; background: #fff; padding: 25px; border-radius: 20px; }
+        .total { font-size: 28px; font-weight: bold; color: #e31e23; margin-bottom: 20px; }
+        .pay-btn { width: 100%; padding: 18px; background: #007AFF; color: #fff; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .bank-btn { width: 100%; padding: 18px; background: #111; color: #fff; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .clear-btn { background: #eee; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; }
+    </style>
 </head>
-
 <body>
 
 <div class="wrap">
+    <h1>🛒 주문작성</h1>
 
-<h1>🛒 주문작성</h1>
+    <div id="cart-list"></div>
 
-<div id="cart-list"></div>
+    <div class="form-box">
+        <h2>주문자 정보</h2>
+        <input id="name" placeholder="성함">
+        <input id="phone" placeholder="전화번호">
+        <input id="address" placeholder="주소">
+        <input id="detailAddress" placeholder="상세주소">
+    </div>
 
-<div class="form-box">
-    <h2>주문자 정보</h2>
-    <input id="name" placeholder="성함">
-    <input id="phone" placeholder="전화번호">
-    <input id="address" placeholder="주소">
-    <input id="detailAddress" placeholder="상세주소">
+    <div class="bottom">
+        <button class="clear-btn" onclick="clearCart()">장바구니 비우기</button>
+        <div class="total" id="total-price">총 결제금액 : 0원</div>
+        <button class="pay-btn" onclick="goCard()">카드결제</button>
+        <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+    </div>
 </div>
 
-<div class="bottom">
-    <div class="total" id="total-price">총 결제금액 : 0원</div>
-
-    <button class="pay-btn" onclick="goCard()">
-        카드결제
-    </button>
-
-    <button class="bank-btn" onclick="goBankTransfer()">
-        무통장 입금
-    </button>
-</div>
-
-</div>
-
-<!-- ✅ Toss Payments SDK -->
 <script src="https://js.tosspayments.com/v1"></script>
-
 <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getFirestore, collection, addDoc }
-from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBzHogA2iaQ...",
-    authDomain: "ecogr-636c6.firebaseapp.com",
-    projectId: "ecogr-636c6",
-    storageBucket: "ecogr-636c6.firebasestorage.app",
-    messagingSenderId: "95745358447",
-    appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/*
-===============================
-🔥 여기에 본인 Toss clientKey 넣기
-===============================
-*/
-const TOSS_CLIENT_KEY = "test_ck_O6BYq7GWPVvXKgZXBNl8NE5vbo1d";
-
-let cart = JSON.parse(localStorage.getItem("cart")) || [];
-let total = 0;
-
-function render(){
-    const list = document.getElementById("cart-list");
-    list.innerHTML = "";
-    total = 0;
-
-    cart.forEach(item=>{
-        total += Number(item.price);
-
-        list.innerHTML += `
-        <div class="cart-item">
-            <img src="${item.imageUrl}" class="thumb">
-            <div class="info">
-                <b>${item.item}</b><br>
-                수량 : ${item.qty || 1}개<br>
-                가격 : ${Number(item.price).toLocaleString()}원
-            </div>
-        </div>`;
-    });
-
-    document.getElementById("total-price").innerText =
-    "총 결제금액 : " + total.toLocaleString() + "원";
-}
-
-/*
-===============================
-🔥 카드결제 (핵심)
-===============================
-*/
-window.goCard = function () {
-
-    const name = document.getElementById("name").value;
-    const phone = document.getElementById("phone").value;
-
-    if(!name || !phone){
-        alert("성함 / 전화번호 입력");
-        return;
-    }
-
-    if(typeof TossPayments === "undefined"){
-        alert("Toss SDK 로딩 실패");
-        return;
-    }
-
-    const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-
-    const orderId = "ORDER_" + Date.now();
-
-    tossPayments.requestPayment("카드", {
-        amount: total,
-        orderId: orderId,
-        orderName: "장바구니 결제",
-        customerName: name,
-        successUrl: window.location.origin + "/success.html",
-        failUrl: window.location.origin + "/fail.html"
-    });
-};
-
-/*
-===============================
-🔥 무통장 입금 (기존 유지)
-===============================
-*/
-window.goBankTransfer = async function(){
-
-    const name = document.getElementById("name").value;
-    const phone = document.getElementById("phone").value;
-    const address = document.getElementById("address").value;
-    const detail = document.getElementById("detailAddress").value;
-
-    if(!name || !phone || !address){
-        alert("필수 입력");
-        return;
-    }
-
-    const orderId = "ORDER_" + Date.now();
-
-    const orderData = {
-        orderId,
-        name,
-        phone,
-        address: address + " " + detail,
-        payment: "무통장입금",
-        status: "입금대기",
-        total,
-        items: cart,
-        createdAt: new Date().toISOString()
+    const firebaseConfig = {
+        apiKey: "AIzaSyBzHogA2iaQ...",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
     };
 
-    await addDoc(collection(db, "orders"), orderData);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const TOSS_CLIENT_KEY = "test_ck_O6BYq7GWPVvXKgZXBNl8NE5vbo1d";
 
-    localStorage.removeItem("cart");
-    localStorage.setItem("latestOrder", JSON.stringify(orderData));
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    let total = 0;
 
-    location.href = "order-complete.html";
-};
+    window.clearCart = function(){
+        if(!confirm("장바구니를 비울까요?")) return;
+        localStorage.removeItem("cart");
+        location.reload();
+    };
 
-render();
+    function render(){
+        const list = document.getElementById("cart-list");
+        list.innerHTML = "";
+        total = 0;
 
+        cart.forEach(item => {
+            total += Number(item.price);
+            list.innerHTML += `
+            <div class="cart-item">
+                <img src="${item.imageUrl}" class="thumb">
+                <div class="info">
+                    <b>${item.item}</b><br>
+                    사이즈 : ${item.width} × ${item.height}<br>
+                    수량 : ${item.qty}개<br>
+                    가격 : ${Number(item.price).toLocaleString()}원<br>
+                    <a href="${item.imageUrl}" target="_blank">업로드 파일 보기</a>
+                </div>
+            </div>`;
+        });
+        document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+    }
+
+    window.goCard = function () {
+        const name = document.getElementById("name").value;
+        const phone = document.getElementById("phone").value;
+        if(!name || !phone){ alert("성함 / 전화번호를 입력해주세요."); return; }
+        if(typeof TossPayments === "undefined"){ alert("Toss SDK 로딩 실패"); return; }
+
+        const tossPayments = TossPayments(TOSS_CLIENT_KEY);
+        tossPayments.requestPayment("카드", {
+            amount: total,
+            orderId: "ORDER_" + Date.now(),
+            orderName: "장바구니 결제",
+            customerName: name,
+            successUrl: window.location.origin + "/success.html",
+            failUrl: window.location.origin + "/fail.html"
+        });
+    };
+
+    window.goBankTransfer = async function(){
+        const name = document.getElementById("name").value;
+        const phone = document.getElementById("phone").value;
+        const address = document.getElementById("address").value;
+        const detail = document.getElementById("detailAddress").value;
+
+        if(!name || !phone || !address){ alert("필수 정보를 모두 입력해주세요."); return; }
+
+        const orderData = {
+            orderId: "ORDER_" + Date.now(),
+            name, phone,
+            address: address + " " + detail,
+            payment: "무통장입금",
+            status: "입금대기",
+            total,
+            items: cart,
+            createdAt: new Date().toISOString()
+        };
+
+        await addDoc(collection(db, "orders"), orderData);
+        localStorage.removeItem("cart");
+        localStorage.setItem("latestOrder", JSON.stringify(orderData));
+        location.href = "order-complete.html";
+    };
+
+    render();
 </script>
-
 </body>
 </html>
