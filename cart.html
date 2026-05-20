@@ -93,8 +93,10 @@
         const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
         if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
 
+const orderId = "ORD_" + Date.now();
+
 const orderData = {
-    orderId: "ORD_" + Date.now(),
+    orderId,
     name,
     phone,
     address,
@@ -106,15 +108,16 @@ const orderData = {
 
 localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
-        const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-        tossPayments.requestPayment("카드", { 
-            amount: total, 
-            orderId: "ORD_" + Date.now(), 
-            orderName: "주문 상품", 
-            customerName: name, 
-            successUrl: "https://sowonnamoo.github.io/myjs/success", 
-            failUrl: window.location.origin + "/fail.html" 
-        });
+const tossPayments = TossPayments(TOSS_CLIENT_KEY);
+
+tossPayments.requestPayment("카드", {
+    amount: total,
+    orderId: orderId,
+    orderName: "주문 상품",
+    customerName: name,
+    successUrl: "https://sowonnamoo.github.io/myjs/success",
+    failUrl: window.location.origin + "/fail.html"
+});
     };
 
     // 무통장 입금: 데이터 저장 후 success2 페이지로 이동
