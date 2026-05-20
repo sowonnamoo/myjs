@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입금 안내</title>
+    <style>
+        body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; padding: 20px; }
+        .wrap { max-width: 500px; margin: 0 auto; }
+        .card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { font-size: 22px; color: #111; margin-bottom: 20px; text-align: center; }
+        .info-box { background: #f8f9fa; padding: 15px; border-radius: 12px; margin: 20px 0; }
+        .total-price { font-size: 20px; color: #e31e23; font-weight: bold; }
+        .label { color: #888; font-size: 13px; }
+        .copy-btn { margin-left: 10px; padding: 5px 10px; font-size: 12px; background: #eee; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn-sub { padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; color: #333; }
+        .btn-main { width: 100%; padding: 16px; background: #007AFF; color: #fff; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
+
+        @media print {
+            body > *:not(#print-area) { display: none !important; }
+            #print-area { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+    <div class="card">
+        <h1>입금 확인 부탁드립니다</h1>
+        <p style="text-align:center; font-size:14px; color:#666;">주문이 정상적으로 접수되었습니다.<br>아래 계좌로 입금해 주시면 확인 후 제작됩니다.</p>
+        <div class="info-box">
+            <p>입금 은행: <b>국민은행</b></p>
+            <p>계좌 번호: <b id="account-num">123456789012</b> <button class="copy-btn" onclick="copyAccount()">복사</button></p>
+            <p>예금주: <b>(주)OOO</b></p>
+            <p>입금 금액: <span class="total-price" id="total-amount">0원</span></p>
+        </div>
+        <div id="order-details"></div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:16px; margin-top:0;">🧾 증빙 서류 및 출력</h3>
+        <div class="btn-grid">
+            <button class="btn-sub" onclick="alert('세금계산서 신청 폼으로 이동합니다.')">세금계산서 신청</button>
+            <button class="btn-sub" onclick="alert('현금영수증 신청 폼으로 이동합니다.')">현금영수증 신청</button>
+            <button class="btn-sub" onclick="printReceipt('거래명세서')">거래명세서 출력</button>
+            <button class="btn-sub" onclick="printReceipt('간이영수증')">간이영수증 출력</button>
+        </div>
+    </div>
+    <button class="btn-main" onclick="location.href='index.html'">확인</button>
+</div>
+
+<div id="print-area" style="display:none; font-family: 'Apple SD Gothic Neo', sans-serif;">
+    <div style="width: 400px; border: 2px solid #0056b3; padding: 15px; margin: auto; color: #0056b3;">
+        <h1 id="print-title" style="text-align: center; border-bottom: 2px solid #0056b3;">영 수 증</h1>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #0056b3; margin-bottom: 10px;">
+            <tr><td style="border: 1px solid #0056b3; padding: 5px; width: 30%; text-align: center;">사업자번호</td><td style="border: 1px solid #0056b3; padding: 5px;">411-13-76734</td></tr>
+            <tr><td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">상 호</td><td style="border: 1px solid #0056b3; padding: 5px;">내상호</td></tr>
+        </table>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #0056b3;">
+            <thead style="background: #eef6ff;">
+                <tr><th style="border: 1px solid #0056b3; padding: 5px;">품명</th><th style="border: 1px solid #0056b3; padding: 5px;">수량</th><th style="border: 1px solid #0056b3; padding: 5px;">금액</th></tr>
+            </thead>
+            <tbody id="receipt-items"></tbody>
+        </table>
+        <div style="margin-top: 10px; text-align: right; font-size: 18px; font-weight: bold;">합계: <span id="receipt-total"></span></div>
+        <div style="text-align: right; margin-top: 20px;"><img src="seal.png" style="width: 80px; height: 80px;"></div>
+    </div>
+</div>
+
+<script>
+    const orderData = JSON.parse(localStorage.getItem("latestOrder"));
+    const container = document.getElementById("order-details");
+
+    if (orderData) {
+        // 1. 입금 안내 화면 표시
+        document.getElementById("total-amount").innerText = orderData.total.toLocaleString() + "원";
+        container.innerHTML = `
+            <div style="font-size:14px; color:#333; border-top:1px solid #eee; padding-top:15px;">
+                <p><b>주문번호:</b> ${orderData.orderId}</p>
+                ${orderData.items.map(item => `
+                    <div style="margin-bottom:10px;">
+                        <b>${item.item}</b> (${item.qty}개) / ${item.width}×${item.height}<br>
+                        <a href="${item.imageUrl}" target="_blank" style="color:#007AFF; text-decoration:none;">📄 업로드 파일 보기</a>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function copyAccount() {
+        navigator.clipboard.writeText("123456789012").then(() => alert("계좌번호가 복사되었습니다!"));
+    }
+
+    function printReceipt(title) {
+        if (!orderData) return alert("주문 정보가 없습니다.");
+        document.getElementById('print-title').innerText = title;
+        document.getElementById('receipt-items').innerHTML = orderData.items.map(item => `
+            <tr>
+                <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${item.item}</td>
+                <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${item.qty}</td>
+                <td style="border: 1px solid #0056b3; padding: 5px; text-align: center;">${Number(item.price).toLocaleString()}원</td>
+            </tr>
+        `).join('');
+        document.getElementById('receipt-total').innerText = orderData.total.toLocaleString() + "원";
+        window.print();
+    }
+</script>
+</body>
+</html>

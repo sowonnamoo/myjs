@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>결제 완료 및 상세조회</title>
+    <style>
+        body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; padding: 20px; }
+        .wrap { max-width: 500px; margin: 0 auto; }
+        .card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { font-size: 24px; color: #007AFF; margin-bottom: 10px; text-align: center; }
+        .label { color: #888; font-size: 13px; }
+        
+        /* 버튼 그리드: 2개로 줄어들었으므로 1fr 1fr로 유지하거나 상황에 맞게 조정 가능 */
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn-receipt { padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; color: #333; }
+        .btn-main { width: 100%; padding: 16px; background: #007AFF; color: #fff; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+
+        /* 인쇄 시에만 보일 스타일 */
+        #print-area { display: none; }
+        @media print {
+            body > *:not(#print-area) { display: none !important; }
+            #print-area { display: block !important; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+    <div class="card">
+        <h1>🎉 결제 완료!</h1>
+        <p style="text-align:center; color:#666; font-size:14px;">주문이 정상적으로 접수되었습니다.</p>
+        <div id="order-details"></div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:16px; margin-top:0;">🧾 영수증 및 증빙</h3>
+        <div class="btn-grid">
+            <button class="btn-receipt" onclick="alert('카드사 영수증 페이지로 이동합니다.')">카드 영수증</button>
+            <button class="btn-receipt" onclick="printInvoice()">거래명세서 출력</button>
+        </div>
+    </div>
+
+    <button class="btn-main" onclick="location.href='index.html'">쇼핑 계속하기</button>
+</div>
+
+<div id="print-area">
+    <h2 style="text-align:center;">거래명세서</h2>
+    <div id="print-info"></div>
+    <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+        <thead style="background:#eee;">
+            <tr><th style="border:1px solid #ccc; padding:8px;">품목</th><th style="border:1px solid #ccc;">사이즈</th><th style="border:1px solid #ccc;">수량</th><th style="border:1px solid #ccc;">금액</th></tr>
+        </thead>
+        <tbody id="print-items"></tbody>
+    </table>
+    <p id="print-total" style="text-align:right; font-weight:bold; margin-top:15px; font-size:18px;"></p>
+</div>
+
+<script>
+    const orderData = JSON.parse(localStorage.getItem("latestOrder"));
+    const container = document.getElementById("order-details");
+
+    if (orderData) {
+        let itemsHtml = orderData.items.map(item => `
+            <div style="margin-bottom:15px; border-bottom:1px solid #f0f0f0; padding-bottom:10px;">
+                <b>${item.item}</b> (${item.qty}개)<br>
+                <span class="label">사이즈: ${item.width} × ${item.height}</span><br>
+                <a href="${item.imageUrl}" target="_blank" style="color:#007AFF; font-size:14px; text-decoration:none;">📄 업로드 파일 보기</a>
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <div style="border-top:1px solid #eee; padding-top:15px; margin-top:15px;">
+                <p><span class="label">주문번호:</span> ${orderData.orderId}</p>
+                ${itemsHtml}
+                <p><b>총 결제금액: ${orderData.total.toLocaleString()}원</b></p>
+            </div>
+        `;
+    }
+
+    // 거래명세서 출력 기능
+    window.printInvoice = function() {
+        if (!orderData) return alert("주문 정보가 없습니다.");
+        
+        document.getElementById('print-info').innerHTML = `주문번호: ${orderData.orderId} / 성함: ${orderData.name}`;
+        document.getElementById('print-items').innerHTML = orderData.items.map(item => `
+            <tr>
+                <td style="border:1px solid #ccc; padding:8px;">${item.item}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${item.width}×${item.height}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${item.qty}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${Number(item.price).toLocaleString()}원</td>
+            </tr>
+        `).join('');
+        document.getElementById('print-total').innerText = `합계: ${orderData.total.toLocaleString()}원`;
+        
+        window.print();
+    };
+</script>
+</body>
+</html>
