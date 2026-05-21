@@ -41,27 +41,27 @@ canvas { display: none; touch-action: none; }
 /* 📁 파일 업로드 박스 디자인 (직사각형) */
 .upload-box-wrapper {
     position: absolute; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; width: calc(67% - 27px); height: calc(67% - 27px);
+    justify-content: center; width: calc(100% - 40px); height: calc(100% - 40px);
     border: 2px dashed rgba(0, 122, 255, 0.4); border-radius: 0px;
-    background: rgba(255, 255, 255, 0.02); padding: 16px; transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.02); padding: 20px; transition: all 0.3s ease;
 }
 .viewer-zone:hover .upload-box-wrapper {
     border-color: var(--primary); background: rgba(0, 122, 255, 0.05);
 }
 .upload-icon-circle {
-    width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 122, 255, 0.1);
-    display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+    width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 122, 255, 0.1);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
     box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
 }
 .upload-icon {
-    font-size: 36px; background: var(--primary-gradient);
+    font-size: 28px; background: var(--primary-gradient);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
 .upload-box-wrapper b {
-    font-size: 19px; color: #fff; display: block; margin-bottom: 6px; letter-spacing: -0.5px;
+    font-size: 16px; color: #fff; display: block; margin-bottom: 6px; letter-spacing: -0.5px;
 }
 .upload-box-wrapper p {
-    margin: 0; font-size: 13px; color: #8a8a93; text-align: center; line-height: 1.5;
+    margin: 0; font-size: 12px; color: #8a8a93; text-align: center; line-height: 1.5;
 }
 
 /* ⏳ 업로드 프로그레스 바 UI */
@@ -160,28 +160,22 @@ input[type="range"] { width: 100%; }
 </div>
 
 <script>
-/* ================= 📄 1. 주문 정보 연동 파트 ================= */
 const params = new URLSearchParams(location.search);
-
 const 주문정보 = {
     width: params.get('w') || '0',
     height: params.get('h') || '0',
     qty: params.get('qty') || '0',
     price: params.get('price') || '0',
-    item: params.get('material') || params.get('item') || '선택 품목 없음'
+    name: params.get('name') || '미입력',
+    item: params.get('item') || '선택 품목 없음'
 };
 
 document.getElementById('order-info-panel').innerHTML = `
     <b>주문 정보</b> | 품명: ${주문정보.item}<br>
-    사이즈: ${주문정보.width} × ${주문정보.height} &nbsp;&nbsp; 수량: ${주문정보.qty}장<br>
+    주문자: ${주문정보.name} &nbsp;&nbsp; 사이즈: ${주문정보.width} × ${주문정보.height} &nbsp;&nbsp; 수량: ${주문정보.qty}장<br>
     <b>결제 금액: ${Number(주문정보.price).toLocaleString()}원</b>
 `;
 
-const orderW = parseFloat(주문정보.width) || 1;
-const orderH = parseFloat(주문정보.height) || 1;
-document.getElementById('viewer-box').style.aspectRatio = `${orderW} / ${orderH}`;
-
-/* ================= 🖼️ 2. Canvas 객체 초기 제어 파트 ================= */
 const fileInput = document.getElementById('file-input');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -200,10 +194,8 @@ fileInput.onchange = function() {
     if(!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-        // 기본 상태로 초기화 (자동 회전 효과를 보여주기 위해 회전값은 0에서 시작)
         state = { scale: 1, offsetX: 0, offsetY: 0, rotation: 0, flipX: 1, brightness: 100 };
         document.getElementById('brightness').value = 100;
-        
         img.src = e.target.result;
         document.getElementById('empty-msg').style.display = 'none';
         canvas.style.display = 'block';
@@ -213,9 +205,15 @@ fileInput.onchange = function() {
 };
 
 img.onload = function() {
+    // [추가된 로직] 주문 정보 비율에 맞춰 뷰어 모양을 즉시 변경
+    const w = parseFloat(주문정보.width);
+    const h = parseFloat(주문정보.height);
+    if (w > 0 && h > 0) {
+        document.getElementById('viewer-box').style.aspectRatio = (w / h);
+    }
+    
     resizeCanvas();
     fitImageToScreen();
-    // [NEW] 파일이 완전히 로드된 후 0.15초 간격으로 3회 자동 회전 트리거 호출
     autoRotateThreeTimes();
 };
 
@@ -231,37 +229,30 @@ function fitImageToScreen() {
     draw();
 }
 
-/* 🔄 [NEW] 업로드시 3회 자동 회전 연출 함수 (0.15초 간격) */
 function autoRotateThreeTimes() {
     let count = 0;
     const interval = setInterval(() => {
         if (count < 3) {
-            rotateImage(); // 90도씩 회전 및 리사이징 적용 함수 호출
+            rotateImage();
             count++;
         } else {
             clearInterval(interval);
         }
-    }, 150); // 150ms 간격으로 경쾌하게 회전함
+    }, 150);
 }
 
-/* ================= 🎨 3. 렌더링 및 조작 파트 ================= */
 function draw() {
     if(!img.src) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-
     ctx.filter = `brightness(${state.brightness}%)`;
     ctx.translate(canvas.width/2 + state.offsetX, canvas.height/2 + state.offsetY);
     ctx.rotate(state.rotation * Math.PI / 180);
-
     const rad = state.rotation * Math.PI / 180;
     const boundingW = Math.abs(img.width * Math.cos(rad)) + Math.abs(img.height * Math.sin(rad));
     const boundingH = Math.abs(img.width * Math.sin(rad)) + Math.abs(img.height * Math.cos(rad));
-
-    const scaleX = (canvas.width / boundingW) * state.scale;
-    const scaleY = (canvas.height / boundingH) * state.scale;
-    ctx.scale(scaleX * state.flipX, scaleY);
-
+    const fitScale = Math.min(canvas.width / boundingW, canvas.height / boundingH) * state.scale;
+    ctx.scale(fitScale * state.flipX, fitScale);
     ctx.drawImage(img, -img.width/2, -img.height/2);
     ctx.restore();
 }
@@ -293,7 +284,6 @@ function resetImage() {
     fitImageToScreen();
 }
 
-/* ================= 🖱️ 4. 모바일 터치 & 그래그 제어 파트 ================= */
 const getPos = e => e.touches ? {x: e.touches[0].clientX, y: e.touches[0].clientY} : {x: e.clientX, y: e.clientY};
 
 function dragStart(e) {
@@ -314,74 +304,37 @@ canvas.addEventListener('mousedown', dragStart); window.addEventListener('mousem
 canvas.addEventListener('touchstart', dragStart, {passive:false}); canvas.addEventListener('touchmove', dragMove, {passive:false}); canvas.addEventListener('touchend', () => isDragging = false);
 window.addEventListener('resize', () => { if(img.src) { resizeCanvas(); draw(); } });
 
-
-/* ================= 🚀 5. 구글드라이브 업로드 & Cafe24 연동 파트 ================= */
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 
 async function addToCart() {
-    if(!img.src) {
-        alert("편집할 이미지를 먼저 업로드해주세요.");
-        return;
-    }
-
+    if(!img.src) { alert("편집할 이미지를 먼저 업로드해주세요."); return; }
     document.getElementById('progress-wrap').style.display = 'block';
-
     canvas.toBlob(async (blob) => {
-        const fileName = `${주문정보.item}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
+        const fileName = `${주문정보.name}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
         const reader = new FileReader();
-
         reader.onload = async function(e) {
             const base64Data = e.target.result.split(',')[1];
-            const body = new URLSearchParams({
-                data: base64Data,
-                filename: fileName,
-                mimetype: 'image/jpeg'
-            });
-
-            /* Fake Progress Engine */
+            const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: 'image/jpeg' });
             let p = 0;
             const iv = setInterval(() => {
-                if (p >= 90) {
-                    clearInterval(iv);
-                } else {
-                    p += 2;
-                    document.getElementById('progress-fill').style.width = p + '%';
-                    document.getElementById('progress-text').innerText = `업로드 중... ${p}%`;
-                }
+                if (p >= 90) { clearInterval(iv); } else { p += 2; document.getElementById('progress-fill').style.width = p + '%'; document.getElementById('progress-text').innerText = `업로드 중... ${p}%`; }
             }, 80);
-
             try {
                 const res = await fetch(WEB_APP_URL, { method: 'POST', body });
                 const data = await res.json();
-
                 clearInterval(iv);
-
                 document.getElementById('progress-fill').style.width = '100%';
                 document.getElementById('progress-text').innerText = '업로드 완료';
-
-                const optionText = `${주문정보.item}\n수량: ${주문정보.qty}장\n사이즈: ${주문정보.width} × ${주문정보.height}\n파일: ${data.url}`;
-const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-cart.push({
-    item: 주문정보.item,
-    qty: 주문정보.qty,
-    width: 주문정보.width,
-    height: 주문정보.height,
-    price: 주문정보.price,
-    imageUrl: data.url
-});
-
-localStorage.setItem("cart", JSON.stringify(cart));
-
-location.href = "https://sowonnamoo.github.io/myjs/cart";
-
+                const cart = JSON.parse(localStorage.getItem("cart")) || [];
+                cart.push({ item: 주문정보.item, qty: 주문정보.qty, width: 주문정보.width, height: 주문정보.height, price: 주문정보.price, imageUrl: data.url, customerName: 주문정보.name });
+                localStorage.setItem("cart", JSON.stringify(cart));
+                location.href = "https://sowonnamoo.github.io/myjs/cart";
             } catch (error) {
                 clearInterval(iv);
                 alert("업로드 중 오류가 발생했습니다. 다시 시도해 주세요.");
                 document.getElementById('progress-wrap').style.display = 'none';
             }
         };
-
         reader.readAsDataURL(blob);
     }, 'image/jpeg', 0.95);
 }
