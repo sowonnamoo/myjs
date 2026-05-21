@@ -168,13 +168,12 @@ const 주문정보 = {
     height: params.get('h') || '0',
     qty: params.get('qty') || '0',
     price: params.get('price') || '0',
-    name: params.get('name') || '미입력',
-    item: params.get('item') || '선택 품목 없음'
+    item: params.get('material') || params.get('item') || '선택 품목 없음'
 };
 
 document.getElementById('order-info-panel').innerHTML = `
     <b>주문 정보</b> | 품명: ${주문정보.item}<br>
-    주문자: ${주문정보.name} &nbsp;&nbsp; 사이즈: ${주문정보.width} × ${주문정보.height} &nbsp;&nbsp; 수량: ${주문정보.qty}장<br>
+    사이즈: ${주문정보.width} × ${주문정보.height} &nbsp;&nbsp; 수량: ${주문정보.qty}장<br>
     <b>결제 금액: ${Number(주문정보.price).toLocaleString()}원</b>
 `;
 
@@ -323,7 +322,7 @@ async function addToCart() {
     document.getElementById('progress-wrap').style.display = 'block';
 
     canvas.toBlob(async (blob) => {
-        const fileName = `${주문정보.name}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
+        const fileName = `${주문정보.item}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
         const reader = new FileReader();
 
         reader.onload = async function(e) {
@@ -364,8 +363,7 @@ cart.push({
     width: 주문정보.width,
     height: 주문정보.height,
     price: 주문정보.price,
-    imageUrl: data.url,
-    customerName: 주문정보.name
+    imageUrl: data.url
 });
 
 localStorage.setItem("cart", JSON.stringify(cart));
