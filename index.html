@@ -26,16 +26,296 @@
     .print-btn-wrapper { text-align: right; margin-top: 6px; }
     .print-estimate-btn { display: inline-flex; align-items: center; background: #e8e8e8; color: #222; border: 2px solid #999; padding: 6px 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; }
     .submit-btn { width: 100%; background: #1e5fa9; color: #fff; border: none; padding: 14px; font-size: 28px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; box-shadow: 0 3px 5px rgba(0,0,0,0.2); }
-    .info-btn-wrap { text-align: center; margin: 25px 0; }
-    .info-link-btn { display: inline-block; background: #73b324; color: #fff; padding: 12px 40px; border-radius: 6px; font-size: 22px; font-weight: bold; text-decoration: none; cursor: pointer; border: none; }
-    .detail-image-container { display: none; margin: 0 10px; padding: 10px 0; border-top: 2px dashed #ccc; text-align: center; }
+    .image-toggle-wrap { margin: 18px 10px 0; }
+    .image-toggle-btn {
+        width: 100%;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: linear-gradient(145deg, #2b5797 0%, #1e4578 100%);
+        color: #fff;
+        padding: 14px 18px;
+        border: none;
+        border-radius: 12px;
+        font-size: 19px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(30, 69, 120, 0.35);
+        -webkit-tap-highlight-color: transparent;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+    .image-toggle-btn:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(30, 69, 120, 0.3); }
+    .image-toggle-btn .btn-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .image-toggle-btn .btn-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.18);
+        border-radius: 10px;
+        font-size: 20px;
+        line-height: 1;
+    }
+    .image-toggle-btn .chevron {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        font-size: 12px;
+        transition: transform 0.35s ease;
+    }
+    .image-toggle-btn[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+    .detail-image-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease, opacity 0.3s ease;
+        opacity: 0;
+        margin: 0 10px;
+    }
+    .detail-image-panel.is-open {
+        max-height: 5000px;
+        opacity: 1;
+        margin-top: 10px;
+    }
+    .detail-image-container {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+    }
+    .detail-image-container img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #eee;
+    }
+    .detail-image-container img:last-child { margin-bottom: 0; }
+
+    .company-footer {
+        margin: 28px 10px 0;
+        padding: 20px 16px 24px;
+        background: linear-gradient(180deg, #eef3fa 0%, #e4ecf6 100%);
+        border-radius: 12px;
+        border: 1px solid #c5d4e8;
+        text-align: center;
+    }
+    .company-footer .footer-brand {
+        font-size: 18px;
+        font-weight: 900;
+        color: #2b5797;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+    }
+    .company-footer .footer-sub {
+        font-size: 13px;
+        font-weight: bold;
+        color: #5a6d85;
+        margin-bottom: 14px;
+    }
+    .company-footer .footer-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #b8c9de, transparent);
+        margin: 12px 0;
+    }
+    .company-footer .footer-row {
+        font-size: 12px;
+        color: #444;
+        line-height: 1.65;
+        font-weight: 500;
+        word-break: keep-all;
+    }
+    .company-footer .footer-row + .footer-row { margin-top: 4px; }
+    .company-footer .footer-row a {
+        color: #1e5fa9;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .company-footer .footer-row a:active { opacity: 0.7; }
+    .company-footer .footer-row .sep {
+        color: #aaa;
+        margin: 0 4px;
+        font-weight: normal;
+    }
+    .company-footer .footer-copy {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px dashed #c5d4e8;
+        font-size: 11px;
+        color: #666;
+        line-height: 1.6;
+    }
+    .company-footer .footer-copy strong { color: #2b5797; font-weight: bold; }
+
+    .menu-btn { cursor: pointer; user-select: none; }
+    .side-menu-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .side-menu-overlay.is-open {
+        opacity: 1;
+        visibility: visible;
+    }
+    .side-menu-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        max-width: 85vw;
+        height: 100vh;
+        height: 100dvh;
+        background: #fff;
+        z-index: 1001;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .side-menu-panel.is-open {
+        transform: translateX(0);
+    }
+    .side-menu-header {
+        flex-shrink: 0;
+        background: #2b5797;
+        color: #fff;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .side-menu-header h2 {
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: -0.5px;
+    }
+    .side-menu-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .side-menu-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 12px 0 28px;
+    }
+    .side-menu-order {
+        display: block;
+        margin: 0 12px 12px;
+        padding: 16px 18px;
+        background: linear-gradient(145deg, #60a917 0%, #4d8c12 100%);
+        color: #fff;
+        font-size: 20px;
+        font-weight: bold;
+        text-decoration: none;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 3px 10px rgba(96, 169, 23, 0.35);
+    }
+    .side-menu-order:active {
+        opacity: 0.9;
+    }
+    .side-menu-list {
+        list-style: none;
+        padding: 0 12px 8px;
+    }
+    .side-menu-list li + li {
+        margin-top: 6px;
+    }
+    .side-menu-list a {
+        display: block;
+        padding: 16px 18px;
+        font-size: 20px;
+        font-weight: bold;
+        color: #222;
+        text-decoration: none;
+        background: #f5f8fc;
+        border: 2px solid #d0dce8;
+        border-radius: 10px;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .side-menu-list a:active,
+    .side-menu-list a:hover {
+        background: #eef3fa;
+        border-color: #2b5797;
+        color: #2b5797;
+    }
 </style>
 </head>
 <body>
 
+<div class="side-menu-overlay" id="side_menu_overlay" aria-hidden="true"></div>
+<nav class="side-menu-panel" id="side_menu_panel" aria-hidden="true" aria-label="메뉴 목록">
+    <div class="side-menu-header">
+        <h2>메뉴 목록</h2>
+        <button type="button" class="side-menu-close" id="side_menu_close" aria-label="메뉴 닫기">&times;</button>
+    </div>
+    <div class="side-menu-body">
+        <a href="https://sowonnamoo.github.io/myjs/sesrch" class="side-menu-order" id="menu_order_inquiry">내 주문조회</a>
+        <ul class="side-menu-list">
+            <li><a href="#" data-product="명함">명함</a></li>
+            <li><a href="#" data-product="전단지">전단지</a></li>
+            <li><a href="#" data-product="티켓">티켓</a></li>
+            <li><a href="#" data-product="엽서">엽서</a></li>
+            <li><a href="#" data-product="명함">명함</a></li>
+            <li><a href="#" data-product="전단지">전단지</a></li>
+            <li><a href="#" data-product="티켓">티켓</a></li>
+            <li><a href="#" data-product="엽서">엽서</a></li>
+            <li><a href="#" data-product="명함">명함</a></li>
+            <li><a href="#" data-product="전단지">전단지</a></li>
+            <li><a href="#" data-product="티켓">티켓</a></li>
+            <li><a href="#" data-product="엽서">엽서</a></li>
+            <li><a href="#" data-product="명함">명함</a></li>
+            <li><a href="#" data-product="전단지">전단지</a></li>
+            <li><a href="#" data-product="티켓">티켓</a></li>
+            <li><a href="#" data-product="엽서">엽서</a></li>
+            <li><a href="#" data-product="명함">명함</a></li>
+            <li><a href="#" data-product="전단지">전단지</a></li>
+            <li><a href="#" data-product="티켓">티켓</a></li>
+            <li><a href="#" data-product="엽서">엽서</a></li>
+            <li><a href="#" data-product="명함">명함</a></li>
+            <li><a href="#" data-product="전단지">전단지</a></li>
+            <li><a href="#" data-product="티켓">티켓</a></li>
+            <li><a href="#" data-product="엽서">엽서</a></li>
+        </ul>
+    </div>
+</nav>
+
 <div class="mobile-container">
     <header class="shop-header">
-        <div class="menu-btn">메뉴<br>목록</div>
+        <div class="menu-btn" id="menu_btn" role="button" tabindex="0" aria-label="메뉴 목록 열기">메뉴<br>목록</div>
         <div class="logo-area"><span>G&R</span> 그래픽스아이엠</div>
     </header>
 
@@ -43,7 +323,7 @@
 
     <div class="order-card">
         <div class="form-group">
-            <label>모음 재질선택</label>
+            <label>품명</label>
             <select class="form-control" id="material" onchange="totalCal()">
                 <option value="무코팅스티커">무코팅스티커 (2박3일 소요)</option>
                 <option value="코팅스티커">코팅스티커 (1박2일 소요)</option>
@@ -72,6 +352,39 @@
         </div>
         <button type="button" class="submit-btn" id="buy_btn">주문하기</button>
     </div>
+
+    <div class="image-toggle-wrap">
+        <button type="button" class="image-toggle-btn" id="image_toggle_btn" aria-expanded="false" aria-controls="detail_image_panel">
+            <span class="btn-left">
+                <span class="btn-icon" aria-hidden="true">🖼</span>
+                <span id="image_toggle_label">상세 이미지 보기</span>
+            </span>
+            <span class="chevron" aria-hidden="true">▼</span>
+        </button>
+    </div>
+    <div class="detail-image-panel" id="detail_image_panel" aria-hidden="true">
+        <div class="detail-image-container">
+            <!-- images 폴더에 webp 또는 png 파일을 넣으세요 (모바일 권장) -->
+            <img src="images/detail-1.webp" alt="상세 이미지 1" loading="lazy" decoding="async">
+            <img src="images/detail-2.webp" alt="상세 이미지 2" loading="lazy" decoding="async">
+        </div>
+    </div>
+
+    <footer class="company-footer">
+        <div class="footer-brand">에코그래픽스</div>
+        <div class="footer-sub">그래픽스아이엠</div>
+        <div class="footer-divider"></div>
+        <p class="footer-row">사업자등록번호 411-13-76734</p>
+        <p class="footer-row">
+            <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a>
+        </p>
+        <p class="footer-row">인쇄소 위치<span class="sep">|</span>달서로 18길 7-9</p>
+        <p class="footer-row">통신판매업 신고<span class="sep">|</span>2022-대구서구-0232</p>
+        <div class="footer-copy">
+            Copyright &copy; 2012 <strong>ECO graphics</strong> All rights reserved.<br>
+            개인정보관리책임자<span class="sep">:</span> 정상훈
+        </div>
+    </footer>
 </div>
 
 <script>
@@ -111,6 +424,62 @@ function totalCal(){
         location.href = `https://sowonnamoo.github.io/myjs/preview?${params.toString()}`;
     };
 }
+(function initSideMenu(){
+    const menuBtn = document.getElementById('menu_btn');
+    const overlay = document.getElementById('side_menu_overlay');
+    const panel = document.getElementById('side_menu_panel');
+    const closeBtn = document.getElementById('side_menu_close');
+    const productTitle = document.querySelector('.product-title');
+
+    function openMenu(){
+        overlay.classList.add('is-open');
+        panel.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeMenu(){
+        overlay.classList.remove('is-open');
+        panel.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        panel.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    menuBtn.addEventListener('click', openMenu);
+    menuBtn.addEventListener('keydown', function(e){
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openMenu();
+        }
+    });
+    overlay.addEventListener('click', closeMenu);
+    closeBtn.addEventListener('click', closeMenu);
+
+    document.querySelectorAll('.side-menu-list a').forEach(function(link){
+        link.addEventListener('click', function(e){
+            e.preventDefault();
+            const name = link.getAttribute('data-product');
+            if (productTitle) productTitle.textContent = name;
+            closeMenu();
+        });
+    });
+})();
+
+(function initImageToggle(){
+    const btn = document.getElementById('image_toggle_btn');
+    const panel = document.getElementById('detail_image_panel');
+    const label = document.getElementById('image_toggle_label');
+    if (!btn || !panel) return;
+
+    btn.addEventListener('click', function(){
+        const open = panel.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', open);
+        panel.setAttribute('aria-hidden', !open);
+        label.textContent = open ? '상세 이미지 접기' : '상세 이미지 보기';
+    });
+})();
+
 window.onload = totalCal;
 </script>
 </body>
