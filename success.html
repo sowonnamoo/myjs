@@ -10,13 +10,9 @@
         .card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         h1 { font-size: 24px; color: #007AFF; margin-bottom: 10px; text-align: center; }
         .label { color: #888; font-size: 13px; }
-        
-        /* 버튼 그리드: 2개로 줄어들었으므로 1fr 1fr로 유지하거나 상황에 맞게 조정 가능 */
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .btn-receipt { padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; color: #333; }
         .btn-main { width: 100%; padding: 16px; background: #007AFF; color: #fff; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-
-        /* 인쇄 시에만 보일 스타일 */
         #print-area { display: none; }
         @media print {
             body > *:not(#print-area) { display: none !important; }
@@ -57,52 +53,45 @@
 </div>
 
 <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyBzHogA2iaQ...",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    };
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBzHogA2iaQ...",
-    authDomain: "ecogr-636c6.firebaseapp.com",
-    projectId: "ecogr-636c6",
-    storageBucket: "ecogr-636c6.firebasestorage.app",
-    messagingSenderId: "95745358447",
-    appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
     
     const orderData = JSON.parse(localStorage.getItem("latestOrder"));
-    if(orderData){
 
-    const savedFlag =
-        localStorage.getItem("saved_" + orderData.orderId);
+    if(orderData) {
+        const savedFlag = localStorage.getItem("saved_" + orderData.orderId);
 
-if(!savedFlag){
+        if(!savedFlag) {
+            try {
+                // 관리자 페이지와 호환되도록 데이터 구조 보강
+                const dataToSave = {
+                    ...orderData,
+                    payment: orderData.payMethod === "card" ? "카드결제" : "무통장입금",
+                    status: "결제완료"
+                };
 
-    try {
-
-        await addDoc(
-            collection(db, "orders"),
-            orderData
-        );
-
-        localStorage.setItem(
-            "saved_" + orderData.orderId,
-            "1"
-        );
-
-    } catch(err) {
-
-        console.error(err);
-
+                await addDoc(collection(db, "orders"), dataToSave);
+                localStorage.setItem("saved_" + orderData.orderId, "1");
+            } catch(err) {
+                console.error("데이터 저장 실패:", err);
+            }
+        }
+        localStorage.removeItem("cart");
     }
-}
-    localStorage.removeItem("cart");
-}
-    const container = document.getElementById("order-details");
 
+    const container = document.getElementById("order-details");
     if (orderData) {
         let itemsHtml = orderData.items.map(item => `
             <div style="margin-bottom:15px; border-bottom:1px solid #f0f0f0; padding-bottom:10px;">
@@ -121,10 +110,8 @@ if(!savedFlag){
         `;
     }
 
-    // 거래명세서 출력 기능
     window.printInvoice = function() {
         if (!orderData) return alert("주문 정보가 없습니다.");
-        
         document.getElementById('print-info').innerHTML = `주문번호: ${orderData.orderId} / 성함: ${orderData.name}`;
         document.getElementById('print-items').innerHTML = orderData.items.map(item => `
             <tr>
@@ -135,7 +122,6 @@ if(!savedFlag){
             </tr>
         `).join('');
         document.getElementById('print-total').innerText = `합계: ${orderData.total.toLocaleString()}원`;
-        
         window.print();
     };
 </script>
