@@ -70,12 +70,15 @@
     
     const orderData = JSON.parse(localStorage.getItem("latestOrder"));
 
-    if(orderData) {
-        const savedFlag = localStorage.getItem("saved_" + orderData.orderId);
+    async function processOrder() {
+        if(!orderData) return;
 
-        if(!savedFlag) {
+        // 중복 저장 방지: 이미 저장된 주문번호인지 확인
+        if(!localStorage.getItem("saved_" + orderData.orderId)) {
             try {
-                // 관리자 페이지와 호환되도록 데이터 구조 보강
+                // 저장 시도 전 플래그 먼저 설정
+                localStorage.setItem("saved_" + orderData.orderId, "1");
+                
                 const dataToSave = {
                     ...orderData,
                     payment: orderData.payMethod === "card" ? "카드결제" : "무통장입금",
@@ -83,16 +86,15 @@
                 };
 
                 await addDoc(collection(db, "orders"), dataToSave);
-                localStorage.setItem("saved_" + orderData.orderId, "1");
             } catch(err) {
+                // 실패 시 플래그 제거하여 재시도 가능하게 처리
+                localStorage.removeItem("saved_" + orderData.orderId);
                 console.error("데이터 저장 실패:", err);
             }
         }
         localStorage.removeItem("cart");
-    }
 
-    const container = document.getElementById("order-details");
-    if (orderData) {
+        const container = document.getElementById("order-details");
         let itemsHtml = orderData.items.map(item => `
             <div style="margin-bottom:15px; border-bottom:1px solid #f0f0f0; padding-bottom:10px;">
                 <b>${item.item}</b> (${item.qty}개)<br>
@@ -124,6 +126,8 @@
         document.getElementById('print-total').innerText = `합계: ${orderData.total.toLocaleString()}원`;
         window.print();
     };
+
+    processOrder();
 </script>
 </body>
 </html>
