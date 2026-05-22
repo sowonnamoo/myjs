@@ -42,20 +42,6 @@
 
 <script src="https://js.tosspayments.com/v1"></script>
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBzHogA2iaQ...",
-        authDomain: "ecogr-636c6.firebaseapp.com",
-        projectId: "ecogr-636c6",
-        storageBucket: "ecogr-636c6.firebasestorage.app",
-        messagingSenderId: "95745358447",
-        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
     const TOSS_CLIENT_KEY = "test_ck_O6BYq7GWPVvXKgZXBNl8NE5vbo1d";
 
     let cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -128,12 +114,11 @@
         const orderData = { 
             orderId: "ORD_" + Date.now(), 
             name, phone, address, total, items: cart, 
-            payment: "무통장입금", // 관리자 페이지와 키값 통일
-            status: "입금대기", // 상태값 추가
+            payment: "무통장입금",
+            status: "입금대기",
             createdAt: new Date().toISOString() 
         };
         
-        await addDoc(collection(db, "orders"), orderData);
         localStorage.setItem("latestOrder", JSON.stringify(orderData));
         localStorage.removeItem("cart");
         location.href = "https://sowonnamoo.github.io/myjs/success2";
