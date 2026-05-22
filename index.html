@@ -509,8 +509,13 @@ function initSideMenu(){
 
     document.querySelectorAll('.side-menu-list a').forEach(function(link){
         link.addEventListener('click', function(e){
-            e.preventDefault();
+            const href = link.getAttribute('href');
             const name = link.getAttribute('data-product');
+            if (href && href !== '#') {
+                closeMenu();
+                return;
+            }
+            e.preventDefault();
             if (productTitle) productTitle.textContent = name;
             closeMenu();
         });
