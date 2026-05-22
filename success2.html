@@ -35,7 +35,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBzHogA2iaQ...",
@@ -56,19 +56,15 @@
             return;
         }
 
-        // 중복 방지 로직: 이미 저장된 주문번호인지 확인
         if (!localStorage.getItem("saved_" + orderData.orderId)) {
             try {
-                // 먼저 플래그를 찍어 중복 실행을 원천 차단
                 localStorage.setItem("saved_" + orderData.orderId, "1");
-                
-                await addDoc(collection(db, "orders"), {
+                await setDoc(doc(db, "orders", orderData.orderId), {
                     ...orderData,
                     payment: "무통장입금",
                     status: "입금대기"
                 });
             } catch(err) { 
-                // 실패 시 플래그 제거하여 재시도 가능하게 함
                 localStorage.removeItem("saved_" + orderData.orderId);
                 console.error(err); 
             }
