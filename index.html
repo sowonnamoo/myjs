@@ -84,7 +84,6 @@
         margin: 0 10px;
     }
     .detail-image-panel.is-open {
-        max-height: 5000px;
         opacity: 1;
         margin-top: 10px;
     }
@@ -104,6 +103,74 @@
         border: 1px solid #eee;
     }
     .detail-image-container img:last-child { margin-bottom: 0; }
+
+    .policy-table-wrap {
+        margin-top: 14px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #c5d4e8;
+        box-shadow: 0 2px 8px rgba(43, 87, 151, 0.08);
+        text-align: left;
+    }
+    .policy-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        background: #fff;
+    }
+    .policy-table caption {
+        padding: 12px 14px;
+        font-size: 17px;
+        font-weight: 900;
+        color: #fff;
+        background: linear-gradient(145deg, #2b5797 0%, #1e4578 100%);
+        text-align: left;
+        letter-spacing: -0.3px;
+    }
+    .policy-table th,
+    .policy-table td {
+        padding: 14px 12px;
+        vertical-align: top;
+        border-bottom: 1px solid #e4ecf6;
+        word-break: keep-all;
+    }
+    .policy-table tr:last-child th,
+    .policy-table tr:last-child td {
+        border-bottom: none;
+    }
+    .policy-table th {
+        width: 28%;
+        min-width: 88px;
+        background: #eef3fa;
+        font-size: 15px;
+        font-weight: 900;
+        color: #2b5797;
+        text-align: center;
+        line-height: 1.4;
+        border-right: 1px solid #d0dce8;
+    }
+    .policy-table td {
+        font-size: 14px;
+        font-weight: 500;
+        color: #444;
+        line-height: 1.65;
+        background: #fcfdff;
+    }
+    .policy-table td p + p {
+        margin-top: 8px;
+    }
+    .policy-table td strong {
+        color: #1e4578;
+        font-weight: bold;
+    }
+    .policy-table td a {
+        color: #1e5fa9;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    .policy-table tr:nth-child(even) td {
+        background: #f8fafc;
+    }
 
     .company-footer {
         margin: 28px 10px 0;
@@ -319,7 +386,7 @@
         <div class="logo-area"><span>G&R</span> 그래픽스아이엠</div>
     </header>
 
-    <h1 class="product-title">제품명</h1>
+    <h1 class="product-title">스티커</h1>
 
     <div class="order-card">
         <div class="form-group">
@@ -364,9 +431,46 @@
     </div>
     <div class="detail-image-panel" id="detail_image_panel" aria-hidden="true">
         <div class="detail-image-container">
-            <!-- images 폴더에 webp 또는 png 파일을 넣으세요 (모바일 권장) -->
-            <img src="myjs/blob/main/st.jpg" alt="상세 이미지 1" loading="lazy" decoding="async">
-            <img src="images/detail-2.jpg" alt="상세 이미지 2" loading="lazy" decoding="async">
+            <img src="https://raw.githubusercontent.com/sowonnamoo/myjs/main/st.jpg" alt="상세 이미지" loading="lazy" decoding="async">
+            <div class="policy-table-wrap">
+                <table class="policy-table">
+                    <caption>배송 · 환불 · 교환 안내</caption>
+                    <tbody>
+                        <tr>
+                            <th scope="row">배송일<br>안내</th>
+                            <td>
+                                <p><strong>무코팅스티커</strong> : 결제 후 2박 3일 소요 (영업일 기준)</p>
+                                <p><strong>코팅스티커</strong> : 결제 후 1박 2일 소요 (영업일 기준)</p>
+                                <p>주문 확인 후 순차 발송되며, 택배사 사정에 따라 1~2일 지연될 수 있습니다.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">환불</th>
+                            <td>
+                                <p>인쇄 제작 특성상 주문 확정 후 취소·환불이 어려울 수 있습니다.</p>
+                                <p>제작 오류, 불량품 등 당사 귀책 사유인 경우 전액 환불 또는 재제작해 드립니다.</p>
+                                <p>환불 문의 : <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">교환</th>
+                            <td>
+                                <p>단순 변심에 의한 교환은 제작·인쇄 상품 특성상 불가합니다.</p>
+                                <p>인쇄 불량, 수량 오류, 배송 중 파손 등 확인 시 무상 재제작 또는 교환 처리합니다.</p>
+                                <p>수령 후 3일 이내 사진과 함께 고객센터로 연락해 주세요.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">약관</th>
+                            <td>
+                                <p>본 서비스 이용 시 전자상거래 등 관련 법령 및 당사 이용약관이 적용됩니다.</p>
+                                <p>주문 시 입력하신 사양(품명, 규격, 수량)을 기준으로 제작·발송됩니다.</p>
+                                <p>개인정보는 주문·배송·고객 상담 목적으로만 사용하며, 관련 법령에 따라 보관·파기합니다.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -472,12 +576,46 @@ function totalCal(){
     const label = document.getElementById('image_toggle_label');
     if (!btn || !panel) return;
 
+    function syncPanelHeight(){
+        if (!panel.classList.contains('is-open')) return;
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+        requestAnimationFrame(function(){
+            panel.style.maxHeight = 'none';
+        });
+    }
+
     btn.addEventListener('click', function(){
-        const open = panel.classList.toggle('is-open');
-        btn.setAttribute('aria-expanded', open);
-        panel.setAttribute('aria-hidden', !open);
-        label.textContent = open ? '상세 이미지 접기' : '상세 이미지 보기';
+        const willOpen = !panel.classList.contains('is-open');
+        btn.setAttribute('aria-expanded', willOpen);
+        panel.setAttribute('aria-hidden', !willOpen);
+        label.textContent = willOpen ? '상세 이미지 접기' : '상세 이미지 보기';
+
+        if (willOpen) {
+            panel.classList.add('is-open');
+            panel.style.maxHeight = panel.scrollHeight + 'px';
+            requestAnimationFrame(function(){
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+            });
+            function onOpenEnd(e){
+                if (e.propertyName !== 'max-height' || !panel.classList.contains('is-open')) return;
+                panel.style.maxHeight = 'none';
+                panel.removeEventListener('transitionend', onOpenEnd);
+            }
+            panel.addEventListener('transitionend', onOpenEnd);
+        } else {
+            panel.style.maxHeight = panel.scrollHeight + 'px';
+            requestAnimationFrame(function(){
+                panel.style.maxHeight = '0';
+                panel.classList.remove('is-open');
+            });
+        }
     });
+
+    const detailImg = panel.querySelector('img');
+    if (detailImg) {
+        if (!detailImg.complete) detailImg.addEventListener('load', syncPanelHeight);
+        else if (panel.classList.contains('is-open')) syncPanelHeight();
+    }
 })();
 
 window.onload = totalCal;
