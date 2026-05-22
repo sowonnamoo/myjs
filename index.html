@@ -343,50 +343,10 @@
 </head>
 <body>
 
-<div class="side-menu-overlay" id="side_menu_overlay" aria-hidden="true"></div>
-<nav class="side-menu-panel" id="side_menu_panel" aria-hidden="true" aria-label="메뉴 목록">
-    <div class="side-menu-header">
-        <h2>메뉴 목록</h2>
-        <button type="button" class="side-menu-close" id="side_menu_close" aria-label="메뉴 닫기">&times;</button>
-    </div>
-    <div class="side-menu-body">
-        <a href="https://sowonnamoo.github.io/myjs/sesrch" class="side-menu-order" id="menu_order_inquiry">내 주문조회</a>
-        <ul class="side-menu-list">
-            <li><a href="#" data-product="명함">명함</a></li>
-            <li><a href="#" data-product="전단지">전단지</a></li>
-            <li><a href="#" data-product="티켓">티켓</a></li>
-            <li><a href="#" data-product="엽서">엽서</a></li>
-            <li><a href="#" data-product="명함">명함</a></li>
-            <li><a href="#" data-product="전단지">전단지</a></li>
-            <li><a href="#" data-product="티켓">티켓</a></li>
-            <li><a href="#" data-product="엽서">엽서</a></li>
-            <li><a href="#" data-product="명함">명함</a></li>
-            <li><a href="#" data-product="전단지">전단지</a></li>
-            <li><a href="#" data-product="티켓">티켓</a></li>
-            <li><a href="#" data-product="엽서">엽서</a></li>
-            <li><a href="#" data-product="명함">명함</a></li>
-            <li><a href="#" data-product="전단지">전단지</a></li>
-            <li><a href="#" data-product="티켓">티켓</a></li>
-            <li><a href="#" data-product="엽서">엽서</a></li>
-            <li><a href="#" data-product="명함">명함</a></li>
-            <li><a href="#" data-product="전단지">전단지</a></li>
-            <li><a href="#" data-product="티켓">티켓</a></li>
-            <li><a href="#" data-product="엽서">엽서</a></li>
-            <li><a href="#" data-product="명함">명함</a></li>
-            <li><a href="#" data-product="전단지">전단지</a></li>
-            <li><a href="#" data-product="티켓">티켓</a></li>
-            <li><a href="#" data-product="엽서">엽서</a></li>
-        </ul>
-    </div>
-</nav>
-
 <div class="mobile-container">
-    <header class="shop-header">
-        <div class="menu-btn" id="menu_btn" role="button" tabindex="0" aria-label="메뉴 목록 열기">메뉴<br>목록</div>
-        <div class="logo-area"><span>G&R</span> 그래픽스아이엠</div>
-    </header>
+    <div id="site-menu"></div>
 
-    <h1 class="product-title">스티커</h1>
+    <h1 class="product-title">제품명</h1>
 
     <div class="order-card">
         <div class="form-group">
@@ -474,21 +434,7 @@
         </div>
     </div>
 
-    <footer class="company-footer">
-        <div class="footer-brand">에코그래픽스</div>
-        <div class="footer-sub">그래픽스아이엠</div>
-        <div class="footer-divider"></div>
-        <p class="footer-row">사업자등록번호 411-13-76734</p>
-        <p class="footer-row">
-            <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a>
-        </p>
-        <p class="footer-row">인쇄소 위치<span class="sep">|</span>달서로 18길 7-9</p>
-        <p class="footer-row">통신판매업 신고<span class="sep">|</span>2022-대구서구-0232</p>
-        <div class="footer-copy">
-            Copyright &copy; 2012 <strong>ECO graphics</strong> All rights reserved.<br>
-            개인정보관리책임자<span class="sep">:</span> 정상훈
-        </div>
-    </footer>
+    <div id="site-footer"></div>
 </div>
 
 <script>
@@ -528,12 +474,13 @@ function totalCal(){
         location.href = `https://sowonnamoo.github.io/myjs/preview?${params.toString()}`;
     };
 }
-(function initSideMenu(){
+function initSideMenu(){
     const menuBtn = document.getElementById('menu_btn');
     const overlay = document.getElementById('side_menu_overlay');
     const panel = document.getElementById('side_menu_panel');
     const closeBtn = document.getElementById('side_menu_close');
     const productTitle = document.querySelector('.product-title');
+    if (!menuBtn || !overlay || !panel || !closeBtn) return;
 
     function openMenu(){
         overlay.classList.add('is-open');
@@ -568,7 +515,23 @@ function totalCal(){
             closeMenu();
         });
     });
-})();
+}
+
+async function loadSitePartials(){
+    const menuTarget = document.getElementById('site-menu');
+    const footerTarget = document.getElementById('site-footer');
+    try {
+        const [menuRes, footerRes] = await Promise.all([
+            fetch('menu.html'),
+            fetch('footer.html')
+        ]);
+        if (menuRes.ok) menuTarget.innerHTML = await menuRes.text();
+        if (footerRes.ok) footerTarget.innerHTML = await footerRes.text();
+    } catch (err) {
+        console.error('menu/footer 로드 실패:', err);
+    }
+    initSideMenu();
+}
 
 (function initImageToggle(){
     const btn = document.getElementById('image_toggle_btn');
@@ -618,7 +581,9 @@ function totalCal(){
     }
 })();
 
-window.onload = totalCal;
+window.addEventListener('DOMContentLoaded', function(){
+    loadSitePartials().then(totalCal);
+});
 </script>
 </body>
 </html>
