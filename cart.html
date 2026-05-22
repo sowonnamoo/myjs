@@ -93,31 +93,29 @@
         const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
         if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
 
-const orderId = "ORD_" + Date.now();
+        const orderId = "ORD_" + Date.now();
+        const orderData = {
+            orderId,
+            name,
+            phone,
+            address,
+            total,
+            items: cart,
+            payment: "카드결제", // 관리자 페이지와 키값 통일
+            createdAt: new Date().toISOString()
+        };
 
-const orderData = {
-    orderId,
-    name,
-    phone,
-    address,
-    total,
-    items: cart,
-    payMethod: "card",
-    createdAt: new Date().toISOString()
-};
+        localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
-localStorage.setItem("latestOrder", JSON.stringify(orderData));
-
-const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-
-tossPayments.requestPayment("카드", {
-    amount: total,
-    orderId: orderId,
-    orderName: "주문 상품",
-    customerName: name,
-    successUrl: "https://sowonnamoo.github.io/myjs/success",
-    failUrl: window.location.origin + "/fail.html"
-});
+        const tossPayments = TossPayments(TOSS_CLIENT_KEY);
+        tossPayments.requestPayment("카드", {
+            amount: total,
+            orderId: orderId,
+            orderName: "주문 상품",
+            customerName: name,
+            successUrl: "https://sowonnamoo.github.io/myjs/success",
+            failUrl: window.location.origin + "/fail.html"
+        });
     };
 
     // 무통장 입금: 데이터 저장 후 success2 페이지로 이동
@@ -129,12 +127,14 @@ tossPayments.requestPayment("카드", {
         
         const orderData = { 
             orderId: "ORD_" + Date.now(), 
-            name, phone, address, total, items: cart, payMethod: "bank",
+            name, phone, address, total, items: cart, 
+            payment: "무통장입금", // 관리자 페이지와 키값 통일
+            status: "입금대기", // 상태값 추가
             createdAt: new Date().toISOString() 
         };
         
         await addDoc(collection(db, "orders"), orderData);
-       localStorage.setItem("latestOrder", JSON.stringify(orderData)); // 결과 페이지에서 읽을 데이터 저장
+        localStorage.setItem("latestOrder", JSON.stringify(orderData));
         localStorage.removeItem("cart");
         location.href = "https://sowonnamoo.github.io/myjs/success2";
     };
