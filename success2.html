@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>입금 안내</title>
-    <!-- [기존 스타일 유지] -->
     <style>
         body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; padding: 20px; }
         .wrap { max-width: 500px; margin: 0 auto; }
@@ -13,8 +12,6 @@
         .info-box { background: #f8f9fa; padding: 15px; border-radius: 12px; margin: 20px 0; }
         .total-price { font-size: 20px; color: #e31e23; font-weight: bold; }
         .copy-btn { margin-left: 10px; padding: 5px 10px; font-size: 12px; background: #eee; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .btn-sub { padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; color: #333; }
         .btn-main { width: 100%; padding: 16px; background: #007AFF; color: #fff; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
         @media print { body > *:not(#print-area) { display: none !important; } #print-area { display: block !important; } }
     </style>
@@ -33,14 +30,9 @@
         </div>
         <div id="order-details"></div>
     </div>
-    <!-- [기존 버튼들 유지] -->
     <button class="btn-main" onclick="location.href='https://sowonnamoo.github.io/myjs/'">확인</button>
 </div>
 
-<!-- [기존 인쇄 영역 유지] -->
-<div id="print-area" style="display:none;">...</div>
-
-<!-- [수정된 스크립트] -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
@@ -57,22 +49,31 @@
     const db = getFirestore(initializeApp(firebaseConfig));
     const orderData = JSON.parse(localStorage.getItem("latestOrder"));
 
-    if (!orderData) {
-        alert("주문 정보를 찾을 수 없습니다.");
-        location.href = "https://sowonnamoo.github.io/myjs/";
-    } else {
-        // 파이어베이스 저장 로직
-        const savedFlag = localStorage.getItem("saved_" + orderData.orderId);
-        if(!savedFlag) {
+    async function initPage() {
+        if (!orderData) {
+            alert("주문 정보를 찾을 수 없습니다.");
+            location.href = "https://sowonnamoo.github.io/myjs/";
+            return;
+        }
+
+        // 중복 방지 로직: 이미 저장된 주문번호인지 확인
+        if (!localStorage.getItem("saved_" + orderData.orderId)) {
             try {
+                // 먼저 플래그를 찍어 중복 실행을 원천 차단
+                localStorage.setItem("saved_" + orderData.orderId, "1");
+                
                 await addDoc(collection(db, "orders"), {
                     ...orderData,
                     payment: "무통장입금",
                     status: "입금대기"
                 });
-                localStorage.setItem("saved_" + orderData.orderId, "1");
-            } catch(err) { console.error(err); }
+            } catch(err) { 
+                // 실패 시 플래그 제거하여 재시도 가능하게 함
+                localStorage.removeItem("saved_" + orderData.orderId);
+                console.error(err); 
+            }
         }
+        
         localStorage.removeItem("cart");
 
         // 화면 출력
@@ -91,7 +92,8 @@
     }
 
     window.copyAccount = () => navigator.clipboard.writeText("123456789012").then(() => alert("계좌번호가 복사되었습니다!"));
-    // [기존 printReceipt 함수 등 하단에 유지]
+    
+    initPage();
 </script>
 </body>
 </html>
