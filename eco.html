@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>메인</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: #0070bd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .splash {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .logo {
+      width: min(78vw, 320px);
+      max-width: 320px;
+      height: auto;
+      display: block;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="splash" id="splash" aria-label="메인 화면">
+    <img
+      class="logo"
+      src="https://sowonnamoo1005.cafe24.com/web/upload/aco/260526.png"
+      alt="로고"
+      loading="eager"
+      decoding="async"
+    />
+  </main>
+
+  <script>
+    (function () {
+      const TARGET_URL = "https://sowonnamoo.github.io/myjs/";
+      let moved = false;
+
+      function go() {
+        if (moved) return;
+        moved = true;
+        location.href = TARGET_URL;
+      }
+
+      setTimeout(go, 3000);
+      document.getElementById("splash")?.addEventListener("click", go, { passive: true });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") go();
+      });
+    })();
+  </script>
+  <noscript>
+    <meta http-equiv="refresh" content="3;url=https://sowonnamoo.github.io/myjs/" />
+  </noscript>
+</body>
+</html>
