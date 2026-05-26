@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>DROP IT | 스튜디오 편집기</title>
 <style>
 :root {
@@ -11,64 +11,218 @@
     --danger: #dc2626;
     --success: #84cc16;
     --bg: #121214;
-    --panel-bg: #1e1e22;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body {
-    margin: 0; padding: 0; background: var(--bg); color: #fff; overflow: hidden;
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: #fff;
     font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
-    min-height: 100vh; display: flex; justify-content: center; align-items: center;
+    overflow: hidden;
+}
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    justify-content: center;
 }
 .main-container {
-    width: 100%; max-width: 420px; height: 100vh; padding: 12px;
-    display: flex; flex-direction: column; gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    height: 100vh;
+    height: 100dvh;
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-top: max(10px, env(safe-area-inset-top));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
 }
 .order-box {
-    background: rgba(255,255,255,.06); padding: 12px; border-radius: 12px;
-    font-size: 13px; color: #ccc; text-align: center; border: 1px solid rgba(255,255,255,.05);
-    line-height: 1.6;
+    flex-shrink: 0;
+    background: rgba(255,255,255,.06);
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #ccc;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,.05);
+    line-height: 1.5;
 }
+.action-column {
+    flex-shrink: 0;
+    display: none;
+    gap: 8px;
+    height: 48px;
+}
+.studio-mode .action-column {
+    display: flex;
+}
+.sidebar-btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    min-height: 48px;
+}
+.re-pic-label {
+    background: var(--success);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.cart-btn { background: var(--danger); }
 
 .viewer-zone {
-    width: 100%; background: #000; border-radius: 0px; position: relative;
-    display: flex; align-items: center; justify-content: center; overflow: hidden;
-    aspect-ratio: 1/1; flex: 1; cursor: pointer;
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    background: #000;
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
-.canvas-wrap { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-canvas { display: none; touch-action: none; max-width: 100%; max-height: 100%; }
+.canvas-wrap {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+canvas {
+    display: none;
+    touch-action: none;
+    max-width: 100%;
+    max-height: 100%;
+}
 
 .upload-box-wrapper {
-    position: absolute; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; width: calc(100% - 40px); height: calc(100% - 40px);
-    border: 2px dashed rgba(0, 122, 255, 0.4); border-radius: 0px;
-    background: rgba(255, 255, 255, 0.02); padding: 20px; transition: all 0.3s ease;
+    position: absolute;
+    inset: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed rgba(0, 122, 255, 0.4);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px;
+    transition: all 0.3s ease;
 }
 .upload-icon-circle {
-    width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 122, 255, 0.1);
-    display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(0, 122, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
     box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
 }
 .upload-icon {
-    font-size: 28px; background: var(--primary-gradient);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-size: 26px;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
-.upload-box-wrapper b { font-size: 16px; color: #fff; display: block; margin-bottom: 6px; }
-.upload-box-wrapper p { margin: 0; font-size: 12px; color: #8a8a93; text-align: center; line-height: 1.5; }
+.upload-box-wrapper b { font-size: 15px; color: #fff; display: block; margin-bottom: 6px; }
+.upload-box-wrapper p { margin: 0; font-size: 11px; color: #8a8a93; text-align: center; line-height: 1.5; }
 
-.progress-wrap {
-    display: none; position: absolute; bottom: 20px; left: 20px; right: 20px;
-    background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255,255,255,0.1);
-    padding: 14px; border-radius: 14px; z-index: 100;
+/* 화면 중앙 로딩 오버레이 */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(10, 10, 14, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
 }
-.progress-bar { width: 100%; height: 8px; background: #333; overflow: hidden; border-radius: 4px; }
-.progress-fill { width: 0%; height: 100%; background: var(--primary); transition: 0.2s; }
-#progress-text { display: block; text-align: center; margin-top: 8px; color: var(--primary); font-size: 12px; font-weight: bold; }
-
-.action-column { display: none; gap: 8px; height: 60px; order: 1; margin-bottom: 2px; }
-.studio-mode .action-column { display: flex; }
-.sidebar-btn { flex: 1; border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: bold; cursor: pointer; }
-.re-pic-label { background: var(--success); display: flex; justify-content: center; align-items: center; }
-.cart-btn { background: var(--danger); }
+.loading-overlay.is-active {
+    display: flex;
+}
+.loading-card {
+    width: min(280px, 88vw);
+    padding: 28px 24px 22px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, #25252c 0%, #1a1a1f 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    text-align: center;
+}
+.loading-gauge {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 18px;
+}
+.loading-gauge svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.loading-gauge .track {
+    fill: none;
+    stroke: rgba(255,255,255,0.1);
+    stroke-width: 8;
+}
+.loading-gauge .fill {
+    fill: none;
+    stroke: url(#gaugeGradient);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 251.2;
+    stroke-dashoffset: 251.2;
+    transition: stroke-dashoffset 0.25s ease;
+}
+.loading-percent {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+.loading-spinner {
+    width: 28px;
+    height: 28px;
+    margin: 0 auto 14px;
+    border: 3px solid rgba(0, 122, 255, 0.2);
+    border-top-color: #007AFF;
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+}
+.loading-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+    margin: 0 0 6px;
+}
+.loading-sub {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 0;
+    line-height: 1.5;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
 </style>
 </head>
 
@@ -79,14 +233,14 @@ canvas { display: none; touch-action: none; max-width: 100%; max-height: 100%; }
 
     <div class="action-column">
         <label for="file-input" class="sidebar-btn re-pic-label">다른사진 변경</label>
-        <button class="sidebar-btn cart-btn" onclick="addToCart()">장바구니 담기</button>
+        <button type="button" class="sidebar-btn cart-btn" onclick="addToCart()">장바구니 담기</button>
     </div>
 
     <div class="viewer-zone" id="viewer-box" onclick="handleViewerClick(event)">
         <div class="canvas-wrap">
             <canvas id="canvas"></canvas>
         </div>
-        
+
         <div id="empty-msg" class="upload-box-wrapper">
             <div class="upload-icon-circle">
                 <span class="upload-icon">⇪</span>
@@ -94,14 +248,30 @@ canvas { display: none; touch-action: none; max-width: 100%; max-height: 100%; }
             <b>파일 업로드하기</b>
             <p>기기에 있는 이미지 파일(.jpg, .png)<br>선택하거나 여기로 끌어다 놓으세요.</p>
         </div>
-
-        <div class="progress-wrap" id="progress-wrap">
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-            <span id="progress-text">업로드 준비중...</span>
-        </div>
     </div>
 
     <input type="file" id="file-input" accept=".jpg,.jpeg,.png" style="display:none;">
+</div>
+
+<div class="loading-overlay" id="loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="loading-card">
+        <div class="loading-spinner" id="loading-spinner"></div>
+        <div class="loading-gauge" id="loading-gauge" hidden>
+            <svg viewBox="0 0 88 88" aria-hidden="true">
+                <defs>
+                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#007AFF"/>
+                        <stop offset="100%" stop-color="#00C6FF"/>
+                    </linearGradient>
+                </defs>
+                <circle class="track" cx="44" cy="44" r="40"/>
+                <circle class="fill" id="gauge-fill" cx="44" cy="44" r="40"/>
+            </svg>
+            <span class="loading-percent" id="loading-percent">0%</span>
+        </div>
+        <p class="loading-title" id="loading-title">업로드 준비 중</p>
+        <p class="loading-sub" id="loading-sub">잠시만 기다려 주세요</p>
+    </div>
 </div>
 
 <script>
@@ -116,27 +286,80 @@ const 주문정보 = {
 };
 
 document.getElementById('order-info-panel').innerHTML = `
-    <b>주문 정보</b> | 품명: ${주문정보.item}<br>
-    주문자: ${주문정보.name} &nbsp;&nbsp; 사이즈: ${주문정보.width} × ${주문정보.height} &nbsp;&nbsp; 수량: ${주문정보.qty}장<br>
-    <b>결제 금액: ${Number(주문정보.price).toLocaleString()}원</b>
+    <b>주문 정보</b> | ${주문정보.item}<br>
+    ${주문정보.name} · ${주문정보.width}×${주문정보.height} · ${주문정보.qty}장
+    <br><b>${Number(주문정보.price).toLocaleString()}원</b>
 `;
 
 const fileInput = document.getElementById('file-input');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const loadingOverlay = document.getElementById('loading-overlay');
+const gaugeFill = document.getElementById('gauge-fill');
+const loadingPercent = document.getElementById('loading-percent');
+const loadingTitle = document.getElementById('loading-title');
+const loadingSub = document.getElementById('loading-sub');
+const loadingSpinner = document.getElementById('loading-spinner');
+const loadingGauge = document.getElementById('loading-gauge');
+const GAUGE_CIRCUMFERENCE = 251.2;
 let currentImg = null;
+let progressTimer = null;
 
-document.getElementById('viewer-box').style.aspectRatio = (parseFloat(주문정보.width) / parseFloat(주문정보.height));
+function showLoading(title, sub, percent) {
+    loadingOverlay.classList.add('is-active');
+    loadingTitle.textContent = title;
+    loadingSub.textContent = sub || '';
+    if (typeof percent === 'number') {
+        loadingSpinner.hidden = true;
+        loadingGauge.hidden = false;
+        setGaugePercent(percent);
+    } else {
+        loadingSpinner.hidden = false;
+        loadingGauge.hidden = true;
+    }
+}
+
+function hideLoading() {
+    loadingOverlay.classList.remove('is-active');
+    loadingSpinner.hidden = false;
+    loadingGauge.hidden = true;
+    if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+    }
+}
+
+function setGaugePercent(percent) {
+    const p = Math.max(0, Math.min(100, percent));
+    const offset = GAUGE_CIRCUMFERENCE - (GAUGE_CIRCUMFERENCE * p / 100);
+    gaugeFill.style.strokeDashoffset = offset;
+    loadingPercent.textContent = Math.round(p) + '%';
+}
+
+function startProgressSimulation() {
+    let p = 0;
+    setGaugePercent(0);
+    progressTimer = setInterval(function() {
+        if (p < 88) {
+            p += 2;
+            setGaugePercent(p);
+            loadingTitle.textContent = '업로드 중...';
+        }
+    }, 80);
+}
 
 function handleViewerClick(e) {
-    if(currentImg) return;
+    if (currentImg) return;
+    if (e.target.closest('label') || e.target.closest('button')) return;
     fileInput.click();
 }
 
 fileInput.onchange = function() {
     const file = fileInput.files[0];
-    if(!file) return;
-    
+    if (!file) return;
+
+    showLoading('이미지 불러오는 중', '파일을 준비하고 있습니다');
+
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
@@ -146,8 +369,17 @@ fileInput.onchange = function() {
             document.getElementById('empty-msg').style.display = 'none';
             canvas.style.display = 'block';
             document.getElementById('main-container').classList.add('studio-mode');
+            hideLoading();
+        };
+        img.onerror = function() {
+            hideLoading();
+            alert('이미지를 불러올 수 없습니다.');
         };
         img.src = e.target.result;
+    };
+    reader.onerror = function() {
+        hideLoading();
+        alert('파일을 읽을 수 없습니다.');
     };
     reader.readAsDataURL(file);
     fileInput.value = '';
@@ -157,48 +389,72 @@ function draw(img) {
     const viewer = document.getElementById('viewer-box');
     canvas.width = viewer.clientWidth;
     canvas.height = viewer.clientHeight;
-    
-    // 이제 사진이 찌그러지지 않고 전체 다 보입니다.
+
     const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
     const w = img.width * scale;
     const h = img.height * scale;
     const x = (canvas.width - w) / 2;
     const y = (canvas.height - h) / 2;
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, x, y, w, h);
 }
 
+window.addEventListener('resize', function() {
+    if (currentImg) draw(currentImg);
+});
+
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 
 async function addToCart() {
-    if(!currentImg) { alert("편집할 이미지를 먼저 업로드해주세요."); return; }
-    document.getElementById('progress-wrap').style.display = 'block';
-    canvas.toBlob(async (blob) => {
+    if (!currentImg) {
+        alert('편집할 이미지를 먼저 업로드해주세요.');
+        return;
+    }
+
+    showLoading('업로드 준비 중', '장바구니에 담는 중입니다', 0);
+    startProgressSimulation();
+
+    canvas.toBlob(async function(blob) {
         const fileName = `${주문정보.name}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
         const reader = new FileReader();
         reader.onload = async function(e) {
             const base64Data = e.target.result.split(',')[1];
-            const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: 'image/jpeg' });
-            let p = 0;
-            const iv = setInterval(() => {
-                if (p >= 90) { clearInterval(iv); } else { p += 2; document.getElementById('progress-fill').style.width = p + '%'; document.getElementById('progress-text').innerText = `업로드 중... ${p}%`; }
-            }, 80);
+            const body = new URLSearchParams({
+                data: base64Data,
+                filename: fileName,
+                mimetype: 'image/jpeg'
+            });
             try {
                 const res = await fetch(WEB_APP_URL, { method: 'POST', body });
                 const data = await res.json();
-                clearInterval(iv);
-                document.getElementById('progress-fill').style.width = '100%';
-                document.getElementById('progress-text').innerText = '업로드 완료';
-                const cart = JSON.parse(localStorage.getItem("cart")) || [];
-                cart.push({ item: 주문정보.item, qty: 주문정보.qty, width: 주문정보.width, height: 주문정보.height, price: 주문정보.price, imageUrl: data.url, customerName: 주문정보.name });
-                localStorage.setItem("cart", JSON.stringify(cart));
-                location.href = "https://sowonnamoo.github.io/myjs/cart";
+                if (progressTimer) clearInterval(progressTimer);
+                setGaugePercent(100);
+                loadingTitle.textContent = '업로드 완료!';
+                loadingSub.textContent = '장바구니로 이동합니다';
+
+                const cart = JSON.parse(localStorage.getItem('cart')) || [];
+                cart.push({
+                    item: 주문정보.item,
+                    qty: 주문정보.qty,
+                    width: 주문정보.width,
+                    height: 주문정보.height,
+                    price: 주문정보.price,
+                    imageUrl: data.url,
+                    customerName: 주문정보.name
+                });
+                localStorage.setItem('cart', JSON.stringify(cart));
+                setTimeout(function() {
+                    location.href = 'https://sowonnamoo.github.io/myjs/cart';
+                }, 400);
             } catch (error) {
-                clearInterval(iv);
-                alert("업로드 중 오류가 발생했습니다. 다시 시도해 주세요.");
-                document.getElementById('progress-wrap').style.display = 'none';
+                hideLoading();
+                alert('업로드 중 오류가 발생했습니다. 다시 시도해 주세요.');
             }
+        };
+        reader.onerror = function() {
+            hideLoading();
+            alert('이미지 변환에 실패했습니다.');
         };
         reader.readAsDataURL(blob);
     }, 'image/jpeg', 0.95);
