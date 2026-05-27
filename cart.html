@@ -99,14 +99,14 @@ createdAt: new Date().toISOString()
 try{
 
 await PortOne.requestPayment({
-storeId: STORE_ID,
-channelKey: CHANNEL_KEY,
-paymentId: paymentId,
-orderName: "주문상품",
-totalAmount: total,
-currency: "CURRENCY_KRW",
-payMethod: "CARD",
-redirectUrl: "https://sowonnamoo.github.io/myjs/success"
+    storeId: STORE_ID,
+    channelKey: CHANNEL_KEY,
+    paymentId: paymentId,
+    orderName: "주문상품",
+    totalAmount: total,
+    currency: "KRW",
+    payMethod: "CARD",
+    redirectUrl: "https://sowonnamoo.github.io/myjs/success"
 });
 
 }catch(e){
