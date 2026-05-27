@@ -16,7 +16,7 @@ input { width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; bord
 .bank-btn { width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; margin-top:8px; }
 </style>
 
-<!-- ✔ 포트원 V2 -->
+<!-- PortOne V2 -->
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 
 </head>
@@ -54,23 +54,23 @@ let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
 
 function render(){
-let list = document.getElementById("cart-list");
-list.innerHTML = "";
-total = 0;
+    let list = document.getElementById("cart-list");
+    list.innerHTML = "";
+    total = 0;
 
-cart.forEach((item, i)=>{
-total += Number(item.price);
+    cart.forEach((item)=>{
+        total += Number(item.price);
 
-list.innerHTML += `
-<div class="cart-item">
-<b>${item.item}</b> (${item.qty}개)<br>
-${item.width}×${item.height}<br>
-${Number(item.price).toLocaleString()}원
-</div>`;
-});
+        list.innerHTML += `
+        <div class="cart-item">
+        <b>${item.item}</b> (${item.qty}개)<br>
+        ${item.width}×${item.height}<br>
+        ${Number(item.price).toLocaleString()}원
+        </div>`;
+    });
 
-document.getElementById("total-price").innerText =
-"총 결제금액 : " + total.toLocaleString() + "원";
+    document.getElementById("total-price").innerText =
+    "총 결제금액 : " + total.toLocaleString() + "원";
 }
 
 window.goCard = async function () {
@@ -87,6 +87,7 @@ window.goCard = async function () {
         return;
     }
 
+    // ✔ 안전 paymentId
     const paymentId = crypto.randomUUID();
 
     const orderData = {
@@ -104,7 +105,9 @@ window.goCard = async function () {
 
     try {
 
-        await PortOne.requestPayment({
+        const portone = window.PortOne;
+
+        await portone.requestPayment({
 
             storeId: STORE_ID,
             channelKey: CHANNEL_KEY,
@@ -118,7 +121,7 @@ window.goCard = async function () {
 
             payMethod: "CARD",
 
-            redirectUrl: "https://sowonnamoo.github.io/myjs/success"
+            redirectUrl: window.location.origin + "/myjs/success.html"
         });
 
     } catch (e) {
@@ -129,21 +132,21 @@ window.goCard = async function () {
 
 window.goBankTransfer = function(){
 
-const orderId = "ORD_" + Date.now();
+    const orderId = "ORD_" + Date.now();
 
-localStorage.setItem("latestOrder", JSON.stringify({
-orderId,
-name: document.getElementById("name").value,
-phone: document.getElementById("phone").value,
-address: document.getElementById("address").value,
-total,
-items: cart,
-payment: "무통장입금",
-payMethod: "bank",
-createdAt: new Date().toISOString()
-}));
+    localStorage.setItem("latestOrder", JSON.stringify({
+        orderId,
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        address: document.getElementById("address").value,
+        total,
+        items: cart,
+        payment: "무통장입금",
+        payMethod: "bank",
+        createdAt: new Date().toISOString()
+    }));
 
-location.href = "success2.html";
+    location.href = "success2.html";
 }
 
 render();
