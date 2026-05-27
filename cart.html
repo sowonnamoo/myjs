@@ -73,48 +73,62 @@ document.getElementById("total-price").innerText =
 "총 결제금액 : " + total.toLocaleString() + "원";
 }
 
-window.goCard = async function(){
+window.goCard = async function () {
 
-const name = document.getElementById("name").value;
-const phone = document.getElementById("phone").value;
-const address = document.getElementById("address").value + " " +
-document.getElementById("detailAddress").value;
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+    const address =
+        document.getElementById("address").value +
+        " " +
+        document.getElementById("detailAddress").value;
 
-if(!name || !phone || !address.trim()){
-alert("정보 입력");
-return;
-}
+    if (!name || !phone || !address.trim()) {
+        alert("모든 정보를 입력해주세요.");
+        return;
+    }
 
-const paymentId = "ORD_" + Date.now();
+    // 안전 paymentId (KCP 호환)
+    const paymentId = "order" + Date.now();
 
-localStorage.setItem("latestOrder", JSON.stringify({
-orderId: paymentId,
-name, phone, address,
-total,
-items: cart,
-payment: "카드결제",
-createdAt: new Date().toISOString()
-}));
+    const orderData = {
+        orderId: paymentId,
+        name,
+        phone,
+        address,
+        total: Number(total),
+        items: cart,
+        payment: "카드결제",
+        createdAt: new Date().toISOString()
+    };
 
-try{
+    localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
-await PortOne.requestPayment({
-    storeId: STORE_ID,
-    channelKey: CHANNEL_KEY,
-    paymentId: paymentId,
-    orderName: "주문상품",
-    totalAmount: total,
-    currency: "KRW",
-    payMethod: "CARD",
-    redirectUrl: "https://sowonnamoo.github.io/myjs/success"
-});
+    try {
 
-}catch(e){
-alert("결제 실패");
-console.log(e);
-}
+        const portone = PortOne(); // V2 정석 초기화
 
-}
+        await portone.requestPayment({
+
+            storeId: STORE_ID,
+            channelKey: CHANNEL_KEY,
+
+            paymentId: paymentId,
+
+            orderName: "주문상품",
+            totalAmount: Number(total),
+
+            currency: "KRW",
+
+            payMethod: "CARD",
+
+            redirectUrl: "https://sowonnamoo.github.io/myjs/success"
+        });
+
+    } catch (e) {
+        console.error(e);
+        alert("결제 실패 (콘솔 확인)");
+    }
+};
 
 window.goBankTransfer = function(){
 
