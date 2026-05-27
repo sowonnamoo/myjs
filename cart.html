@@ -87,8 +87,7 @@ window.goCard = async function () {
         return;
     }
 
-    // 안전 paymentId (KCP 호환)
-    const paymentId = "order" + Date.now();
+    const paymentId = crypto.randomUUID();
 
     const orderData = {
         orderId: paymentId,
@@ -105,9 +104,7 @@ window.goCard = async function () {
 
     try {
 
-        const portone = PortOne(); // V2 정석 초기화
-
-        await portone.requestPayment({
+        await PortOne.requestPayment({
 
             storeId: STORE_ID,
             channelKey: CHANNEL_KEY,
@@ -126,7 +123,7 @@ window.goCard = async function () {
 
     } catch (e) {
         console.error(e);
-        alert("결제 실패 (콘솔 확인)");
+        alert("결제 실패");
     }
 };
 
