@@ -1,34 +1,79 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>결제 실패</title>
-    <style>
-        body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: #fff; padding: 40px 20px; border-radius: 20px; text-align: center; width: 90%; max-width: 400px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        h1 { color: #ff3b30; margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 30px; }
-        
-        /* 버튼 스타일은 여기에 정의합니다 */
-        .btn { 
-            display: inline-block; 
-            padding: 12px 30px; 
-            background: #111; 
-            color: #fff; 
-            text-decoration: none; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            font-size: 14px; 
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>결제 실패</title>
+
+<style>
+body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo'; padding:20px; }
+.wrap { max-width:500px; margin:0 auto; }
+.card { background:#fff; padding:25px; border-radius:20px; text-align:center; }
+h1 { color:#ff3b30; }
+.msg { color:#666; font-size:14px; margin-top:10px; }
+.btn { width:100%; padding:15px; border:none; border-radius:12px; margin-top:10px; cursor:pointer; font-size:16px; }
+.retry { background:#007AFF; color:#fff; }
+.home { background:#111; color:#fff; }
+.box { margin-top:15px; text-align:left; font-size:13px; color:#888; }
+</style>
+
 </head>
+
 <body>
-    <div class="card">
-        <h1>❌ 결제 실패</h1>
-        <p>결제 중 오류가 발생했거나 취소되었습니다.<br>다시 한번 시도해 주세요.</p>
-        
-        <a href="index.html" class="btn">주문 페이지로 이동</a>
-    </div>
+
+<div class="wrap">
+
+<div class="card">
+
+<h1>❌ 결제 실패</h1>
+
+<p class="msg">
+결제가 정상적으로 완료되지 않았습니다.
+<br>
+다시 시도해주세요.
+</p>
+
+<div class="box" id="error-box"></div>
+
+<button class="btn retry" onclick="retry()">다시 결제하기</button>
+<button class="btn home" onclick="location.href='index.html'">홈으로 이동</button>
+
+</div>
+
+</div>
+
+<script>
+
+// ✔ URL 파라미터 확인 (포트원 fail reason)
+const params = new URLSearchParams(location.search);
+
+const code = params.get("code");
+const message = params.get("message");
+
+document.getElementById("error-box").innerHTML = `
+<b>에러코드:</b> ${code || "없음"}<br>
+<b>사유:</b> ${message || "알 수 없음"}
+`;
+
+function retry(){
+
+// 이전 주문 복구 (있으면)
+const order = JSON.parse(localStorage.getItem("latestOrder"));
+
+if(order){
+
+// 다시 결제 페이지로 이동
+location.href = "index.html";
+
+}else{
+
+alert("복구할 주문 정보가 없습니다.");
+location.href = "index.html";
+}
+
+}
+
+</script>
+
 </body>
 </html>
