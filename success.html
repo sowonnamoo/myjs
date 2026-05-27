@@ -10,7 +10,6 @@ body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo'; padding:
 .wrap { max-width:500px; margin:0 auto; }
 .card { background:#fff; padding:25px; border-radius:20px; margin-bottom:20px; }
 h1 { text-align:center; color:#007AFF; }
-.label { font-size:13px; color:#888; }
 .btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .btn { padding:12px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; }
 .main-btn { width:100%; padding:16px; background:#007AFF; color:#fff; border:none; border-radius:12px; margin-top:10px; }
@@ -86,7 +85,7 @@ appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ✔ 이전 주문 가져오기
+// ✔ 주문 데이터
 const orderData = JSON.parse(localStorage.getItem("latestOrder"));
 
 if(!orderData){
@@ -94,27 +93,10 @@ alert("주문 정보 없음");
 location.href="index.html";
 }
 
-// ✔ 카드 결제 전용 체크
+// ✔ 카드 결제 페이지 체크
 if(orderData.payment !== "카드결제"){
 alert("카드 결제 전용 페이지");
 location.href="index.html";
-}
-
-// ✔ Firebase 저장
-async function saveOrder(){
-
-if(!localStorage.getItem("saved_"+orderData.orderId)){
-
-localStorage.setItem("saved_"+orderData.orderId,"1");
-
-await setDoc(doc(db,"orders",orderData.orderId),{
-...orderData,
-status:"결제완료"
-});
-}
-
-localStorage.removeItem("cart");
-render();
 }
 
 // ✔ 화면 출력
@@ -135,6 +117,57 @@ ${orderData.items.map(i=>`
 
 }
 
+// ✔ Firebase 저장
+async function saveOrder(){
+
+if(!localStorage.getItem("saved_"+orderData.orderId)){
+
+localStorage.setItem("saved_"+orderData.orderId,"1");
+
+await setDoc(doc(db,"orders",orderData.orderId),{
+...orderData,
+status:"결제완료"
+});
+}
+
+localStorage.removeItem("cart");
+render();
+}
+
+// ✔ 포트원 Worker 검증
+async function verifyPaymentWithWorker(){
+
+try {
+
+const workerUrl = "https://portone-payment.ecogr.workers.dev";
+
+const paymentId = orderData.orderId;
+
+const res = await fetch(`${workerUrl}?paymentId=${paymentId}`);
+const result = await res.json();
+
+console.log("결제 검증 결과:", result);
+
+if(!result.success){
+alert("결제 검증 실패: " + (result.reason || "UNKNOWN"));
+return;
+}
+
+await setDoc(doc(db,"orders",orderData.orderId),{
+...orderData,
+status:"결제검증완료",
+verifiedAmount: result.amount
+}, { merge:true });
+
+console.log("✔ Worker 검증 완료");
+
+} catch(e){
+console.error("검증 오류:", e);
+}
+
+}
+
+// ✔ 영수증 출력
 window.printInvoice = function(){
 
 document.getElementById("print-info").innerText =
@@ -156,7 +189,10 @@ document.getElementById("print-total").innerText =
 window.print();
 };
 
+// ✔ 실행 순서
 saveOrder();
+render();
+verifyPaymentWithWorker();
 
 </script>
 
