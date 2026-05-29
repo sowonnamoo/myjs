@@ -1,101 +1,109 @@
+<!-- success2.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>입금 안내</title>
-    <style>
-        body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; padding: 20px; }
-        .wrap { max-width: 500px; margin: 0 auto; }
-        .card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h1 { font-size: 22px; color: #111; margin-bottom: 20px; text-align: center; }
-        .info-box { background: #f8f9fa; padding: 15px; border-radius: 12px; margin: 20px 0; }
-        .total-price { font-size: 20px; color: #e31e23; font-weight: bold; }
-        .copy-btn { margin-left: 10px; padding: 5px 10px; font-size: 12px; background: #eee; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-main { width: 100%; padding: 16px; background: #007AFF; color: #fff; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        @media print { body > *:not(#print-area) { display: none !important; } #print-area { display: block !important; } }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>무통장입금 완료</title>
+
+<style>
+body{
+    margin:0;
+    background:#f5f5f7;
+    font-family:'Apple SD Gothic Neo',sans-serif;
+}
+
+.wrap{
+    max-width:600px;
+    margin:0 auto;
+    padding:20px;
+}
+
+.box{
+    background:#fff;
+    border-radius:16px;
+    padding:25px;
+    margin-top:30px;
+}
+
+.title{
+    font-size:28px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.bank{
+    background:#f2f2f2;
+    padding:15px;
+    border-radius:10px;
+    margin-top:15px;
+    line-height:1.8;
+}
+
+.btn{
+    width:100%;
+    height:52px;
+    border:none;
+    background:#111;
+    color:#fff;
+    border-radius:12px;
+    margin-top:20px;
+    cursor:pointer;
+    font-size:16px;
+}
+</style>
 </head>
+
 <body>
 
 <div class="wrap">
-    <div class="card">
-        <h1>접수완료, 입금 부탁드립니다</h1>
-        <p style="text-align:center; font-size:14px; color:#666;">
 
-결제확인 되시면<br>
-            시안제작후 문자로 시안을 발송해드립니다.</p>
-            확인후 인쇄요청 문자 답장 남겨주시면 제작후 발송 되시겠습니다.</p>
+    <div class="box">
 
-        
-        <div class="info-box">
-            <p>입금 은행: <b>국민은행</b></p>
-            <p>계좌 번호: <b id="account-num">123456789012</b> <button class="copy-btn" onclick="copyAccount()">복사</button></p>
-            <p>예금주: <b>(주)OOO</b></p>
-            <p>입금 금액: <span class="total-price" id="total-amount">0원</span></p>
+        <div style="font-size:70px;">🏦</div>
+
+        <div class="title">무통장 입금 주문완료</div>
+
+        <div id="info"></div>
+
+        <div class="bank">
+            입금은행 : 국민은행<br/>
+            계좌번호 : 123456-78-123456<br/>
+            예금주 : 홍길동
         </div>
-        <div id="order-details"></div>
+
+        <button class="btn" onclick="goHome()">
+            홈으로 이동
+        </button>
+
     </div>
-    <button class="btn-main" onclick="location.href='https://sowonnamoo.github.io/myjs/'">확인</button>
+
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+<script>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBzHogA2iaQ...",
-        authDomain: "ecogr-636c6.firebaseapp.com",
-        projectId: "ecogr-636c6",
-        storageBucket: "ecogr-636c6.firebasestorage.app",
-        messagingSenderId: "95745358447",
-        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-    };
+const order = JSON.parse(localStorage.getItem("latestOrder"));
 
-    const db = getFirestore(initializeApp(firebaseConfig));
-    const orderData = JSON.parse(localStorage.getItem("latestOrder"));
+if(order){
 
-    async function initPage() {
-        if (!orderData) {
-            alert("주문 정보를 찾을 수 없습니다.");
-            location.href = "https://sowonnamoo.github.io/myjs/";
-            return;
-        }
+    document.getElementById("info").innerHTML = `
+        주문번호 : ${order.orderId}<br/><br/>
+        주문자 : ${order.name}<br/><br/>
+        결제금액 : ${Number(order.total).toLocaleString()}원
+    `;
 
-        if (!localStorage.getItem("saved_" + orderData.orderId)) {
-            try {
-                localStorage.setItem("saved_" + orderData.orderId, "1");
-                await setDoc(doc(db, "orders", orderData.orderId), {
-                    ...orderData,
-                    payment: "무통장입금",
-                    status: "입금대기"
-                });
-            } catch(err) { 
-                localStorage.removeItem("saved_" + orderData.orderId);
-                console.error(err); 
-            }
-        }
-        
-        localStorage.removeItem("cart");
+}else{
 
-        // 화면 출력
-        document.getElementById("total-amount").innerText = orderData.total.toLocaleString() + "원";
-        document.getElementById("order-details").innerHTML = `
-            <div style="font-size:14px; color:#333; border-top:1px solid #eee; padding-top:15px;">
-                <p><b>주문번호:</b> ${orderData.orderId}</p>
-                ${orderData.items.map(item => `
-                    <div style="margin-bottom:10px;">
-                        <b>${item.item}</b> (${item.qty}개) / ${item.width}×${item.height}<br>
-                        <a href="${item.imageUrl}" target="_blank" style="color:#007AFF; text-decoration:none;">📄 업로드 파일 보기</a>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
+    document.getElementById("info").innerHTML =
+        "주문 정보가 없습니다.";
+}
 
-    window.copyAccount = () => navigator.clipboard.writeText("123456789012").then(() => alert("계좌번호가 복사되었습니다!"));
-    
-    initPage();
+function goHome(){
+
+    location.href = "index.html";
+}
+
 </script>
+
 </body>
 </html>
