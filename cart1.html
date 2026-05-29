@@ -3,128 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>그래픽스아이엠 - 큰글씨 실시간 견적기</title>
-<style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Noto Sans KR', sans-serif; }
-    body { background: #f5f5f5; color: #222; display: flex; justify-content: center; }
-    .mobile-container { width: 100%; max-width: 500px; background: #fcfcfc; min-height: 100vh; padding-bottom: 40px; }
-    .shop-header { background-color: #2b5797; color: #fff; display: flex; align-items: center; padding: 12px 15px; }
-    .menu-btn { background: #60a917; color: white; padding: 4px 8px; border-radius: 4px; font-size: 14px; font-weight: bold; text-align: center; line-height: 1.2; }
-    .logo-area { font-size: 22px; font-weight: bold; letter-spacing: -1px; margin-left: 15px; }
-    .product-title { text-align: center; font-size: 32px; font-weight: 900; color: #e31e23; margin: 15px 0 10px 0; }
-    .order-card { background: #ffffff; border: 3px solid #000000; border-radius: 12px; margin: 0 10px; padding: 15px; }
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 20px; font-weight: bold; color: #000; margin-bottom: 6px; }
-    .form-group label .sub-info { color: #666; font-size: 15px; margin-left: 6px; font-weight: bold; }
-    .form-control { width: 100%; padding: 12px 12px; border: 2px solid #888; border-radius: 6px; font-size: 20px; font-weight: bold; color: #000; outline: none; background: #fff; }
-    .result-box { background: #fff0f1; border-radius: 6px; padding: 12px; margin-top: 15px; border: 1px solid #ffccd0; }
-    .result-flex { display: flex; justify-content: space-between; align-items: center; }
-    .result-left { font-size: 17px; color: #333; line-height: 1.5; }
-    .result-right { text-align: right; }
-    .total-price-text { font-size: 36px; font-weight: 900; color: #e31e23; display: block; line-height: 1.2; }
-    .vat-text { font-size: 15px; color: #555; font-weight: bold; }
-    .print-btn-wrapper { text-align: right; margin-top: 6px; }
-    .print-estimate-btn { display: inline-flex; align-items: center; background: #e8e8e8; color: #222; border: 2px solid #999; padding: 6px 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; }
-    .submit-btn { width: 100%; background: #1e5fa9; color: #fff; border: none; padding: 14px; font-size: 28px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; box-shadow: 0 3px 5px rgba(0,0,0,0.2); }
-    .image-toggle-wrap { margin: 18px 10px 0; }
-    .image-toggle-btn { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: linear-gradient(145deg, #2b5797 0%, #1e4578 100%); color: #fff; padding: 14px 18px; border: none; border-radius: 12px; font-size: 19px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(30, 69, 120, 0.35); -webkit-tap-highlight-color: transparent; transition: transform 0.15s ease, box-shadow 0.2s ease; }
-    .image-toggle-btn:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(30, 69, 120, 0.3); }
-    .image-toggle-btn .btn-left { display: flex; align-items: center; gap: 10px; }
-    .image-toggle-btn .btn-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.18); border-radius: 10px; font-size: 20px; line-height: 1; }
-    .image-toggle-btn .chevron { flex-shrink: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); border-radius: 50%; font-size: 12px; transition: transform 0.35s ease; }
-    .image-toggle-btn[aria-expanded="true"] .chevron { transform: rotate(180deg); }
-    .detail-image-panel { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s ease; opacity: 0; margin: 0 10px; }
-    .detail-image-panel.is-open { opacity: 1; margin-top: 10px; }
-    .detail-image-container { background: #fff; border: 2px solid #e0e0e0; border-radius: 12px; padding: 12px; text-align: center; }
-    .detail-image-container img { width: 100%; height: auto; display: block; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; }
-    .policy-table-wrap { margin-top: 14px; border-radius: 12px; overflow: hidden; border: 2px solid #c5d4e8; box-shadow: 0 2px 8px rgba(43, 87, 151, 0.08); text-align: left; }
-    .policy-table { width: 100%; border-collapse: collapse; table-layout: fixed; background: #fff; }
-    .policy-table caption { padding: 12px 14px; font-size: 17px; font-weight: 900; color: #fff; background: linear-gradient(145deg, #2b5797 0%, #1e4578 100%); text-align: left; letter-spacing: -0.3px; }
-    .policy-table th, .policy-table td { padding: 14px 12px; vertical-align: top; border-bottom: 1px solid #e4ecf6; word-break: keep-all; }
-    .policy-table th { width: 28%; min-width: 88px; background: #eef3fa; font-size: 15px; font-weight: 900; color: #2b5797; text-align: center; line-height: 1.4; border-right: 1px solid #d0dce8; }
-    .policy-table td { font-size: 14px; font-weight: 500; color: #444; line-height: 1.65; background: #fcfdff; }
-</style>
+<title>KCP TEST ORDER</title>
+
+<script src="https://testspay.kcp.co.kr/plugin/kcp_spay_hub.js"></script>
 </head>
+
 <body>
 
-<div class="mobile-container">
-    <h1 class="product-title">스티커</h1>
+<h2>주문 (테스트 10원)</h2>
 
-    <div class="order-card">
-        <div class="form-group">
-            <label>품명</label>
-            <select class="form-control" id="material" onchange="totalCal()">
-                <option value="무코팅스티커">무코팅스티커 (2박3일 소요)</option>
-                <option value="코팅스티커">코팅스티커 (1박2일 소요)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>가로(mm) <span class="sub-info">(30 ~ 510)</span></label>
-            <input type="number" id="w" class="form-control" value="50" oninput="totalCal()">
-        </div>
-        <div class="form-group">
-            <label>세로(mm) <span class="sub-info">(30 ~ 760)</span></label>
-            <input type="number" id="h" class="form-control" value="50" oninput="totalCal()">
-        </div>
-        <div class="form-group">
-            <label>주문 수량 <span class="sub-info">(1 ~ 30000장)</span></label>
-            <input type="number" id="q" class="form-control" value="1000" oninput="totalCal()">
-        </div>
-        <div class="result-box" id="res_area">
-            <div class="result-flex">
-                <div class="result-left"><div id="price_info"></div></div>
-                <div class="result-right">
-                    <span class="vat-text">부가세포함</span>
-                    <span class="total-price-text" id="total_price">0원</span>
-                </div>
-            </div>
-        </div>
-        <button type="button" class="submit-btn" id="buy_btn">주문하기</button>
-    </div>
-</div>
+<input id="name" placeholder="이름">
+<input id="phone" placeholder="전화">
+<input id="address" placeholder="주소">
+
+<div>결제금액: 10원</div>
+
+<button onclick="goPay()">카드결제</button>
+
+<form name="order_info" method="post">
+
+<input type="hidden" name="site_cd" value="T0000">
+<input type="hidden" name="pay_method" value="CARD">
+<input type="hidden" name="currency" value="410">
+
+<input type="hidden" name="ordr_idxx">
+<input type="hidden" name="good_name" value="TEST PRODUCT">
+<input type="hidden" name="good_mny" value="10">
+
+<input type="hidden" name="Ret_URL" value="https://YOUR_DOMAIN/success.html">
+
+</form>
 
 <script>
-const PRICE_TABLE = {
-    500: { baseMultiplier: 1.324, minimum: 3740, multiple: 1 },
-    1000: { baseMultiplier: 1.857, minimum: 5390, multiple: 1 }
-};
-for(let qty = 2000; qty <= 30000; qty += 1000){
-    PRICE_TABLE[qty] = { baseMultiplier: 1.857, minimum: 5390, multiple: 1 + (((qty / 1000) - 1) * 0.99) };
+function goPay(){
+
+const id = crypto.randomUUID();
+
+document.order_info.ordr_idxx.value = id;
+
+KCP_Pay_Execute_Web(document.order_info);
+
 }
-
-function totalCal(){
-    const 재질 = document.getElementById('material').value;
-    const 가로 = Number(document.getElementById('w').value);
-    const 세로 = Number(document.getElementById('h').value);
-    const 입력수량 = Number(document.getElementById('q').value);
-    
-    const 적용수량 = (입력수량 <= 500) ? 500 : Math.ceil(입력수량 / 1000) * 1000;
-    const setting = PRICE_TABLE[적용수량] || PRICE_TABLE[1000];
-    const 면적 = 가로 * 세로;
-    
-    // 계산된 최종가 무시하고 10으로 강제 설정
-    let 최종가 = 10; 
-
-    document.getElementById('total_price').innerHTML = 최종가.toLocaleString() + '원';
-    document.getElementById('price_info').innerHTML = `<strong>발송 예정일 계산됨</strong><br>${가로}×${세로}mm / ${입력수량.toLocaleString()}장`;
-
-    const buyBtn = document.getElementById('buy_btn');
-    buyBtn.onclick = function(){
-        const params = new URLSearchParams({
-            material: 재질,
-            w: 가로,
-            h: 세로,
-            qty: 입력수량,
-            price: 최종가,
-            ship: "예정일"
-        });
-        location.href = `https://sowonnamoo.github.io/myjs/preview?${params.toString()}`;
-    };
-}
-
-window.addEventListener('DOMContentLoaded', function(){
-    totalCal();
-});
 </script>
+
 </body>
 </html>
