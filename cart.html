@@ -1,9 +1,10 @@
-0<!DOCTYPE html>
+1<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>주문작성</title>
+
     <style>
         body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo'; }
         .wrap { max-width:600px; margin:0 auto; padding:20px; }
@@ -14,13 +15,16 @@
         .pay-btn { width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; }
         .bank-btn { width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; margin-top:8px; }
     </style>
+
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 </head>
+
 <body>
 
 <div class="wrap">
     <h1>🛒 주문작성</h1>
     <div id="cart-list"></div>
+
     <div class="form-box">
         <h3>주문자 정보</h3>
         <input id="name" placeholder="성함">
@@ -28,6 +32,7 @@
         <input id="address" placeholder="주소">
         <input id="detailAddress" placeholder="상세주소">
     </div>
+
     <div class="bottom">
         <div id="total-price">총 결제금액 : 0원</div>
         <button class="pay-btn" onclick="goCard()">카드결제</button>
@@ -42,19 +47,34 @@ const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
 
+// 장바구니 항목 삭제 및 재렌더링
+window.deleteItem = function(index) {
+    cart.splice(index, 1);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    render();
+};
+
 function render(){
     let list = document.getElementById("cart-list");
     list.innerHTML = "";
     total = 0;
-    cart.forEach((item)=>{
+
+    cart.forEach((item, index)=>{
         total += Number(item.price);
+
         list.innerHTML += `
         <div class="cart-item">
-            <b>${item.item}</b> (${item.qty}개)<br>
-            ${item.width}×${item.height}<br>
-            ${Number(item.price).toLocaleString()}원
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <b>${item.item}</b> (${item.qty}개)<br>
+                    ${item.width}×${item.height}<br>
+                    ${Number(item.price).toLocaleString()}원
+                </div>
+                <button onclick="deleteItem(${index})" style="background:#ff3b30; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">삭제</button>
+            </div>
         </div>`;
     });
+
     document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
 }
 
@@ -65,10 +85,8 @@ window.goCard = async function () {
 
     if (!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
 
-    // 결제 고유 ID 생성
     const paymentId = "PAY_" + Date.now();
 
-    // 1. 주문 데이터 미리 저장
     const orderData = {
         orderId: paymentId,
         name, phone, address, total, items: cart,
@@ -78,7 +96,6 @@ window.goCard = async function () {
     localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
     try {
-        // 2. 결제 요청 (redirectUrl 제거하여 결제창 결과값 수신)
         const response = await PortOne.requestPayment({
             storeId: STORE_ID,
             channelKey: CHANNEL_KEY,
@@ -90,12 +107,10 @@ window.goCard = async function () {
             customer: { name, phoneNumber: phone }
         });
 
-        // 3. 결제 결과 처리 (백엔드가 없으므로 여기서 성공 판단)
         if (response.code != null) {
             alert("결제 실패: " + response.message);
         } else {
-            // 결제 성공 시 페이지 이동
-            localStorage.removeItem("cart"); // 성공 시 장바구니 비우기
+            localStorage.removeItem("cart");
             location.href = "success.html";
         }
     } catch (e) {
@@ -123,5 +138,6 @@ window.goBankTransfer = function(){
 
 render();
 </script>
+
 </body>
 </html>
