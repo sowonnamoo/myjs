@@ -1,38 +1,46 @@
-7<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>주문 결제</title>
-<!-- PortOne v2 SDK -->
-<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
-<style>
-    body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-    .wrap { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; }
-    button { width: 100%; padding: 15px; background: #d9534f; color: white; border: none; border-radius: 5px; cursor: pointer; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문 결제</title>
+    <!-- 포트원 v2 SDK 로드 -->
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; display: flex; justify-content: center; }
+        .wrap { width: 100%; max-width: 400px; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        button { width: 100%; padding: 18px; background: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        button:hover { background: #0056b3; }
+    </style>
 </head>
 <body>
+
 <div class="wrap">
-    <h1>주문 결제 (이니시스)</h1>
-    <div id="item-info">상품: 스티커</div>
-    <div id="price-info">금액: 1000원</div> <br>
-    <button onclick="requestPay()">카드 결제하기</button>
+    <h1>결제하기</h1>
+    <p>상품: 스티커</p>
+    <p>금액: <strong>1,000원</strong></p>
+    <!-- 버튼 클릭 시 requestPay 함수 명시적 호출 -->
+    <button id="pay-btn">카드 결제하기</button>
 </div>
 
 <script>
-    // 포트원 관리자 콘솔에서 이니시스용으로 설정한 키를 입력하세요
-    const STORE_ID = "store-d"; 
-    const INICIS_CHANNEL_KEY = "채널키-여기에-입력"; 
+    // 1. 설정값 입력
+    const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
+    const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
 
-    async function requestPay() {
+    // 2. 버튼 요소 가져오기
+    const payBtn = document.getElementById("pay-btn");
+
+    // 3. 클릭 이벤트 연결 (클릭 직후 팝업 생성을 위해 async 함수 즉시 실행)
+    payBtn.addEventListener("click", async function() {
+        // 결제 고유 ID 생성 (매번 다르게)
         const paymentId = "PAY_" + new Date().getTime();
-        
+
         try {
-            // PortOne v2를 통한 이니시스 결제 호출
+            // 포트원 결제창 호출
             const response = await PortOne.requestPayment({
-                storeId: store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75,
-                channelKey: channel-key-3af15aef-d8b5-4778-a372-d5be6a6176f2, // 이니시스 연동 채널키
+                storeId: STORE_ID,
+                channelKey: CHANNEL_KEY,
                 paymentId: paymentId,
                 orderName: "스티커 주문",
                 totalAmount: 1000,
@@ -40,15 +48,19 @@
                 payMethod: "CARD"
             });
 
+            // 결제 결과 처리
             if (response.code != null) {
                 alert("결제 실패: " + response.message);
             } else {
+                alert("결제 성공!");
                 window.location.href = "success.html";
             }
         } catch (e) {
-            alert("결제 오류 발생: " + e.message);
+            console.error(e);
+            alert("결제 요청 중 오류가 발생했습니다: " + e.message);
         }
-    }
+    });
 </script>
+
 </body>
 </html>
