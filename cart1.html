@@ -3,23 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KCP TEST ORDER</title>
+<title>주문작성 (KCP)</title>
 
+<style>
+body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo', sans-serif; }
+.wrap { max-width:600px; margin:0 auto; padding:20px; box-sizing: border-box; }
+
+.cart-item {
+background:#fff;
+padding:15px;
+margin-bottom:10px;
+border-radius:12px;
+position: relative;
+}
+
+.del-btn {
+position:absolute;
+top:15px;
+right:15px;
+font-size:12px;
+color:#ff3b30;
+border:1px solid #ff3b30;
+padding:2px 6px;
+border-radius:5px;
+cursor:pointer;
+}
+
+.form-box {
+background:#fff;
+padding:20px;
+border-radius:15px;
+margin-top:20px;
+}
+
+input {
+width:100%;
+padding:12px;
+margin-bottom:8px;
+border:1px solid #ddd;
+border-radius:8px;
+box-sizing:border-box;
+}
+
+.bottom {
+background:#fff;
+padding:20px;
+border-radius:15px;
+margin-top:20px;
+}
+
+#total-price {
+text-align:center;
+color:#ff3b30;
+font-weight:bold;
+font-size:1.2em;
+margin-bottom:15px;
+}
+
+.pay-btn {
+width:100%;
+padding:15px;
+background:#007AFF;
+color:#fff;
+border:none;
+border-radius:10px;
+cursor:pointer;
+}
+</style>
+
+<!-- KCP TEST -->
 <script src="https://testspay.kcp.co.kr/plugin/kcp_spay_hub.js"></script>
+
 </head>
 
 <body>
 
-<h2>주문 (테스트 10원)</h2>
+<div class="wrap">
 
-<input id="name" placeholder="이름">
-<input id="phone" placeholder="전화">
+<h1>🛒 KCP 주문</h1>
+
+<div id="cart-list"></div>
+
+<div class="form-box">
+<h3>주문자 정보</h3>
+<input id="name" placeholder="성함">
+<input id="phone" placeholder="전화번호">
 <input id="address" placeholder="주소">
+<input id="detailAddress" placeholder="상세주소">
+</div>
 
-<div>결제금액: 10원</div>
+<div class="bottom">
+<div id="total-price"></div>
+<button class="pay-btn" onclick="goCard()">카드결제</button>
+</div>
 
-<button onclick="goPay()">카드결제</button>
-
+<!-- KCP FORM -->
 <form name="order_info" method="post">
 
 <input type="hidden" name="site_cd" value="T0000">
@@ -27,23 +105,78 @@
 <input type="hidden" name="currency" value="410">
 
 <input type="hidden" name="ordr_idxx">
-<input type="hidden" name="good_name" value="TEST PRODUCT">
-<input type="hidden" name="good_mny" value="10">
+<input type="hidden" name="good_name" value="장바구니 상품">
+<input type="hidden" name="good_mny">
 
-<input type="hidden" name="Ret_URL" value="https://YOUR_DOMAIN/success.html">
+<input type="hidden" name="Ret_URL" value="https://YOUR_DOMAIN/myjs/success.html">
 
 </form>
 
+</div>
+
 <script>
-function goPay(){
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
+let total = 0;
 
-const id = crypto.randomUUID();
+window.removeItem = function(index){
+cart.splice(index,1);
+localStorage.setItem("cart",JSON.stringify(cart));
+render();
+}
 
-document.order_info.ordr_idxx.value = id;
+function render(){
+let list = document.getElementById("cart-list");
+list.innerHTML = "";
+total = 0;
+
+cart.forEach((item,i)=>{
+total += Number(item.price);
+
+list.innerHTML += `
+<div class="cart-item">
+<b>${item.item}</b> (${item.qty})<br>
+${item.width}×${item.height}<br>
+${Number(item.price).toLocaleString()}원
+<span class="del-btn" onclick="removeItem(${i})">삭제</span>
+</div>`;
+});
+
+document.getElementById("total-price").innerText =
+"총 결제금액 : " + total.toLocaleString() + "원";
+}
+
+window.goCard = function(){
+
+const name = document.getElementById("name").value;
+const phone = document.getElementById("phone").value;
+const address = document.getElementById("address").value;
+
+if(!name || !phone || !address){
+alert("입력 필요");
+return;
+}
+
+const orderId = crypto.randomUUID();
+
+/* 👉 KCP 테스트 10원 고정 */
+document.order_info.ordr_idxx.value = orderId;
+document.order_info.good_mny.value = 10;
+
+localStorage.setItem("latestOrder", JSON.stringify({
+orderId,
+name,
+phone,
+address,
+total: 10,
+items: cart,
+payment:"KCP"
+}));
 
 KCP_Pay_Execute_Web(document.order_info);
 
 }
+
+render();
 </script>
 
 </body>
