@@ -3,19 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>결제 완료</title>
+    <style>
+        body { text-align: center; padding-top: 50px; font-family: sans-serif; }
+    </style>
 </head>
-<body style="text-align:center; padding-top:50px; font-family:sans-serif;">
-    <h1>🎉 결제가 완료되었습니다!</h1>
-    <p id="info"></p>
-    <button onclick="location.href='index.html'">돌아가기</button>
-
-    <script>
-        const orderData = JSON.parse(localStorage.getItem("latestOrder"));
-        if (orderData) {
-            document.getElementById("info").innerText = 
-                "주문번호: " + orderData.orderId + " / 금액: " + orderData.total.toLocaleString() + "원";
-            localStorage.removeItem("cart");
-        }
-    </script>
+<body>
+    <h1>🎉 결제가 성공적으로 완료되었습니다!</h1>
+    <p>주문이 정상적으로 처리되었습니다.</p>
+    <button onclick="window.location.href='index.html'">메인으로</button>
 </body>
 </html>
