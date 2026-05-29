@@ -1,66 +1,127 @@
-1<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>주문 결제</title>
-    <!-- 포트원 v2 SDK 로드 -->
-    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <title>주문작성</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; display: flex; justify-content: center; }
-        .wrap { width: 100%; max-width: 400px; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        button { width: 100%; padding: 18px; background: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
-        button:hover { background: #0056b3; }
+        body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo'; }
+        .wrap { max-width:600px; margin:0 auto; padding:20px; }
+        .cart-item { background:#fff; padding:15px; margin-bottom:10px; border-radius:12px; }
+        .form-box { background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
+        input { width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; }
+        .bottom { background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
+        .pay-btn { width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; }
+        .bank-btn { width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; margin-top:8px; }
     </style>
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 </head>
 <body>
 
 <div class="wrap">
-    <h1>결제하기</h1>
-    <p>상품: 스티커</p>
-    <p>금액: <strong>1,000원</strong></p>
-    <!-- 버튼 클릭 시 requestPay 함수 명시적 호출 -->
-    <button id="pay-btn">카드 결제하기</button>
+    <h1>🛒 주문작성</h1>
+    <div id="cart-list"></div>
+    <div class="form-box">
+        <h3>주문자 정보</h3>
+        <input id="name" placeholder="성함">
+        <input id="phone" placeholder="전화번호">
+        <input id="address" placeholder="주소">
+        <input id="detailAddress" placeholder="상세주소">
+    </div>
+    <div class="bottom">
+        <div id="total-price">총 결제금액 : 0원</div>
+        <button class="pay-btn" onclick="goCard()">카드결제</button>
+        <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+    </div>
 </div>
 
 <script>
-    // 1. 설정값 입력
-    const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
-    const CHANNEL_KEY = "channel-key-3af15aef-d8b5-4778-a372-d5be6a6176f2";
+const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
+const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
 
-    // 2. 버튼 요소 가져오기
-    const payBtn = document.getElementById("pay-btn");
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
+let total = 0;
 
-    // 3. 클릭 이벤트 연결 (클릭 직후 팝업 생성을 위해 async 함수 즉시 실행)
-    payBtn.addEventListener("click", async function() {
-        // 결제 고유 ID 생성 (매번 다르게)
-        const paymentId = "PAY_" + new Date().getTime();
-
-        try {
-            // 포트원 결제창 호출
-            const response = await PortOne.requestPayment({
-                storeId: STORE_ID,
-                channelKey: CHANNEL_KEY,
-                paymentId: paymentId,
-                orderName: "스티커 주문",
-                totalAmount: 1000,
-                currency: "KRW",
-                payMethod: "CARD"
-            });
-
-            // 결제 결과 처리
-            if (response.code != null) {
-                alert("결제 실패: " + response.message);
-            } else {
-                alert("결제 성공!");
-                window.location.href = "success.html";
-            }
-        } catch (e) {
-            console.error(e);
-            alert("결제 요청 중 오류가 발생했습니다: " + e.message);
-        }
+function render(){
+    let list = document.getElementById("cart-list");
+    list.innerHTML = "";
+    total = 0;
+    cart.forEach((item)=>{
+        total += Number(item.price);
+        list.innerHTML += `
+        <div class="cart-item">
+            <b>${item.item}</b> (${item.qty}개)<br>
+            ${item.width}×${item.height}<br>
+            ${Number(item.price).toLocaleString()}원
+        </div>`;
     });
-</script>
+    document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+}
 
+window.goCard = async function () {
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+    const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
+
+    if (!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
+
+    // 결제 고유 ID 생성
+    const paymentId = "PAY_" + Date.now();
+
+    // 1. 주문 데이터 미리 저장
+    const orderData = {
+        orderId: paymentId,
+        name, phone, address, total, items: cart,
+        payment: "카드결제",
+        createdAt: new Date().toISOString()
+    };
+    localStorage.setItem("latestOrder", JSON.stringify(orderData));
+
+    try {
+        // 2. 결제 요청 (redirectUrl 제거하여 결제창 결과값 수신)
+        const response = await PortOne.requestPayment({
+            storeId: STORE_ID,
+            channelKey: CHANNEL_KEY,
+            paymentId: paymentId,
+            orderName: "주문상품",
+            totalAmount: Number(total),
+            currency: "KRW",
+            payMethod: "CARD",
+            customer: { name, phoneNumber: phone }
+        });
+
+        // 3. 결제 결과 처리 (백엔드가 없으므로 여기서 성공 판단)
+        if (response.code != null) {
+            alert("결제 실패: " + response.message);
+        } else {
+            // 결제 성공 시 페이지 이동
+            localStorage.removeItem("cart"); // 성공 시 장바구니 비우기
+            location.href = "success.html";
+        }
+    } catch (e) {
+        alert("결제 처리 중 오류가 발생했습니다.");
+        console.error(e);
+    }
+};
+
+window.goBankTransfer = function(){
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+    const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
+    if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
+
+    localStorage.setItem("latestOrder", JSON.stringify({
+        orderId: "ORD_" + Date.now(),
+        name, phone, address, total, items: cart,
+        payment: "무통장입금",
+        createdAt: new Date().toISOString()
+    }));
+    
+    localStorage.removeItem("cart");
+    location.href = "success2.html";
+}
+
+render();
+</script>
 </body>
 </html>
