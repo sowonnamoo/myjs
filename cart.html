@@ -1,88 +1,55 @@
-6<!DOCTYPE html>
+7<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>주문작성</title>
-<style>
-    body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo', sans-serif; }
-    .wrap { max-width:600px; margin:0 auto; padding:20px; box-sizing: border-box; }
-    .cart-item { background:#fff; padding:15px; margin-bottom:10px; border-radius:12px; position: relative; }
-    .form-box { background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
-    input { width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-    .bottom { background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
-    #total-price { text-align: center; color: #ff3b30; font-weight: bold; font-size: 1.2em; margin-bottom: 15px; }
-    .pay-btn { width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor: pointer; }
-</style>
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+<style>
+    body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+    .wrap { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; }
+    button { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+</style>
 </head>
 <body>
 <div class="wrap">
-    <h1>🛒 주문작성</h1>
-    <div id="cart-list"></div>
-    <div class="form-box">
-        <input id="name" placeholder="성함">
-        <input id="phone" placeholder="전화번호">
-        <input id="address" placeholder="주소">
-        <input id="detailAddress" placeholder="상세주소">
-    </div>
-    <div class="bottom">
-        <div id="total-price">총 결제금액 : 0원</div>
-        <button class="pay-btn" onclick="goCard()">카드결제</button>
-    </div>
+    <h1>주문 결제</h1>
+    <div id="item-info">상품: 스티커</div>
+    <div id="price-info">금액: 10,000원</div> <br>
+    <button onclick="requestPay()">카드 결제하기</button>
 </div>
 
 <script>
-   const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
+ const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
 const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
 
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    
-    function render(){
-        let list = document.getElementById("cart-list");
-        let total = 0;
-        list.innerHTML = "";
-        cart.forEach((item, index)=>{
-            // 가격을 확실하게 숫자로 변환
-            let price = parseInt(item.price);
-            total += price;
-            list.innerHTML += `<div class="cart-item"><b>${item.item}</b> ${price.toLocaleString()}원</div>`;
-        });
-        document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
-        return total;
-    }
-
-    window.goCard = async function () {
-        let totalAmount = render(); // 계산된 총액을 가져옴
-        const name = document.getElementById("name").value;
-
-        if (totalAmount <= 0) { alert("상품이 없습니다."); return; }
-        if (!name) { alert("성함을 입력하세요."); return; }
-
-        const paymentId = "PAY_" + Date.now();
+    async function requestPay() {
+        const paymentId = "PAY_" + new Date().getTime();
         
         try {
+            // PortOne v2 결제창 호출
             const response = await PortOne.requestPayment({
                 storeId: STORE_ID,
                 channelKey: CHANNEL_KEY,
                 paymentId: paymentId,
-                orderName: "주문상품",
-                totalAmount: Number(totalAmount), // 여기서 확실하게 숫자로 변환
+                orderName: "스티커 주문",
+                totalAmount: 10000, // 반드시 숫자 형태여야 함
                 currency: "KRW",
                 payMethod: "CARD"
             });
 
+            // 결제창이 닫힌 후 응답 확인
             if (response.code != null) {
+                // 결제 실패 시
                 alert("결제 실패: " + response.message);
             } else {
-                localStorage.setItem("latestOrder", JSON.stringify({orderId: paymentId, total: totalAmount, name: name}));
+                // 결제 성공 시 success.html로 이동
                 window.location.href = "success.html";
             }
         } catch (e) {
-            alert("결제 요청 중 오류: " + e.message);
+            alert("결제 오류 발생: " + e.message);
         }
-    };
-    render();
+    }
 </script>
 </body>
 </html>
