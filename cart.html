@@ -1,4 +1,4 @@
-111<!DOCTYPE html>
+2<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -38,17 +38,12 @@
 </div>
 
 <script>
-const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
+const STORE_ID = "T0000";
 const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
+
 
     let cart = JSON.parse(localStorage.getItem("cart")) || [];
     let total = 0;
-
-    window.removeItem = function(index){
-        cart.splice(index, 1);
-        localStorage.setItem("cart", JSON.stringify(cart));
-        render();
-    }
 
     function render(){
         let list = document.getElementById("cart-list");
@@ -67,6 +62,12 @@ const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
         document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
     }
 
+    window.removeItem = function(index){
+        cart.splice(index, 1);
+        localStorage.setItem("cart", JSON.stringify(cart));
+        render();
+    }
+
     window.goCard = async function () {
         const name = document.getElementById("name").value;
         const phone = document.getElementById("phone").value;
@@ -82,19 +83,25 @@ const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
         localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
         try {
-            await PortOne.requestPayment({
+            const response = await PortOne.requestPayment({
                 storeId: STORE_ID,
                 channelKey: CHANNEL_KEY,
                 paymentId: paymentId,
                 orderName: "주문상품",
                 totalAmount: Number(total),
                 currency: "KRW",
-                payMethod: "CARD",
-                redirectUrl: window.location.origin + "/success.html" 
+                payMethod: "CARD"
             });
+
+            // 결제 완료 응답이 성공(code가 없거나 null)일 때 페이지 이동
+            if (!response.code) {
+                window.location.href = "success.html";
+            } else {
+                alert("결제 처리 중 문제가 발생했습니다: " + response.message);
+            }
         } catch (e) {
             console.error(e);
-            alert("결제 요청 실패");
+            alert("결제 창 오류");
         }
     };
 
