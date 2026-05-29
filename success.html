@@ -1,200 +1,33 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>결제 완료</title>
-
-<style>
-body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo'; padding:20px; }
-.wrap { max-width:500px; margin:0 auto; }
-.card { background:#fff; padding:25px; border-radius:20px; margin-bottom:20px; }
-h1 { text-align:center; color:#007AFF; }
-.btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.btn { padding:12px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; }
-.main-btn { width:100%; padding:16px; background:#007AFF; color:#fff; border:none; border-radius:12px; margin-top:10px; }
-#print-area { display:none; }
-
-@media print {
-body > *:not(#print-area){ display:none; }
-#print-area{ display:block; }
-}
-</style>
-
+    <meta charset="UTF-8">
+    <title>결제 완료</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f5f5f7; }
+        .box { background: white; border: 1px solid #ddd; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto; }
+    </style>
 </head>
-
 <body>
+    <div class="box">
+        <h1>🎉 결제가 완료되었습니다!</h1>
+        <p id="order-info"></p>
+        <button onclick="location.href='index.html'" style="padding:10px 20px; cursor:pointer;">메인으로 이동</button>
+    </div>
 
-<div class="wrap">
-
-<div class="card">
-<h1>🎉 결제 완료!</h1>
-<p style="text-align:center; color:#666;">
-주문이 정상적으로 접수되었습니다.
-</p>
-
-<div id="order-details"></div>
-</div>
-
-<div class="card">
-<h3>🧾 영수증</h3>
-<div class="btn-grid">
-<button class="btn" onclick="alert('카드 결제 영수증은 PG사 제공')">카드 영수증</button>
-<button class="btn" onclick="printInvoice()">거래명세서</button>
-</div>
-</div>
-
-<button class="main-btn" onclick="location.href='index.html'">쇼핑 계속하기</button>
-
-</div>
-
-<!-- PRINT -->
-<div id="print-area">
-<h2>거래명세서</h2>
-<div id="print-info"></div>
-
-<table border="1" style="width:100%; border-collapse:collapse;">
-<thead>
-<tr>
-<th>품목</th>
-<th>사이즈</th>
-<th>수량</th>
-<th>금액</th>
-</tr>
-</thead>
-<tbody id="print-items"></tbody>
-</table>
-
-<p id="print-total"></p>
-</div>
-
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-const firebaseConfig = {
-apiKey: "AIzaSyBzHogA2iaQ...",
-authDomain: "ecogr-636c6.firebaseapp.com",
-projectId: "ecogr-636c6",
-storageBucket: "ecogr-636c6.appspot.com",
-messagingSenderId: "95745358447",
-appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// ✔ 주문 데이터
-const orderData = JSON.parse(localStorage.getItem("latestOrder"));
-
-if(!orderData){
-alert("주문 정보 없음");
-location.href="index.html";
-}
-
-// ✔ 카드 결제 페이지 체크
-if(orderData.payment !== "카드결제"){
-alert("카드 결제 전용 페이지");
-location.href="index.html";
-}
-
-// ✔ 화면 출력
-function render(){
-
-document.getElementById("order-details").innerHTML = `
-<p><b>주문번호:</b> ${orderData.orderId}</p>
-<p><b>이름:</b> ${orderData.name}</p>
-<p><b>총액:</b> ${orderData.total.toLocaleString()}원</p>
-
-${orderData.items.map(i=>`
-<div style="border-top:1px solid #eee; padding:10px 0;">
-<b>${i.item}</b> (${i.qty})
-<br>${i.width}×${i.height}
-</div>
-`).join("")}
-`;
-
-}
-
-// ✔ Firebase 저장
-async function saveOrder(){
-
-if(!localStorage.getItem("saved_"+orderData.orderId)){
-
-localStorage.setItem("saved_"+orderData.orderId,"1");
-
-await setDoc(doc(db,"orders",orderData.orderId),{
-...orderData,
-status:"결제완료"
-});
-}
-
-localStorage.removeItem("cart");
-render();
-}
-
-// ✔ 포트원 Worker 검증
-async function verifyPaymentWithWorker(){
-
-try {
-
-const workerUrl = "https://portone-payment.ecogr.workers.dev";
-
-const paymentId = orderData.orderId;
-
-const res = await fetch(`${workerUrl}?paymentId=${paymentId}`);
-const result = await res.json();
-
-console.log("결제 검증 결과:", result);
-
-if(!result.success){
-alert("결제 검증 실패: " + (result.reason || "UNKNOWN"));
-return;
-}
-
-await setDoc(doc(db,"orders",orderData.orderId),{
-...orderData,
-status:"결제검증완료",
-verifiedAmount: result.amount
-}, { merge:true });
-
-console.log("✔ Worker 검증 완료");
-
-} catch(e){
-console.error("검증 오류:", e);
-}
-
-}
-
-// ✔ 영수증 출력
-window.printInvoice = function(){
-
-document.getElementById("print-info").innerText =
-`주문번호: ${orderData.orderId} / ${orderData.name}`;
-
-document.getElementById("print-items").innerHTML =
-orderData.items.map(i=>`
-<tr>
-<td>${i.item}</td>
-<td>${i.width}×${i.height}</td>
-<td>${i.qty}</td>
-<td>${Number(i.price).toLocaleString()}</td>
-</tr>
-`).join("");
-
-document.getElementById("print-total").innerText =
-"합계: " + orderData.total.toLocaleString() + "원";
-
-window.print();
-};
-
-// ✔ 실행 순서
-saveOrder();
-render();
-verifyPaymentWithWorker();
-
-</script>
-
+    <script>
+        const orderData = JSON.parse(localStorage.getItem("latestOrder"));
+        if (orderData) {
+            document.getElementById("order-info").innerHTML = `
+                주문번호: ${orderData.orderId}<br>
+                결제금액: ${orderData.total.toLocaleString()}원<br>
+                받는사람: ${orderData.name}
+            `;
+            // 결제 완료 후 장바구니 비우기
+            localStorage.removeItem("cart");
+        } else {
+            document.getElementById("order-info").innerText = "주문 정보를 찾을 수 없습니다.";
+        }
+    </script>
 </body>
 </html>
