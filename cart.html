@@ -1,130 +1,164 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>주문작성</title>
-    <style>
-        body { margin: 0; background: #f5f5f7; font-family: 'Apple SD Gothic Neo', sans-serif; }
-        .wrap { max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { margin-bottom: 20px; font-size: 24px; }
-        .cart-item { background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .info { flex: 1; line-height: 1.6; font-size: 14px; }
-        .del-btn { background: #ff3b30; color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-left: 10px; }
-        .form-box { background: #fff; padding: 20px; border-radius: 15px; margin-top: 20px; }
-        input { width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        .bottom { margin-top: 20px; background: #fff; padding: 20px; border-radius: 15px; }
-        .total { font-size: 20px; font-weight: bold; color: #e31e23; margin-bottom: 15px; }
-        .pay-btn { width: 100%; padding: 15px; background: #007AFF; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
-        .bank-btn { width: 100%; padding: 15px; background: #111; color: #fff; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주문작성</title>
+
+<style>
+body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo', sans-serif; }
+.wrap { max-width:600px; margin:0 auto; padding:20px; box-sizing: border-box; }
+.cart-item { background:#fff; padding:15px; margin-bottom:10px; border-radius:12px; }
+.form-box { background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
+h3 { margin-top: 0; }
+/* 입력란 정돈 */
+input { 
+    width: 100%; 
+    padding: 12px; 
+    margin-bottom: 8px; 
+    border: 1px solid #ddd; 
+    border-radius: 8px; 
+    box-sizing: border-box; 
+    display: block;
+}
+.bottom { background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
+
+/* 총 결제금액 스타일 수정 */
+#total-price {
+    text-align: center;
+    color: #ff3b30;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-bottom: 15px;
+}
+
+.pay-btn { width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor: pointer; }
+.bank-btn { width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; margin-top:8px; cursor: pointer; }
+</style>
+
+<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+
 </head>
+
 <body>
 
 <div class="wrap">
-    <h1>🛒 주문작성</h1>
-    <div id="cart-list"></div>
 
-    <div class="form-box">
-        <h2>주문자 정보</h2>
-        <input id="name" placeholder="성함">
-        <input id="phone" placeholder="전화번호">
-        <input id="address" placeholder="주소">
-        <input id="detailAddress" placeholder="상세주소">
-    </div>
+<h1>🛒 주문작성</h1>
 
-    <div class="bottom">
-        <div class="total" id="total-price">총 결제금액 : 0원</div>
-        <button class="pay-btn" onclick="goCard()">카드결제</button>
-        <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
-    </div>
+<div id="cart-list"></div>
+
+<div class="form-box">
+<h3>주문자 정보</h3>
+<input id="name" placeholder="성함">
+<input id="phone" placeholder="전화번호">
+<input id="address" placeholder="주소">
+<input id="detailAddress" placeholder="상세주소">
 </div>
 
-<script src="https://js.tosspayments.com/v1"></script>
-<script type="module">
-    const TOSS_CLIENT_KEY = "test_ck_O6BYq7GWPVvXKgZXBNl8NE5vbo1d";
+<div class="bottom">
+<div id="total-price">총 결제금액 : 0원</div>
 
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    let total = 0;
+<button class="pay-btn" onclick="goCard()">카드결제</button>
+<button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+</div>
 
-    window.deleteItem = function(index) {
-        cart.splice(index, 1);
-        localStorage.setItem("cart", JSON.stringify(cart));
-        render();
-    };
+</div>
 
-    function render(){
-        const list = document.getElementById("cart-list");
-        list.innerHTML = "";
-        total = 0;
-        cart.forEach((item, index) => {
-            total += Number(item.price);
-            list.innerHTML += `
-            <div class="cart-item">
-                <div class="info">
-                    <b>${item.item}</b> (${item.qty}개)<br>
-                    규격: ${item.width} × ${item.height} | 가격: ${Number(item.price).toLocaleString()}원<br>
-                    <a href="${item.imageUrl}" target="_blank" style="color:#007AFF;">파일 확인</a>
-                </div>
-                <button class="del-btn" onclick="deleteItem(${index})">삭제</button>
-            </div>`;
-        });
-        document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+<script>
+const STORE_ID = "";
+const CHANNEL_KEY = "";
+
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
+let total = 0;
+
+function render(){
+    let list = document.getElementById("cart-list");
+    list.innerHTML = "";
+    total = 0;
+
+    cart.forEach((item)=>{
+        total += Number(item.price);
+
+        list.innerHTML += `
+        <div class="cart-item">
+        <b>${item.item}</b> (${item.qty}개)<br>
+        ${item.width}×${item.height}<br>
+        ${Number(item.price).toLocaleString()}원
+        </div>`;
+    });
+
+    document.getElementById("total-price").innerText =
+    "총 결제금액 : " + total.toLocaleString() + "원";
+}
+
+window.goCard = async function () {
+
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+    const address =
+        document.getElementById("address").value +
+        " " +
+        document.getElementById("detailAddress").value;
+
+    if (!name || !phone || !address.trim()) {
+        alert("모든 정보를 입력해주세요.");
+        return;
     }
 
-    // 카드 결제: 결제 성공 시 데이터와 함께 페이지 이동
-    window.goCard = function () {
-        const name = document.getElementById("name").value;
-        const phone = document.getElementById("phone").value;
-        const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
-        if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
+    const paymentId = crypto.randomUUID();
 
-        const orderId = "ORD_" + Date.now();
-        const orderData = {
-            orderId,
-            name,
-            phone,
-            address,
-            total,
-            items: cart,
-            payment: "카드결제", // 관리자 페이지와 키값 통일
-            createdAt: new Date().toISOString()
-        };
+    const orderData = {
+        orderId: paymentId,
+        name,
+        phone,
+        address,
+        total: Number(total),
+        items: cart,
+        payment: "카드결제",
+        createdAt: new Date().toISOString()
+    };
 
-        localStorage.setItem("latestOrder", JSON.stringify(orderData));
+    localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
-        const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-        tossPayments.requestPayment("카드", {
-            amount: total,
-            orderId: orderId,
-            orderName: "주문 상품",
-            customerName: name,
-            successUrl: "https://sowonnamoo.github.io/myjs/success",
-            failUrl: window.location.origin + "/fail.html"
+    try {
+        const portone = window.PortOne;
+        await portone.requestPayment({
+            storeId: STORE_ID,
+            channelKey: CHANNEL_KEY,
+            paymentId: paymentId,
+            orderName: "주문상품",
+            totalAmount: Number(total),
+            currency: "KRW",
+            payMethod: "CARD",
+            redirectUrl: window.location.origin + "/myjs/success.html"
         });
-    };
+    } catch (e) {
+        console.error(e);
+        alert("결제 실패");
+    }
+};
 
-    // 무통장 입금: 데이터 저장 후 success2 페이지로 이동
-    window.goBankTransfer = async function(){
-        const name = document.getElementById("name").value;
-        const phone = document.getElementById("phone").value;
-        const address = document.getElementById("address").value + " " + document.getElementById("detailAddress").value;
-        if(!name || !phone || !address.trim()) return alert("모든 정보를 입력해주세요.");
-        
-        const orderData = { 
-            orderId: "ORD_" + Date.now(), 
-            name, phone, address, total, items: cart, 
-            payment: "무통장입금",
-            status: "입금대기",
-            createdAt: new Date().toISOString() 
-        };
-        
-        localStorage.setItem("latestOrder", JSON.stringify(orderData));
-        localStorage.removeItem("cart");
-        location.href = "https://sowonnamoo.github.io/myjs/success2";
-    };
+window.goBankTransfer = function(){
+    const orderId = "ORD_" + Date.now();
 
-    render();
+    localStorage.setItem("latestOrder", JSON.stringify({
+        orderId,
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        address: document.getElementById("address").value,
+        total,
+        items: cart,
+        payment: "무통장입금",
+        payMethod: "bank",
+        createdAt: new Date().toISOString()
+    }));
+
+    location.href = "success2.html";
+}
+
+render();
 </script>
+
 </body>
 </html>
