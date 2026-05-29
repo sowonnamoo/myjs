@@ -1,4 +1,4 @@
-3<!DOCTYPE html>
+4<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -41,7 +41,6 @@
 const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
 const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
 
-
     let cart = JSON.parse(localStorage.getItem("cart")) || [];
     let total = 0;
 
@@ -50,12 +49,12 @@ const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
         list.innerHTML = "";
         total = 0;
         cart.forEach((item, index)=>{
-            total += Number(item.price);
+            total += parseInt(item.price);
             list.innerHTML += `
             <div class="cart-item">
             <b>${item.item}</b> (${item.qty}개)<br>
             ${item.width}×${item.height}<br>
-            ${Number(item.price).toLocaleString()}원
+            ${parseInt(item.price).toLocaleString()}원
             <span class="del-btn" onclick="removeItem(${index})">삭제</span>
             </div>`;
         });
@@ -78,8 +77,15 @@ const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
             return;
         }
 
+        // 금액 데이터 검증
+        const amount = Math.floor(total);
+        if (amount <= 0) {
+            alert("결제 금액이 올바르지 않습니다.");
+            return;
+        }
+
         const paymentId = crypto.randomUUID();
-        const orderData = { orderId: paymentId, name, phone, address, total: Number(total), items: cart, payment: "카드결제", createdAt: new Date().toISOString() };
+        const orderData = { orderId: paymentId, name, phone, address, total: amount, items: cart, payment: "카드결제", createdAt: new Date().toISOString() };
         localStorage.setItem("latestOrder", JSON.stringify(orderData));
 
         try {
@@ -88,26 +94,25 @@ const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
                 channelKey: CHANNEL_KEY,
                 paymentId: paymentId,
                 orderName: "주문상품",
-                totalAmount: Number(total),
+                totalAmount: amount, // 확실한 정수 전달
                 currency: "KRW",
                 payMethod: "CARD"
             });
 
-            // 결제 완료 응답이 성공(code가 없거나 null)일 때 페이지 이동
-            if (!response.code) {
+            if (response && !response.code) {
                 window.location.href = "success.html";
-            } else {
-                alert("결제 처리 중 문제가 발생했습니다: " + response.message);
+            } else if (response && response.code) {
+                alert("결제 실패: " + response.message);
             }
         } catch (e) {
             console.error(e);
-            alert("결제 창 오류");
+            alert("결제 중 오류가 발생했습니다.");
         }
     };
 
     window.goBankTransfer = function(){
         const orderId = "ORD_" + Date.now();
-        localStorage.setItem("latestOrder", JSON.stringify({ orderId, name: document.getElementById("name").value, phone: document.getElementById("phone").value, address: document.getElementById("address").value, total, items: cart, payment: "무통장입금", createdAt: new Date().toISOString() }));
+        localStorage.setItem("latestOrder", JSON.stringify({ orderId, name: document.getElementById("name").value, phone: document.getElementById("phone").value, address: document.getElementById("address").value, total: Math.floor(total), items: cart, payment: "무통장입금", createdAt: new Date().toISOString() }));
         location.href = "success2.html";
     }
     render();
