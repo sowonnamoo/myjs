@@ -1,415 +1,95 @@
 <!DOCTYPE html>
-
 <html lang="ko">
-
 <head>
-
-<meta charset="UTF-8"/>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-<title>결제완료</title>
-
-
-
-<style>
-
-body{
-
-    margin:0;
-
-    background:#f5f5f7;
-
-    font-family:'Apple SD Gothic Neo',sans-serif;
-
-}
-
-
-
-.wrap{
-
-    max-width:600px;
-
-    margin:0 auto;
-
-    padding:20px;
-
-}
-
-
-
-.box{
-
-    background:#fff;
-
-    border-radius:16px;
-
-    padding:25px;
-
-    margin-top:30px;
-
-}
-
-
-
-.title{
-
-    font-size:28px;
-
-    font-weight:bold;
-
-    margin-bottom:10px;
-
-}
-
-
-
-.ok{
-
-    font-size:70px;
-
-}
-
-
-
-.item{
-
-    padding:12px 0;
-
-    border-bottom:1px solid #eee;
-
-}
-
-
-
-.home-btn{
-
-    width:100%;
-
-    height:52px;
-
-    border:none;
-
-    background:#007AFF;
-
-    color:#fff;
-
-    border-radius:12px;
-
-    margin-top:20px;
-
-    cursor:pointer;
-
-    font-size:16px;
-
-}
-
-</style>
-
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>결제완료 및 취소</title>
+    <style>
+        body{ margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo',sans-serif; }
+        .wrap{ max-width:600px; margin:0 auto; padding:20px; }
+        .box{ background:#fff; border-radius:16px; padding:25px; margin-top:30px; }
+        .title{ font-size:24px; font-weight:bold; margin-bottom:10px; }
+        .ok{ font-size:50px; }
+        .item{ padding:12px 0; border-bottom:1px solid #eee; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn{ flex: 1; height:52px; border:none; border-radius:12px; cursor:pointer; font-size:16px; }
+        .home-btn{ background:#007AFF; color:#fff; }
+        .cancel-btn{ background:#ff3b30; color:#fff; }
+    </style>
 </head>
-
-
-
 <body>
 
-
-
 <div class="wrap">
-
-
-
-    <div class="box">
-
-
-
-        <div class="ok">✅</div>
-
-
-
-        <div class="title">결제가 완료되었습니다.</div>
-
-
-
+    <div class="box" id="content-box">
+        <div class="ok" id="icon">✅</div>
+        <div class="title" id="main-title">결제가 완료되었습니다.</div>
         <div id="order-info"></div>
-
-
-
-        <button class="home-btn" onclick="goHome()">
-
-            홈으로 이동
-
-        </button>
-
-
-
+        <div class="btn-group">
+            <button class="btn home-btn" onclick="goHome()">홈으로 이동</button>
+            <button class="btn cancel-btn" onclick="cancelOrder()">결제 취소</button>
+        </div>
     </div>
-
-
-
 </div>
 
-
-
 <script type="module">
-
-
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-
-import {
-
-    getFirestore,
-
-    collection,
-
-    addDoc,
-
-    query,
-
-    where,
-
-    getDocs
-
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-
-
-const firebaseConfig = {
-
-    apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
-
-    authDomain: "ecogr-636c6.firebaseapp.com",
-
-    projectId: "ecogr-636c6",
-
-    storageBucket: "ecogr-636c6.firebasestorage.app",
-
-    messagingSenderId: "95745358447",
-
-    appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-
-};
-
-
-
-const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
-
-
-const order = JSON.parse(localStorage.getItem("latestOrder"));
-
-
-
-if(!order){
-
-
-
-    document.getElementById("order-info").innerHTML =
-
-        "<p>주문 정보가 없습니다.</p>";
-
-
-
-}else{
-
-
-
-    let html = "";
-
-
-
-    html += `
-
-        <div class="item">
-
-            <b>주문번호</b><br/>
-
-            ${order.orderId}
-
-        </div>
-
-
-
-        <div class="item">
-
-            <b>주문자</b><br/>
-
-            ${order.name}
-
-        </div>
-
-
-
-        <div class="item">
-
-            <b>전화번호</b><br/>
-
-            ${order.phone}
-
-        </div>
-
-
-
-        <div class="item">
-
-            <b>배송주소</b><br/>
-
-            ${order.address}
-
-        </div>
-
-
-
-        <div class="item">
-
-            <b>결제방식</b><br/>
-
-            ${order.payment}
-
-        </div>
-
-
-
-        <div class="item">
-
-            <b>결제금액</b><br/>
-
-            ${Number(order.total).toLocaleString()}원
-
-        </div>
-
-    `;
-
-
-
-    html += `<div style="margin-top:20px;">`;
-
-
-
-    order.items.forEach(item=>{
-
-
-
-        html += `
-
-            <div class="item">
-
-                ${item.item} / ${item.qty}개<br/>
-
-                ${item.width} × ${item.height}<br/>
-
-                ${Number(item.price).toLocaleString()}원
-
-            </div>
-
-        `;
-
-    });
-
-
-
-    html += `</div>`;
-
-
-
-    document.getElementById("order-info").innerHTML = html;
-
-
-
-    saveOrderToFirestore(order);
-
-}
-
-
-
-async function saveOrderToFirestore(order){
-
-
-
-    try{
-
-
-
-        const q = query(
-
-            collection(db,"orders"),
-
-            where("orderId","==",order.orderId)
-
-        );
-
-
-
-        const exists = await getDocs(q);
-
-
-
-        if(!exists.empty){
-
-            console.log("이미 저장된 주문");
-
-            return;
-
-        }
-
-
-
-        await addDoc(collection(db,"orders"),{
-
-            orderId: order.orderId,
-
-            name: order.name,
-
-            phone: order.phone,
-
-            address: order.address,
-
-            payment: order.payment,
-
-            total: order.total,
-
-            items: order.items || [],
-
-            status: "결제완료",
-
-            createdAt: new Date().toISOString()
-
-        });
-
-
-
-        console.log("주문 저장 완료");
-
-
-
-    }catch(err){
-
-
-
-        console.error(err);
-
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const order = JSON.parse(localStorage.getItem("latestOrder"));
+
+    if(!order){
+        document.getElementById("order-info").innerHTML = "<p>주문 정보가 없습니다.</p>";
+    } else {
+        renderOrderInfo(order);
+        saveOrderToFirestore(order);
     }
 
-}
+    function renderOrderInfo(order) {
+        let html = `<div>주문번호: ${order.orderId}</div><div class="item">결제금액: ${Number(order.total).toLocaleString()}원</div>`;
+        document.getElementById("order-info").innerHTML = html;
+    }
 
+    async function saveOrderToFirestore(order){
+        const q = query(collection(db,"orders"), where("orderId","==",order.orderId));
+        const exists = await getDocs(q);
+        if(exists.empty){
+            await addDoc(collection(db,"orders"), { ...order, status: "결제완료", createdAt: new Date().toISOString() });
+        }
+    }
 
+    window.cancelOrder = async function() {
+        if(!confirm("정말 결제를 취소하시겠습니까?")) return;
 
-window.goHome = function(){
+        try {
+            const q = query(collection(db, "orders"), where("orderId", "==", order.orderId));
+            const querySnapshot = await getDocs(q);
+            
+            querySnapshot.forEach(async (document) => {
+                await deleteDoc(doc(db, "orders", document.id));
+            });
 
+            document.getElementById("icon").innerHTML = "❌";
+            document.getElementById("main-title").innerText = "취소가 완료되었습니다.";
+            document.getElementById("order-info").innerHTML = "";
+        } catch (err) {
+            alert("취소 중 오류가 발생했습니다.");
+            console.error(err);
+        }
+    };
 
-
-    location.href = "index.html";
-
-};
-
-
-
+    window.goHome = function(){ location.href = "index.html"; };
 </script>
 
-
-
 </body>
-
-</html> 
+</html>
