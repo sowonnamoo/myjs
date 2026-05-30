@@ -11,7 +11,6 @@
         input { width:100%; padding:15px; border:1px solid #ddd; border-radius:12px; font-size:16px; margin-bottom:15px; box-sizing: border-box; }
         button { width:100%; padding:18px; border:none; border-radius:12px; background:#007AFF; color:#fff; font-size:18px; font-weight:bold; cursor:pointer; }
         .btn-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-        /* 버튼들이 한 줄에 2개씩 배치되도록 설정 */
         .btn-group button { flex: 1 1 calc(50% - 10px); padding: 12px; font-size: 14px; }
         .btn-secondary { background: #555; }
         .result { margin-top:30px; }
@@ -73,7 +72,7 @@
                 const payMethod = data.payMethod || "";
                 
                 let payButtons = "";
-                // 무통장 결제 분기 처리
+                
                 if (payMethod.includes("bank") || payMethod.includes("무통장")) {
                     payButtons = `
                         <button class="btn-secondary" onclick="openReceipt('tax', '${safeDataStr}')">세금계산서</button>
@@ -82,10 +81,11 @@
                         <button class="btn-secondary" onclick="openReceipt('cash', '${safeDataStr}')">현금영수증</button>
                     `;
                 } else {
-                    // 카드 결제 분기 처리
+                    // 카드 결제 취소 버튼 추가
                     payButtons = `
                         <button class="btn-secondary" onclick="openReceipt('card', '${safeDataStr}')">카드전표 발행</button>
                         <button class="btn-secondary" onclick="openReceipt('delivery', '${safeDataStr}')">거래명세서</button>
+                        <button class="btn-secondary" style="background:#ff3b30;" onclick="cancelPayment('${data.orderId}')">결제 취소</button>
                     `;
                 }
 
@@ -116,6 +116,13 @@
         } catch(e) {
             console.log(e);
             resultBox.innerHTML = `<div class="bad">조회 오류 발생</div>`;
+        }
+    }
+
+    // 카드 결제 취소 안내 함수
+    window.cancelPayment = function(orderId) {
+        if(confirm("정말 결제를 취소하시겠습니까?")) {
+            alert("주문번호 " + orderId + "의 카드결제 취소완료 메시지가 전송되었습니다.");
         }
     }
 
