@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>결제완료 및 취소</title>
+    <title>결제완료</title>
     <style>
         body{ margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo',sans-serif; }
         .wrap{ max-width:600px; margin:0 auto; padding:20px; }
         .box{ background:#fff; border-radius:16px; padding:25px; margin-top:30px; }
-        .title{ font-size:24px; font-weight:bold; margin-bottom:10px; }
-        .ok{ font-size:50px; }
+        .title{ font-size:28px; font-weight:bold; margin-bottom:10px; }
+        .ok{ font-size:70px; }
         .item{ padding:12px 0; border-bottom:1px solid #eee; }
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-container { display: flex; gap: 10px; margin-top: 20px; }
         .btn{ flex: 1; height:52px; border:none; border-radius:12px; cursor:pointer; font-size:16px; }
         .home-btn{ background:#007AFF; color:#fff; }
         .cancel-btn{ background:#ff3b30; color:#fff; }
@@ -20,11 +20,12 @@
 <body>
 
 <div class="wrap">
-    <div class="box" id="content-box">
-        <div class="ok" id="icon">✅</div>
-        <div class="title" id="main-title">결제가 완료되었습니다.</div>
+    <div class="box">
+        <div id="status-icon" class="ok">✅</div>
+        <div id="main-title" class="title">결제가 완료되었습니다.</div>
         <div id="order-info"></div>
-        <div class="btn-group">
+        
+        <div class="btn-container">
             <button class="btn home-btn" onclick="goHome()">홈으로 이동</button>
             <button class="btn cancel-btn" onclick="cancelOrder()">결제 취소</button>
         </div>
@@ -48,26 +49,44 @@
     const db = getFirestore(app);
     const order = JSON.parse(localStorage.getItem("latestOrder"));
 
-    if(!order){
-        document.getElementById("order-info").innerHTML = "<p>주문 정보가 없습니다.</p>";
-    } else {
-        renderOrderInfo(order);
-        saveOrderToFirestore(order);
-    }
+    // 화면에 주문 정보 표시
+    function displayOrder() {
+        if(!order){
+            document.getElementById("order-info").innerHTML = "<p>주문 정보가 없습니다.</p>";
+            return;
+        }
 
-    function renderOrderInfo(order) {
-        let html = `<div>주문번호: ${order.orderId}</div><div class="item">결제금액: ${Number(order.total).toLocaleString()}원</div>`;
+        let html = `
+            <div class="item"><b>주문번호</b><br/>${order.orderId}</div>
+            <div class="item"><b>주문자</b><br/>${order.name}</div>
+            <div class="item"><b>전화번호</b><br/>${order.phone}</div>
+            <div class="item"><b>배송주소</b><br/>${order.address}</div>
+            <div class="item"><b>결제방식</b><br/>${order.payment}</div>
+            <div class="item"><b>결제금액</b><br/>${Number(order.total).toLocaleString()}원</div>
+            <div style="margin-top:20px;">`;
+        
+        order.items.forEach(item => {
+            html += `<div class="item">${item.item} / ${item.qty}개<br/>${item.width} × ${item.height}<br/>${Number(item.price).toLocaleString()}원</div>`;
+        });
+        
+        html += `</div>`;
         document.getElementById("order-info").innerHTML = html;
     }
 
+    // 주문 저장 함수
     async function saveOrderToFirestore(order){
-        const q = query(collection(db,"orders"), where("orderId","==",order.orderId));
-        const exists = await getDocs(q);
-        if(exists.empty){
-            await addDoc(collection(db,"orders"), { ...order, status: "결제완료", createdAt: new Date().toISOString() });
-        }
+        try{
+            const q = query(collection(db, "orders"), where("orderId", "==", order.orderId));
+            const exists = await getDocs(q);
+            if(!exists.empty) return;
+
+            await addDoc(collection(db, "orders"), {
+                ...order, status: "결제완료", createdAt: new Date().toISOString()
+            });
+        } catch(err) { console.error(err); }
     }
 
+    // 결제 취소 함수
     window.cancelOrder = async function() {
         if(!confirm("정말 결제를 취소하시겠습니까?")) return;
 
@@ -75,20 +94,27 @@
             const q = query(collection(db, "orders"), where("orderId", "==", order.orderId));
             const querySnapshot = await getDocs(q);
             
-            querySnapshot.forEach(async (document) => {
-                await deleteDoc(doc(db, "orders", document.id));
+            querySnapshot.forEach(async (d) => {
+                await deleteDoc(doc(db, "orders", d.id));
             });
 
-            document.getElementById("icon").innerHTML = "❌";
+            // 화면 상태 변경
+            document.getElementById("status-icon").innerHTML = "❌";
             document.getElementById("main-title").innerText = "취소가 완료되었습니다.";
-            document.getElementById("order-info").innerHTML = "";
+            document.getElementById("order-info").innerHTML = "<p>결제가 성공적으로 취소되었습니다.</p>";
         } catch (err) {
-            alert("취소 중 오류가 발생했습니다.");
+            alert("취소 처리 중 오류가 발생했습니다.");
             console.error(err);
         }
     };
 
     window.goHome = function(){ location.href = "index.html"; };
+
+    // 초기 실행
+    if(order) {
+        displayOrder();
+        saveOrderToFirestore(order);
+    }
 </script>
 
 </body>
