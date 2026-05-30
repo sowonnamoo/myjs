@@ -8,15 +8,15 @@
         .wrap { max-width: 600px; margin: 0 auto; padding: 20px; }
         .box { background: #fff; border-radius: 16px; padding: 25px; margin-top: 30px; }
         .item { padding: 12px 0; border-bottom: 1px solid #eee; }
-        .btn { width: 100%; height: 52px; border: none; border-radius: 12px; margin-top: 10px; cursor: pointer; color: #fff; }
+        .btn { width: 100%; height: 52px; border: none; border-radius: 12px; margin-top: 10px; cursor: pointer; color: #fff; font-size: 16px; }
     </style>
 </head>
 <body>
 <div class="wrap">
-    <div class="box">
-        <div id="order-info">결제 정보를 불러오는 중...</div>
+    <div class="box" id="main-box">
+        <div id="order-info">로딩 중...</div>
         <button class="btn" style="background:#007AFF;" onclick="location.href='index.html'">홈으로 이동</button>
-        <button class="btn" style="background:#ff3b30;" onclick="cancelOrder()">결제 취소</button>
+        <button class="btn" style="background:#ff3b30;" id="cancel-btn">결제 취소</button>
     </div>
 </div>
 
@@ -24,23 +24,43 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-    const firebaseConfig = { /* 본인의 설정값 그대로 사용 */ };
-    const db = getFirestore(initializeApp(firebaseConfig));
-    const order = JSON.parse(localStorage.getItem("latestOrder"));
+    const firebaseConfig = { /* 본인의 설정값 그대로 */ };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    // 화면에 정보 출력 (기존 로직)
-    document.getElementById("order-info").innerHTML = `<div>주문번호: ${order.orderId}</div><p>결제가 완료되었습니다.</p>`;
+    const orderData = localStorage.getItem("latestOrder");
+    const orderInfoDiv = document.getElementById("order-info");
 
-    window.cancelOrder = async () => {
-        if(!confirm("정말 취소하시겠습니까?")) return;
-        const q = query(collection(db, "orders"), where("orderId", "==", order.orderId));
-        const snap = await getDocs(q);
-        snap.forEach(async (doc) => {
-            await updateDoc(doc.ref, { status: "결제취소" });
-        });
-        alert("취소되었습니다.");
-        location.href = "cancel-complete.html";
-    };
+    if (!orderData) {
+        orderInfoDiv.innerHTML = "주문 정보가 없습니다.";
+    } else {
+        const order = JSON.parse(orderData);
+        // 화면에 정보 뿌리기
+        orderInfoDiv.innerHTML = `
+            <h2>결제가 완료되었습니다!</h2>
+            <div class="item"><b>주문번호:</b> ${order.orderId}</div>
+            <div class="item"><b>주문자:</b> ${order.name}</div>
+            <div class="item"><b>결제금액:</b> ${Number(order.total).toLocaleString()}원</div>
+        `;
+
+        // 취소 버튼 이벤트 직접 연결
+        document.getElementById("cancel-btn").onclick = async () => {
+            if(!confirm("정말 취소하시겠습니까?")) return;
+            
+            const q = query(collection(db, "orders"), where("orderId", "==", order.orderId));
+            const snap = await getDocs(q);
+            
+            if(snap.empty) {
+                alert("해당 주문을 찾을 수 없습니다.");
+            } else {
+                snap.forEach(async (doc) => {
+                    await updateDoc(doc.ref, { status: "결제취소" });
+                });
+                alert("취소 완료되었습니다.");
+                location.href = "index.html"; 
+            }
+        };
+    }
 </script>
 </body>
 </html>
