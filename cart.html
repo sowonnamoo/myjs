@@ -174,8 +174,8 @@ window.goCard = function(){
 
 // 🛠️ 카카오 간편결제 단독채널 오류 수정 완료
 window.goKakao = function(){
-    // 포트원 V2 단독연동(간편결제형) 정식 규격인 "E_WALLET_SERVICE"를 전송합니다.
-    requestPortOnePayment("카카오결제", CHANNEL_KEY_KAKAO, "E_WALLET_SERVICE", "KRW");
+    // SERVICE를 제외한 순수 "E_WALLET"으로 대체 시도
+    requestPortOnePayment("카카오결제", CHANNEL_KEY_KAKAO, "E_WALLET", "KRW");
 };
 
 window.goPaypal = function(){
