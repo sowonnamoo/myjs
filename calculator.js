@@ -1,4 +1,4 @@
-export function calcPrice(PRODUCTS, productCode, w, h, qty) {
+function calcPrice(PRODUCTS, productCode, w, h, qty) {
     const DELIVERY_FEE = 3000;
     const product = PRODUCTS[productCode];
     if (!product) return 0;
