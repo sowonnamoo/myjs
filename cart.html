@@ -58,7 +58,6 @@
 const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
 const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
 
-
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
 
@@ -89,7 +88,6 @@ window.deleteItem = function(index){
     render();
 };
 
-// 파이어베이스 저장 공통 함수
 async function saveOrderToFirestore(orderData) {
     try {
         await addDoc(collection(window.db, "orders"), {
@@ -142,7 +140,8 @@ window.goCard = async function(){
             totalAmount: Number(total),
             currency: "KRW",
             payMethod: "CARD",
-            customer: { name, phoneNumber: phone }
+            customer: { name, phoneNumber: phone },
+            windowType: "iframe" // [수정됨] 팝업 차단 방지를 위한 iframe 모드 추가
         });
 
         if(response.code != null){
@@ -150,7 +149,6 @@ window.goCard = async function(){
             return;
         }
 
-        // 성공 시 파이어베이스 저장
         await saveOrderToFirestore(orderData);
         localStorage.removeItem("cart");
         location.href = "success.html";
@@ -173,7 +171,6 @@ window.goBankTransfer = async function(){
     const orderId = "BANK_" + Date.now();
     const orderData = saveOrder("무통장입금", orderId);
 
-    // 무통장입금 시 파이어베이스 저장
     await saveOrderToFirestore(orderData);
     localStorage.removeItem("cart");
     location.href = "success2.html";
