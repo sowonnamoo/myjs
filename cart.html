@@ -13,7 +13,7 @@
         input{ width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; }
         .bottom{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
         .pay-btn{ width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; margin-bottom:8px; }
-        .kakao-btn{ width:100%; padding:15px; background:#FEE500; color:#191919; border:none; border-radius:10px; cursor:pointer; font-size:16px; font-weight:bold; margin-bottom:8px; }
+        /* 페이팔 버튼 스타일 */
         .paypal-btn{ width:100%; padding:15px; background:#003087; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; font-weight:bold; margin-bottom:8px; }
         .bank-btn{ width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; }
     </style>
@@ -52,7 +52,6 @@
     <div class="bottom">
         <div id="total-price">총 결제금액 : 0원</div>
         <button class="pay-btn" onclick="goCard()">카드결제</button>
-        <button class="kakao-btn" onclick="goKakao()">카카오 간편결제</button>
         <button class="paypal-btn" onclick="goPaypal()">PayPal 결제</button>
         <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
     </div>
@@ -60,10 +59,8 @@
 
 <script>
 const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
-
-// 포트원 콘솔에서 발급받으신 고유 채널키를 정확하게 입력해주세요.
+// 각 결제수단별 채널키 설정 (발급받으신 실제 채널키로 교체해주세요)
 const CHANNEL_KEY_CARD = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0"; 
-const CHANNEL_KEY_KAKAO = "channel-key-e4d27023-a05c-430a-8d65-16b891b3fa24"; 
 const CHANNEL_KEY_PAYPAL = "channel-key-763bcebc-e554-470c-9b4e-cb4e79ebf6c2"; 
 
 
@@ -97,6 +94,7 @@ window.deleteItem = function(index){
     render();
 };
 
+// 파이어베이스 저장 공통 함수
 async function saveOrderToFirestore(orderData) {
     try {
         await addDoc(collection(window.db, "orders"), {
@@ -127,7 +125,7 @@ function saveOrder(type, paymentId){
     return orderData;
 }
 
-// 통합 결제 처리 공통 함수
+// 통합 결제 처리 공통 함수 (기존 goCard 로직 확장)
 async function requestPortOnePayment(paymentType, channelKey, payMethod, currencyType = "KRW") {
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
@@ -138,8 +136,7 @@ async function requestPortOnePayment(paymentType, channelKey, payMethod, currenc
         return;
     }
 
-    // [반영 완료] paymentType의 공백을 제거하고 타임스탬프를 조합하는 규칙
-    const paymentId = paymentType.replace(/\s/g, "") + "_" + Date.now();
+    const paymentId = "PAY_" + Date.now();
     const orderData = saveOrder(paymentType, paymentId);
 
     try{
@@ -150,7 +147,7 @@ async function requestPortOnePayment(paymentType, channelKey, payMethod, currenc
             orderName: "주문상품",
             totalAmount: Number(total),
             currency: currencyType,
-            payMethod: payMethod, 
+            payMethod: payMethod,
             customer: { name, phoneNumber: phone }
         });
 
@@ -159,28 +156,25 @@ async function requestPortOnePayment(paymentType, channelKey, payMethod, currenc
             return;
         }
 
+        // 성공 시 파이어베이스 저장
         await saveOrderToFirestore(orderData);
         localStorage.removeItem("cart");
         location.href = "success.html";
     } catch(error){
         console.error(error);
-        alert("결제창 실행 실패: " + error.message);
+        alert("결제창 실행 실패");
     }
 }
 
+// 1. 기존 카드결제 버튼 이벤트
 window.goCard = function(){
     requestPortOnePayment("카드결제", CHANNEL_KEY_CARD, "CARD", "KRW");
 };
 
-// 🛠️ 카카오 간편결제 단독채널 오류 수정 완료
-window.goKakao = function(){
-    // SERVICE를 제외한 순수 "E_WALLET"으로 대체 시도
-    requestPortOnePayment("카카오결제", CHANNEL_KEY_KAKAO, "E_WALLET", "KRW");
-};
-
+// 2. 페이팔 결제 버튼 이벤트
 window.goPaypal = function(){
-    // [반영 완료] 페이팔 KRW 연동 세팅
-    requestPortOnePayment("페이팔결제", CHANNEL_KEY_PAYPAL, "PAYPAL", "KRW");
+    // 페이팔은 해외 통화(예: USD) 결제가 필수일 수 있으므로 상황에 맞게 통화 단위를 변경해 사용하세요.
+    requestPortOnePayment("페이팔결제", CHANNEL_KEY_PAYPAL, "PAYPAL", "USD");
 };
 
 window.goBankTransfer = async function(){
@@ -196,6 +190,7 @@ window.goBankTransfer = async function(){
     const orderId = "BANK_" + Date.now();
     const orderData = saveOrder("무통장입금", orderId);
 
+    // 무통장입금 시 파이어베이스 저장
     await saveOrderToFirestore(orderData);
     localStorage.removeItem("cart");
     location.href = "success2.html";
