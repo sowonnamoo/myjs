@@ -12,8 +12,8 @@
         .form-box{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
         input{ width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; }
         .bottom{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
-        .pay-btn{ width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; }
-        .bank-btn{ width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; margin-top:8px; font-size:16px; }
+        .pay-btn{ width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; margin-bottom:8px; }
+        .bank-btn{ width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; }
     </style>
 
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
@@ -49,15 +49,22 @@
     </div>
     <div class="bottom">
         <div id="total-price">총 결제금액 : 0원</div>
+        
         <button class="pay-btn" onclick="goCard()">카드결제</button>
+        <button class="pay-btn" style="background:#FFCD00; color:#000;" onclick="goKakao()">카카오페이</button>
+        <button class="pay-btn" style="background:#003087;" onclick="goPayPal()">페이팔 결제</button>
+        
         <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
     </div>
 </div>
 
 <script>
-const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75";
-const CHANNEL_KEY = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
+const STORE_ID = "store-d7a079d5d75";
 
+// === 각 PG사별 Channel Key (반드시 본인 키로 교체하세요) ===
+const CHANNEL_KEY_CARD   = "channel-key-7d98f49a-1876-4ea1-87b6-fe635dd904e0";
+const CHANNEL_KEY_KAKAO  = "channel-key-e4d27023-a05c-430a-8d65-16b891b3fa24";   // 카카오페이 전용 채널키
+const CHANNEL_KEY_PAYPAL = "channel-key-763bcebc-e554-470c-9b4e-cb4e79ebf6c2";   // 페이팔 전용 채널키
 
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
@@ -120,6 +127,7 @@ function saveOrder(type, paymentId){
     return orderData;
 }
 
+// ==================== 카드 결제 ====================
 window.goCard = async function(){
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
@@ -136,7 +144,7 @@ window.goCard = async function(){
     try{
         const response = await PortOne.requestPayment({
             storeId: STORE_ID,
-            channelKey: CHANNEL_KEY,
+            channelKey: CHANNEL_KEY_CARD,
             paymentId: paymentId,
             orderName: "주문상품",
             totalAmount: Number(total),
@@ -150,7 +158,6 @@ window.goCard = async function(){
             return;
         }
 
-        // 성공 시 파이어베이스 저장
         await saveOrderToFirestore(orderData);
         localStorage.removeItem("cart");
         location.href = "success.html";
@@ -160,6 +167,87 @@ window.goCard = async function(){
     }
 };
 
+// ==================== 카카오페이 ====================
+window.goKakao = async function(){
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
+
+    if(!name || !phone || !address.trim()){
+        alert("모든 정보를 입력해주세요.");
+        return;
+    }
+
+    const paymentId = "KAKAO_" + Date.now();
+    const orderData = saveOrder("카카오페이", paymentId);
+
+    try{
+        const response = await PortOne.requestPayment({
+            storeId: STORE_ID,
+            channelKey: CHANNEL_KEY_KAKAO,
+            paymentId: paymentId,
+            orderName: "주문상품",
+            totalAmount: Number(total),
+            currency: "KRW",
+            payMethod: "KAKAOPAY",
+            customer: { name, phoneNumber: phone }
+        });
+
+        if(response.code != null){
+            alert("결제 실패 : " + response.message);
+            return;
+        }
+
+        await saveOrderToFirestore(orderData);
+        localStorage.removeItem("cart");
+        location.href = "success.html";
+    } catch(error){
+        console.error(error);
+        alert("결제창 실행 실패");
+    }
+};
+
+// ==================== 페이팔 결제 ====================
+window.goPayPal = async function(){
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
+
+    if(!name || !phone || !address.trim()){
+        alert("모든 정보를 입력해주세요.");
+        return;
+    }
+
+    const paymentId = "PAYPAL_" + Date.now();
+    const orderData = saveOrder("페이팔결제", paymentId);
+
+    try{
+        const response = await PortOne.requestPayment({
+            storeId: STORE_ID,
+            channelKey: CHANNEL_KEY_PAYPAL,
+            paymentId: paymentId,
+            orderName: "주문상품",
+            totalAmount: Number(total),
+            currency: "USD",           // 페이팔은 보통 USD 사용 권장
+            payMethod: "PAYPAL",
+            customer: { name, phoneNumber: phone }
+        });
+
+        if(response.code != null){
+            alert("결제 실패 : " + response.message);
+            return;
+        }
+
+        await saveOrderToFirestore(orderData);
+        localStorage.removeItem("cart");
+        location.href = "success.html";
+    } catch(error){
+        console.error(error);
+        alert("결제창 실행 실패");
+    }
+};
+
+// ==================== 무통장 입금 (기존) ====================
 window.goBankTransfer = async function(){
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
@@ -173,7 +261,6 @@ window.goBankTransfer = async function(){
     const orderId = "BANK_" + Date.now();
     const orderData = saveOrder("무통장입금", orderId);
 
-    // 무통장입금 시 파이어베이스 저장
     await saveOrderToFirestore(orderData);
     localStorage.removeItem("cart");
     location.href = "success2.html";
