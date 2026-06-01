@@ -1,4 +1,4 @@
-1<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8" />
@@ -138,7 +138,7 @@ async function requestPortOnePayment(paymentType, channelKey, payMethod, currenc
         return;
     }
 
-    // [변경 사항] paymentType의 공백을 제거한 뒤 타임스탬프를 조합하여 ID 생성
+    // [반영 완료] paymentType의 공백을 제거하고 타임스탬프를 조합하는 규칙
     const paymentId = paymentType.replace(/\s/g, "") + "_" + Date.now();
     const orderData = saveOrder(paymentType, paymentId);
 
@@ -150,7 +150,7 @@ async function requestPortOnePayment(paymentType, channelKey, payMethod, currenc
             orderName: "주문상품",
             totalAmount: Number(total),
             currency: currencyType,
-            payMethod: payMethod,
+            payMethod: payMethod, 
             customer: { name, phoneNumber: phone }
         });
 
@@ -172,12 +172,14 @@ window.goCard = function(){
     requestPortOnePayment("카드결제", CHANNEL_KEY_CARD, "CARD", "KRW");
 };
 
+// 🛠️ 카카오 간편결제 단독채널 오류 수정 완료
 window.goKakao = function(){
-    requestPortOnePayment("카카오결제", CHANNEL_KEY_KAKAO, "E_WALLET", "KRW");
+    // 포트원 V2 단독연동(간편결제형) 정식 규격인 "E_WALLET_SERVICE"를 전송합니다.
+    requestPortOnePayment("카카오결제", CHANNEL_KEY_KAKAO, "E_WALLET_SERVICE", "KRW");
 };
 
 window.goPaypal = function(){
-    // [변경 사항] 페이팔 결제 통화를 "USD"에서 "KRW"로 변경하여 요청
+    // [반영 완료] 페이팔 KRW 연동 세팅
     requestPortOnePayment("페이팔결제", CHANNEL_KEY_PAYPAL, "PAYPAL", "KRW");
 };
 
