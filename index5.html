@@ -438,11 +438,11 @@
 
 <script>
 const PRICE_TABLE = {
-    500: { baseMultiplier: 1.324, minimum: 15000, multiple: 1 },
-    1000: { baseMultiplier: 1.857, minimum: 15000, multiple: 1 }
+    500: { baseMultiplier: 1.324, minimum: 100, multiple: 1 },
+    1000: { baseMultiplier: 1.857, minimum: 100, multiple: 1 }
 };
 for(let qty = 2000; qty <= 30000; qty += 1000){
-    PRICE_TABLE[qty] = { baseMultiplier: 1.857, minimum: 15000, multiple: 1 + (((qty / 1000) - 1) * 0.99) };
+    PRICE_TABLE[qty] = { baseMultiplier: 1.857, minimum: 100, multiple: 1 + (((qty / 1000) - 1) * 0.99) };
 }
 
 function totalCal(){
