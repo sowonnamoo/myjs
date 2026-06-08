@@ -57,7 +57,7 @@
 </div>
 
 <script>
-// 클라우드플레어 Worker 주소를 여기에 넣으세요
+// 104번 줄: 본인의 실제 클라우드플레어 Worker 주소를 입력하세요
 const WORKER_URL = "https://생성된-주소.workers.dev"; 
 
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -110,7 +110,7 @@ function saveOrder(type, paymentId){
     return orderData;
 }
 
-// 안전한 통합 결제 처리
+// 안전한 통합 결제 처리 (Worker 서버에서 키를 받아옴)
 async function requestPortOnePayment(paymentType, payMethod, currencyType = "KRW") {
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
@@ -121,14 +121,14 @@ async function requestPortOnePayment(paymentType, payMethod, currencyType = "KRW
         return;
     }
 
-    // 1. 서버에서 보안 키 받아오기
-    const res = await fetch(WORKER_URL);
-    const data = await res.json();
-
-    const paymentId = "PAY_" + Date.now();
-    const orderData = saveOrder(paymentType, paymentId);
-
     try{
+        // 서버에서 보안 키 호출
+        const res = await fetch(WORKER_URL);
+        const data = await res.json();
+
+        const paymentId = "PAY_" + Date.now();
+        const orderData = saveOrder(paymentType, paymentId);
+
         const response = await PortOne.requestPayment({
             storeId: data.STORE_ID,
             channelKey: (payMethod === "PAYPAL") ? data.CHANNEL_KEY_PAYPAL : data.CHANNEL_KEY_CARD,
@@ -149,8 +149,8 @@ async function requestPortOnePayment(paymentType, payMethod, currencyType = "KRW
         localStorage.removeItem("cart");
         location.href = "success.html";
     } catch(error){
-        console.error(error);
-        alert("결제창 실행 실패");
+        console.error("결제 처리 중 에러:", error);
+        alert("결제창 실행 실패: 보안 서버 연결을 확인해주세요.");
     }
 }
 
