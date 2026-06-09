@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>카드 결제</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center h-screen">
+
+    <div class="w-full h-full bg-white p-6 flex flex-col justify-center items-center">
+        <h2 class="text-lg font-bold mb-4">💳 결제 진행</h2>
+        <div id="total-price" class="text-2xl font-bold text-blue-600 mb-6">0원</div>
+        
+        <button onclick="goCard()" class="w-full py-3 bg-blue-900 text-white font-bold rounded-lg">
+            결제하기
+        </button>
+    </div>
+
+    <script>
+        const WORKER_URL = "https://proud-math-2d41.ecogr.workers.dev/";
+
+        // URL에서 price 파라미터 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const total = Number(urlParams.get('price')) || 0;
+        
+        document.getElementById("total-price").innerText = total.toLocaleString() + "원";
+
+        async function goCard(){
+            try {
+                const res = await fetch(WORKER_URL);
+                const data = await res.json();
+                
+                const response = await PortOne.requestPayment({
+                    storeId: data.STORE_ID,
+                    channelKey: data.CHANNEL_KEY_CARD,
+                    paymentId: "PAY_" + Date.now(),
+                    orderName: "주문상품 결제",
+                    totalAmount: total,
+                    currency: "KRW",
+                    payMethod: "CARD"
+                });
+
+                if(response.code != null){
+                    alert("결제 실패: " + response.message);
+                    return;
+                }
+
+                alert(total.toLocaleString() + "원이 결제되었습니다.\n확인 후 시안이 등록됩니다.");
+                window.close(); // 결제 완료 후 팝업 닫기
+
+            } catch(error) {
+                alert("결제창 오류 발생");
+            }
+        }
+    </script>
+</body>
+</html>
