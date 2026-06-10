@@ -53,7 +53,7 @@
         };
 
         // 2. 데이터 저장 함수
-        window.saveData = async () => {
+window.saveData = async () => {
             const phoneVal = document.getElementById('phone').value;
             const urlVal = document.getElementById('url').value;
             
@@ -63,11 +63,22 @@
             }
 
             try {
+                // [중복 체크] woonso 컬렉션에 같은 url이 있는지 확인
+                const q = query(collection(db, 'woonso'), where("url", "==", urlVal));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    alert('중복된 URL입니다! 이미 등록된 정보입니다.');
+                    return; // 함수 종료 (저장 안 함)
+                }
+
+                // 중복이 없으면 저장 진행
                 await addDoc(collection(db, 'woonso'), {
                     phone: phoneVal,
                     url: urlVal,
                     date: new Date().toISOString().split('T')[0]
                 });
+                
                 alert('저장 완료!');
                 document.getElementById('phone').value = '';
                 document.getElementById('url').value = '';
