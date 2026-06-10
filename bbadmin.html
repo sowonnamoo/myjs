@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>배송 관리자 페이지</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f9f9f9; }
+        .box { margin-bottom: 20px; padding: 20px; border: 1px solid #ddd; width: 350px; border-radius: 12px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: #03c75a; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h3>운송장 정보 등록</h3>
+        <input type="text" id="phone" placeholder="전화번호 (예: 01012345678)">
+        <input type="text" id="url" placeholder="운송장 URL">
+        <button onclick="saveData()">저장하기</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, push, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        // [중요] 본인의 Firebase 프로젝트 설정값으로 바꾸세요
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+  authDomain: "ecogr-636c6.firebaseapp.com",
+  projectId: "ecogr-636c6",
+  storageBucket: "ecogr-636c6.firebasestorage.app",
+  messagingSenderId: "95745358447",
+  appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // 1. 페이지 접속 시 자동 삭제 실행
+        window.onload = () => {
+            autoDeleteOldData();
+        };
+
+        async function autoDeleteOldData() {
+            const itemsRef = ref(db, 'woonso');
+            const snapshot = await get(itemsRef);
+            
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            snapshot.forEach((child) => {
+                const data = child.val();
+                const itemDate = new Date(data.date);
+
+                if (itemDate < thirtyDaysAgo) {
+                    remove(child.ref);
+                }
+            });
+        }
+
+        // 2. 데이터 저장 함수
+        window.saveData = () => {
+            const phoneVal = document.getElementById('phone').value;
+            const urlVal = document.getElementById('url').value;
+            
+            if(!phoneVal || !urlVal) { 
+                alert('전화번호와 URL을 모두 입력해주세요.'); 
+                return; 
+            }
+
+            push(ref(db, 'woonso'), {
+                phone: phoneVal,
+                url: urlVal,
+                date: new Date().toISOString().split('T')[0]
+            }).then(() => {
+                alert('저장 완료!');
+                document.getElementById('phone').value = '';
+                document.getElementById('url').value = '';
+            });
+        };
+    </script>
+</body>
+</html>
