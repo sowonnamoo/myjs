@@ -15,26 +15,24 @@
         </a>
     </div>
 
-    <script>
+// success4.html의 스크립트 부분을 이렇게 변경하세요
+<script>
     const params = new URLSearchParams(window.location.search);
-    const tno = params.get('tno');        // 포트원에서 받은 txId
-    const order_no = params.get('order_no'); // paymentId
-    const price = params.get('price');
+    const txId = params.get('tno'); // 포트원 txId (기존 tno 파라미터)
+    const storeId = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75"; // <--- 여기를 실제 StoreID로 바꾸세요!
 
-    if(tno && order_no && price) {
-        // 사장님이 방금 보여주신 파라미터명에 맞춰서 다시 조합했습니다!
-        const billUrl = `https://partner.kcp.co.kr/bill/card?cmd=card_bill&C_TRADE_NO=${tno}&ORDER_NO=${order_no}&TRADE_MONY=${price}&lang=ko`;
-        
+    if(txId) {
+        // 포트원 공식 전표 조회 URL
+        const billUrl = `https://portone.io/receipt/payment/${storeId}/${txId}`;
         document.getElementById("bill-btn").href = billUrl;
     } else {
-        alert("전표 정보를 불러올 수 없습니다. 파라미터 오류입니다.");
+        alert("전표 정보를 찾을 수 없습니다.");
     }
 
-    // 5초 대기 후 버튼 표시 (서버 동기화 시간 확보)
     setTimeout(() => {
         document.getElementById("loading").classList.add("hidden");
         document.getElementById("bill-btn").classList.remove("hidden");
-    }, 5000); 
+    }, 2000);
 </script>
 </body>
 </html>
