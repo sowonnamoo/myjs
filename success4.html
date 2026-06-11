@@ -7,11 +7,29 @@
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm text-center">
-        <h2 class="text-2xl font-bold text-blue-900">결제 완료</h2>
-        <p class="text-gray-600 mt-4">전표 발행이 완료되었습니다.<br>잠시 후 창이 닫힙니다.</p>
+        <h2 class="text-2xl font-bold text-blue-900">결제 완료!</h2>
+        <p class="text-gray-600 mt-4">전표가 생성되었습니다.</p>
+        
+        <a id="bill-btn" href="#" target="_blank" class="block mt-6 w-full py-3 bg-green-600 text-white font-bold rounded hover:bg-green-500 transition">
+            전표 출력하기
+        </a>
     </div>
+
     <script>
-        setTimeout(() => { window.close(); }, 2000);
+        const params = new URLSearchParams(window.location.search);
+        const tno = params.get('tno');
+        const order_no = params.get('order_no');
+        const price = params.get('price');
+
+        if(tno && order_no && price) {
+            const billUrl = `https://partner.kcp.co.kr/bill/card?cmd=card_bill&tno=${tno}&order_no=${order_no}&trade_mony=${price}`;
+            document.getElementById("bill-btn").href = billUrl;
+        } else {
+            document.getElementById("bill-btn").innerText = "정보 오류";
+            document.getElementById("bill-btn").classList.replace("bg-green-600", "bg-red-500");
+        }
+
+        setTimeout(() => { window.close(); }, 10000); // 출력 시간이 필요할 수 있으니 10초로 여유 있게
     </script>
 </body>
 </html>
