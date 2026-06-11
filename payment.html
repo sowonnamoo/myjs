@@ -70,13 +70,14 @@
                 if (response.code != null) return alert("결제 실패: " + response.message);
 
                 await addDoc(collection(window.db, "cards1"), {
-                    paymentId: paymentId,
-                    tno: response.txId,
-                    amount: totalAmount,
-                    phone: phone,
-                    status: "결제완료",
-                    createdAt: new Date().toISOString()
-                });
+    paymentId: paymentId,
+    tno: response.pgTxId || response.txId, // 일단 기존 방식 유지
+    amount: totalAmount,
+    phone: phone,
+    status: "결제완료",
+    createdAt: new Date().toISOString(),
+    fullData: response 
+});
 
                 // 성공 시 전표 출력을 위한 파라미터를 붙여서 이동
                 window.location.href = `success4.html?tno=${response.txId}&order_no=${paymentId}&price=${totalAmount}`;
