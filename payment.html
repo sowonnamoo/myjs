@@ -6,90 +6,90 @@
     <title>결제 진행</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+            authDomain: "ecogr-636c6.firebaseapp.com",
+            projectId: "ecogr-636c6",
+            storageBucket: "ecogr-636c6.firebasestorage.app",
+            messagingSenderId: "95745358447",
+            appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+        };
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.addDoc = addDoc;
+        window.collection = collection;
+    </script>
     <style>
         @keyframes blink-red-black {
-            0% { color: #1f2937; }  /* 검은색 */
-            50% { color: #dc2626; } /* 붉은색 */
-            100% { color: #1f2937; } /* 검은색 */
+            0% { color: #1f2937; }
+            50% { color: #dc2626; }
+            100% { color: #1f2937; }
         }
-        .blink-text {
-            animation: blink-red-black 1.5s infinite;
-        }
+        .blink-text { animation: blink-red-black 1.5s infinite; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
-
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm text-center">
         <h2 class="text-xl font-bold mb-6 text-gray-800">결제 상세정보</h2>
-        
         <div class="mb-6">
             <p class="text-gray-500 text-sm">결제 예정 금액</p>
             <div id="display-price" class="text-3xl font-bold text-blue-600 mt-2">0원</div>
         </div>
-
-        <button onclick="requestPayment()" class="w-full py-3 bg-blue-900 text-white font-bold rounded hover:bg-blue-800 transition">
-            결제하기
-        </button>
-
+        <button onclick="requestPayment()" class="w-full py-3 bg-blue-900 text-white font-bold rounded hover:bg-blue-800 transition">결제하기</button>
         <div class="p-3 rounded text-left text-xs text-gray-600 mt-4">
             <div class="flex items-center gap-2 mb-1 font-bold blink-text">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
-                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                </svg>
                 <span>카드사 선택후 결제창이 뜨지 않을 때</span>
             </div>
-            <p>인터넷 창 우측 상단 <strong>팝업 아이콘(차단됨)</strong>을 클릭하여 <strong>"항상 허용"</strong>으로 변경해주세요.</p>
+            <p>인터넷 창 우측 상단 <strong>팝업 아이콘</strong>을 클릭하여 <strong>"항상 허용"</strong>으로 변경해주세요.</p>
         </div>
     </div>
 
     <script>
-        // 1. URL에서 price 파라미터 가져오기
         const urlParams = new URLSearchParams(window.location.search);
-        const price = urlParams.get('price'); 
-        const totalAmount = Number(price) || 0;
+        const totalAmount = Number(urlParams.get('price')) || 0;
+        document.getElementById("display-price").innerText = totalAmount.toLocaleString() + "원";
 
-        // 화면에 금액 표시
-        if (totalAmount > 0) {
-            document.getElementById("display-price").innerText = totalAmount.toLocaleString() + "원";
-        } else {
-            alert("결제 금액을 불러올 수 없습니다.");
-        }
-
-        // 2. 결제 함수
-        async function requestPayment() {
-            if (totalAmount <= 0) {
-                alert("유효한 결제 금액이 아닙니다.");
-                return;
-            }
+        window.requestPayment = async function() {
+            if (totalAmount <= 0) return alert("결제 금액을 확인해주세요.");
 
             try {
-                // 본인의 결제 설정이 담긴 워커 URL
                 const WORKER_URL = "https://proud-math-2d41.ecogr.workers.dev/";
                 const res = await fetch(WORKER_URL);
                 const data = await res.json();
+                const paymentId = "PAY_" + Date.now();
 
-                // 포트원 결제 요청
                 const response = await PortOne.requestPayment({
                     storeId: data.STORE_ID,
                     channelKey: data.CHANNEL_KEY_CARD,
-                    paymentId: "PAY_" + Date.now(), // 고유 주문번호
+                    paymentId: paymentId,
                     orderName: "주문 상품 결제",
                     totalAmount: totalAmount,
                     currency: "KRW",
                     payMethod: "CARD"
                 });
 
-                // 결제 결과 확인
-                if (response.code != null) {
-                    alert("결제 실패: " + response.message);
-                } else {
-                    alert(totalAmount.toLocaleString() + "원이 결제되었습니다.");
-                    window.close(); // 결제 완료 후 창 닫기
-                }
+                if (response.code != null) return alert("결제 실패: " + response.message);
+
+                // Firebase cards1 폴더에 데이터 저장
+                await addDoc(collection(window.db, "cards1"), {
+                    paymentId: paymentId,
+                    amount: totalAmount,
+                    approvalNumber: response.approvalNumber || "없음",
+                    cardCompany: response.cardName || "정보없음",
+                    status: "결제완료",
+                    createdAt: new Date().toISOString(),
+                    fullData: response
+                });
+
+                // 성공 시 success4.html로 리다이렉트
+                window.location.href = "success4.html";
             } catch (error) {
                 console.error(error);
-                alert("결제 진행 중 오류가 발생했습니다.");
+                alert("결제 처리 중 오류가 발생했습니다.");
             }
         }
     </script>
