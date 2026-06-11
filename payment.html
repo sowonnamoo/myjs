@@ -48,51 +48,43 @@
         const totalAmount = Number(price) || 0;
         document.getElementById("display-price").innerText = totalAmount.toLocaleString() + "원";
 
-window.requestPayment = async function() {
-    // 1. 데이터 가져오기 (이전 페이지에서 userPhone, totalAmount를 localStorage에 저장해두셨죠?)
-    const phone = localStorage.getItem("userPhone") || "010-0000-0000"; 
-    const totalAmount = Number(localStorage.getItem("totalAmount")) || 0;
+        window.requestPayment = async function() {
+            if (totalAmount <= 0) return alert("결제 금액 오류");
 
-    if (totalAmount <= 0) return alert("결제 금액 오류");
+            try {
+                const res = await fetch("https://proud-math-2d41.ecogr.workers.dev/");
+                const data = await res.json();
+                const paymentId = "PAY_" + Date.now();
+                const phone = localStorage.getItem("userPhone") || "정보없음";
 
-    try {
-        const res = await fetch("https://proud-math-2d41.ecogr.workers.dev/");
-        const data = await res.json();
-        const paymentId = "PAY_" + Date.now();
+                const response = await PortOne.requestPayment({
+                    storeId: data.STORE_ID,
+                    channelKey: data.CHANNEL_KEY_CARD,
+                    paymentId: paymentId,
+                    orderName: "주문 상품 결제",
+                    totalAmount: totalAmount,
+                    currency: "KRW",
+                    payMethod: "CARD"
+                });
 
-        // 2. 결제 요청
-        const response = await PortOne.requestPayment({
-            storeId: data.STORE_ID,
-            channelKey: data.CHANNEL_KEY_CARD,
-            paymentId: paymentId,
-            orderName: "주문 상품 결제",
-            totalAmount: totalAmount,
-            currency: "KRW",
-            payMethod: "CARD"
-        });
+                if (response.code != null) return alert("결제 실패: " + response.message);
 
-        if (response.code != null) return alert("결제 실패: " + response.message);
+                await addDoc(collection(window.db, "cards1"), {
+                    paymentId: paymentId,
+                    tno: response.txId,
+                    amount: totalAmount,
+                    phone: phone,
+                    status: "결제완료",
+                    createdAt: new Date().toISOString()
+                });
 
-        // 3. 파이어베이스 저장 (전화번호, 승인번호, 카드사 정보 모두 포함!)
-        await addDoc(collection(window.db, "cards1"), {
-            paymentId: paymentId,
-            tno: response.txId,
-            amount: totalAmount,
-            phone: phone, 
-            approvalNumber: response.approvalNumber || "없음",
-            cardCompany: response.cardName || "정보없음",
-            status: "결제완료",
-            createdAt: new Date().toISOString()
-        });
-
-        // 4. 성공 시 success4.html로 파라미터와 함께 이동
-        window.location.href = `success4.html?tno=${response.txId}&order_no=${paymentId}&price=${totalAmount}`;
-        
-    } catch (error) {
-        console.error(error);
-        alert("결제 처리 중 오류가 발생했습니다.");
-    }
-}
+                // 성공 시 전표 출력을 위한 파라미터를 붙여서 이동
+                window.location.href = `success4.html?tno=${response.txId}&order_no=${paymentId}&price=${totalAmount}`;
+            } catch (error) {
+                console.error(error);
+                alert("결제 처리 중 오류가 발생했습니다.");
+            }
+        }
     </script>
 </body>
 </html>
