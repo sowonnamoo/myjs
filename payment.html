@@ -81,7 +81,10 @@
 
                 // 성공 시 전표 출력을 위한 파라미터를 붙여서 이동
 
-window.location.href = `https://sowonnamoo.github.io/myboard/success4?price=${totalAmount}`;
+// 이전 페이지(결제 완료 시점)
+const price = urlParams.get('price'); // URL에서 가져온 값을 그대로 사용
+window.location.href = `https://sowonnamoo.github.io/myboard/success4?price=${price}`;
+
                 
             } catch (error) {
                 console.error(error);
