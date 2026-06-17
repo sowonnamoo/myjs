@@ -15,7 +15,7 @@
 
     <div class="box">
         <h3>운송장 정보 등록</h3>
-        <input type="text" id="phone" placeholder="전화번호 (예: 01012345678)">
+        <input type="text" id="phone" placeholder="전화번호 (예: 010-1234-5678)">
         <input type="text" id="url" placeholder="운송장 URL">
         <button onclick="saveData()">저장하기</button>
     </div>
@@ -24,20 +24,20 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-  };
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 1. 페이지 접속 시 자동 삭제 실행
+        // 1. 페이지 접속 시 30일 지난 데이터 자동 삭제
         window.onload = async () => {
             const now = new Date();
             const thirtyDaysAgo = new Date();
@@ -52,9 +52,11 @@
             });
         };
 
-        // 2. 데이터 저장 함수
-window.saveData = async () => {
-            const phoneVal = document.getElementById('phone').value;
+        // 2. 데이터 저장 함수 (전화번호 자동 정제 포함)
+        window.saveData = async () => {
+            const rawPhone = document.getElementById('phone').value;
+            // 숫자 외의 모든 문자(하이픈, 공백 등) 제거
+            const phoneVal = rawPhone.replace(/[^0-9]/g, ''); 
             const urlVal = document.getElementById('url').value;
             
             if(!phoneVal || !urlVal) { 
@@ -63,16 +65,16 @@ window.saveData = async () => {
             }
 
             try {
-                // [중복 체크] woonso 컬렉션에 같은 url이 있는지 확인
+                // 중복 체크
                 const q = query(collection(db, 'woonso'), where("url", "==", urlVal));
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
                     alert('중복된 URL입니다! 이미 등록된 정보입니다.');
-                    return; // 함수 종료 (저장 안 함)
+                    return;
                 }
 
-                // 중복이 없으면 저장 진행
+                // 저장 진행
                 await addDoc(collection(db, 'woonso'), {
                     phone: phoneVal,
                     url: urlVal,
