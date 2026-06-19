@@ -112,24 +112,31 @@ function saveOrder(type, paymentId){
 
 // 안전한 통합 결제 처리 (Worker 서버에서 키를 받아옴)
 async function requestPortOnePayment(paymentType, payMethod, currencyType = "KRW") {
-    // ... 입력값 검증 생략 ...
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
 
-    try {
-        // [수정] 딱 2개 변수만 선언!
-        const STORE_ID = "store-d7a076d7-2e69-4b3e-88d2-7d08759d5d75"; 
-        const CHANNEL_KEY = "channel-key-b9cf30a6-9a1a-44d9-8e83-c80bdcab44c4"; // 카드/페이팔 공유 가능하면 하나만 넣으세요
+    if(!name || !phone || !address.trim()){
+        alert("모든 정보를 입력해주세요.");
+        return;
+    }
+
+    try{
+        // 서버에서 보안 키 호출
+        const res = await fetch(WORKER_URL);
+        const data = await res.json();
 
         const paymentId = "PAY_" + Date.now();
         const orderData = saveOrder(paymentType, paymentId);
 
         const response = await PortOne.requestPayment({
-            storeId: STORE_ID,
-            channelKey: CHANNEL_KEY, // 공유 키 사용
+            storeId: data.STORE_ID,
+            channelKey: (payMethod === "PAYPAL") ? data.CHANNEL_KEY_PAYPAL : data.CHANNEL_KEY_CARD,
             paymentId: paymentId,
             orderName: "주문상품",
             totalAmount: Number(total),
             currency: currencyType,
-            payMethod: payMethod, // 여기서 CARD인지 PAYPAL인지 구분함
+            payMethod: payMethod,
             customer: { name, phoneNumber: phone }
         });
 
