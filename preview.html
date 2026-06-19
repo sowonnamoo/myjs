@@ -416,23 +416,25 @@ async function addToCart() {
     startProgressSimulation();
 
     canvas.toBlob(async function(blob) {
-        const fileName = `${주문정보.name}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
-        const formData = new FormData();
-        formData.append('file', blob, fileName);
+        // 파일 이름 설정 (app.js 스타일과 동일하게)
+        const fileName = `${주문정보.name}_${Date.now()}.jpg`;
+        const WORKER_URL = "https://r2.ecogr.workers.dev/";
 
         try {
-            const res = await fetch(R2_UPLOAD_URL, {
-                method: 'POST',
-                body: formData
+            // app.js와 동일한 PUT 방식 전송
+            const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(fileName)}`, {
+                method: "PUT",
+                body: blob // canvas에서 만든 blob 그대로 전송
             });
 
-            const data = await res.json(); 
+            if (!response.ok) throw new Error("업로드 실패");
+
+            const result = await response.json(); // { url: "..." } 반환
             
             if (progressTimer) clearInterval(progressTimer);
             setGaugePercent(100);
-            loadingTitle.textContent = '업로드 완료!';
-            loadingSub.textContent = '장바구니로 이동합니다';
-
+            
+            // 데이터 카트 저장
             const cart = JSON.parse(localStorage.getItem('cart')) || [];
             cart.push({
                 item: 주문정보.item,
@@ -440,19 +442,18 @@ async function addToCart() {
                 width: 주문정보.width,
                 height: 주문정보.height,
                 price: 주문정보.price,
-                imageUrl: data.url, // R2 이미지 주소
+                imageUrl: result.url, // R2 이미지 주소
                 customerName: 주문정보.name
             });
             localStorage.setItem('cart', JSON.stringify(cart));
             
-            setTimeout(function() {
-                location.href = 'https://sowonnamoo.github.io/myjs/cart';
-            }, 400);
-
+            // 페이지 이동
+            location.href = 'https://sowonnamoo.github.io/myjs/cart';
+            
         } catch (error) {
             console.error(error);
             hideLoading();
-            alert('업로드 중 오류가 발생했습니다. 다시 시도해 주세요.');
+            alert('업로드 중 오류가 발생했습니다.');
         }
     }, 'image/jpeg', 0.95);
 }
