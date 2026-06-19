@@ -138,7 +138,6 @@ canvas {
 .upload-box-wrapper b { font-size: 15px; color: #fff; display: block; margin-bottom: 6px; }
 .upload-box-wrapper p { margin: 0; font-size: 11px; color: #8a8a93; text-align: center; line-height: 1.5; }
 
-/* 화면 중앙 로딩 오버레이 */
 .loading-overlay {
     display: none;
     position: fixed;
@@ -404,7 +403,8 @@ window.addEventListener('resize', function() {
     if (currentImg) draw(currentImg);
 });
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
+// R2 업로드용 엔드포인트 URL (본인 서버 주소로 반드시 수정하세요)
+const R2_UPLOAD_URL = "https://your-worker-url.workers.dev/upload";
 
 async function addToCart() {
     if (!currentImg) {
@@ -412,51 +412,48 @@ async function addToCart() {
         return;
     }
 
-    showLoading('업로드 준비 중', '장바구니에 담는 중입니다', 0);
+    showLoading('업로드 중', '서버로 전송 중입니다', 0);
     startProgressSimulation();
 
     canvas.toBlob(async function(blob) {
         const fileName = `${주문정보.name}_${주문정보.width}x${주문정보.height}_${주문정보.qty}장.jpg`;
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const base64Data = e.target.result.split(',')[1];
-            const body = new URLSearchParams({
-                data: base64Data,
-                filename: fileName,
-                mimetype: 'image/jpeg'
-            });
-            try {
-                const res = await fetch(WEB_APP_URL, { method: 'POST', body });
-                const data = await res.json();
-                if (progressTimer) clearInterval(progressTimer);
-                setGaugePercent(100);
-                loadingTitle.textContent = '업로드 완료!';
-                loadingSub.textContent = '장바구니로 이동합니다';
+        const formData = new FormData();
+        formData.append('file', blob, fileName);
 
-                const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                cart.push({
-                    item: 주문정보.item,
-                    qty: 주문정보.qty,
-                    width: 주문정보.width,
-                    height: 주문정보.height,
-                    price: 주문정보.price,
-                    imageUrl: data.url,
-                    customerName: 주문정보.name
-                });
-                localStorage.setItem('cart', JSON.stringify(cart));
-                setTimeout(function() {
-                    location.href = 'https://sowonnamoo.github.io/myjs/cart';
-                }, 400);
-            } catch (error) {
-                hideLoading();
-                alert('업로드 중 오류가 발생했습니다. 다시 시도해 주세요.');
-            }
-        };
-        reader.onerror = function() {
+        try {
+            const res = await fetch(R2_UPLOAD_URL, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json(); 
+            
+            if (progressTimer) clearInterval(progressTimer);
+            setGaugePercent(100);
+            loadingTitle.textContent = '업로드 완료!';
+            loadingSub.textContent = '장바구니로 이동합니다';
+
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            cart.push({
+                item: 주문정보.item,
+                qty: 주문정보.qty,
+                width: 주문정보.width,
+                height: 주문정보.height,
+                price: 주문정보.price,
+                imageUrl: data.url, // R2 이미지 주소
+                customerName: 주문정보.name
+            });
+            localStorage.setItem('cart', JSON.stringify(cart));
+            
+            setTimeout(function() {
+                location.href = 'https://sowonnamoo.github.io/myjs/cart';
+            }, 400);
+
+        } catch (error) {
+            console.error(error);
             hideLoading();
-            alert('이미지 변환에 실패했습니다.');
-        };
-        reader.readAsDataURL(blob);
+            alert('업로드 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        }
     }, 'image/jpeg', 0.95);
 }
 </script>
