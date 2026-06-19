@@ -57,8 +57,9 @@
 </div>
 
 <script>
-// 104번 줄: 본인의 실제 클라우드플레어 Worker 주소를 입력하세요
-const WORKER_URL = "https://proud-math-2d41.ecogr.workers.dev/"; 
+// 각 결제 수단별 독립적인 Worker 주소
+const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/"; 
+const WORKER_PAYPAL = "https://paypal.ecogr.workers.dev/";
 
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
@@ -110,52 +111,57 @@ function saveOrder(type, paymentId){
     return orderData;
 }
 
-// 안전한 통합 결제 처리 (Worker 서버에서 키를 받아옴)
-async function requestPortOnePayment(paymentType, payMethod, currencyType = "KRW") {
+// [1] 카드 결제 전용 (KCP)
+window.goCard = async function() {
+    try {
+        const res = await fetch(WORKER_CARD);
+        const data = await res.json();
+        processPayment("카드결제", "CARD", "KRW", data.CHANNEL_KEY_CARD, data.STORE_ID);
+    } catch (e) { alert("카드 서버 연결 실패"); }
+};
+
+// [2] 페이팔 결제 전용
+window.goPaypal = async function() {
+    try {
+        const res = await fetch(WORKER_PAYPAL);
+        const data = await res.json();
+        processPayment("페이팔결제", "PAYPAL", "USD", data.CHANNEL_KEY_PAYPAL, data.STORE_ID);
+    } catch (e) { alert("페이팔 서버 연결 실패"); }
+};
+
+// [3] 핵심 결제 처리 엔진 (공통)
+async function processPayment(paymentType, payMethod, currency, channelKey, storeId) {
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
     const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
 
-    if(!name || !phone || !address.trim()){
-        alert("모든 정보를 입력해주세요.");
-        return;
-    }
+    if(!name || !phone || !address.trim()){ alert("정보를 모두 입력해주세요."); return; }
 
-    try{
-        // 서버에서 보안 키 호출
-        const res = await fetch(WORKER_URL);
-        const data = await res.json();
-
+    try {
         const paymentId = "PAY_" + Date.now();
         const orderData = saveOrder(paymentType, paymentId);
 
         const response = await PortOne.requestPayment({
-            storeId: data.STORE_ID,
-            channelKey: (payMethod === "PAYPAL") ? data.CHANNEL_KEY_PAYPAL : data.CHANNEL_KEY_CARD,
+            storeId: storeId,
+            channelKey: channelKey,
             paymentId: paymentId,
             orderName: "주문상품",
             totalAmount: Number(total),
-            currency: currencyType,
+            currency: currency,
             payMethod: payMethod,
-            customer: { name, phoneNumber: phone }
+            customer: { name: name, phoneNumber: String(phone) }
         });
 
-        if(response.code != null){
-            alert("결제 실패 : " + response.message);
-            return;
-        }
+        if(response.code != null){ alert("결제 실패: " + response.message); return; }
 
         await saveOrderToFirestore(orderData);
         localStorage.removeItem("cart");
         location.href = "success.html";
-    } catch(error){
-        console.error("결제 처리 중 에러:", error);
-        alert("결제창 실행 실패: 보안 서버 연결을 확인해주세요.");
+    } catch(error) {
+        console.error(error);
+        alert("결제창 호출 실패. 서버 연결을 확인하세요.");
     }
 }
-
-window.goCard = function(){ requestPortOnePayment("카드결제", "CARD", "KRW"); };
-window.goPaypal = function(){ requestPortOnePayment("페이팔결제", "PAYPAL", "USD"); };
 
 window.goBankTransfer = async function(){
     const name = document.getElementById("name").value.trim();
