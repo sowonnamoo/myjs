@@ -69,27 +69,27 @@
 
                 if (response.code != null) return alert("결제 실패: " + response.message);
 
+                // DB 기록
                 await addDoc(collection(window.db, "cards1"), {
-    paymentId: paymentId,
-    tno: response.pgTxId || response.txId, // 일단 기존 방식 유지
-    amount: totalAmount,
-    phone: phone,
-    status: "결제완료",
-    createdAt: new Date().toISOString(),
-    fullData: response 
-});
+                    paymentId: paymentId,
+                    tno: response.pgTxId || response.txId,
+                    amount: totalAmount,
+                    phone: phone,
+                    status: "결제완료",
+                    createdAt: new Date().toISOString(),
+                    fullData: response 
+                });
 
-
-// 이전 페이지(결제 완료 시점)
-const price = urlParams.get('price'); // URL에서 가져온 값을 그대로 사용
-window.location.href = `https://sowonnamoo.github.io/myboard/success4?price=${price}`;
-
+                // 결제 성공 시 success4 창 열기 및 현재 창 닫기
+                const successUrl = `https://sowonnamoo.github.io/myboard/success4?price=${totalAmount}`;
+                const popup = window.open(successUrl, 'success4', 'width=1000,height=700');
+                
+                if (popup) {
+                    window.close(); // 결제창 닫기
+                } else {
+                    window.location.href = successUrl; // 팝업 차단시 페이지 이동
+                }
                 
             } catch (error) {
                 console.error(error);
                 alert("결제 처리 중 오류가 발생했습니다.");
-            }
-        }
-    </script>
-</body>
-</html>
