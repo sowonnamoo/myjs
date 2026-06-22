@@ -69,7 +69,7 @@
 
                 if (response.code != null) return alert("결제 실패: " + response.message);
 
-                // 1. DB 기록 (기존 로직)
+                // 1. DB 기록
                 await addDoc(collection(window.db, "cards1"), {
                     paymentId: paymentId,
                     tno: response.pgTxId || response.txId,
@@ -80,19 +80,19 @@
                     fullData: response 
                 });
 
-                // 2. 부모 창으로 결제 성공 신호 전송 (추가 로직)
+                // 2. 부모 창으로 결제 성공 신호 전송 (인덱스3 연동 핵심)
                 if (window.opener) {
                     window.opener.postMessage({ type: 'PAYMENT_SUCCESS' }, "*");
                 }
 
-                // 3. 결제 성공 시 success4 창 열기 및 현재 창 닫기
+                // 3. 결제 완료 페이지로 이동 및 팝업 정리
                 const successUrl = `https://sowonnamoo.github.io/myboard/success4?price=${totalAmount}`;
                 const popup = window.open(successUrl, 'success4', 'width=1000,height=700');
                 
                 if (popup) {
-                    window.close(); // 결제창 닫기
+                    window.close();
                 } else {
-                    window.location.href = successUrl; // 팝업 차단시 페이지 이동
+                    window.location.href = successUrl;
                 }
                 
             } catch (error) {
