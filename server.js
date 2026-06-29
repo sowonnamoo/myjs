@@ -22,10 +22,21 @@ const fontFiles = {
 
 app.post('/convert', (req, res) => {
     const { text, weight } = req.body;
-    const fontPath = path.join(__dirname, 'fonts', fontFiles[weight] || 'Pretendard-Regular.ttf');
+    
+    // 로그 추가: 클라이언트가 보낸 값 확인
+    console.log("받은 요청:", { text, weight });
+
+    const fileName = fontFiles[weight] || 'Pretendard-Regular.ttf';
+    const fontPath = path.join(__dirname, 'fonts', fileName);
+    
+    // 로그 추가: 실제로 찾으려는 절대 경로 확인
+    console.log("찾는 파일 경로:", fontPath);
 
     opentype.load(fontPath, (err, font) => {
-        if (err) return res.status(500).send('폰트 로드 실패');
+        if (err) {
+            console.error("폰트 로드 오류 상세:", err); // 구체적인 에러 확인
+            return res.status(500).send('폰트 로드 실패: ' + fileName);
+        }
         const pathData = font.getPath(text, 0, 0, 72).toPathData();
         res.json({ pathData });
     });
