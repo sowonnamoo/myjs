@@ -9,7 +9,6 @@ app.use(express.json());
 
 // 폰트 파일 매핑 (아까 정했던 그 9개 파일들)
 const fontFiles = {
-   const fontFiles = {
     'Regular': 'Pretendard-Regular.ttf',
     'Bold': 'Pretendard-Bold.ttf',
     'Light': 'Pretendard-Light.ttf',
