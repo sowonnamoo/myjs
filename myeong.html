@@ -31,11 +31,11 @@
             const weight = document.getElementById('weightSelect').value;
 
             // 1. 서버의 API 주소 (나중에 실제 서버 주소로 변경하세요)
-            const response = await fetch('https://your-server-url.onrender.com/convert', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, weight })
-            });
+            const response = await fetch('https://myeongserver.onrender.com/convert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, weight })
+});
 
             const data = await response.json();
 
