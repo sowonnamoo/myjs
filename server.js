@@ -9,15 +9,16 @@ app.use(express.json());
 
 // 폰트 파일 매핑 (아까 정했던 그 9개 파일들)
 const fontFiles = {
+   const fontFiles = {
     'Regular': 'Pretendard-Regular.ttf',
-    'Bold': 'Pretendard-Bold.ttf'
-    'Thin': 'Pretendard-Thin.ttf',
-    'ExtraLight': 'Pretendard-ExtraLight.ttf',
+    'Bold': 'Pretendard-Bold.ttf',
     'Light': 'Pretendard-Light.ttf',
-    'Regular': 'Pretendard-Regular.ttf',
     'Medium': 'Pretendard-Medium.ttf',
     'SemiBold': 'Pretendard-SemiBold.ttf',
-    'Bold': 'PretendardNormally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
+    'ExtraBold': 'Pretendard-ExtraBold.ttf',
+    'Black': 'Pretendard-Black.ttf',
+    'Thin': 'Pretendard-Thin.ttf',
+    'ExtraLight': 'Pretendard-ExtraLight.ttf'
 };
 
 app.post('/convert', (req, res) => {
