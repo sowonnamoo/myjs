@@ -12,6 +12,11 @@
 </head>
 <body>
     <div class="controls">
+
+        가로: <input type="number" id="canvasWidth" value="800" style="width: 60px;">
+        세로: <input type="number" id="canvasHeight" value="400" style="width: 60px;">
+        <button onclick="updateCanvasSize()">캔버스 크기 변경</button>
+
         <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
         <button onclick="saveSVG()">SVG 저장하기</button>
         <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
