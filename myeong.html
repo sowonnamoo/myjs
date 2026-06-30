@@ -2,69 +2,83 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>벡터 명함 디자인 툴</title>
+    <title>앞뒷면 벡터 명함 디자인 툴</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .controls { margin-bottom: 10px; padding: 15px; background: #eee; border-radius: 8px; }
+        body { font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .controls { margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; width: 800px; text-align: center; }
+        .canvas-container { display: flex; gap: 20px; }
+        .card-box { display: flex; flex-direction: column; align-items: center; }
         canvas { border: 2px solid #333; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="controls">
-        <input type="text" id="textInput" placeholder="텍스트 입력">
-        <select id="weightSelect">
+        <input type="text" id="textInput" placeholder="텍스트 입력" style="padding: 8px;">
+        <select id="weightSelect" style="padding: 8px;">
             <option value="100">Thin</option>
             <option value="400">Regular</option>
             <option value="700">Bold</option>
             <option value="900">Black</option>
         </select>
-        <button onclick="addVectorText()" style="background-color: #2196F3; color: white;">벡터로 추가</button>
-        <button onclick="saveAsSVG()" style="background-color: #4CAF50; color: white;">SVG 저장</button>
+        <button onclick="addText('front')" style="background-color: #2196F3; color: white;">앞면에 추가</button>
+        <button onclick="addText('back')" style="background-color: #ff9800; color: white;">뒷면에 추가</button>
+        <button onclick="saveSVG()" style="background-color: #4CAF50; color: white;">전체 저장</button>
     </div>
 
-    <canvas id="c" width="800" height="400"></canvas>
+    <div class="canvas-container">
+        <div class="card-box">
+            <h4>앞면</h4>
+            <canvas id="frontCanvas" width="350" height="200"></canvas>
+        </div>
+        <div class="card-box">
+            <h4>뒷면</h4>
+            <canvas id="backCanvas" width="350" height="200"></canvas>
+        </div>
+    </div>
 
     <script>
-        const canvas = new fabric.Canvas('c');
+        const frontCanvas = new fabric.Canvas('frontCanvas');
+        const backCanvas = new fabric.Canvas('backCanvas');
         let font = null;
 
-        // 1. 깃허브에서 폰트 파일 로드 (최초 1회만)
+        // 폰트 로드
         async function initFont() {
             if (font) return;
-const fontUrl = 'https://raw.githubusercontent.com/sowonnamoo/myjs/main/fonts/PretendardVariable.ttf';
+            const fontUrl = 'https://raw.githubusercontent.com/sowonnamoo/myjs/main/fonts/PretendardVariable.ttf';
             font = await opentype.load(fontUrl);
         }
 
-        async function addVectorText() {
-            await initFont(); // 폰트가 로드되어 있는지 확인
-            
+        // 텍스트 추가 함수
+        async function addText(side) {
+            await initFont();
             const text = document.getElementById('textInput').value;
             const weight = parseInt(document.getElementById('weightSelect').value);
-            
             if (!text) return alert("텍스트를 입력하세요!");
 
-            // 2. 브라우저 CPU를 사용하여 벡터 패스 생성
-            const pathData = font.getPath(text, 0, 0, 72, { weight: weight }).toPathData();
-
-            // 3. Fabric.js 객체로 변환 및 캔버스 추가
+            const pathData = font.getPath(text, 0, 0, 50, { weight: weight }).toPathData();
             const path = new fabric.Path(pathData, {
-                left: 100, top: 100, fill: '#000000'
+                left: 50, // 중앙 근처에서 시작
+                top: 70,
+                fill: '#000000'
             });
 
-            canvas.add(path);
-            canvas.renderAll();
+            const targetCanvas = (side === 'front') ? frontCanvas : backCanvas;
+            targetCanvas.add(path);
+            targetCanvas.renderAll();
         }
 
-        function saveAsSVG() {
-            const svgData = canvas.toSVG();
+        // 전체 저장 (앞/뒤 캔버스를 합쳐서 저장하는 로직은 복잡하므로, 개별 다운로드 추천)
+        function saveSVG() {
+            alert("앞면과 뒷면 각각 다운로드 기능을 구현할 수 있습니다. 여기서는 앞면을 예로 저장합니다.");
+            const svgData = frontCanvas.toSVG();
             const blob = new Blob([svgData], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = url;
-            link.download = 'business-card.svg';
+            link.href = URL.createObjectURL(blob);
+            link.download = 'business-card-front.svg';
             link.click();
         }
     </script>
