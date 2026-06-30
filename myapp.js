@@ -335,6 +335,27 @@ canvas.on('mouse:down', function(options) {
 
 
 
+
+
+// 브라우저 크기 변경 시 캔버스 크기 대응
+window.addEventListener('resize', resizeCanvas);
+
+function resizeCanvas() {
+    const canvasContainer = document.querySelector('.controls'); // 혹은 부모 요소
+    const newWidth = window.innerWidth - 40; // padding 10mm(약 38px) 여유
+    
+    // 캔버스 크기를 브라우저 너비에 맞춰 변경
+    canvas.setWidth(newWidth);
+    canvas.renderAll();
+}
+
+
+
+
+
+
+
+
 // 복제
 let globalCloneCount = 0; 
 const ITEMS_PER_ROW = 2; // 한 줄에 2개씩 배치
