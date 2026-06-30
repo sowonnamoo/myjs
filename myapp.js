@@ -295,33 +295,19 @@ function setBackgroundImage(e) {
 
     const reader = new FileReader();
     reader.onload = function(f) {
+        // 이미지를 Fabric 객체로 생성
         fabric.Image.fromURL(f.target.result, function(img) {
-            canvas.setDimensions({ width: img.width, height: img.height });
-            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                scaleX: 1,
-                scaleY: 1
-            });
+            // 필요시 이미지 초기 크기 조절
+            img.scaleToWidth(200); 
+            
+            // 캔버스에 객체로 추가 (배경이 아닌 일반 객체로 들어감)
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
         });
     };
     reader.readAsDataURL(file);
 }
 
 
-
-// 캔버스크기변경
-function updateCanvasSize() {
-    const cmWidth = document.getElementById('canvasWidthCm').value;
-    const cmHeight = document.getElementById('canvasHeightCm').value;
-    
-    // 1cm를 96 DPI 기준으로 약 37.8 픽셀로 변환
-    const dpi = 96;
-    const pxPerCm = dpi / 2.54;
-    
-    const newWidth = Math.round(cmWidth * pxPerCm);
-    const newHeight = Math.round(cmHeight * pxPerCm);
-    
-    // 캔버스 크기 변경
-    canvas.setDimensions({ width: newWidth, height: newHeight });
-    canvas.renderAll();
-}
 
