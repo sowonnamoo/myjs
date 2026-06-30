@@ -16,7 +16,7 @@
         가로(cm): <input type="number" id="canvasWidthCm" value="9" style="width: 60px;">
         세로(cm): <input type="number" id="canvasHeightCm" value="5" style="width: 60px;">
         <button onclick="updateCanvasSize()">캔버스 크기 적용</button>
-      
+        <button onclick="cloneAllObjects()" style="background-color: #2196F3; color: white;">전체 복제(연속)</button>
         <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
         <button onclick="saveSVG()">SVG 저장하기</button>
         <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
