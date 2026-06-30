@@ -249,3 +249,45 @@ function changeFontSize(scaleFactor) {
     });
     canvas.renderAll();
 }
+
+
+
+
+// 휴지통 이미지 URL (원하는 아이콘 링크로 교체 가능)
+const deleteIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ff0000'%3E%3Cpath d='M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z'/%3E%3Cpath fill-rule='evenodd' d='M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z'/%3E%3C/svg%3E";
+
+const img = document.createElement('img');
+img.src = deleteIcon;
+
+// Fabric.js 컨트롤 커스텀
+fabric.Object.prototype.controls.deleteControl = new fabric.Control({
+    x: 0.5, // 위치: 객체 오른쪽
+    y: -0.5, // 위치: 객체 위쪽
+    offsetY: -16,
+    cursorStyle: 'pointer',
+    mouseUpHandler: deleteObject, // 클릭 시 삭제 함수 실행
+    render: renderIcon // 아이콘 그리기
+});
+
+function deleteObject(eventData, transform) {
+    const target = transform.target;
+    canvas.remove(target);
+    canvas.renderAll();
+}
+
+function renderIcon(ctx, left, top, styleOverride, fabricObject) {
+    const size = 24;
+    ctx.save();
+    ctx.translate(left, top);
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    ctx.restore();
+}
+
+
+
+
+
+
+
+
+
