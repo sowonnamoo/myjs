@@ -6,15 +6,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
     body { 
-        font-family: sans-serif; 
-        padding: 10mm; /* 사방 10mm 여백 */
-        margin: 0;
-    }
-    canvas { 
-        border: 1px solid #ccc; 
-        /* 캔버스 자체가 브라우저 크기에 따라 늘어나는 것을 방지하려면 아래 추가 */
-        max-width: 100%; 
-    }
+    font-family: sans-serif; 
+    padding: 10mm; 
+    margin: 0;
+    width: 100vw;   /* 화면 전체 너비 */
+    height: 100vh;  /* 화면 전체 높이 */
+    box-sizing: border-box;
+}
+
+canvas { 
+    border: 1px solid #ccc;
+    width: 100%;    /* 브라우저 너비에 맞춰 캔버스가 늘어남 */
+    height: auto;   /* 비율 유지하며 자동 조절 */
+    display: block;
+}
     .controls { margin-bottom: 10px; }
 </style>
 </head>
