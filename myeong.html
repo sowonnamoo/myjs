@@ -2,85 +2,57 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>앞뒷면 벡터 명함 디자인 툴</title>
+    <title>벡터 명함 디자인 툴</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .controls { margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; width: 800px; text-align: center; }
-        .canvas-container { display: flex; gap: 20px; }
-        .card-box { display: flex; flex-direction: column; align-items: center; }
-        canvas { border: 2px solid #333; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        body { font-family: sans-serif; padding: 20px; }
+        canvas { border: 1px solid #ccc; }
+        .controls { margin-bottom: 10px; }
     </style>
 </head>
 <body>
-
     <div class="controls">
-        <input type="text" id="textInput" placeholder="텍스트 입력" style="padding: 8px;">
-        <select id="weightSelect" style="padding: 8px;">
-            <option value="100">Thin</option>
-            <option value="400">Regular</option>
-            <option value="700">Bold</option>
-            <option value="900">Black</option>
+        <input type="text" id="textInput" placeholder="텍스트 입력">
+        <select id="weightSelect">
+          <option value="Thin">Thin</option>
+    <option value="ExtraLight">ExtraLight</option>
+    <option value="Light">Light</option>
+    <option value="Regular">Regular</option>
+    <option value="Medium">Medium</option>
+    <option value="SemiBold">SemiBold</option>
+    <option value="Bold">Bold</option>
+    <option value="ExtraBold">ExtraBold</option>
+    <option value="Black">Black</option>
         </select>
-        <button onclick="addText('front')" style="background-color: #2196F3; color: white;">앞면에 추가</button>
-        <button onclick="addText('back')" style="background-color: #ff9800; color: white;">뒷면에 추가</button>
-        <button onclick="saveSVG()" style="background-color: #4CAF50; color: white;">전체 저장</button>
+        <button onclick="addText()">글자 추가(벡터 변환 요청)</button>
     </div>
+    <canvas id="c" width="800" height="400"></canvas>
 
-    <div class="canvas-container">
-        <div class="card-box">
-            <h4>앞면</h4>
-            <canvas id="frontCanvas" width="350" height="200"></canvas>
-        </div>
-        <div class="card-box">
-            <h4>뒷면</h4>
-            <canvas id="backCanvas" width="350" height="200"></canvas>
-        </div>
-    </div>
+  <script>
+    const canvas = new fabric.Canvas('c');
 
-    <script>
-        const frontCanvas = new fabric.Canvas('frontCanvas');
-        const backCanvas = new fabric.Canvas('backCanvas');
-        let font = null;
+    async function addText() {
+        // 1. 입력창과 선택창에서 값 가져오기
+        const text = document.getElementById('textInput').value;
+        const weight = document.getElementById('weightSelect').value; // id를 weightSelect로 수정
 
-        // 폰트 로드
-        async function initFont() {
-            if (font) return;
-            const fontUrl = 'https://raw.githubusercontent.com/sowonnamoo/myjs/main/fonts/PretendardVariable.ttf';
-            font = await opentype.load(fontUrl);
-        }
+        // 2. 서버로 요청 보내기
+        const response = await fetch('https://myeongserver.onrender.com/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, // 이게 있어야 서버가 인식합니다!
+            body: JSON.stringify({ text: text, weight: weight }) // "내 이름" 대신 입력한 text를 전달
+        });
 
-        // 텍스트 추가 함수
-        async function addText(side) {
-            await initFont();
-            const text = document.getElementById('textInput').value;
-            const weight = parseInt(document.getElementById('weightSelect').value);
-            if (!text) return alert("텍스트를 입력하세요!");
+        const data = await response.json();
 
-            const pathData = font.getPath(text, 0, 0, 50, { weight: weight }).toPathData();
-            const path = new fabric.Path(pathData, {
-                left: 50, // 중앙 근처에서 시작
-                top: 70,
-                fill: '#000000'
-            });
-
-            const targetCanvas = (side === 'front') ? frontCanvas : backCanvas;
-            targetCanvas.add(path);
-            targetCanvas.renderAll();
-        }
-
-        // 전체 저장 (앞/뒤 캔버스를 합쳐서 저장하는 로직은 복잡하므로, 개별 다운로드 추천)
-        function saveSVG() {
-            alert("앞면과 뒷면 각각 다운로드 기능을 구현할 수 있습니다. 여기서는 앞면을 예로 저장합니다.");
-            const svgData = frontCanvas.toSVG();
-            const blob = new Blob([svgData], { type: 'image/svg+xml' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'business-card-front.svg';
-            link.click();
-        }
-    </script>
+        // 3. 서버에서 받은 Path 데이터로 캔버스에 그리기
+        const path = new fabric.Path(data.pathData, {
+            left: 100, 
+            top: 100, 
+            fill: 'black'
+        });
+        canvas.add(path);
+    }
+</script>
 </body>
 </html>
