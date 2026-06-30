@@ -1,6 +1,7 @@
 {
   "name": "myeong-card-server",
   "version": "1.0.0",
+  "description": "명함 서버 운영 시 필수 파일 - 폰트 변환 및 서버 유지용",
   "main": "server.js",
   "dependencies": {
     "express": "^4.18.2",
