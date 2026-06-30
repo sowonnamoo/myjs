@@ -145,3 +145,39 @@ canvas.on('mouse:dblclick', async function(options) {
         }
     }
 });
+
+
+// 사각형 추가 함수
+function addRectangle() {
+    const rect = new fabric.Rect({
+        left: 150,
+        top: 150,
+        fill: 'transparent', // 투명 배경
+        stroke: 'black',     // 테두리 색상
+        strokeWidth: 2,      // 테두리 두께
+        width: 100,
+        height: 100
+    });
+    canvas.add(rect);
+}
+
+
+// 원 추가 함수
+function addCircle() {
+    const circle = new fabric.Circle({
+        left: 150,
+        top: 150,
+        fill: 'transparent',
+        stroke: 'black',
+        strokeWidth: 2,
+        radius: 50           // 반지름
+    });
+    canvas.add(circle);
+}
+
+
+
+
+
+
+
