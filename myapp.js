@@ -336,26 +336,28 @@ canvas.on('mouse:down', function(options) {
 
 
 // 복제
-let cloneCount = 0; // 복제 횟수를 저장할 변수
-function cloneAllObjects() {
+function duplicateCanvasLayout() {
+    const currentWidth = canvas.width;
+    const currentHeight = canvas.height;
+    
+    // 1. 캔버스 높이를 현재의 2배로 확장 (기존 높이 + 현재 높이)
+    canvas.setDimensions({ 
+        width: currentWidth, 
+        height: currentHeight * 2 
+    });
+
+    // 2. 현재 캔버스에 있는 모든 객체 가져오기
     const objects = canvas.getObjects();
     
-    if (objects.length === 0) {
-        alert("복제할 객체가 없습니다!");
-        return;
-    }
-
-    cloneCount++; // 클릭할 때마다 횟수 증가
-
+    // 3. 각 객체를 복제하여 아래 위치(currentHeight만큼 아래)에 배치
     objects.forEach((obj) => {
-        // 배경 이미지는 복제에서 제외하고 싶다면 아래 조건 추가
+        // 배경 이미지는 복제하지 않거나, 필요하다면 별도 로직 추가
         if (obj === canvas.backgroundImage) return;
 
         obj.clone((cloned) => {
-            // 복제 횟수(cloneCount)에 따라 위치를 아래로 이동 (y축 기준)
             cloned.set({
                 left: cloned.left,
-                top: cloned.top + (cloneCount * 50) // 50px씩 아래로 추가
+                top: cloned.top + currentHeight // 높이만큼 아래로 이동
             });
             canvas.add(cloned);
         });
@@ -363,7 +365,6 @@ function cloneAllObjects() {
 
     canvas.renderAll();
 }
-
 
 
 
