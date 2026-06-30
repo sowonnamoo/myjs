@@ -295,14 +295,11 @@ function setBackgroundImage(e) {
 
     const reader = new FileReader();
     reader.onload = function(f) {
-        // 이미지를 Fabric 객체로 생성
         fabric.Image.fromURL(f.target.result, function(img) {
-            // 필요시 이미지 초기 크기 조절
             img.scaleToWidth(200); 
-            
-            // 캔버스에 객체로 추가 (배경이 아닌 일반 객체로 들어감)
             canvas.add(img);
-            canvas.setActiveObject(img);
+            // 추가: 이미지를 캔버스의 맨 아래 레이어로 보냄
+            canvas.sendToBack(img);
             canvas.renderAll();
         });
     };
@@ -310,4 +307,19 @@ function setBackgroundImage(e) {
 }
 
 
+// 맨 뒤로 보내기
+function sendToBack() {
+    const activeObjects = canvas.getActiveObjects();
+    activeObjects.forEach(obj => canvas.sendToBack(obj));
+    canvas.discardActiveObject();
+    canvas.renderAll();
+}
+
+// 맨 앞으로 가져오기
+function bringToFront() {
+    const activeObjects = canvas.getActiveObjects();
+    activeObjects.forEach(obj => canvas.bringToFront(obj));
+    canvas.discardActiveObject();
+    canvas.renderAll();
+}
 
