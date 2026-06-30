@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 폰트 파일 매핑 (아까 정했던 그 9개 파일들)
+// 폰트 파일 매핑 (아까 정했던 그 9개 파일들) / 명함서버 명령어
 const fontFiles = {
     'Regular': 'Pretendard-Regular.ttf',
     'Bold': 'Pretendard-Bold.ttf',
