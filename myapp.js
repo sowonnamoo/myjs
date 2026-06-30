@@ -34,3 +34,26 @@ function saveSVG() {
     link.download = 'my-design.svg';
     link.click();
 }
+
+
+
+
+// 글삭제기능
+function deleteSelected() {
+    const activeObjects = canvas.getActiveObjects(); // 선택된 객체들을 가져옴
+    if (activeObjects.length) {
+        canvas.discardActiveObject(); // 선택 해제
+        activeObjects.forEach((obj) => {
+            canvas.remove(obj); // 캔버스에서 제거
+        });
+        canvas.renderAll(); // 다시 그리기
+    } else {
+        alert("삭제할 항목을 먼저 클릭하세요!");
+    }
+}
+
+
+
+
+
+
