@@ -180,27 +180,27 @@ function addCircle() {
 
 
 
-// 1. 도형 추가 원 사각
+
+// 1. 도형 추가 원 사각 (테두리 제거 버전)
 function addRectangle() {
     const rect = new fabric.Rect({
         left: 150, top: 150,
-        fill: 'transparent',
-        stroke: 'black',
-        strokeWidth: 2,
+        fill: '#cccccc',      // 배경색 (투명하지 않게 설정)
+        stroke: null,        // 테두리 제거
+        strokeWidth: 0,      // 테두리 두께 0
         width: 100, height: 100,
-        lockUniScaling: false // 자유로운 늘리기 가능하게 설정
+        lockUniScaling: false 
     });
     canvas.add(rect);
 }
 
 function addCircle() {
-    // Circle 대신 Ellipse를 써야 타원 형태로 자유롭게 변합니다
     const ellipse = new fabric.Ellipse({
         left: 150, top: 150,
-        fill: 'transparent',
-        stroke: 'black',
-        strokeWidth: 2,
-        rx: 50, ry: 50, // 반지름(radius) 대신 가로/세로 반지름 사용
+        fill: '#cccccc',      // 배경색 (투명하지 않게 설정)
+        stroke: null,        // 테두리 제거
+        strokeWidth: 0,      // 테두리 두께 0
+        rx: 50, ry: 50,
         lockUniScaling: false
     });
     canvas.add(ellipse);
@@ -229,5 +229,4 @@ canvas.on('object:scaling', function(e) {
         });
     }
 });
-
 
