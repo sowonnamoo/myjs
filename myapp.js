@@ -286,6 +286,39 @@ function renderIcon(ctx, left, top, styleOverride, fabricObject) {
 
 
 
+// 서버 폰트변경시마다 재설정해야함. 선택후 폰트수정코드
+async function changeFontFamily(newFont) {
+    const activeObjects = canvas.getActiveObjects();
+    
+    if (activeObjects.length === 0) {
+        alert("폰트를 변경할 글자를 선택하세요!");
+        return;
+    }
+
+    for (const obj of activeObjects) {
+        // 글자 객체(Path)인 경우에만 실행
+        if (obj.type === 'path' && obj.originalText) {
+            // 1. 서버에 선택한 폰트 정보와 함께 다시 요청
+            const response = await fetch('https://myeongserver.onrender.com/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    text: obj.originalText, 
+                    weight: obj.originalWeight || 'normal', // 기존 굵기 유지
+                    font: newFont // 선택한 폰트 전달
+                })
+            });
+            const data = await response.json();
+            
+            // 2. 새로운 Path 데이터로 교체 및 폰트 정보 저장
+            obj.set({ 
+                path: data.pathData, 
+                originalFont: newFont 
+            });
+        }
+    }
+    canvas.renderAll();
+}
 
 
 
