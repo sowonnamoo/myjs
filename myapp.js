@@ -325,3 +325,31 @@ function updateCanvasSize() {
     canvas.renderAll();
 }
 
+
+
+
+// 캔바스 확대 축소
+function zoomCanvas(multiplier) {
+    let zoom = canvas.getZoom() * multiplier;
+    
+    // 범위 제한 (0.5배 ~ 3배)
+    zoom = Math.min(Math.max(zoom, 0.5), 3);
+    
+    // 캔버스 중앙 좌표 계산
+    const center = new fabric.Point(canvas.getWidth() / 2, canvas.getHeight() / 2);
+    
+    // 중앙을 기준으로 줌 적용
+    canvas.zoomToPoint(center, zoom);
+    canvas.renderAll();
+}
+
+// 100% 초기화 함수
+function resetZoom() {
+    canvas.setZoom(1);
+    canvas.renderAll();
+}
+
+
+
+
+
