@@ -108,10 +108,10 @@ function changeColor(color) {
 canvas.on('mouse:dblclick', async function(options) {
     if (options.target && options.target.type === 'path') {
         const obj = options.target;
-        const newText = prompt("수정할 내용을 입력하세요:", obj.originalText);
+        const newText = prompt("수정할 내용을 입력하세요:", obj.originalText || "");
         
-        if (newText) {
-            // 서버에 다시 요청하여 새로운 벡터 데이터 받기
+        if (newText && newText !== obj.originalText) {
+            // 1. 서버에 새로운 데이터 요청
             const response = await fetch('https://myeongserver.onrender.com/convert', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -119,8 +119,28 @@ canvas.on('mouse:dblclick', async function(options) {
             });
             const data = await response.json();
             
-            // 기존 객체 업데이트
-            obj.set({ path: data.pathData, originalText: newText });
+            // 2. 현재 객체의 위치와 상태 저장
+            const savedLeft = obj.left;
+            const savedTop = obj.top;
+            const savedFill = obj.fill;
+            const savedScaleX = obj.scaleX;
+            const savedScaleY = obj.scaleY;
+
+            // 3. 기존 객체 제거 후 새 객체 생성 (데이터 교체)
+            canvas.remove(obj);
+
+            const newPath = new fabric.Path(data.pathData, {
+                left: savedLeft,
+                top: savedTop,
+                fill: savedFill,
+                scaleX: savedScaleX,
+                scaleY: savedScaleY,
+                originalText: newText,
+                originalWeight: obj.originalWeight
+            });
+
+            canvas.add(newPath);
+            canvas.setActiveObject(newPath); // 새로 만든 객체를 선택 상태로 만듦
             canvas.renderAll();
         }
     }
