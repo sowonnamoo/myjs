@@ -5,10 +5,18 @@
     <title>벡터 명함 디자인 툴</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        canvas { border: 1px solid #ccc; }
-        .controls { margin-bottom: 10px; }
-    </style>
+    body { 
+        font-family: sans-serif; 
+        padding: 10mm; /* 사방 10mm 여백 */
+        margin: 0;
+    }
+    canvas { 
+        border: 1px solid #ccc; 
+        /* 캔버스 자체가 브라우저 크기에 따라 늘어나는 것을 방지하려면 아래 추가 */
+        max-width: 100%; 
+    }
+    .controls { margin-bottom: 10px; }
+</style>
 </head>
 <body>
     <div class="controls">
