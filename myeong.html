@@ -16,6 +16,8 @@
         가로(cm): <input type="number" id="canvasWidthCm" value="9" style="width: 60px;">
         세로(cm): <input type="number" id="canvasHeightCm" value="5" style="width: 60px;">
         <button onclick="updateCanvasSize()">캔버스 크기 적용</button>
+        <button onclick="zoomCanvas(1.1)">확대 (+)</button>
+        <button onclick="zoomCanvas(0.9)">축소 (-)</button>
 
         <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
         <button onclick="saveSVG()">SVG 저장하기</button>
