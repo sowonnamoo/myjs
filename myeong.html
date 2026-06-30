@@ -12,6 +12,7 @@
 </head>
 <body>
     <div class="controls">
+        <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
         <button onclick="saveSVG()">SVG 저장하기</button>
         <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
         <input type="text" id="textInput" placeholder="텍스트 입력">
