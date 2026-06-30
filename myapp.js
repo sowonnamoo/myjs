@@ -1,7 +1,7 @@
 const canvas = new fabric.Canvas('c');
 
 async function addText() {
-    // 1. 입력창과 선택창에서 값 가져오기
+    // 이건 명함 편집프로그램전용 app다
     const text = document.getElementById('textInput').value;
     const weight = document.getElementById('weightSelect').value;
 
@@ -54,6 +54,38 @@ function deleteSelected() {
 
 
 
+// 1. 좌측 정렬 함수
+function alignLeft() {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length < 2) return alert("최소 2개 이상의 객체를 선택하세요!");
 
+    // 가장 왼쪽 기준점 잡기 (첫 번째 객체의 left 기준)
+    const firstLeft = activeObjects[0].left;
+    activeObjects.forEach(obj => {
+        obj.set({ left: firstLeft });
+    });
+    canvas.renderAll();
+}
+
+// 2. 세로로 일정한 간격 정렬 함수
+function distributeVertically() {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length < 3) return alert("최소 3개 이상의 객체를 선택하세요!");
+
+    // top 좌표순으로 정렬
+    activeObjects.sort((a, b) => a.top - b.top);
+
+    const firstTop = activeObjects[0].top;
+    const lastTop = activeObjects[activeObjects.length - 1].top;
+    
+    // 전체 간격 나누기
+    const totalSpace = lastTop - firstTop;
+    const interval = totalSpace / (activeObjects.length - 1);
+
+    activeObjects.forEach((obj, index) => {
+        obj.set({ top: firstTop + (interval * index) });
+    });
+    canvas.renderAll();
+}
 
 
