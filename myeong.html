@@ -17,8 +17,10 @@
         <input type="text" id="textInput" placeholder="텍스트 입력">
         <button onclick="alignLeft()">좌측 정렬</button>
         <button onclick="distributeVertically()">세로 간격 맞춤</button>
-
         
+        <label for="colorPicker">색상: </label>
+        <input type="color" id="colorPicker" onchange="changeColor(this.value)">
+
         <select id="weightSelect">
             <option value="Thin">Thin</option>
             <option value="ExtraLight">ExtraLight</option>
