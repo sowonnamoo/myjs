@@ -1,11 +1,9 @@
 const canvas = new fabric.Canvas('c');
 
 async function addText() {
-    // 이건 명함 편집프로그램전용 app다
     const text = document.getElementById('textInput').value;
     const weight = document.getElementById('weightSelect').value;
 
-    // 2. 서버로 요청 보내기
     const response = await fetch('https://myeongserver.onrender.com/convert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -14,11 +12,13 @@ async function addText() {
 
     const data = await response.json();
 
-    // 3. 서버에서 받은 Path 데이터로 캔버스에 그리기
     const path = new fabric.Path(data.pathData, {
         left: 100, 
         top: 100, 
-        fill: 'black'
+        fill: 'black',
+        // [추가] 나중에 수정할 때 필요함
+        originalText: text, 
+        originalWeight: weight 
     });
     canvas.add(path);
 }
@@ -104,3 +104,24 @@ function changeColor(color) {
 }
 
 
+// 글자더블클릭수정
+canvas.on('mouse:dblclick', async function(options) {
+    if (options.target && options.target.type === 'path') {
+        const obj = options.target;
+        const newText = prompt("수정할 내용을 입력하세요:", obj.originalText);
+        
+        if (newText) {
+            // 서버에 다시 요청하여 새로운 벡터 데이터 받기
+            const response = await fetch('https://myeongserver.onrender.com/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: newText, weight: obj.originalWeight })
+            });
+            const data = await response.json();
+            
+            // 기존 객체 업데이트
+            obj.set({ path: data.pathData, originalText: newText });
+            canvas.renderAll();
+        }
+    }
+});
