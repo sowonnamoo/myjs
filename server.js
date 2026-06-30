@@ -42,4 +42,15 @@ app.post('/convert', (req, res) => {
     });
 });
 
+// [추가] UptimeRobot 헬스 체크용 GET 요청  서버깨움
+app.get('/convert', (req, res) => {
+    res.status(200).send("Server is alive!");
+});
+
+
 app.listen(process.env.PORT || 3000, () => console.log('서버 작동 중!'));
+
+
+
+
+
