@@ -180,4 +180,54 @@ function addCircle() {
 
 
 
+// 1. 도형 추가 원 사각
+function addRectangle() {
+    const rect = new fabric.Rect({
+        left: 150, top: 150,
+        fill: 'transparent',
+        stroke: 'black',
+        strokeWidth: 2,
+        width: 100, height: 100,
+        lockUniScaling: false // 자유로운 늘리기 가능하게 설정
+    });
+    canvas.add(rect);
+}
+
+function addCircle() {
+    // Circle 대신 Ellipse를 써야 타원 형태로 자유롭게 변합니다
+    const ellipse = new fabric.Ellipse({
+        left: 150, top: 150,
+        fill: 'transparent',
+        stroke: 'black',
+        strokeWidth: 2,
+        rx: 50, ry: 50, // 반지름(radius) 대신 가로/세로 반지름 사용
+        lockUniScaling: false
+    });
+    canvas.add(ellipse);
+}
+
+// 2. 크기 조절 시 실제 속성값으로 고정하는 이벤트
+canvas.on('object:scaling', function(e) {
+    const obj = e.target;
+    
+    // 사각형인 경우
+    if (obj.type === 'rect') {
+        obj.set({
+            width: obj.width * obj.scaleX,
+            height: obj.height * obj.scaleY,
+            scaleX: 1,
+            scaleY: 1
+        });
+    } 
+    // 타원(Ellipse)인 경우
+    else if (obj.type === 'ellipse') {
+        obj.set({
+            rx: obj.rx * obj.scaleX,
+            ry: obj.ry * obj.scaleY,
+            scaleX: 1,
+            scaleY: 1
+        });
+    }
+});
+
 
