@@ -17,6 +17,12 @@
         세로(cm): <input type="number" id="canvasHeightCm" value="5" style="width: 60px;">
         <button onclick="updateCanvasSize()">캔버스 크기 적용</button>
 
+    <div class="zoom-controls">
+    <button onclick="zoomCanvas(0.9)">전체축소 (-)</button>
+    <button onclick="zoomCanvas(1.1)">전체확대 (+)</button>
+
+        
+
         <input type="file" onchange="addImageToCanvas(this)" accept=".jpg, .jpeg, .png">       
         <button onclick="saveSVG()">SVG 저장하기</button>
         <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
@@ -27,9 +33,7 @@
         <button onclick="addCircle()">원 추가</button>
         <button onclick="changeFontSize(1.1)">글자 크게 (+)</button>
         <button onclick="changeFontSize(0.9)">글자 작게 (-)</button>
-        <button onclick="zoomCanvas(0.9)">축소 (-)</button>
-        <button onclick="resetZoom()">100%</button>
-        <button onclick="zoomCanvas(1.1)">확대 (+)</button>
+
         
         <label for="colorPicker">색상: </label>
         <input type="color" id="colorPicker" onchange="changeColor(this.value)">
