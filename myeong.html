@@ -3,19 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>벡터 명함 디자인 툴</title>
+    <link rel="stylesheet" href="mystyle.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        canvas { border: 1px solid #ccc; }
-        .controls { margin-bottom: 10px; }
-    </style>
 </head>
 <body>
 
-  <div class="controls">
-
-<input type="file" id="bgInput" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png" style="display: none;">
-<button class="custom-button" onclick="document.getElementById('bgInput').click()">배경 이미지 불러오기</button>
+    <div class="controls">
+        <input type="file" id="bgInput" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png" style="display: none;">
+        <button class="custom-button" onclick="document.getElementById('bgInput').click()">배경 이미지 불러오기</button>
         
         <button onclick="saveSVG()">SVG 저장하기</button>
         <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
@@ -30,7 +25,7 @@
         <label for="colorPicker">색상: </label>
         <input type="color" id="colorPicker" onchange="changeColor(this.value)">
 
-<select id="fontSelect" onchange="changeFontFamily(this.value)">
+        <select id="fontSelect" onchange="changeFontFamily(this.value)">
             <option value="Thin">Thin</option>
             <option value="ExtraLight">ExtraLight</option>
             <option value="Light">Light</option>
@@ -40,10 +35,10 @@
             <option value="Bold">Bold</option>
             <option value="ExtraBold">ExtraBold</option>
             <option value="Black">Black</option>
-            
         </select>
         <button onclick="addText()">글자 추가(벡터 변환 요청)</button>
     </div>
+    
     <canvas id="c" width="800" height="400"></canvas>
 
     <script src="myapp.js"></script>
