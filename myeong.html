@@ -6,21 +6,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; }
+        canvas { border: 1px solid #ccc; }
         .controls { margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="controls">
+
         가로(cm): <input type="number" id="canvasWidthCm" value="9" style="width: 60px;">
         세로(cm): <input type="number" id="canvasHeightCm" value="5" style="width: 60px;">
         <button onclick="updateCanvasSize()">캔버스 크기 적용</button>
 
-        <button onclick="zoomCanvas(false)">축소 (-20%)</button>
-        <button onclick="zoomCanvas(true)">확대 (+20%)</button>
-
-        <br><br>
-        
-        <input type="file" onchange="addImageToCanvas(this)" accept=".jpg, .jpeg, .png">        
+        <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
         <button onclick="saveSVG()">SVG 저장하기</button>
         <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
         <input type="text" id="textInput" placeholder="텍스트 입력">
@@ -44,13 +41,11 @@
             <option value="Bold">Bold</option>
             <option value="ExtraBold">ExtraBold</option>
             <option value="Black">Black</option>
+            
         </select>
         <button onclick="addText()">글자 추가(벡터 변환 요청)</button>
     </div>
-
-    <div id="wrapper" style="width: fit-content; margin-top: 20px;">
-        <canvas id="c" width="800" height="400" style="border: 1px solid #ccc;"></canvas>
-    </div>
+    <canvas id="c" width="800" height="400"></canvas>
 
     <script src="myapp.js"></script>
 </body>
