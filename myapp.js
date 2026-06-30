@@ -289,18 +289,18 @@ function renderIcon(ctx, left, top, styleOverride, fabricObject) {
 
 
 // 배경추가
-function addImageToCanvas(e) {
+function setBackgroundImage(e) {
     const file = e.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(f) {
-        // 이미지를 캔버스 배경이 아닌, 이동 가능한 객체로 추가
         fabric.Image.fromURL(f.target.result, function(img) {
-            // 이미지 크기가 너무 크면 조절
-            img.scaleToWidth(200); 
-            canvas.add(img);
-            canvas.renderAll();
+            canvas.setDimensions({ width: img.width, height: img.height });
+            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                scaleX: 1,
+                scaleY: 1
+            });
         });
     };
     reader.readAsDataURL(file);
@@ -324,29 +324,4 @@ function updateCanvasSize() {
     canvas.setDimensions({ width: newWidth, height: newHeight });
     canvas.renderAll();
 }
-
-
-
-
-// 캔바스 확대 축소
-let zoom = 1; // 줌 배율 관리
-
-function zoomCanvas(isZoomIn) {
-    const factor = isZoomIn ? 1.2 : 0.8;
-    zoom *= factor;
-    
-    // 범위 제한 (0.5배 ~ 3배)
-    zoom = Math.min(Math.max(zoom, 0.5), 3);
-
-    // 1. 캔버스 엔진 배율 적용
-    canvas.setZoom(zoom);
-
-    // 2. 캔버스 컨테이너(wrapper)를 CSS로 스케일링
-    const wrapper = document.getElementById('wrapper');
-    wrapper.style.transform = `scale(${zoom})`;
-    wrapper.style.transformOrigin = '0 0'; // 좌측 상단 기준 확대
-    
-    canvas.renderAll();
-}
-
 
