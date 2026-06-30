@@ -308,20 +308,20 @@ function setBackgroundImage(e) {
 
 
 
-// 캔버스크기변경
-function updateCanvasSize() {
-    const cmWidth = document.getElementById('canvasWidthCm').value;
-    const cmHeight = document.getElementById('canvasHeightCm').value;
+// 캔버스 확대/축소 함수
+function zoomCanvas(factor) {
+    let zoom = canvas.getZoom();
+    zoom *= factor;
     
-    // 1cm를 96 DPI 기준으로 약 37.8 픽셀로 변환
-    const dpi = 96;
-    const pxPerCm = dpi / 2.54;
+    // 너무 작아지거나 커지지 않게 제한 (최소 0.5배, 최대 3배)
+    if (zoom > 3) zoom = 3;
+    if (zoom < 0.5) zoom = 0.5;
     
-    const newWidth = Math.round(cmWidth * pxPerCm);
-    const newHeight = Math.round(cmHeight * pxPerCm);
+    canvas.setZoom(zoom);
     
-    // 캔버스 크기 변경
-    canvas.setDimensions({ width: newWidth, height: newHeight });
+    // 캔버스 크기를 배율에 맞춰 조정하여 잘리는 것 방지
+    canvas.setWidth(canvas.getWidth() * factor);
+    canvas.setHeight(canvas.getHeight() * factor);
+    
     canvas.renderAll();
 }
-
