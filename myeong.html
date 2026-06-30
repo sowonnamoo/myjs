@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>벡터 명함 디자인 툴</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
@@ -16,8 +18,6 @@
         가로(cm): <input type="number" id="canvasWidthCm" value="9" style="width: 60px;">
         세로(cm): <input type="number" id="canvasHeightCm" value="5" style="width: 60px;">
         <button onclick="updateCanvasSize()">캔버스 크기 적용</button>
-        <button onclick="zoomCanvas(1.1)">확대 (+)</button>
-        <button onclick="zoomCanvas(0.9)">축소 (-)</button>
 
         <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
         <button onclick="saveSVG()">SVG 저장하기</button>
