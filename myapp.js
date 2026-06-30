@@ -36,8 +36,6 @@ function saveSVG() {
 }
 
 
-
-
 // 글삭제기능
 function deleteSelected() {
     const activeObjects = canvas.getActiveObjects(); // 선택된 객체들을 가져옴
@@ -67,6 +65,7 @@ function alignLeft() {
     canvas.renderAll();
 }
 
+
 // 2. 세로로 일정한 간격 정렬 함수
 function distributeVertically() {
     const activeObjects = canvas.getActiveObjects();
@@ -84,6 +83,22 @@ function distributeVertically() {
 
     activeObjects.forEach((obj, index) => {
         obj.set({ top: firstTop + (interval * index) });
+    });
+    canvas.renderAll();
+}
+
+
+// 색상추가
+function changeColor(color) {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length === 0) {
+        alert("색상을 바꿀 글자를 선택해주세요!");
+        return;
+    }
+
+    activeObjects.forEach(obj => {
+        // 텍스트 객체라면 fill 속성을 변경
+        obj.set({ fill: color });
     });
     canvas.renderAll();
 }
