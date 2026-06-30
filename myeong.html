@@ -17,10 +17,9 @@
         세로(cm): <input type="number" id="canvasHeightCm" value="5" style="width: 60px;">
         <button onclick="updateCanvasSize()">캔버스 크기 적용</button>
 
-    <div class="zoom-controls">
-    <button onclick="zoomCanvas(0.9)">전체축소 (-)</button>
-    <button onclick="zoomCanvas(1.1)">전체확대 (+)</button>
-
+<div id="wrapper" style="width: fit-content;">
+    <canvas id="c"></canvas>
+</div>
         
 
         <input type="file" onchange="addImageToCanvas(this)" accept=".jpg, .jpeg, .png">       
