@@ -336,37 +336,40 @@ canvas.on('mouse:down', function(options) {
 
 
 // 복제
-function duplicateCanvasLayout() {
-    const currentWidth = canvas.width;
-    const currentHeight = canvas.height;
-    
-    // 1. 캔버스 높이를 현재의 2배로 확장 (기존 높이 + 현재 높이)
-    canvas.setDimensions({ 
-        width: currentWidth, 
-        height: currentHeight * 2 
-    });
+let globalCloneCount = 0; 
+const ITEMS_PER_ROW = 2; // 한 줄에 2개씩 배치
 
-    // 2. 현재 캔버스에 있는 모든 객체 가져오기
+function duplicateGridAll() {
     const objects = canvas.getObjects();
     
-    // 3. 각 객체를 복제하여 아래 위치(currentHeight만큼 아래)에 배치
-    objects.forEach((obj) => {
-        // 배경 이미지는 복제하지 않거나, 필요하다면 별도 로직 추가
-        if (obj === canvas.backgroundImage) return;
+    // 배경 이미지를 제외한 모든 객체(사각형, 텍스트 등 포함)를 대상으로 함
+    const targets = objects.filter(obj => obj !== canvas.backgroundImage);
+    
+    if (targets.length === 0) return alert("복제할 내용이 없습니다!");
 
+    // 몇 번째 복제인지에 따라 행과 열 계산
+    const row = Math.floor(globalCloneCount / ITEMS_PER_ROW);
+    const col = globalCloneCount % ITEMS_PER_ROW;
+
+    // 복제본이 원본으로부터 떨어질 간격 (이미지/박스 크기에 맞춰 조정 가능)
+    const offsetX = 450; 
+    const offsetY = 450; 
+
+    // 모든 객체를 하나씩 복제
+    targets.forEach((obj) => {
         obj.clone((cloned) => {
             cloned.set({
-                left: cloned.left,
-                top: cloned.top + currentHeight // 높이만큼 아래로 이동
+                // 원본 위치 + (격자 위치 * 간격)
+                left: obj.left + (col * offsetX),
+                top: obj.top + (row * offsetY)
             });
             canvas.add(cloned);
         });
     });
 
+    globalCloneCount++;
     canvas.renderAll();
 }
-
-
 
 
 
