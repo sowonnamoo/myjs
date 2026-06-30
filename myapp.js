@@ -288,6 +288,25 @@ function renderIcon(ctx, left, top, styleOverride, fabricObject) {
 
 
 
+// 배경추가
+function setBackgroundImage(e) {
+    const file = e.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(f) {
+        fabric.Image.fromURL(f.target.result, function(img) {
+            canvas.setDimensions({ width: img.width, height: img.height });
+            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+                scaleX: 1,
+                scaleY: 1
+            });
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+
 
 
 
