@@ -308,5 +308,13 @@ function setBackgroundImage(e) {
 
 
 
-
+// 캔버스크기변경
+function updateCanvasSize() {
+    const w = document.getElementById('canvasWidth').value;
+    const h = document.getElementById('canvasHeight').value;
+    
+    // 캔버스 크기 변경
+    canvas.setDimensions({ width: parseInt(w), height: parseInt(h) });
+    canvas.renderAll();
+}
 
