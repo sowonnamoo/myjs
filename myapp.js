@@ -332,3 +332,40 @@ canvas.on('mouse:down', function(options) {
         canvas.renderAll();
     }
 });
+
+
+
+// 복제
+let cloneCount = 0; // 복제 횟수를 저장할 변수
+function cloneAllObjects() {
+    const objects = canvas.getObjects();
+    
+    if (objects.length === 0) {
+        alert("복제할 객체가 없습니다!");
+        return;
+    }
+
+    cloneCount++; // 클릭할 때마다 횟수 증가
+
+    objects.forEach((obj) => {
+        // 배경 이미지는 복제에서 제외하고 싶다면 아래 조건 추가
+        if (obj === canvas.backgroundImage) return;
+
+        obj.clone((cloned) => {
+            // 복제 횟수(cloneCount)에 따라 위치를 아래로 이동 (y축 기준)
+            cloned.set({
+                left: cloned.left,
+                top: cloned.top + (cloneCount * 50) // 50px씩 아래로 추가
+            });
+            canvas.add(cloned);
+        });
+    });
+
+    canvas.renderAll();
+}
+
+
+
+
+
+
