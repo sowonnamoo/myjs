@@ -16,6 +16,7 @@
         <button onclick="saveSVG('front')" style="background-color: #4CAF50; color: white;">앞면 저장</button>
 <button onclick="saveSVG('back')" style="background-color: #4CAF50; color: white;">뒷면 저장</button>
 
+        <button onclick="saveSVG()">SVG 저장하기</button>
         
         <input type="text" id="textInput" placeholder="텍스트 입력">
         <select id="weightSelect">
@@ -62,14 +63,15 @@
 
 
 
-        //  svc저장
-      function saveSVG(side) {
-    const targetCanvas = (side === 'front') ? frontCanvas : backCanvas;
-    const svgData = targetCanvas.toSVG();
+    function saveSVG() {
+    // 캔버스 객체에서 SVG 데이터 추출
+    const svgData = canvas.toSVG();
+    
+    // Blob 생성 및 다운로드 실행
     const blob = new Blob([svgData], { type: 'image/svg+xml' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `business-card-${side}.svg`;
+    link.download = 'my-design.svg';
     link.click();
 }
 
