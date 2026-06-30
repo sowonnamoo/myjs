@@ -323,3 +323,12 @@ function bringToFront() {
     canvas.renderAll();
 }
 
+
+// 캔버스 빈 곳 클릭 시 선택 해제
+canvas.on('mouse:down', function(options) {
+    // 클릭한 위치에 타겟(객체)이 없는 경우
+    if (!options.target) {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
