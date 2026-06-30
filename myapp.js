@@ -308,33 +308,20 @@ function setBackgroundImage(e) {
 
 
 
-// 휠 확대/축소 기능
-canvas.on('mouse:wheel', function(opt) {
-    var delta = opt.e.deltaY;
-    var zoom = canvas.getZoom();
+// 캔버스크기변경
+function updateCanvasSize() {
+    const cmWidth = document.getElementById('canvasWidthCm').value;
+    const cmHeight = document.getElementById('canvasHeightCm').value;
     
-    // 휠을 올리면 확대(1.1배), 내리면 축소(0.9배)
-    zoom *= 0.999 ** delta;
+    // 1cm를 96 DPI 기준으로 약 37.8 픽셀로 변환
+    const dpi = 96;
+    const pxPerCm = dpi / 2.54;
     
-    // 확대 범위 제한 (0.5배 ~ 3배)
-    if (zoom > 3) zoom = 3;
-    if (zoom < 0.5) zoom = 0.5;
+    const newWidth = Math.round(cmWidth * pxPerCm);
+    const newHeight = Math.round(cmHeight * pxPerCm);
     
-    canvas.setZoom(zoom);
-    opt.e.preventDefault();
-    opt.e.stopPropagation();
-});
+    // 캔버스 크기 변경
+    canvas.setDimensions({ width: newWidth, height: newHeight });
+    canvas.renderAll();
+}
 
-// 터치 Pinch Zoom 기능 (모바일)
-canvas.on('touch:gesture', function(e) {
-    if (e.self.state === 'starting') {
-        this.lastZoom = canvas.getZoom();
-    }
-    
-    var zoom = this.lastZoom * e.self.scale;
-    
-    if (zoom > 3) zoom = 3;
-    if (zoom < 0.5) zoom = 0.5;
-    
-    canvas.setZoom(zoom);
-});
