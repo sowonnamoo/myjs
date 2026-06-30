@@ -308,20 +308,33 @@ function setBackgroundImage(e) {
 
 
 
-// 캔버스 확대/축소 함수
-function zoomCanvas(factor) {
-    let zoom = canvas.getZoom();
-    zoom *= factor;
+// 휠 확대/축소 기능
+canvas.on('mouse:wheel', function(opt) {
+    var delta = opt.e.deltaY;
+    var zoom = canvas.getZoom();
     
-    // 너무 작아지거나 커지지 않게 제한 (최소 0.5배, 최대 3배)
+    // 휠을 올리면 확대(1.1배), 내리면 축소(0.9배)
+    zoom *= 0.999 ** delta;
+    
+    // 확대 범위 제한 (0.5배 ~ 3배)
     if (zoom > 3) zoom = 3;
     if (zoom < 0.5) zoom = 0.5;
     
     canvas.setZoom(zoom);
+    opt.e.preventDefault();
+    opt.e.stopPropagation();
+});
+
+// 터치 Pinch Zoom 기능 (모바일)
+canvas.on('touch:gesture', function(e) {
+    if (e.self.state === 'starting') {
+        this.lastZoom = canvas.getZoom();
+    }
     
-    // 캔버스 크기를 배율에 맞춰 조정하여 잘리는 것 방지
-    canvas.setWidth(canvas.getWidth() * factor);
-    canvas.setHeight(canvas.getHeight() * factor);
+    var zoom = this.lastZoom * e.self.scale;
     
-    canvas.renderAll();
-}
+    if (zoom > 3) zoom = 3;
+    if (zoom < 0.5) zoom = 0.5;
+    
+    canvas.setZoom(zoom);
+});
