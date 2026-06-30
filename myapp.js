@@ -289,18 +289,18 @@ function renderIcon(ctx, left, top, styleOverride, fabricObject) {
 
 
 // 배경추가
-function setBackgroundImage(e) {
+function addImageToCanvas(e) {
     const file = e.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(f) {
+        // 이미지를 캔버스 배경이 아닌, 이동 가능한 객체로 추가
         fabric.Image.fromURL(f.target.result, function(img) {
-            canvas.setDimensions({ width: img.width, height: img.height });
-            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
-                scaleX: 1,
-                scaleY: 1
-            });
+            // 이미지 크기가 너무 크면 조절
+            img.scaleToWidth(200); 
+            canvas.add(img);
+            canvas.renderAll();
         });
     };
     reader.readAsDataURL(file);
