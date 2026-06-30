@@ -310,11 +310,18 @@ function setBackgroundImage(e) {
 
 // 캔버스크기변경
 function updateCanvasSize() {
-    const w = document.getElementById('canvasWidth').value;
-    const h = document.getElementById('canvasHeight').value;
+    const cmWidth = document.getElementById('canvasWidthCm').value;
+    const cmHeight = document.getElementById('canvasHeightCm').value;
+    
+    // 1cm를 96 DPI 기준으로 약 37.8 픽셀로 변환
+    const dpi = 96;
+    const pxPerCm = dpi / 2.54;
+    
+    const newWidth = Math.round(cmWidth * pxPerCm);
+    const newHeight = Math.round(cmHeight * pxPerCm);
     
     // 캔버스 크기 변경
-    canvas.setDimensions({ width: parseInt(w), height: parseInt(h) });
+    canvas.setDimensions({ width: newWidth, height: newHeight });
     canvas.renderAll();
 }
 
