@@ -329,21 +329,24 @@ function updateCanvasSize() {
 
 
 // 캔바스 확대 축소
-let zoom = 1;
+let zoom = 1; // 줌 배율 관리
 
-function zoomCanvas(multiplier) {
-    // 1. 배율 업데이트
-    zoom *= multiplier;
-    zoom = Math.min(Math.max(zoom, 0.5), 3); // 0.5배 ~ 3배 제한
+function zoomCanvas(isZoomIn) {
+    const factor = isZoomIn ? 1.2 : 0.8;
+    zoom *= factor;
+    
+    // 범위 제한 (0.5배 ~ 3배)
+    zoom = Math.min(Math.max(zoom, 0.5), 3);
 
-    // 2. Fabric 캔버스 배율 적용 (객체들의 선명도 및 위치 조정)
+    // 1. 캔버스 엔진 배율 적용
     canvas.setZoom(zoom);
 
-    // 3. 캔버스 컨테이너 자체를 CSS scale로 확대 (전체 시각적 확대)
+    // 2. 캔버스 컨테이너(wrapper)를 CSS로 스케일링
     const wrapper = document.getElementById('wrapper');
     wrapper.style.transform = `scale(${zoom})`;
-    wrapper.style.transformOrigin = '0 0'; // 왼쪽 상단 기준 확대
+    wrapper.style.transformOrigin = '0 0'; // 좌측 상단 기준 확대
+    
+    canvas.renderAll();
 }
-
 
 
