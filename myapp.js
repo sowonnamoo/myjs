@@ -230,3 +230,22 @@ canvas.on('object:scaling', function(e) {
     }
 });
 
+
+// 글자크기
+function changeFontSize(scaleFactor) {
+    const activeObjects = canvas.getActiveObjects();
+    
+    if (activeObjects.length === 0) {
+        alert("크기를 조절할 객체를 선택하세요!");
+        return;
+    }
+
+    activeObjects.forEach(obj => {
+        // 현재 크기에 입력받은 비율을 곱함
+        obj.set({
+            scaleX: obj.scaleX * scaleFactor,
+            scaleY: obj.scaleY * scaleFactor
+        });
+    });
+    canvas.renderAll();
+}
