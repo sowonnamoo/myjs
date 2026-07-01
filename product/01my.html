@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+    body { display: flex; justify-content: center; padding-top: 20px; margin: 0; font-family: sans-serif; }
+    .product-container { display: flex; gap: 40px; width: 1195px; align-items: flex-start; }
+    .product-image { width: 600px; height: 600px; background-color: #ccc; background-image: url('https://sowonnamoo1005.cafe24.com/1/260701.jpg'); background-size: cover; background-position: center; flex-shrink: 0; }
+    .options-section { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .option-row { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 4px 0; }
+    .label { width: 120px; font-weight: bold; font-size: 14px; }
+    select, input { padding: 4px; border: 1px solid #ccc; font-size: 14px; }
+    .size-inputs { display: flex; gap: 5px; align-items: center; font-size: 14px; }
+    .btn-group { display: flex; gap: 5px; }
+    button { padding: 6px 15px; cursor: pointer; border: 1px solid #ccc; background: #eee; font-size: 13px; }
+    button.active { background: #66a8a8; color: white; border-color: #66a8a8; }
+    .total-price { text-align: right; font-size: 1.3em; font-weight: bold; margin-top: 10px; }
+    .order-btn { background: #2b7bc3; color: white; padding: 15px; text-align: center; border: none; cursor: pointer; margin-top: 15px; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div class="product-container">
+    <div class="product-image"></div>
+
+    <div class="options-section">
+        <h2 style="margin: 0 0 10px 0;">컬러 재단스티커</h2>
+        
+        <div class="option-row">
+            <div class="label">용지</div>
+            <select id="paperSelect" style="flex:1"><option>불러오는 중...</option></select>
+        </div>
+        
+        <div class="option-row">
+            <div class="label">코팅</div>
+            <select style="flex:1"><option>코팅없음</option></select>
+        </div>
+
+        <div class="option-row">
+            <div class="label">인쇄도수</div>
+            <select style="flex:1"><option>단면4도</option></select>
+        </div>
+
+        <div class="option-row">
+            <div class="label">사이즈</div>
+            <div style="flex:1; display:flex; gap:10px;">
+                <select style="width:100px;"><option>규격사이즈</option></select>
+                <select style="flex:1;"><option>70x40 mm</option></select>
+            </div>
+        </div>
+
+        <div class="option-row" style="flex-direction: column; align-items: flex-start; padding-left: 120px;">
+            <div class="size-inputs">
+                <span style="color:red; width:100px;">재단사이즈 가로</span> <input type="text" value="70" size="3"> x 세로 <input type="text" value="40" size="3"> mm
+            </div>
+            <div class="size-inputs" style="margin-top:5px;">
+                <span style="width:100px;">작업사이즈 가로</span> <input type="text" value="76" size="3"> x 세로 <input type="text" value="46" size="3"> mm
+            </div>
+        </div>
+
+        <div class="option-row">
+            <div class="label">배경(유/무)선택</div>
+            <select style="flex:1"><option>배경있음_투터치재단</option></select>
+        </div>
+
+        <div class="option-row">
+            <div class="label">수량</div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <select><option>500매</option></select> x <select><option>1건</option></select>
+            </div>
+        </div>
+
+        <div class="option-row">
+            <div class="label">당일판</div>
+            <div class="btn-group">
+                <button>당일판</button>
+                <button class="active">일반판</button>
+            </div>
+        </div>
+
+        <div class="option-row">
+            <div class="label">편집의뢰</div>
+            <button>편집의뢰</button>
+        </div>
+
+        <div class="option-row">
+            <div class="label">예상 출고일</div>
+            <div style="color:red; border:1px dashed red; padding:3px 10px; font-size:13px;">매주 화,목 출고</div>
+        </div>
+
+        <div class="total-price">
+            총 결제액 <br>
+            <span id="priceDisplay" style="color:red; font-size:1.2em;">0원</span>
+        </div>
+
+        <button class="order-btn">파일 업로드 & 주문하기</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = { /* 여기에 본인의 키값을 넣으세요 */ };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function loadOptions() {
+        const docSnap = await getDoc(doc(db, "products", "sticker_config"));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const select = document.getElementById('paperSelect');
+            select.innerHTML = '';
+            
+            data.paperOptions.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.name;
+                el.textContent = opt.name;
+                el.dataset.price = opt.price;
+                select.appendChild(el);
+            });
+            updatePrice();
+        }
+    }
+
+    function updatePrice() {
+        const select = document.getElementById('paperSelect');
+        const price = select.options[select.selectedIndex].dataset.price;
+        document.getElementById('priceDisplay').textContent = parseInt(price).toLocaleString() + '원';
+    }
+
+    document.getElementById('paperSelect').addEventListener('change', updatePrice);
+    loadOptions();
+</script>
+</body>
+</html>
