@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>상품 옵션 관리자</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .control-box { border: 1px solid #ccc; padding: 20px; max-width: 500px; display: flex; flex-direction: column; gap: 10px; }
+        input, select { padding: 8px; width: 100%; box-sizing: border-box; }
+        button { padding: 10px; background: #2b7bc3; color: white; border: none; cursor: pointer; width: 100%; }
+    </style>
+</head>
+<body>
+    <h2>상품 옵션 리모트 컨트롤</h2>
+    <div class="control-box">
+        <select id="targetCategory">
+            <option value="sticker_paper">용지</option>
+            <option value="sticker_coating">코팅</option>
+            <option value="sticker_ink">인쇄도수</option>
+            <option value="sticker_bg">배경유무</option>
+            <option value="sticker2_ink">인쇄도수</option>
+        </select>
+        <input type="text" id="nameInput" placeholder="옵션 이름 (예: 유포지)">
+        <input type="number" id="priceInput" placeholder="가격 (예: 9000)">
+	<input type="number" id="marginInput" placeholder="개별 마진율 (%) (예: 0.1)">
+<input type="number" id="deliveryInput" placeholder="배송일 숫자만 입력 (예: 3)">
+        <button id="saveBtn">새 옵션 추가 저장</button>
+    </div>
+
+    <hr>
+    <div id="config-section">
+        <h3>공식 환경설정</h3>
+        <input type="number" id="base500" placeholder="기본가">
+        <input type="number" id="areaRate" placeholder="면적요율">
+        <input type="number" id="marginRate" placeholder="마진율 (%)">
+        <button id="saveBaseConfigBtn">공식 설정 저장</button>
+    </div>
+
+    <hr>
+
+    <div id="tier-section">
+        <h3>수량별 요율 및 할인율 설정</h3>
+        <select id="selectTier">
+            <option value="2000">2000매</option>
+            <option value="3000">3000매</option>
+            <option value="4000">4000매</option>
+            <option value="5000">5000매</option>
+        </select>
+        <input type="number" id="rateInput" placeholder="배수 (예: 2.0)">
+        <input type="number" id="discInput" placeholder="할인% (예: 0.5)">%
+        <button id="saveTierConfigBtn">선택 수량 저장</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzHogA2iaQ...",
+            authDomain: "ecogr-636c6.firebaseapp.com",
+            projectId: "ecogr-636c6",
+            storageBucket: "ecogr-636c6.appspot.com",
+            messagingSenderId: "95745358447",
+            appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 1. 새 옵션 저장
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+    const category = document.getElementById('targetCategory').value;
+    const name = document.getElementById('nameInput').value;
+    const price = parseInt(document.getElementById('priceInput').value) || 0;
+    
+    // 마진율과 배송일 입력값 가져오기
+    const rawMargin = document.getElementById('marginInput').value;
+    const margin = rawMargin !== "" ? parseFloat(rawMargin) : 0; // 비어있으면 0으로 처리
+    const delivery = document.getElementById('deliveryInput').value; 
+    
+    if (!name) { alert("이름을 입력하세요."); return; }
+
+    try {
+        const productRef = doc(db, "products", category);
+        
+        // 데이터 객체 생성 (마진은 항상 0 이상으로 포함)
+        const optionData = { 
+            name, 
+            price, 
+            margin: margin, 
+            createdAt: new Date() 
+        };
+        
+        // 배송일이 입력되었을 때만 추가
+        if (delivery.trim() !== "") {
+            optionData.delivery = delivery;
+        }
+
+        await setDoc(productRef, { 
+            options: arrayUnion(optionData) 
+        }, { merge: true });
+        
+        alert(name + " 저장 완료!");
+        
+        // 입력창 초기화
+        document.getElementById('nameInput').value = '';
+        document.getElementById('priceInput').value = '';
+        document.getElementById('marginInput').value = '';
+        document.getElementById('deliveryInput').value = '';
+    } catch (e) { alert("저장 실패: " + e.message); }
+        });
+
+
+
+
+
+// 2. 공식 환경설정 저장 (이 부분이 누락되어 있었습니다)
+        document.getElementById('saveBaseConfigBtn').addEventListener('click', async () => {
+            const base500 = parseInt(document.getElementById('base500').value);
+            const areaRate = parseFloat(document.getElementById('areaRate').value);
+            const marginRate = parseFloat(document.getElementById('marginRate').value);
+            
+            if (isNaN(base500) || isNaN(areaRate) || isNaN(marginRate)) { 
+                alert("모든 값을 입력하세요."); 
+                return; 
+            }
+            
+            try {
+                await setDoc(doc(db, "products", "sticker_price"), { 
+                    base500, 
+                    areaRate, 
+                    marginRate 
+                });
+                alert("공식 환경설정이 저장되었습니다!");
+            } catch (e) { 
+                alert("저장 실패: " + e.message); 
+            }
+        });
+
+
+
+
+
+
+
+
+        // 3. 수량별 설정 저장
+        document.getElementById('saveTierConfigBtn').addEventListener('click', async () => {
+            const tier = document.getElementById('selectTier').value;
+            const rate = parseFloat(document.getElementById('rateInput').value);
+            const discPercent = parseFloat(document.getElementById('discInput').value);
+            if (isNaN(rate) || isNaN(discPercent)) { alert("요율과 할인율을 입력하세요."); return; }
+            
+            try {
+                const updateData = {};
+                updateData[`tiers.${tier}`] = { rate: rate, discount: 1 - (discPercent / 100) };
+                await setDoc(doc(db, "products", "sticker_price2"), updateData, { merge: true });
+                alert(tier + "매 설정이 저장되었습니다!");
+            } catch (e) { alert("저장 실패: " + e.message); }
+        });
+    </script>
+</body>
+</html>
+
+
