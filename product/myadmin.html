@@ -14,17 +14,19 @@
     <h2>상품 옵션 리모트 컨트롤</h2>
     <div class="control-box">
         <select id="targetCategory">
-            <option value="sticker_paper">용지</option>
-            <option value="sticker_coating">코팅</option>
-            <option value="sticker_ink">인쇄도수</option>
-            <option value="sticker_bg">배경유무</option>
-            <option value="sticker2_ink">인쇄도수</option>
+            <option value="myeong_paper">용지</option>
+            <option value="myeong_dan">단/양면</option>
+            <option value="myeong_ink">편집</option>
+            <option value="myeong_bg">후가공</option>
         </select>
         <input type="text" id="nameInput" placeholder="옵션 이름 (예: 유포지)">
-        <input type="number" id="priceInput" placeholder="가격 (예: 9000)">
+	<input type="text" id="priceInput" placeholder="가격 또는 URL (예: 9000 또는 http://...)">
+	<input type="number" id="costMarginInput" placeholder="원가마진율 (%) (예: 50)">
 	<input type="number" id="marginInput" placeholder="개별 마진율 (%) (예: 0.1)">
-<input type="number" id="deliveryInput" placeholder="배송일 숫자만 입력 (예: 3)">
-        <button id="saveBtn">새 옵션 추가 저장</button>
+	<input type="number" id="deliveryInput" placeholder="배송일 숫자만 입력 (예: 3)">
+	<input type="number" id="weightInput" placeholder="종이 무게 (g/㎡) (예: 90)">
+<input type="text" id="imageUrlInput" placeholder="이미지 URL 주소 (옵션)">
+<button id="saveBtn">새 옵션 추가 저장</button>
     </div>
 
     <hr>
@@ -41,13 +43,31 @@
     <div id="tier-section">
         <h3>수량별 요율 및 할인율 설정</h3>
         <select id="selectTier">
-            <option value="2000">2000매</option>
-            <option value="3000">3000매</option>
-            <option value="4000">4000매</option>
-            <option value="5000">5000매</option>
+        <option value="200">200매</option>
+        <option value="500">500매</option>
+        <option value="1000">1000매</option>
+    <option value="2000">2000매</option>
+    <option value="3000">3000매</option>
+    <option value="4000">4000매</option>
+    <option value="5000">5000매</option>
+    <option value="6000">6000매</option>
+    <option value="7000">7000매</option>
+    <option value="8000">8000매</option>
+    <option value="9000">9000매</option>
+    <option value="10000">10000매</option>
+    <option value="11000">11000매</option>
+    <option value="12000">12000매</option>
+    <option value="13000">13000매</option>
+    <option value="14000">14000매</option>
+    <option value="15000">15000매</option>
+    <option value="16000">16000매</option>
+    <option value="17000">17000매</option>
+    <option value="18000">18000매</option>
+    <option value="19000">19000매</option>
+    <option value="20000">20000매</option>
         </select>
         <input type="number" id="rateInput" placeholder="배수 (예: 2.0)">
-        <input type="number" id="discInput" placeholder="할인% (예: 0.5)">%
+        <input type="number" id="discInput" placeholder="할인% (예: 0.5)">
         <button id="saveTierConfigBtn">선택 수량 저장</button>
     </div>
 
@@ -68,10 +88,16 @@
         const db = getFirestore(app);
 
         // 1. 새 옵션 저장
-        document.getElementById('saveBtn').addEventListener('click', async () => {
+    document.getElementById('saveBtn').addEventListener('click', async () => {
     const category = document.getElementById('targetCategory').value;
     const name = document.getElementById('nameInput').value;
-    const price = parseInt(document.getElementById('priceInput').value) || 0;
+    const costMargin = parseFloat(document.getElementById('costMarginInput').value) || 0; // 추가
+    const priceInputVal = document.getElementById('priceInput').value;
+    const isUrl = priceInputVal.toLowerCase().startsWith('http');
+
+
+
+
     
     // 마진율과 배송일 입력값 가져오기
     const rawMargin = document.getElementById('marginInput').value;
@@ -82,14 +108,18 @@
 
     try {
         const productRef = doc(db, "products", category);
-        
+        const weight = document.getElementById('weightInput').value;
         // 데이터 객체 생성 (마진은 항상 0 이상으로 포함)
         const optionData = { 
-            name, 
-            price, 
-            margin: margin, 
-            createdAt: new Date() 
-        };
+    name, 
+    price: isUrl ? 0 : (parseInt(priceInputVal) || 0),
+    weight: weight || 90, // 입력값이 없으면 기본 90 설정
+    url: isUrl ? priceInputVal : "", 
+    imageUrl: document.getElementById('imageUrlInput').value, // 추가
+    margin: margin, 
+    costMargin: costMargin,
+    createdAt: new Date() 
+};
         
         // 배송일이 입력되었을 때만 추가
         if (delivery.trim() !== "") {
@@ -114,52 +144,79 @@
 
 
 
-// 2. 공식 환경설정 저장 (이 부분이 누락되어 있었습니다)
-        document.getElementById('saveBaseConfigBtn').addEventListener('click', async () => {
-            const base500 = parseInt(document.getElementById('base500').value);
-            const areaRate = parseFloat(document.getElementById('areaRate').value);
-            const marginRate = parseFloat(document.getElementById('marginRate').value);
-            
-            if (isNaN(base500) || isNaN(areaRate) || isNaN(marginRate)) { 
-                alert("모든 값을 입력하세요."); 
-                return; 
+// 2. 공식 환경설정 저장 (myeong_price2에 저장하도록 수정)
+document.getElementById('saveBaseConfigBtn').addEventListener('click', async () => {
+    const base500 = parseInt(document.getElementById('base500').value);
+    const areaRate = parseFloat(document.getElementById('areaRate').value);
+    const marginRate = parseFloat(document.getElementById('marginRate').value);
+    
+    if (isNaN(base500) || isNaN(areaRate) || isNaN(marginRate)) { 
+        alert("모든 값을 입력하세요."); 
+        return; 
+    }
+    
+    try {
+        // 기존 myeong_price 대신 myeong_price2에 병합 저장
+        await setDoc(doc(db, "products", "myeong_price2"), { 
+            base500, 
+            areaRate, 
+            marginRate 
+        }, { merge: true }); // 기존 데이터(tiers)를 유지하기 위해 merge: true 추가
+        
+        alert("공식 환경설정이 myeong_price2에 저장되었습니다!");
+    } catch (e) { 
+        alert("저장 실패: " + e.message); 
+    }
+});
+
+
+
+
+
+
+
+
+       // 3. 수량별 설정 저장 로직 수정
+document.getElementById('saveTierConfigBtn').addEventListener('click', async () => {
+    const tier = document.getElementById('selectTier').value; // 예: "2000"
+    const rate = parseFloat(document.getElementById('rateInput').value);
+    const discPercent = parseFloat(document.getElementById('discInput').value);
+    
+    if (isNaN(rate) || isNaN(discPercent)) { 
+        alert("요율(배수)과 할인율(%)을 모두 입력하세요."); 
+        return; 
+    }
+    
+    try {
+        const docRef = doc(db, "products", "myeong_price2");
+        
+        // 파이어베이스에 저장할 데이터 구조
+        // tiers 객체 안에 해당 수량 키값으로 저장합니다.
+        const updateData = {
+            [`tiers.${tier}`]: { 
+                rate: rate, 
+                discount: 1 - (discPercent / 100), // 계산된 할인율 저장
+                updatedAt: new Date() // 업데이트 시간 추가
             }
-            
-            try {
-                await setDoc(doc(db, "products", "sticker_price"), { 
-                    base500, 
-                    areaRate, 
-                    marginRate 
-                });
-                alert("공식 환경설정이 저장되었습니다!");
-            } catch (e) { 
-                alert("저장 실패: " + e.message); 
-            }
-        });
-
-
-
-
-
-
-
-
-        // 3. 수량별 설정 저장
-        document.getElementById('saveTierConfigBtn').addEventListener('click', async () => {
-            const tier = document.getElementById('selectTier').value;
-            const rate = parseFloat(document.getElementById('rateInput').value);
-            const discPercent = parseFloat(document.getElementById('discInput').value);
-            if (isNaN(rate) || isNaN(discPercent)) { alert("요율과 할인율을 입력하세요."); return; }
-            
-            try {
-                const updateData = {};
-                updateData[`tiers.${tier}`] = { rate: rate, discount: 1 - (discPercent / 100) };
-                await setDoc(doc(db, "products", "sticker_price2"), updateData, { merge: true });
-                alert(tier + "매 설정이 저장되었습니다!");
-            } catch (e) { alert("저장 실패: " + e.message); }
-        });
+        };
+        
+        await setDoc(docRef, updateData, { merge: true });
+        
+        alert(`${tier}매 설정이 파이어베이스에 저장되었습니다!`);
+        
+        // 입력창 초기화
+        document.getElementById('rateInput').value = '';
+        document.getElementById('discInput').value = '';
+    } catch (e) { 
+        alert("저장 실패: " + e.message); 
+    }
+});
     </script>
 </body>
 </html>
 
 
+<br>
+500매 공식 final_price_excl_delivery = round(((base500 + (areaRate * w * h) - 100) * (1 + marginRate / 100)))
+<br>1000매 공식  final_price_excl_delivery = round(((base500 + (areaRate * w * h) - 100) * (1.445 - (0.0000002 * w * h))) * (1 + marginRate / 100))
+<br>[ 공식에대한 설명 / 기본값: base500 (제품별 기본가), / areaRate (1.5) 면적요율, marginRate (제품별 마진율). ]
