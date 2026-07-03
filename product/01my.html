@@ -3,7 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    body { display: flex; justify-content: center; padding-top: 20px; margin: 0; font-family: sans-serif; }
+    body {
+    display: block;
+    margin: 0;
+    padding-top: 20px;
+    font-family: sans-serif;
+}
+
+.product-container,
+div[style*="width: 1195px"] {
+    margin-left: auto;
+    margin-right: auto;
+}
     .product-container { display: flex; gap: 40px; width: 1195px; align-items: flex-start; }
     .product-image { width: 600px; height: 600px; background-color: #ccc; background-size: cover; background-position: center; flex-shrink: 0; }
     .options-section { flex: 1; display: flex; flex-direction: column; gap: 6px; }
@@ -36,21 +47,18 @@ input:disabled { background-color: #eee; cursor: not-allowed; border: 1px solid 
 
 
         <div class="option-row">
-            <div class="label">코팅</div>
-		<select id="coatingSelect" style="flex:1"><option>불러오는 중...</option></select>
+            <div class="label">단/양면</div>
+		<select id="danSelect" style="flex:1"><option>불러오는 중...</option></select>
         </div>
 
 
         <div class="option-row">
-            <div class="label">인쇄도수</div>
+            <div class="label">편집</div>
 		<select id="inkSelect" style="flex:1"><option>불러오는 중...</option></select>
         </div>
 
 
-        <div class="option-row">
-            <div class="label">추가옵션 테스트</div>
-		<select id="inkSelect2" style="flex:1"><option>불러오는 중...</option></select>
-        </div>
+ 
 
 
 
@@ -115,10 +123,26 @@ x <input type="number" id="setCountInput" value="1" min="1" max="50" style="widt
 
 
 
-        <div class="option-row">
-            <div class="label">컬러</div>
-            <button>CMYK (컬러인쇄)</button>
-        </div>
+<div class="option-row">
+    <div class="label">무게, 컬러</div>
+
+    <span style="margin-right:2px; font-size:13px; color:#666;">
+        약
+    </span>
+
+    <span id="weightDisplay"
+          style="margin-right:10px; font-size:13px; color:#666;">
+        0kg
+    </span>
+
+    <span class="fixed-option"
+          style="font-size:13px; color:#666;">
+        CMYK (컬러인쇄)
+    </span>
+</div>
+
+
+
 
 <div class="option-row">
     <div class="label">예상 출고일</div>
@@ -127,13 +151,102 @@ x <input type="number" id="setCountInput" value="1" min="1" max="50" style="widt
 </div>
 
         <div class="total-price">
-            총 결제액 <br>
-            <span id="priceDisplay" style="color:red; font-size:1.2em;">0원</span>
-        </div>
+
+    <div id="selectedOptionsSummary"
+     style="
+        font-size:12px;
+        color:#999;
+        margin-bottom:5px;
+     ">
+</div>
+
+
+    총 결제액 <br>
+    <span id="priceDisplay"
+      style="
+        color:#4aa3ff;
+        font-size:1.3em;
+        font-weight:700;
+      ">
+    0원
+</span>
+</div>
 
         <button class="order-btn">파일 업로드 & 주문하기</button>
     </div>
 </div>
+
+
+
+
+
+<div style="width:100%; display:flex; justify-content:center; margin-top:80px;">
+    <div style="width:1195px;">
+
+        <div style="display:flex; border:1px solid #ccc; text-align:center; border-bottom:2px solid #ccc;">
+
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:pointer;">
+                제품정보
+            </div>
+
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">
+                공지사항
+            </div>
+
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">
+                출고/배송
+            </div>
+
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">
+                재작업/취소/환불
+            </div>
+
+        </div>
+
+        <div style="text-align:center; margin-top:80px;">
+            <h2 style="font-size:24px; color:#333;">저렴한 가격 & 가장 많은 매수</h2>
+<div id="bottomProductImage" style="width:1200px; height:1000px; background:#222; margin-top:80px; background-size: cover; background-position: center;"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function setTab(el) {
+    const tabs = el.parentElement.children;
+
+    for (let i = 0; i < tabs.length; i++) {
+        tabs[i].style.background = "white";
+        tabs[i].style.color = "#333";
+    }
+
+    el.style.background = "#999";
+    el.style.color = "white";
+}
+</script>
+
+
+
+<script type="module">
+    // (스크립트 내용은 그대로 두시면 됩니다)
+</script>
+
+</body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -151,18 +264,18 @@ appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-
-
+// 추가
+let priceConfigCache = null;
+let finishingOptionsCache = null;
 
 
 
 
 async function loadAllOptions() {
     const optionConfigs = [
-        { id: "paperSelect", docId: "sticker_paper" },
-        { id: "coatingSelect", docId: "sticker_coating" },
-        { id: "inkSelect", docId: "sticker_ink" },
-        { id: "inkSelect2", docId: "sticker2_ink" }
+        { id: "paperSelect", docId: "myeong_paper" },
+        { id: "danSelect", docId: "myeong_dan" },
+        { id: "inkSelect", docId: "myeong_ink" },
     ];
 
     for (const config of optionConfigs) {
@@ -172,18 +285,22 @@ async function loadAllOptions() {
             if (!select) continue;
             select.innerHTML = '';
             
-            docSnap.data().options.forEach(opt => {
-                const el = document.createElement('option');
-                el.value = opt.name;
-                el.textContent = opt.name;
-                el.dataset.price = opt.price || 0;
-                el.dataset.margin = opt.margin || 0;
-                el.dataset.url = opt.url || "";
-                el.dataset.imageUrl = opt.imageUrl || ""; // 이미지 데이터셋 추가
-                el.dataset.costMargin = opt.costMargin || 0;
-                el.dataset.delivery = opt.delivery || 0; 
-                select.appendChild(el);
-            });
+           docSnap.data().options.forEach(opt => {
+    const el = document.createElement('option');
+    el.value = opt.name;
+    el.textContent = opt.name;
+    el.dataset.price = opt.price || 0;
+    el.dataset.margin = opt.margin || 0;
+    el.dataset.url = opt.url || "";
+    el.dataset.imageUrl = opt.imageUrl || ""; 
+    el.dataset.costMargin = opt.costMargin || 0;
+    el.dataset.delivery = opt.delivery || 0; 
+    
+    // 이 줄을 반드시 추가해야 합니다:
+    el.dataset.weight = opt.weight || 0; 
+    
+    select.appendChild(el);
+});
         }
     }
 
@@ -215,21 +332,32 @@ async function loadAllOptions() {
 
     // [중요] 첫 옵션 이미지 자동 적용 (위치: 함수 마지막, 닫는 괄호 위)
     setTimeout(() => {
-        const firstSelect = document.querySelector('select');
-        if (firstSelect && firstSelect.options.length > 0) {
-            const firstOpt = firstSelect.options[0];
-            const productImg = document.querySelector('.product-image');
-            if (firstOpt.dataset.imageUrl && firstOpt.dataset.imageUrl.trim() !== "") {
-                productImg.style.backgroundImage = `url("${firstOpt.dataset.imageUrl}")`;
-            }
+    const firstSelect = document.querySelector('select');
+    if (firstSelect && firstSelect.options.length > 0) {
+        const firstOpt = firstSelect.options[0];
+        if (firstOpt.dataset.imageUrl) {
+            updateMainImage(firstOpt.dataset.imageUrl);
         }
-    }, 500);
+    }
+}, 500);
 }
 
 
 
 
 
+
+
+
+
+function updateMainImage(imageUrl) {
+    if (!imageUrl || imageUrl.trim() === "") return;
+    const mainImg = document.querySelector('.product-image');
+    const bottomImg = document.getElementById('bottomProductImage');
+    const style = `background-image: url("${imageUrl}") !important;`;
+    if (mainImg) mainImg.style.cssText += style;
+    if (bottomImg) bottomImg.style.cssText += style;
+}
 
 
 
@@ -241,23 +369,63 @@ async function loadAllOptions() {
 
    // 옵션추가 
 async function updatePrice() {
-    const configSnap = await getDoc(doc(db, "products", "sticker_price2"));
-    if (!configSnap.exists()) return;
-    
-    const { base500, areaRate, marginRate, tiers } = configSnap.data();
-    
-    const w = parseFloat(document.getElementById('widthInput')?.value) || 0;
-    const h = parseFloat(document.getElementById('heightInput')?.value) || 0;
-    const qty = document.getElementById('qtySelect').value;
 
-    const area = areaRate * w * h;
-    const margin = 1 + (marginRate / 100);
-    let calculatedPrice = 0;
+    if (!priceConfigCache) {
+        const configSnap = await getDoc(
+            doc(db, "products", "myeong_price2")
+        );
+
+        if (!configSnap.exists()) return;
+
+        priceConfigCache = configSnap.data();
+    }
+
+const { base500, areaRate, marginRate, tiers } = priceConfigCache;
+
+const w = parseFloat(document.getElementById('widthInput').value) || 0;
+const h = parseFloat(document.getElementById('heightInput').value) || 0;
+const qty = parseInt(document.getElementById('qtySelect').value) || 0;
+const count = parseInt(document.getElementById('setCountInput').value) || 1;
+
+// 용지 무게(g/㎡) 가져오기
+const paperSelect = document.getElementById('paperSelect');
+const weightDisplay = document.getElementById('weightDisplay');
+
+// 현재 선택된 옵션의 데이터셋에서 weight를 안전하게 가져옴
+let paperWeight = 0;
+if (paperSelect && paperSelect.options[paperSelect.selectedIndex]) {
+    paperWeight = parseFloat(paperSelect.options[paperSelect.selectedIndex].dataset.weight) || 0;
+}
+
+// 무게 계산 및 UI 제어 로직
+if (paperWeight > 0) {
+    const totalWeightKg = ((w * h) / 1000000) * (paperWeight / 1000) * qty * count;
+if (totalWeightKg < 1) {
+    weightDisplay.textContent =
+        Math.round(totalWeightKg * 1000) + 'g';
+} else {
+    weightDisplay.textContent =
+        totalWeightKg.toFixed(2) + 'kg';
+}    weightDisplay.style.display = 'inline';
+}
+
+ else {
+    weightDisplay.textContent = '0kg'; // 값이 없을 경우 기본 0kg 표시
+    weightDisplay.style.display = 'inline'; // 숨기지 않고 0kg로 표시
+
+}
+const area = areaRate * w * h;
+const margin = 1 + (marginRate / 100);
+let calculatedPrice = 0
+
+
+
+
 
     // 1. 수량별 기본 가격 계산
-    if (qty === "500") {
+    if (qty === 500) {
         calculatedPrice = Math.round((base500 + area - 100) * margin);
-    } else if (qty === "1000") {
+   } else if (qty === 1000) {
         const factor = 1.445 - (0.0000002 * w * h);
         calculatedPrice = Math.round(((base500 + area - 100) * factor) * margin);
     } else if (tiers && tiers[qty]) {
@@ -305,14 +473,79 @@ let finalPrice = Math.round(calculatedPrice + (optionPriceSum * totalOptionMargi
     }
 
 // [추가] 건수만큼 곱하기
-   const count = parseInt(document.getElementById('setCountInput').value) || 1;
     finalPrice = finalPrice * count;
+
+
+const summary = [];
+
+// 용지
+summary.push(
+    document.getElementById('paperSelect')?.value || ''
+);
+
+// 코팅
+summary.push(
+    document.getElementById('danSelect')?.value || ''
+);
+
+// 인쇄도수
+summary.push(
+    document.getElementById('inkSelect')?.value || ''
+);
+
+// 수량
+summary.push(
+    qty + '매'
+);
+
+// 사이즈
+summary.push(
+    `가로 ${w}mm × 세로 ${h}mm`
+);
+
+// 후가공
+document.querySelectorAll('.finishing-select').forEach(sel => {
+    if (sel.value) {
+        summary.push(sel.value);
+    }
+});
+
+
+
+
+
+const finishingValues = [];
+
+let hasDuplicateFinishing = false;
+
+document.querySelectorAll('.finishing-select').forEach(sel => {
+
+    if (!sel.value) return;
+
+    if (finishingValues.includes(sel.value)) {
+        hasDuplicateFinishing = true;
+    }
+
+    finishingValues.push(sel.value);
+});
+
+if (hasDuplicateFinishing) {
+    document.getElementById('selectedOptionsSummary').innerHTML =
+        '<span style="color:red">동일한 후가공을 중복 선택할 수 없습니다.</span>';
+    return;
+}
+
+
+
+
+document.getElementById('selectedOptionsSummary').textContent =
+    summary.filter(Boolean).join(' + ');
+
 
     document.getElementById('priceDisplay').textContent = finalPrice.toLocaleString() + '원';
 }
 
-    // 초기화 및 이벤트 연결
-    loadAllOptions(); // 옵션 불러오기 함수
+
 
 const setCountInput = document.getElementById('setCountInput');
 setCountInput.addEventListener('change', updatePrice);
@@ -441,23 +674,45 @@ hIn.addEventListener('blur', () => {
 });
 
 // 3. 기타 이벤트 연결
+
+
+
+
+
+
+// [용지 전용: 이미지 변경 리스너]
+document.getElementById('paperSelect').addEventListener('change', (e) => {
+    const selectedOpt = e.target.options[e.target.selectedIndex];
+    if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
+        updateMainImage(selectedOpt.dataset.imageUrl);
+    }
+});
+
+// [공통: 가격 및 배송일 업데이트 리스너]
 document.querySelectorAll('select').forEach(sel => {
     sel.addEventListener('change', (e) => {
-    const selectedOpt = e.target.options[e.target.selectedIndex];
-    const productImg = document.querySelector('.product-image'); //[cite: 2]
+        const selectedOpt = e.target.options[e.target.selectedIndex];
 
-    // 이미지 URL이 있을 경우에만 배경 변경[cite: 2]
- if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
-    productImg.style.cssText += `background-image: url("${selectedOpt.dataset.imageUrl}") !important;`;
-}
-
-    if (selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
-        window.open(selectedOpt.dataset.url, '_blank');
-    }
-    updatePrice();
-    updateDeliveryDisplay();
+        // 외부 링크 이동
+        if (selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
+            window.open(selectedOpt.dataset.url, '_blank');
+        }
+        
+        // 가격 및 배송일 업데이트 (이미지 로직 제외됨)
+        updatePrice();
+        updateDeliveryDisplay();
     });
 });
+
+
+
+
+
+
+
+
+
+
 
 // 초기 실행
 loadAllOptions();
@@ -472,28 +727,36 @@ loadFinishingOptions(document.querySelector('.finishing-select'));
 
 
 async function loadFinishingOptions(selectElement) {
-    // 1. 함수 실행 즉시 기본 옵션 생성 (공란 방지)
-    selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
-    
-    const docSnap = await getDoc(doc(db, "products", "sticker_bg"));
-    if (docSnap.exists()) {
-        const currentValue = selectElement.value; // 기존 선택값 유지
-        
-        docSnap.data().options.forEach(opt => {
-            const el = document.createElement('option');
-            el.value = opt.name;
-            el.textContent = opt.name;
-            el.dataset.price = opt.price || 0;
-            el.dataset.imageUrl = opt.imageUrl || "";
-            el.dataset.delivery = opt.delivery || 0; 
-            selectElement.appendChild(el);
-        });
 
-        // 2. 데이터 로드 후 기존에 선택했던 값이 있다면 복구[cite: 6]
-        if (currentValue) selectElement.value = currentValue; 
+    selectElement.innerHTML =
+        '<option value="" data-price="0">선택안함</option>';
+
+    if (!finishingOptionsCache) {
+        const docSnap = await getDoc(
+            doc(db, "products", "myeong_bg")
+        );
+
+        if (!docSnap.exists()) return;
+
+        finishingOptionsCache = docSnap.data().options;
+    }
+
+    const currentValue = selectElement.value;
+
+    finishingOptionsCache.forEach(opt => {
+        const el = document.createElement('option');
+        el.value = opt.name;
+        el.textContent = opt.name;
+        el.dataset.price = opt.price || 0;
+        el.dataset.imageUrl = opt.imageUrl || "";
+        el.dataset.delivery = opt.delivery || 0;
+        selectElement.appendChild(el);
+    });
+
+    if (currentValue) {
+        selectElement.value = currentValue;
     }
 }
-
 
 
 
@@ -512,6 +775,9 @@ document.getElementById('addFinishingBtn').addEventListener('click', () => {
     // 새로 생성된 셀렉트 박스에 데이터 로드
     loadFinishingOptions(newRow.querySelector('.finishing-select'));
     
+
+
+
     // 이벤트 리스너 추가
     newRow.querySelector('.finishing-select').addEventListener('change', updatePrice);
 });
@@ -521,5 +787,10 @@ document.getElementById('addFinishingBtn').addEventListener('click', () => {
 
 </script>
 
+
+
+
 </body>
 </html>
+
+
