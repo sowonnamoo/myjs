@@ -5,7 +5,7 @@
 <style>
     body { display: flex; justify-content: center; padding-top: 20px; margin: 0; font-family: sans-serif; }
     .product-container { display: flex; gap: 40px; width: 1195px; align-items: flex-start; }
-    .product-image { width: 600px; height: 600px; background-color: #ccc; background-image: url('https://sowonnamoo1005.cafe24.com/1/260701.jpg'); background-size: cover; background-position: center; flex-shrink: 0; }
+    .product-image { width: 600px; height: 600px; background-color: #ccc; background-size: cover; background-position: center; flex-shrink: 0; }
     .options-section { flex: 1; display: flex; flex-direction: column; gap: 6px; }
     .option-row { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 4px 0; }
     .label { width: 120px; font-weight: bold; font-size: 14px; }
@@ -84,10 +84,13 @@ input:disabled { background-color: #eee; cursor: not-allowed; border: 1px solid 
 </div>
 
 
-        <div class="option-row">
-            <div class="label">배경(유/무)선택</div>
-		<select id="bgSelect" style="flex:1"><option>불러오는 중...</option></select>
-        </div>
+<div id="finishingContainer">
+    <div class="option-row" id="finishingRow">
+        <div class="label">후가공선택</div>
+        <select class="finishing-select" style="flex:1"><option>불러오는 중...</option></select>
+        <button type="button" id="addFinishingBtn" style="margin-left:5px; background:#ddd;">후가공 추가하기</button>
+    </div>
+</div>
 
 
 
@@ -104,28 +107,23 @@ input:disabled { background-color: #eee; cursor: not-allowed; border: 1px solid 
 </select>
 
 
-x <select><option>1건</option></select>
+x <input type="number" id="setCountInput" value="1" min="1" max="50" style="width: 60px; padding: 4px;"> 건
+
             </div>
         </div>
 
 
-        <div class="option-row">
-            <div class="label">당일판</div>
-            <div class="btn-group">
-                <button>당일판</button>
-                <button class="active">일반판</button>
-            </div>
-        </div>
+
 
         <div class="option-row">
-            <div class="label">편집의뢰</div>
-            <button>편집의뢰</button>
+            <div class="label">컬러</div>
+            <button>CMYK (컬러인쇄)</button>
         </div>
 
 <div class="option-row">
     <div class="label">예상 출고일</div>
     <!-- id 추가 -->
-    <div id="deliveryDisplay" style="color:red; border:1px dashed red; padding:3px 10px; font-size:13px;">매주 화,목 출고</div>
+    <div id="deliveryDisplay" style="color:red; border:1px dashed red; padding:3px 10px; font-size:13px;">통상 1일</div>
 </div>
 
         <div class="total-price">
@@ -164,7 +162,6 @@ async function loadAllOptions() {
         { id: "paperSelect", docId: "sticker_paper" },
         { id: "coatingSelect", docId: "sticker_coating" },
         { id: "inkSelect", docId: "sticker_ink" },
-        { id: "bgSelect", docId: "sticker_bg" },
         { id: "inkSelect2", docId: "sticker2_ink" }
     ];
 
@@ -175,51 +172,59 @@ async function loadAllOptions() {
             if (!select) continue;
             select.innerHTML = '';
             
-  docSnap.data().options.forEach(opt => {
-    const el = document.createElement('option');
-    el.value = opt.name;
-    el.textContent = opt.name;
-    el.dataset.price = opt.price || 0;
-    el.dataset.margin = opt.margin || 0;
-    // delivery 필드가 숫자인지 확인 후 저장
-    el.dataset.delivery = opt.delivery || 0; 
-    select.appendChild(el);
-});
+            docSnap.data().options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.name;
+                el.textContent = opt.name;
+                el.dataset.price = opt.price || 0;
+                el.dataset.margin = opt.margin || 0;
+                el.dataset.url = opt.url || "";
+                el.dataset.imageUrl = opt.imageUrl || ""; // 이미지 데이터셋 추가
+                el.dataset.costMargin = opt.costMargin || 0;
+                el.dataset.delivery = opt.delivery || 0; 
+                select.appendChild(el);
+            });
         }
     }
-    // 옵션 로딩 후 가격 계산 실행
-const sizeType = document.getElementById('sizeType');
-const sizeList = document.getElementById('sizeList');
-const wIn = document.getElementById('widthInput');
-const hIn = document.getElementById('heightInput');
 
-sizeType.addEventListener('change', () => {
-    const isCustom = sizeType.value === 'custom';
-    wIn.disabled = !isCustom;
-    hIn.disabled = !isCustom;
-    sizeList.disabled = isCustom;
-    if (!isCustom) {
+    // 사이즈 이벤트 연결
+    const sizeType = document.getElementById('sizeType');
+    const sizeList = document.getElementById('sizeList');
+    const wIn = document.getElementById('widthInput');
+    const hIn = document.getElementById('heightInput');
+
+    sizeType.addEventListener('change', () => {
+        const isCustom = sizeType.value === 'custom';
+        wIn.disabled = !isCustom;
+        hIn.disabled = !isCustom;
+        sizeList.disabled = isCustom;
+        if (!isCustom) {
+            const [w, h] = sizeList.value.split(',');
+            wIn.value = w; hIn.value = h;
+            updatePrice();
+        }
+    });
+
+    sizeList.addEventListener('change', () => {
         const [w, h] = sizeList.value.split(',');
         wIn.value = w; hIn.value = h;
         updatePrice();
-    }
-});
-
-sizeList.addEventListener('change', () => {
-    const [w, h] = sizeList.value.split(',');
-    wIn.value = w; hIn.value = h;
-    updatePrice();
-}); // 괄호를 닫음
+    });
 
     updatePrice();
-} // loadAllOptions 함수를 여기서 닫음
 
-
-
-
-
-
-
+    // [중요] 첫 옵션 이미지 자동 적용 (위치: 함수 마지막, 닫는 괄호 위)
+    setTimeout(() => {
+        const firstSelect = document.querySelector('select');
+        if (firstSelect && firstSelect.options.length > 0) {
+            const firstOpt = firstSelect.options[0];
+            const productImg = document.querySelector('.product-image');
+            if (firstOpt.dataset.imageUrl && firstOpt.dataset.imageUrl.trim() !== "") {
+                productImg.style.backgroundImage = `url("${firstOpt.dataset.imageUrl}")`;
+            }
+        }
+    }, 500);
+}
 
 
 
@@ -249,48 +254,69 @@ async function updatePrice() {
     const margin = 1 + (marginRate / 100);
     let calculatedPrice = 0;
 
-    // 1. 수량별 계산 로직
+    // 1. 수량별 기본 가격 계산
     if (qty === "500") {
         calculatedPrice = Math.round((base500 + area - 100) * margin);
     } else if (qty === "1000") {
         const factor = 1.445 - (0.0000002 * w * h);
         calculatedPrice = Math.round(((base500 + area - 100) * factor) * margin);
-    } else if (tiers[qty]) {
-        // 2000, 3000, 4000 등 객체에 정의된 수량 자동 처리
+    } else if (tiers && tiers[qty]) {
         const { rate, discount } = tiers[qty];
         calculatedPrice = Math.round(((base500 + area - 100) * rate * discount) * margin);
     }
 
     // 2. 옵션별 추가 가격 합산
-    let optionPrice = 0;
-    let totalOptionMarginFactor = 1; // 옵션 마진 누적 계산용
+    let optionPriceSum = 0; 
+    let totalOptionMarginFactor = 1; 
 
+    // 여기서부터 모든 select를 순회하며 계산합니다
     document.querySelectorAll('select').forEach(sel => {
-        if (sel.id !== 'qtySelect' && sel.selectedIndex >= 0) {
+        // A. 후가공 옵션 계산 (finishing-select 클래스)
+        if (sel.classList.contains('finishing-select')) {
             const selectedOpt = sel.options[sel.selectedIndex];
-            const p = parseInt(selectedOpt.dataset.price || 0);
-            const m = parseFloat(selectedOpt.dataset.margin || 0);
+            if (selectedOpt && selectedOpt.dataset.price) {
+                const p = parseFloat(selectedOpt.dataset.price) || 0;
+                const cm = parseFloat(selectedOpt.dataset.costMargin) || 0;
+                optionPriceSum += (p * (1 + (cm / 100)));
+            }
+        } 
+        // B. 기존 일반 옵션 계산 (제외항목 설정)
+        else if (sel.id !== 'qtySelect' && sel.id !== 'sizeType' && sel.id !== 'sizeList' && sel.selectedIndex >= 0) {
+            const selectedOpt = sel.options[sel.selectedIndex];
+            const p = parseFloat(selectedOpt.dataset.price) || 0;
+            const m = parseFloat(selectedOpt.dataset.margin) || 0;
+            const cm = parseFloat(selectedOpt.dataset.costMargin) || 0;
+
+            const priceWithCostMargin = p * (1 + (cm / 100));
+            optionPriceSum += priceWithCostMargin;
             
-            optionPrice += p;
-            // 개별 마진이 있다면(예: 0.1%), 최종 금액에 반영 (예: 1.001 곱하기)
             if (m > 0) {
                 totalOptionMarginFactor *= (1 + (m / 100));
             }
         }
     });
 
-    // 계산된 가격에 개별 마진이 적용된 옵션 가격을 합산
-   let finalPrice = Math.round(calculatedPrice + (optionPrice * totalOptionMarginFactor));
+    // 3. 최종 결제액 합산
+let finalPrice = Math.round(calculatedPrice + (optionPriceSum * totalOptionMarginFactor));
 
-    // 규격(standard)5퍼
-    if (document.getElementById('sizeType').value === 'standard') {
+    // 4. 규격 사이즈 5% 할인 적용
+  if (document.getElementById('sizeType').value === 'standard') {
         finalPrice = Math.round(finalPrice * 0.95);
     }
 
+// [추가] 건수만큼 곱하기
+   const count = parseInt(document.getElementById('setCountInput').value) || 1;
+    finalPrice = finalPrice * count;
+
     document.getElementById('priceDisplay').textContent = finalPrice.toLocaleString() + '원';
 }
+
     // 초기화 및 이벤트 연결
     loadAllOptions(); // 옵션 불러오기 함수
+
+const setCountInput = document.getElementById('setCountInput');
+setCountInput.addEventListener('change', updatePrice);
+
     
     // 이벤트 리스너 설정
     const sizeType = document.getElementById('sizeType');
@@ -372,7 +398,7 @@ function updateDeliveryDisplay() {
         const dateStr = calculateDeliveryDate(totalDeliveryDays);
         display.innerHTML = `<span style="color:blue; font-weight:bold;">${dateStr}</span> 배송 예정`;
     } else {
-        display.textContent = "매주 화,목 출고";
+        display.textContent = "1박2일";
     }
 }
 
@@ -391,32 +417,106 @@ function updateDeliveryDisplay() {
     sizeType.addEventListener('change', updateSizeMode);
     sizeList.addEventListener('change', updateSizeMode);
 
-    const validateSize = (input, min, max, defaultVal) => {
-        const val = parseFloat(input.value);
-        if (isNaN(val) || val < min || val > max) {
-            alert(`설정할 수 없는 사이즈입니다. \n가로: 100~300mm, 세로: 100~400mm만 입력 가능합니다.`);
-            input.value = defaultVal;
-        }
-        // 작업사이즈 동기화 (재단 사이즈 기준)
-        workW.value = parseFloat(wIn.value) + 2;
-        workH.value = parseFloat(hIn.value) + 2;
-        updatePrice();
-    };
+// 1. 사이즈 검증 함수 (순수하게 검증과 업데이트만 수행)
+const validateSize = (input, min, max, defaultVal) => {
+    const val = parseFloat(input.value);
+    
+    if (isNaN(val) || val < min || val > max) {
+        alert(`설정할 수 없는 사이즈입니다. \n가로: 90~300mm, 세로: 50~400mm만 입력 가능합니다.`);
+        input.value = defaultVal;
+    }
+    
+    // 작업사이즈 동기화
+    workW.value = parseFloat(wIn.value) + 2;
+    workH.value = parseFloat(hIn.value) + 2;
+    updatePrice();
+};
 
-    // 'input' 대신 'blur' 이벤트를 사용
-    wIn.addEventListener('blur', () => validateSize(wIn, 90, 300, 70));
-    hIn.addEventListener('blur', () => validateSize(hIn, 50, 400, 40));
-
-    document.querySelectorAll('select').forEach(sel => sel.addEventListener('change', updatePrice));
-
-    loadAllOptions();
-    updateSizeMode(); // 초기값 로딩 시 작업사이즈 계산 실행
-
-
-// 옵션 변경 시 날짜 갱신 이벤트 추가
-document.querySelectorAll('select').forEach(sel => {
-    sel.addEventListener('change', updateDeliveryDisplay);
+// 2. 이벤트 리스너 등록 (여기서 한 번만 등록!)
+wIn.addEventListener('blur', () => {
+    setTimeout(() => validateSize(wIn, 70, 300, 70), 100);
 });
+hIn.addEventListener('blur', () => {
+    setTimeout(() => validateSize(hIn, 40, 400, 40), 100);
+});
+
+// 3. 기타 이벤트 연결
+document.querySelectorAll('select').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+    const selectedOpt = e.target.options[e.target.selectedIndex];
+    const productImg = document.querySelector('.product-image'); //[cite: 2]
+
+    // 이미지 URL이 있을 경우에만 배경 변경[cite: 2]
+ if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
+    productImg.style.cssText += `background-image: url("${selectedOpt.dataset.imageUrl}") !important;`;
+}
+
+    if (selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
+        window.open(selectedOpt.dataset.url, '_blank');
+    }
+    updatePrice();
+    updateDeliveryDisplay();
+    });
+});
+
+// 초기 실행
+loadAllOptions();
+updateSizeMode();
+updateDeliveryDisplay();
+
+// [추가] 초기 후가공 옵션 로딩
+loadFinishingOptions(document.querySelector('.finishing-select'));
+
+
+
+
+
+async function loadFinishingOptions(selectElement) {
+    // 1. 함수 실행 즉시 기본 옵션 생성 (공란 방지)
+    selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
+    
+    const docSnap = await getDoc(doc(db, "products", "sticker_bg"));
+    if (docSnap.exists()) {
+        const currentValue = selectElement.value; // 기존 선택값 유지
+        
+        docSnap.data().options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.name;
+            el.textContent = opt.name;
+            el.dataset.price = opt.price || 0;
+            el.dataset.imageUrl = opt.imageUrl || "";
+            el.dataset.delivery = opt.delivery || 0; 
+            selectElement.appendChild(el);
+        });
+
+        // 2. 데이터 로드 후 기존에 선택했던 값이 있다면 복구[cite: 6]
+        if (currentValue) selectElement.value = currentValue; 
+    }
+}
+
+
+
+
+document.getElementById('addFinishingBtn').addEventListener('click', () => {
+    const container = document.getElementById('finishingContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'option-row';
+    // 수정: 초기값을 "선택안함"으로 설정
+    newRow.innerHTML = `
+        <div class="label">후가공 추가</div>
+        <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
+        <button type="button" style="margin-left:5px; background:#eee;" onclick="this.parentElement.remove(); updatePrice();">삭제</button>
+    `;
+    container.appendChild(newRow);
+    
+    // 새로 생성된 셀렉트 박스에 데이터 로드
+    loadFinishingOptions(newRow.querySelector('.finishing-select'));
+    
+    // 이벤트 리스너 추가
+    newRow.querySelector('.finishing-select').addEventListener('change', updatePrice);
+});
+
+
 
 
 </script>
