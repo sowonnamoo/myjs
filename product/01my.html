@@ -450,21 +450,27 @@ hIn.addEventListener('blur', () => {
 });
 
 // 3. 기타 이벤트 연결
-document.querySelectorAll('select').forEach(sel => {
-    sel.addEventListener('change', (e) => {
-		
-    const selectedOpt = e.target.options[e.target.selectedIndex];
-    const productImg = document.querySelector('.product-image'); //[cite: 2]
+document.querySelector('.product-container').addEventListener('change', (e) => {
+    // 이벤트가 발생한 요소가 select인지 확인
+    if (e.target.tagName === 'SELECT') {
+        const selectedOpt = e.target.options[e.target.selectedIndex];
+        const productImg = document.querySelector('.product-image');
 
-    // 이미지 URL이 있을 경우에만 배경 변경[cite: 2]
- if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
-    productImg.style.cssText += `background-image: url("${selectedOpt.dataset.imageUrl}") !important;`;
-}
+        // 1. 이미지 URL 처리
+        if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
+            productImg.style.cssText += `background-image: url("${selectedOpt.dataset.imageUrl}") !important;`;
+        }
 
-    if (selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
-        window.open(selectedOpt.dataset.url, '_blank');
+        // 2. 외부 URL 이동 처리
+        if (selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
+            window.open(selectedOpt.dataset.url, '_blank');
+        }
+
+        // 3. 가격 및 배송일 업데이트 (디바운싱 적용 권장)
+        debounceUpdatePrice();
+        updateDeliveryDisplay();
     }
-
+});
 
 		
  // 하단 스크립트 영역에 디바운스 변수 추가: let debounceTimer;
