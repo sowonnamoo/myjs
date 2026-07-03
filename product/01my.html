@@ -158,15 +158,20 @@ appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
 
 
 async function loadAllOptions() {
-    const optionConfigs = [
-        { id: "paperSelect", docId: "sticker_paper" },
-        { id: "coatingSelect", docId: "sticker_coating" },
-        { id: "inkSelect", docId: "sticker_ink" },
-        { id: "inkSelect2", docId: "sticker2_ink" }
-    ];
+    // 4번의 개별 호출 대신 1번의 통합 호출 수행
+    const docSnap = await getDoc(doc(db, "products", "all_options"));
+    if (!docSnap.exists()) return;
+    
+    const allData = docSnap.data(); // 예: { paper: [...], coating: [...], ... }
+    
+    // 각 select ID에 맞춰 데이터 매핑
+    updateSelect('paperSelect', allData.paper);
+    updateSelect('coatingSelect', allData.coating);
 
-    for (const config of optionConfigs) {
-        const docSnap = await getDoc(doc(db, "products", config.docId));
+
+
+
+		
         if (docSnap.exists()) {
             const select = document.getElementById(config.id);
             if (!select) continue;
@@ -241,8 +246,12 @@ async function loadAllOptions() {
 
    // 옵션추가 
 async function updatePrice() {
-    const configSnap = await getDoc(doc(db, "products", "sticker_price2"));
-    if (!configSnap.exists()) return;
+    if (!priceConfigCache) {
+        const configSnap = await getDoc(doc(db, "products", "sticker_price2"));
+        if (!configSnap.exists()) return;
+        priceConfigCache = configSnap.data();
+    }
+    const { base500, areaRate, marginRate, tiers } = priceConfigCache;
     
     const { base500, areaRate, marginRate, tiers } = configSnap.data();
     
@@ -443,6 +452,7 @@ hIn.addEventListener('blur', () => {
 // 3. 기타 이벤트 연결
 document.querySelectorAll('select').forEach(sel => {
     sel.addEventListener('change', (e) => {
+		
     const selectedOpt = e.target.options[e.target.selectedIndex];
     const productImg = document.querySelector('.product-image'); //[cite: 2]
 
@@ -454,10 +464,24 @@ document.querySelectorAll('select').forEach(sel => {
     if (selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
         window.open(selectedOpt.dataset.url, '_blank');
     }
-    updatePrice();
+
+
+		
+ // 하단 스크립트 영역에 디바운스 변수 추가: let debounceTimer;
+    debounceUpdatePrice(); // 기존 updatePrice() 대신 사용
     updateDeliveryDisplay();
     });
 });
+
+function debounceUpdatePrice() {
+    clearTimeout(window.debounceTimer);
+    window.debounceTimer = setTimeout(() => {
+        updatePrice();
+    }, 300);
+}
+
+
+	
 
 // 초기 실행
 loadAllOptions();
