@@ -28,6 +28,36 @@
     .total-price { text-align: right; font-size: 1.3em; font-weight: bold; margin-top: 10px; }
     .order-btn { background: #2b7bc3; color: white; padding: 15px; text-align: center; border: none; cursor: pointer; margin-top: 15px; font-size: 16px; }
     input:disabled { background-color: #eee; cursor: not-allowed; border: 1px solid #ccc; }
+
+/* 모바일 최적화 미디어 쿼리 추가 */
+@media (max-width: 768px) {
+    /* 1. 상단 이미지 + 옵션 영역 세로 배치 */
+    .product-container {
+        flex-direction: column !important;
+        width: 100% !important;
+        padding: 0 10px;
+    }
+    
+    .product-image {
+        width: 100% !important;
+        height: 300px !important; /* 모바일용 높이 */
+    }
+
+    /* 2. 하단 상세 영역 100% 너비 적용 */
+    div[style*="width: 1195px"] {
+        width: 100% !important;
+        padding: 0 10px;
+        box-sizing: border-box;
+    }
+
+    /* 3. 하단 큰 이미지도 모바일 너비에 맞춤 */
+    #bottomProductImage {
+        width: 100% !important;
+        height: 400px !important; /* 비율에 맞게 높이 조정 가능 */
+    }
+}
+
+
 </style>
 
 <div id="printable-quote" style="display:none;">
@@ -43,7 +73,7 @@
 <script src="delivery.js"></script>
 <script src="quote.js"></script>
 <script src="validate.js"></script>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 
@@ -58,10 +88,17 @@
             <select id="paperSelect" style="flex:1"><option>불러오는 중...</option></select>
         </div>
 
+
+
+
         <div class="option-row">
             <div class="label">편집</div>
             <select id="inkSelect" style="flex:1"><option>불러오는 중...</option></select>
         </div>
+
+
+
+
 
         <!-- 수량 옆에 건수 박스를 한 줄에 나란히 배치 (크기 축소) -->
         <div class="option-row">
