@@ -38,9 +38,10 @@
         padding: 0 10px;
     }
     
-    .product-image {
+   .product-image {
         width: 100% !important;
-        height: 300px !important; /* 모바일용 높이 */
+        height: auto !important;
+        aspect-ratio: 1 / 1; /* 가로세로 1:1 비율 유지 */
     }
 
     /* 2. 하단 상세 영역 100% 너비 적용 */
@@ -51,9 +52,10 @@
     }
 
     /* 3. 하단 큰 이미지도 모바일 너비에 맞춤 */
-    #bottomProductImage {
+   #bottomProductImage {
         width: 100% !important;
-        height: 400px !important; /* 비율에 맞게 높이 조정 가능 */
+        height: auto !important; 
+        aspect-ratio: 16 / 9; /* 상세 이미지 비율에 맞게 조정 (예: 16:9) */
     }
 }
 
