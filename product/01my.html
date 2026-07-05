@@ -31,11 +31,12 @@
 
 /* 모바일 최적화 미디어 쿼리 */
 @media (max-width: 768px) {
-    /* 1. 상단 이미지 + 옵션 영역 세로 배치 */
+    /* 1. 상단 제품 정보 및 옵션 전체 컨테이너 정렬 */
     .product-container {
         flex-direction: column !important;
         width: 100% !important;
-        padding: 0 10px;
+        padding: 0 10px !important; /* 좌우 10px 여백 추가 */
+        box-sizing: border-box !important; /* 패딩이 너비에 포함되도록 설정 */
     }
     
     #mainProductImage {
@@ -44,21 +45,26 @@
         aspect-ratio: 1 / 1;
     }
 
-    /* 2. 하단 상세 영역 100% 너비 적용 */
+    /* 2. 하단 상세 영역 정렬 */
     div[style*="width: 1195px"] {
         width: 100% !important;
-        padding: 0 10px;
-        box-sizing: border-box;
+        padding: 0 10px !important; /* 좌우 10px 여백 추가 */
+        box-sizing: border-box !important;
     }
 
-    /* 3. 하단 큰 이미지도 모바일 너비에 맞춤 */
+    /* 3. 하단 상세 이미지 정렬 */
     #bottomProductImage {
         width: 100% !important;
         height: auto !important; 
         aspect-ratio: 1 / 1;
     }
+    
+    /* 4. 탭 버튼 영역 좌우 정렬 보정 */
+    div[style*="border:1px solid #ccc; text-align:center;"] {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
 }
-
 
 </style>
 
