@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>그래픽스아이엠 - 큰글씨 실시간 견적기</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Noto Sans KR', sans-serif; }
+    body { background: #f5f5f5; color: #222; display: flex; justify-content: center; }
+    .mobile-container { width: 100%; max-width: 500px; background: #fcfcfc; min-height: 100vh; padding-bottom: 40px; }
+    .shop-header { background-color: #2b5797; color: #fff; display: flex; align-items: center; padding: 12px 15px; }
+    .menu-btn { background: #60a917; color: white; padding: 4px 8px; border-radius: 4px; font-size: 14px; font-weight: bold; text-align: center; line-height: 1.2; }
+    .logo-area { font-size: 22px; font-weight: bold; letter-spacing: -1px; margin-left: 15px; }
+    .product-title { text-align: center; font-size: 32px; font-weight: 900; color: #e31e23; margin: 15px 0 10px 0; }
+    .order-card { background: #ffffff; border: 3px solid #000000; border-radius: 12px; margin: 0 10px; padding: 15px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 20px; font-weight: bold; color: #000; margin-bottom: 6px; }
+    .form-group label .sub-info { color: #666; font-size: 15px; margin-left: 6px; font-weight: bold; }
+    .form-control { width: 100%; padding: 12px 12px; border: 2px solid #888; border-radius: 6px; font-size: 20px; font-weight: bold; color: #000; outline: none; background: #fff; }
+    .result-box { background: #fff0f1; border-radius: 6px; padding: 12px; margin-top: 15px; border: 1px solid #ffccd0; }
+    .result-flex { display: flex; justify-content: space-between; align-items: center; }
+    .result-left { font-size: 17px; color: #333; line-height: 1.5; }
+    .result-right { text-align: right; }
+    .total-price-text { font-size: 36px; font-weight: 900; color: #e31e23; display: block; line-height: 1.2; }
+    .vat-text { font-size: 15px; color: #555; font-weight: bold; }
+    .print-btn-wrapper { text-align: right; margin-top: 6px; }
+    .print-estimate-btn { display: inline-flex; align-items: center; background: #e8e8e8; color: #222; border: 2px solid #999; padding: 6px 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; }
+    .submit-btn { width: 100%; background: #1e5fa9; color: #fff; border: none; padding: 14px; font-size: 28px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 12px; box-shadow: 0 3px 5px rgba(0,0,0,0.2); }
+    .image-toggle-wrap { margin: 18px 10px 0; }
+    .image-toggle-btn {
+        width: 100%;
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: linear-gradient(145deg, #2b5797 0%, #1e4578 100%);
+        color: #fff;
+        padding: 14px 18px;
+        border: none;
+        border-radius: 12px;
+        font-size: 19px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(30, 69, 120, 0.35);
+        -webkit-tap-highlight-color: transparent;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+    .image-toggle-btn:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(30, 69, 120, 0.3); }
+    .image-toggle-btn .btn-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .image-toggle-btn .btn-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.18);
+        border-radius: 10px;
+        font-size: 20px;
+        line-height: 1;
+    }
+    .image-toggle-btn .chevron {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        font-size: 12px;
+        transition: transform 0.35s ease;
+    }
+    .image-toggle-btn[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+    .detail-image-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease, opacity 0.3s ease;
+        opacity: 0;
+        margin: 0 10px;
+    }
+    .detail-image-panel.is-open {
+        opacity: 1;
+        margin-top: 10px;
+    }
+    .detail-image-container {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+    }
+    .detail-image-container img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #eee;
+    }
+    .detail-image-container img:last-child { margin-bottom: 0; }
+
+    .policy-table-wrap {
+        margin-top: 14px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #c5d4e8;
+        box-shadow: 0 2px 8px rgba(43, 87, 151, 0.08);
+        text-align: left;
+    }
+    .policy-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        background: #fff;
+    }
+    .policy-table caption {
+        padding: 12px 14px;
+        font-size: 17px;
+        font-weight: 900;
+        color: #fff;
+        background: linear-gradient(145deg, #2b5797 0%, #1e4578 100%);
+        text-align: left;
+        letter-spacing: -0.3px;
+    }
+    .policy-table th,
+    .policy-table td {
+        padding: 14px 12px;
+        vertical-align: top;
+        border-bottom: 1px solid #e4ecf6;
+        word-break: keep-all;
+    }
+    .policy-table tr:last-child th,
+    .policy-table tr:last-child td {
+        border-bottom: none;
+    }
+    .policy-table th {
+        width: 28%;
+        min-width: 88px;
+        background: #eef3fa;
+        font-size: 15px;
+        font-weight: 900;
+        color: #2b5797;
+        text-align: center;
+        line-height: 1.4;
+        border-right: 1px solid #d0dce8;
+    }
+    .policy-table td {
+        font-size: 14px;
+        font-weight: 500;
+        color: #444;
+        line-height: 1.65;
+        background: #fcfdff;
+    }
+    .policy-table td p + p {
+        margin-top: 8px;
+    }
+    .policy-table td strong {
+        color: #1e4578;
+        font-weight: bold;
+    }
+    .policy-table td a {
+        color: #1e5fa9;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    .policy-table tr:nth-child(even) td {
+        background: #f8fafc;
+    }
+
+    .company-footer {
+        margin: 28px 10px 0;
+        padding: 20px 16px 24px;
+        background: linear-gradient(180deg, #eef3fa 0%, #e4ecf6 100%);
+        border-radius: 12px;
+        border: 1px solid #c5d4e8;
+        text-align: center;
+    }
+    .company-footer .footer-brand {
+        font-size: 18px;
+        font-weight: 900;
+        color: #2b5797;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+    }
+    .company-footer .footer-sub {
+        font-size: 13px;
+        font-weight: bold;
+        color: #5a6d85;
+        margin-bottom: 14px;
+    }
+    .company-footer .footer-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #b8c9de, transparent);
+        margin: 12px 0;
+    }
+    .company-footer .footer-row {
+        font-size: 12px;
+        color: #444;
+        line-height: 1.65;
+        font-weight: 500;
+        word-break: keep-all;
+    }
+    .company-footer .footer-row + .footer-row { margin-top: 4px; }
+    .company-footer .footer-row a {
+        color: #1e5fa9;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .company-footer .footer-row a:active { opacity: 0.7; }
+    .company-footer .footer-row .sep {
+        color: #aaa;
+        margin: 0 4px;
+        font-weight: normal;
+    }
+    .company-footer .footer-copy {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px dashed #c5d4e8;
+        font-size: 11px;
+        color: #666;
+        line-height: 1.6;
+    }
+    .company-footer .footer-copy strong { color: #2b5797; font-weight: bold; }
+
+    .menu-btn { cursor: pointer; user-select: none; }
+    .side-menu-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .side-menu-overlay.is-open {
+        opacity: 1;
+        visibility: visible;
+    }
+    .side-menu-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        max-width: 85vw;
+        height: 100vh;
+        height: 100dvh;
+        background: #fff;
+        z-index: 1001;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .side-menu-panel.is-open {
+        transform: translateX(0);
+    }
+    .side-menu-header {
+        flex-shrink: 0;
+        background: #2b5797;
+        color: #fff;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .side-menu-header h2 {
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: -0.5px;
+    }
+    .side-menu-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .side-menu-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 12px 0 28px;
+    }
+    .side-menu-order {
+        display: block;
+        margin: 0 12px 12px;
+        padding: 16px 18px;
+        background: linear-gradient(145deg, #60a917 0%, #4d8c12 100%);
+        color: #fff;
+        font-size: 20px;
+        font-weight: bold;
+        text-decoration: none;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 3px 10px rgba(96, 169, 23, 0.35);
+    }
+    .side-menu-order:active {
+        opacity: 0.9;
+    }
+    .side-menu-list {
+        list-style: none;
+        padding: 0 12px 8px;
+    }
+    .side-menu-list li + li {
+        margin-top: 6px;
+    }
+    .side-menu-list a {
+        display: block;
+        padding: 16px 18px;
+        font-size: 20px;
+        font-weight: bold;
+        color: #222;
+        text-decoration: none;
+        background: #f5f8fc;
+        border: 2px solid #d0dce8;
+        border-radius: 10px;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .side-menu-list a:active,
+    .side-menu-list a:hover {
+        background: #eef3fa;
+        border-color: #2b5797;
+        color: #2b5797;
+    }
+</style>
+</head>
+<body>
+
+<div class="mobile-container">
+    <div id="site-menu"></div>
+
+    <h1 class="product-title">스티커</h1>
+
+    <div class="order-card">
+        <div class="form-group">
+            <label>품명</label>
+            <select class="form-control" id="material" onchange="totalCal()">
+                <option value="무코팅스티커">무코팅스티커 (2박3일 소요)</option>
+                <option value="코팅스티커">코팅스티커 (1박2일 소요)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>가로(mm) <span class="sub-info">(30 ~ 510)</span></label>
+            <input type="number" id="w" class="form-control" value="50" oninput="totalCal()">
+        </div>
+        <div class="form-group">
+            <label>세로(mm) <span class="sub-info">(30 ~ 760)</span></label>
+            <input type="number" id="h" class="form-control" value="50" oninput="totalCal()">
+        </div>
+        <div class="form-group">
+            <label>주문 수량 <span class="sub-info">(1 ~ 30000장)</span></label>
+            <input type="number" id="q" class="form-control" value="1000" oninput="totalCal()">
+        </div>
+        <div class="result-box" id="res_area">
+            <div class="result-flex">
+                <div class="result-left"><div id="price_info"></div></div>
+                <div class="result-right">
+                    <span class="vat-text">부가세포함</span>
+                    <span class="total-price-text" id="total_price">0원</span>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="submit-btn" id="buy_btn">주문하기</button>
+    </div>
+
+    <div class="image-toggle-wrap">
+        <button type="button" class="image-toggle-btn" id="image_toggle_btn" aria-expanded="false" aria-controls="detail_image_panel">
+            <span class="btn-left">
+                <span class="btn-icon" aria-hidden="true">🖼</span>
+                <span id="image_toggle_label">상세 이미지 보기</span>
+            </span>
+            <span class="chevron" aria-hidden="true">▼</span>
+        </button>
+    </div>
+    <div class="detail-image-panel" id="detail_image_panel" aria-hidden="true">
+        <div class="detail-image-container">
+            <img src="https://raw.githubusercontent.com/sowonnamoo/myjs/main/st.jpg" alt="상세 이미지" loading="lazy" decoding="async">
+            <div class="policy-table-wrap">
+                <table class="policy-table">
+                    <caption>배송 · 환불 · 교환 안내</caption>
+                    <tbody>
+                        <tr>
+                            <th scope="row">배송일<br>안내</th>
+                            <td>
+                                <p><strong>스티커</strong> : 결제 후 다음날 발송 (영업일 기준/토,일요일 공휴일 제외)</p>
+                                <p>주문 확인 후 순차 발송되며, 택배사 사정에 따라 1~2일 지연될 수 있습니다.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">환불</th>
+                            <td>
+                                <p>인쇄 제작 특성상 주문 확정 후 취소·환불이 어려울 수 있습니다.</p>
+                                <p>제작 오류, 불량품 등 당사 귀책 사유인 경우 전액 환불 또는 재제작해 드립니다.</p>
+                                <p>환불 문의 : <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">교환</th>
+                            <td>
+                                <p>단순 변심에 의한 교환은 제작·인쇄 상품 특성상 불가합니다.</p>
+                                <p>인쇄 불량, 수량 오류, 배송 중 파손 등 확인 시 무상 재제작 또는 교환 처리합니다.</p>
+                                <p>수령 후 3일 이내 사진과 함께 고객센터로 연락해 주세요.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">약관</th>
+                            <td>
+                                <p>본 서비스 이용 시 전자상거래 등 관련 법령 및 당사 이용약관이 적용됩니다.</p>
+                                <p>주문 시 입력하신 사양(품명, 규격, 수량)을 기준으로 제작·발송됩니다.</p>
+                                <p>개인정보는 주문·배송·고객 상담 목적으로만 사용하며, 관련 법령에 따라 보관·파기합니다.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="site-footer"></div>
+</div>
+
+<script>
+const PRICE_TABLE = {
+    500: { baseMultiplier: 1.324, minimum: 3740, multiple: 1 },
+    1000: { baseMultiplier: 1.857, minimum: 5390, multiple: 1 }
+};
+for(let qty = 2000; qty <= 30000; qty += 1000){
+    PRICE_TABLE[qty] = { baseMultiplier: 1.857, minimum: 5390, multiple: 1 + (((qty / 1000) - 1) * 0.99) };
+}
+
+function totalCal(){
+    const 재질 = document.getElementById('material').value;
+    const 가로 = Number(document.getElementById('w').value);
+    const 세로 = Number(document.getElementById('h').value);
+    const 입력수량 = Number(document.getElementById('q').value);
+    
+    const 적용수량 = (입력수량 <= 500) ? 500 : Math.ceil(입력수량 / 1000) * 1000;
+    const setting = PRICE_TABLE[적용수량] || PRICE_TABLE[1000];
+    const 면적 = 가로 * 세로;
+    let 최종가 = Math.round((면적 * setting.baseMultiplier * setting.multiple) / 10) * 10;
+    if(최종가 < setting.minimum) 최종가 = setting.minimum;
+
+    document.getElementById('total_price').innerHTML = 최종가.toLocaleString() + '원';
+    document.getElementById('price_info').innerHTML = `<strong>발송 예정일 계산됨</strong><br>${가로}×${세로}mm / ${입력수량.toLocaleString()}장`;
+
+    const buyBtn = document.getElementById('buy_btn');
+    buyBtn.onclick = function(){
+        const params = new URLSearchParams({
+            material: 재질,
+            w: 가로,
+            h: 세로,
+            qty: 입력수량,
+            price: 최종가,
+            ship: "예정일" // 필요한 경우 날짜 계산 로직 추가
+        });
+        location.href = `https://sowonnamoo.github.io/myjs/preview?${params.toString()}`;
+    };
+}
+function initSideMenu(){
+    const menuBtn = document.getElementById('menu_btn');
+    const overlay = document.getElementById('side_menu_overlay');
+    const panel = document.getElementById('side_menu_panel');
+    const closeBtn = document.getElementById('side_menu_close');
+    const productTitle = document.querySelector('.product-title');
+    if (!menuBtn || !overlay || !panel || !closeBtn) return;
+
+    function openMenu(){
+        overlay.classList.add('is-open');
+        panel.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeMenu(){
+        overlay.classList.remove('is-open');
+        panel.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        panel.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    menuBtn.addEventListener('click', openMenu);
+    menuBtn.addEventListener('keydown', function(e){
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openMenu();
+        }
+    });
+    overlay.addEventListener('click', closeMenu);
+    closeBtn.addEventListener('click', closeMenu);
+
+    document.querySelectorAll('.side-menu-list a').forEach(function(link){
+        link.addEventListener('click', function(e){
+            const href = link.getAttribute('href');
+            const name = link.getAttribute('data-product');
+            if (href && href !== '#') {
+                closeMenu();
+                return;
+            }
+            e.preventDefault();
+            if (productTitle) productTitle.textContent = name;
+            closeMenu();
+        });
+    });
+}
+
+async function loadSitePartials(){
+    const menuTarget = document.getElementById('site-menu');
+    const footerTarget = document.getElementById('site-footer');
+    try {
+        const [menuRes, footerRes] = await Promise.all([
+            fetch('menu.html'),
+            fetch('footer.html')
+        ]);
+        if (menuRes.ok) menuTarget.innerHTML = await menuRes.text();
+        if (footerRes.ok) footerTarget.innerHTML = await footerRes.text();
+    } catch (err) {
+        console.error('menu/footer 로드 실패:', err);
+    }
+    initSideMenu();
+}
+
+(function initImageToggle(){
+    const btn = document.getElementById('image_toggle_btn');
+    const panel = document.getElementById('detail_image_panel');
+    const label = document.getElementById('image_toggle_label');
+    if (!btn || !panel) return;
+
+    function syncPanelHeight(){
+        if (!panel.classList.contains('is-open')) return;
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+        requestAnimationFrame(function(){
+            panel.style.maxHeight = 'none';
+        });
+    }
+
+    btn.addEventListener('click', function(){
+        const willOpen = !panel.classList.contains('is-open');
+        btn.setAttribute('aria-expanded', willOpen);
+        panel.setAttribute('aria-hidden', !willOpen);
+        label.textContent = willOpen ? '상세 이미지 접기' : '상세 이미지 보기';
+
+        if (willOpen) {
+            panel.classList.add('is-open');
+            panel.style.maxHeight = panel.scrollHeight + 'px';
+            requestAnimationFrame(function(){
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+            });
+            function onOpenEnd(e){
+                if (e.propertyName !== 'max-height' || !panel.classList.contains('is-open')) return;
+                panel.style.maxHeight = 'none';
+                panel.removeEventListener('transitionend', onOpenEnd);
+            }
+            panel.addEventListener('transitionend', onOpenEnd);
+        } else {
+            panel.style.maxHeight = panel.scrollHeight + 'px';
+            requestAnimationFrame(function(){
+                panel.style.maxHeight = '0';
+                panel.classList.remove('is-open');
+            });
+        }
+    });
+
+    const detailImg = panel.querySelector('img');
+    if (detailImg) {
+        if (!detailImg.complete) detailImg.addEventListener('load', syncPanelHeight);
+        else if (panel.classList.contains('is-open')) syncPanelHeight();
+    }
+})();
+
+window.addEventListener('DOMContentLoaded', function(){
+    loadSitePartials().then(totalCal);
+});
+</script>
+</body>
+</html>
