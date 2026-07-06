@@ -1,101 +1,480 @@
-1<!-- [header.html] 전체 통합 코드 -->
+<!-- [header.html] -->
+
 <style>
-    /* CSS를 별도로 분리하지 않고 헤더 내부에 포함하여 경로 문제를 해결했습니다 */
-    .header-component { 
-        width: 100%; 
-        max-width: 1192px; 
-        margin: 0 auto; 
-        padding: 20px; 
-        font-family: sans-serif;
-        box-sizing: border-box;
+
+*{
+    box-sizing:border-box;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.header-component{
+    width:100%;
+    max-width:1192px;
+    margin:0 auto;
+    padding:20px;
+    font-family:sans-serif;
+}
+
+.header-top{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+    min-height:70px;
+}
+
+/* 햄버거 */
+
+.menu-icon{
+    position:absolute;
+    left:20px;
+    top:50%;
+    transform:translateY(-50%);
+}
+
+/* 우측 아이콘 */
+
+.icons{
+    position:absolute;
+    right:20px;
+    top:50%;
+    transform:translateY(-50%);
+    display:flex;
+    gap:8px;
+}
+
+/* 로고 + 검색창 */
+
+.logo-search-wrap{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.logo{
+    font-size:28px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.search-container{
+    width:450px;
+}
+
+
+.search-wrap{
+    display:flex;
+    align-items:center;
+    background:#fff;
+
+    border:3px solid #9a9a9a;
+
+    border-radius:40px;
+
+    padding:8px 18px;
+
+    height:56px;
+}
+
+
+.logo img {
+    width: 200px; /* 원하는 가로 크기로 변경하세요 */
+    height: auto; /* 비율을 유지하면서 자동으로 높이 조절 */
+}
+
+
+.search-wrap input{
+    border:none;
+    width:100%;
+    outline:none;
+    padding:0 10px;
+    font-size:16px;
+}
+
+.search-btn{
+    width:25px;
+    height:25px;
+    background:#b0b0b0;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    flex-shrink:0;
+}
+
+.header-btn{
+
+    height:35px;
+
+    min-width:80px;
+
+    padding:0 16px;
+
+    background:#fff;
+
+    border:2px solid #ccc;
+
+    border-radius:8px;
+
+    font-size:15px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+}
+
+
+
+/* =========================
+   SEARCH RESULT
+========================= */
+
+#searchResultArea{
+
+    width:100%;
+
+    margin-top:20px;
+    padding-left:20px;
+    padding-right:20px;
+
+    font-size:22px;
+    font-weight:bold;
+
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+
+    max-height:0;
+    overflow:hidden;
+    opacity:0;
+
+    border-top:0 solid #ccc;
+
+    transition:all .4s ease-in-out;
+}
+
+#searchResultArea.active{
+
+    max-height:300px;
+    opacity:1;
+
+    border-top:2px solid #ccc;
+
+    padding-top:20px;
+}
+
+.result-item{
+    color:#007bff;
+    text-decoration:none;
+}
+
+.more-btn{
+    background:#999;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:4px 12px;
+    cursor:pointer;
+}
+
+.hidden-results{
+    display:none;
+}
+
+.hidden-results.show{
+    display:inline;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:768px){
+
+    .header-component{
+        padding:15px;
     }
-    .header-top { 
-        display: flex; 
-        align-items: center; 
-        justify-content: space-between; 
-        gap: 20px; 
+
+    .header-top{
+        flex-direction:column;
+        align-items:stretch;
+        gap:15px;
     }
-    .logo { 
-        font-size: 28px; 
-        font-weight: bold; 
-        color: #007bff; 
-        flex-shrink: 0; 
+
+    .menu-icon{
+        left:0;
+        top:5px;
+        transform:none;
+        font-size:42px;
     }
-    .search-wrap { 
-        flex: 0 1 450px; 
-        display: flex; 
-        align-items: center;
-        background: #fff;
-        border: 2px solid #b0b0b0; 
-        border-radius: 30px; 
-        padding: 5px 15px;
-        height: 45px;
+
+    .icons{
+        right:0;
+        top:10px;
+        transform:none;
+        font-size:24px;
     }
-    .search-wrap input { 
-        border: none; 
-        width: 100%; 
-        outline: none; 
-        padding: 0 10px;
-        font-size: 16px;
-        color: #555;
+
+    .logo-search-wrap{
+        display:block;
+        width:100%;
     }
-    .search-btn { 
-        width: 35px; 
-        height: 35px; 
-        background: #b0b0b0; 
-        color: white;
-        border-radius: 50%; 
-        border: none; 
-        cursor: pointer; 
-        display: flex;
-        align-items: center;
-        justify-content: center;
+
+    .logo{
+        text-align:center;
+        margin-bottom:10px;
+        font-size:24px;
     }
-    .icons { 
-        display: flex; 
-        gap: 20px; 
-        align-items: center; 
+
+.search-container{
+    width:100%;
+    position:relative;
+    top:15px;
+}
+
+    .search-wrap{
+        height:38px;
+        padding:4px 12px;
     }
-    .icon {
-        font-size: 28px; 
-        cursor: pointer;
-        transition: transform 0.2s;
+
+.search-wrap input{
+    font-size:18px;
+}
+
+    .search-btn{
+        width:20px;
+        height:20px;
     }
-    .icon:hover {
-        transform: scale(1.2);
+
+    #searchResultArea{
+        font-size:16px;
+        padding-left:15px;
+        padding-right:15px;
     }
-    .search-result { 
-        margin-top: 20px; 
-        display: flex; 
-        align-items: center; 
-        gap: 10px; 
+
+    .more-btn{
+        font-size:13px;
+        padding:3px 10px;
     }
-    .more-btn {
-        background: #999;
-        color: white;
-        border: none;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
+
+
+    .header-btn{
+        padding:2px 6px;
+        font-size:12px;
+        border-radius:4px;
+        min-width:30px;
+        height:30px;
     }
+}
+
+
+
+
 </style>
 
+
 <div class="header-component">
+
     <header class="header-top">
-        <div class="menu-icon">☰</div>
-        <div class="logo">ECO</div>
-        <div class="search-wrap">
-            <input type="text" placeholder="~~~ 을 검색해주세요">
-            <button class="search-btn">🔍</button>
-        </div>
-        <div class="icons">
-            <span class="icon">👤</span>
-            <span class="icon">🛒</span>
-        </div>
-    </header>
-    <div class="search-result">
-        <span>검색경과 나오는곳</span>
-        <button class="more-btn">더보기</button>
-    </div>
+
+<div class="menu-icon">
+    <button class="header-btn">MENU</button>
 </div>
+
+        <div class="logo-search-wrap">
+
+          <div class="logo">
+    <a href="/">
+        <img src="https://raw.githubusercontent.com/sowonnamoo/myjs/bb0eb5731e4ef577eeeaa485f8a624a537d1582f/ecographics.svg" alt="ECO">
+    </a>
+</div>
+
+            <div class="search-container">
+
+                <div class="search-wrap">
+
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="~~~ 을 검색해주세요"
+                        onkeyup="filterSearch()">
+
+                    <button
+                        class="search-btn"
+                        onclick="executeSearch()">
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+<div class="icons">
+    <button class="header-btn">MY</button>
+    <button class="header-btn">CART</button>
+</div>
+
+    </header>
+
+</div>
+
+<!-- 검색결과는 컨테이너 밖 -->
+<div id="searchResultArea"></div>
+
+
+<script>
+
+const searchData = [
+    { "name":"명함", "url":"/products/namecard.html" },
+    { "name":"박명함", "url":"/products/parkcard.html" },
+    { "name":"카드명함", "url":"/products/namecard.html" },
+    { "name":"수입지", "url":"/products/parkcard.html" },
+    { "name":"하드지", "url":"/products/namecard.html" },
+    { "name":"벨벨", "url":"/products/parkcard.html" },
+    { "name":"저렴한", "url":"/products/namecard.html" },
+    { "name":"회사", "url":"/products/parkcard.html" },
+];
+
+window.onload = function(){
+
+    const urlParams =
+        new URLSearchParams(window.location.search);
+
+    const query = urlParams.get('q');
+
+    if(query){
+
+        document.getElementById('searchInput').value =
+            query;
+
+        renderResults(query);
+    }
+};
+
+function filterSearch(){
+
+    renderResults(
+        document.getElementById('searchInput').value
+    );
+}
+
+function renderResults(query){
+
+    const resultArea =
+        document.getElementById('searchResultArea');
+
+    if(query.length === 0){
+
+        resultArea.classList.remove('active');
+        resultArea.innerHTML = '';
+        return;
+    }
+
+    const filtered =
+        searchData.filter(item =>
+            item.name.includes(query)
+        );
+
+    if(filtered.length > 0){
+
+        const visibleCount =
+            window.innerWidth <= 768 ? 3 : 6;
+
+        const visibleItems =
+            filtered.slice(0, visibleCount);
+
+        const hiddenItems =
+            filtered.slice(visibleCount);
+
+        const visibleHtml =
+            visibleItems.map(item =>
+                `<a href="${item.url}?q=${encodeURIComponent(query)}" class="result-item">${item.name}</a>`
+            ).join(' | ');
+
+        const hiddenHtml =
+            hiddenItems.map(item =>
+                `<a href="${item.url}?q=${encodeURIComponent(query)}" class="result-item">${item.name}</a>`
+            ).join(' | ');
+
+        resultArea.innerHTML = `
+            ${visibleHtml}
+
+            ${
+                hiddenItems.length
+                ? `
+                <span class="hidden-results">
+                    | ${hiddenHtml}
+                </span>
+
+                <button
+                    class="more-btn"
+                    onclick="toggleResults(this)">
+                    +${hiddenItems.length} 더보기
+                </button>
+                `
+                : ''
+            }
+        `;
+
+        resultArea.classList.add('active');
+
+    }else{
+
+        resultArea.innerHTML =
+            '<span>검색 결과가 없습니다.</span>';
+
+        resultArea.classList.add('active');
+    }
+}
+
+function toggleResults(btn){
+
+    const hidden =
+        btn.parentElement.querySelector('.hidden-results');
+
+    if(hidden.classList.contains('show')){
+
+        hidden.classList.remove('show');
+
+        btn.textContent =
+            '+' +
+            hidden.querySelectorAll('.result-item').length +
+            ' 더보기';
+
+    }else{
+
+        hidden.classList.add('show');
+
+        btn.textContent = '접기';
+    }
+}
+
+function executeSearch(){
+
+    const query =
+        document.getElementById('searchInput').value;
+
+    const filtered =
+        searchData.filter(item =>
+            item.name.includes(query)
+        );
+
+    if(
+        filtered.length > 0 &&
+        filtered[0].name === query
+    ){
+
+        window.location.href =
+            filtered[0].url +
+            '?q=' +
+            encodeURIComponent(query);
+    }
+}
+
+</script>
