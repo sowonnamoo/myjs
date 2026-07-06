@@ -1,15 +1,88 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>ECO Header</title>
-    <!-- CSS 파일 연결 -->
-    <link rel="stylesheet" href="header1.css">
-</head>
-<body>
+<!-- [header.html] 전체 통합 코드 -->
+<style>
+    /* CSS를 별도로 분리하지 않고 헤더 내부에 포함하여 경로 문제를 해결했습니다 */
+    .header-component { 
+        width: 100%; 
+        max-width: 1192px; 
+        margin: 0 auto; 
+        padding: 20px; 
+        font-family: sans-serif;
+        box-sizing: border-box;
+    }
+    .header-top { 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        gap: 20px; 
+    }
+    .logo { 
+        font-size: 28px; 
+        font-weight: bold; 
+        color: #007bff; 
+        flex-shrink: 0; 
+    }
+    .search-wrap { 
+        flex: 0 1 450px; 
+        display: flex; 
+        align-items: center;
+        background: #fff;
+        border: 2px solid #b0b0b0; 
+        border-radius: 30px; 
+        padding: 5px 15px;
+        height: 45px;
+    }
+    .search-wrap input { 
+        border: none; 
+        width: 100%; 
+        outline: none; 
+        padding: 0 10px;
+        font-size: 16px;
+        color: #555;
+    }
+    .search-btn { 
+        width: 35px; 
+        height: 35px; 
+        background: #b0b0b0; 
+        color: white;
+        border-radius: 50%; 
+        border: none; 
+        cursor: pointer; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .icons { 
+        display: flex; 
+        gap: 20px; 
+        align-items: center; 
+    }
+    .icon {
+        font-size: 28px; 
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .icon:hover {
+        transform: scale(1.2);
+    }
+    .search-result { 
+        margin-top: 20px; 
+        display: flex; 
+        align-items: center; 
+        gap: 10px; 
+    }
+    .more-btn {
+        background: #999;
+        color: white;
+        border: none;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+</style>
 
-<header class="header">
-    <div class="header-top">
+<div class="header-component">
+    <header class="header-top">
         <div class="menu-icon">☰</div>
         <div class="logo">ECO</div>
         <div class="search-wrap">
@@ -20,12 +93,9 @@
             <span class="icon">👤</span>
             <span class="icon">🛒</span>
         </div>
-    </div>
+    </header>
     <div class="search-result">
         <span>검색경과 나오는곳</span>
         <button class="more-btn">더보기</button>
     </div>
-</header>
-
-</body>
-</html>
+</div>
