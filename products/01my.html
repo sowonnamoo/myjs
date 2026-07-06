@@ -645,20 +645,27 @@ setupFinishingListener(document.querySelector('.finishing-select'));
 
     <!-- 헤더/푸터 불러오기 -->
 <script>
-    // 1. 헤더 불러오기: 상위 폴더(..) -> includes 폴더 -> header_2.html
-    fetch('../includes/header_2.html')
-        .then(r => r.text())
-        .then(d => {
-            document.getElementById('header-container').innerHTML = d;
-        });
+    // 1. 헤더 불러오기: '../includes/header.html'로 수정하세요!
+    fetch('../includes/header.html')
+        .then(response => {
+            if (!response.ok) throw new Error('파일을 찾을 수 없음');
+            return response.text();
+        })
+        .then(data => {
+            document.getElementById('header-container').innerHTML = data;
+        })
+        .catch(err => console.error('헤더 로드 실패:', err));
 
-    // 2. 푸터 불러오기: 상위 폴더(..) -> includes 폴더 -> footer.html
-    fetch('../includes/footer.html')
-        .then(r => r.text())
-        .then(d => document.getElementById('footer-container').innerHTML = d);
+    // 2. 푸터 불러오기
+    fetch('../includes/footer.html')
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('footer-container').innerHTML = data;
+        })
+        .catch(err => console.error('푸터 로드 실패:', err));
 </script>
 
-<!-- 3. 공통 기능(검색 등) 불러오기 -->
+<!-- 3. 공통 기능 불러오기 -->
 <script src="../js/common.js" defer></script>
     
 </body>
