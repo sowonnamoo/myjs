@@ -1,79 +1,53 @@
 .header {
-    width: 100%; /* 화면 너비에 꽉 차게 변경 */
-    max-width: 1192px; /* 최대 크기만 제한 */
-    height: auto; /* 내용에 따라 높이 유동적 조절 */
+    width: 100%;
+    max-width: 1192px;
+    margin: 0 auto;
     padding: 20px;
-    margin: 0 auto; /* 중앙 정렬 */
     box-sizing: border-box;
 }
-
-/* 모바일 화면(768px 이하)일 때 스타일 */
-@media (max-width: 768px) {
-    .header-top {
-        gap: 10px; /* 요소 간 간격 축소 */
-    }
-    .logo { font-size: 24px; } /* 로고 크기 축소 */
-    .search-wrap { padding: 5px 15px; }
-}
-
 
 .header-top {
     display: flex;
     align-items: center;
-    gap: 30px;
-    margin-bottom: 30px;
+    justify-content: space-between; /* 요소들 간 간격 최대화 */
+    gap: 20px;
 }
 
-.logo { font-size: 40px; font-weight: bold; color: #007bff; }
+.logo { 
+    font-size: 28px; 
+    font-weight: bold; 
+    color: #007bff; 
+    flex-shrink: 0; /* 로고 크기 유지 */
+}
 
 .search-wrap {
-    flex-grow: 1;
+    flex: 1; /* 검색창이 남은 공간을 다 차지하게 함 */
+    max-width: 500px;
     position: relative;
-    border: 2px solid #aaa;
-    border-radius: 50px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
     padding: 10px 20px;
+    display: flex;
+    align-items: center;
 }
 
 .search-wrap input {
     border: none;
-    width: 80%;
+    width: 100%;
     outline: none;
 }
 
 .search-btn {
-    position: absolute;
-    right: 10px; top: 5px;
-    width: 35px; height: 35px;
-    background: #aaa;
+    width: 20px; 
+    height: 20px;
+    background: #ccc;
     border-radius: 50%;
     border: none;
+    cursor: pointer;
 }
 
-.more-btn {
-    background: #999;
-    color: white;
-    border: none;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-size: 12px;
+.icons {
+    display: flex;
+    gap: 15px;
+    font-size: 20px;
 }
-
-.search-results {
-    position: absolute; /* 헤더 아래에 겹치게 배치 */
-    top: 100%;
-    left: 0;
-    width: 100%;
-    background: white;
-    border: 1px solid #ddd;
-    z-index: 100;
-}
-
-.search-results a {
-    display: block;
-    padding: 10px;
-    text-decoration: none;
-    color: #333;
-}
-.search-results a:hover { background: #f4f4f4; }
-
-
