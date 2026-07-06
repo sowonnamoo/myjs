@@ -1,0 +1,54 @@
+<header class="header">
+    <div class="header-top">
+        <div class="menu-icon">☰</div>
+        <div class="logo">ECO</div>
+        <div class="search-wrap">
+            <input type="text" placeholder="~~~ 을 검색해주세요">
+            <button class="search-btn"></button>
+        </div>
+        <div class="icons">
+            <span>👤</span>
+            <span>🛒</span>
+        </div>
+    </div>
+<div class="header-bottom">
+    <nav id="navMenu">
+        명함 | 고급명함 | 박명함 <button class="more-btn">더보기</button>
+    </nav>
+    <!-- 검색 결과가 출력될 공간 -->
+    <div id="searchResults" class="search-results"></div>
+</div>
+</header>
+
+
+<script>
+        const searchInput = document.querySelector('.search-wrap input');
+        const searchResults = document.getElementById('searchResults');
+        const navMenu = document.getElementById('navMenu');
+        let products = [];
+
+        fetch('products.json')
+            .then(res => res.json())
+            .then(data => { products = data; });
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            searchResults.innerHTML = '';
+            
+            if (term.length > 0) {
+                navMenu.style.display = 'none';
+                const filtered = products.filter(p => p.name.toLowerCase().includes(term));
+                
+                filtered.forEach(p => {
+                    const item = document.createElement('a');
+                    item.href = p.url;
+                    item.textContent = p.name;
+                    searchResults.appendChild(item);
+                });
+            } else {
+                navMenu.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
