@@ -645,21 +645,21 @@ setupFinishingListener(document.querySelector('.finishing-select'));
 
     <!-- 헤더/푸터 불러오기 -->
 <script>
-    // 1. 헤더 불러오기 (fetch)
-    fetch('/includes/header_2.html')
+    // 1. 헤더 불러오기: 상위 폴더(..) -> includes 폴더 -> header_2.html
+    fetch('../includes/header_2.html')
         .then(r => r.text())
         .then(d => {
             document.getElementById('header-container').innerHTML = d;
         });
 
-    // 2. 푸터 불러오기 (필요 시)
-    fetch('/includes/footer.html')
+    // 2. 푸터 불러오기: 상위 폴더(..) -> includes 폴더 -> footer.html
+    fetch('../includes/footer.html')
         .then(r => r.text())
         .then(d => document.getElementById('footer-container').innerHTML = d);
 </script>
 
 <!-- 3. 공통 기능(검색 등) 불러오기 -->
-<script src="./js/common.js" defer></script>
+<script src="../js/common.js" defer></script>
     
 </body>
 </html>
