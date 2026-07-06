@@ -86,6 +86,9 @@
 </head>
 <body>
 
+<div id="header-container"></div>
+
+
 <div class="product-container">
     <img id="mainProductImage" src="https://sowonnamoo1005.cafe24.com/1/26070301.jpg" style="width: 600px; height: 600px; object-fit: cover; flex-shrink: 0;" alt="제품 이미지">
     <div class="options-section">
@@ -95,9 +98,6 @@
             <div class="label">용지</div>
             <select id="paperSelect" style="flex:1"><option>불러오는 중...</option></select>
         </div>
-
-
-
 
         <div class="option-row">
             <div class="label">편집</div>
@@ -197,6 +197,14 @@
         <button class="order-btn">셀프편집 & 주문하기</button>
     </div>
 </div>
+
+
+
+
+
+
+
+
 
 <div style="width:100%; display:flex; justify-content:center; margin-top:80px;">
     <div style="width:1195px;">
@@ -633,4 +641,13 @@ document.getElementById('addFinishingBtn').addEventListener('click', () => {
 setupFinishingListener(document.querySelector('.finishing-select'));
 
 </script>
+<!-- 푸터 자리 -->
+    <div id="footer-container"></div>
+
+    <!-- 헤더/푸터 불러오기 -->
+    <script>
+        fetch('/includes/header.html').then(r=>r.text()).then(d=>document.getElementById('header-container').innerHTML=d);
+        fetch('/includes/footer.html').then(r=>r.text()).then(d=>document.getElementById('footer-container').innerHTML=d);
+    </script>
+</body>
 </html>
