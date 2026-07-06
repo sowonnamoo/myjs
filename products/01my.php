@@ -86,7 +86,7 @@
 </head>
 <body>
 
-<div id="header-container"></div>
+<?php include($_SERVER['DOCUMENT_ROOT'] . '/myjs/includes/header'); ?>
 
 
 <div class="product-container">
@@ -642,12 +642,9 @@ setupFinishingListener(document.querySelector('.finishing-select'));
 
 </script>
 <!-- 푸터 자리 -->
-    <div id="footer-container"></div>
+    <?php include($_SERVER['DOCUMENT_ROOT'] . '/myjs/includes/footer'); ?>
 
-    <!-- 헤더/푸터 불러오기 -->
-    <script>
-        fetch('/includes/header.html').then(r=>r.text()).then(d=>document.getElementById('header-container').innerHTML=d);
-        fetch('/includes/footer.html').then(r=>r.text()).then(d=>document.getElementById('footer-container').innerHTML=d);
-    </script>
+
+
 </body>
 </html>
