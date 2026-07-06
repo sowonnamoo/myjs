@@ -1,59 +1,14 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>제품 주문 페이지</title>
-    <!-- CSS 스타일 통합 -->
-    <style>
-        body { margin: 0; padding-top: 20px; font-family: 'Pretendard', sans-serif; }
-        
-        /* header1.css 스타일 적용 */
-        .header { width: 100%; max-width: 1192px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
-        .header-top { display: flex; align-items: center; gap: 30px; margin-bottom: 30px; }
-        .logo { font-size: 40px; font-weight: bold; color: #007bff; }
-        .search-wrap { flex-grow: 1; position: relative; border: 2px solid #aaa; border-radius: 50px; padding: 10px 20px; }
-        .search-wrap input { border: none; width: 80%; outline: none; }
-        .search-btn { position: absolute; right: 10px; top: 5px; width: 35px; height: 35px; background: #aaa; border-radius: 50%; border: none; }
-        
-        /* 제품 영역 스타일 */
-        .product-container { display: flex; gap: 40px; width: 1195px; margin: 0 auto; align-items: flex-start; }
-        #mainProductImage { width: 600px; height: 600px; object-fit: cover; background: #eee; }
-        .options-section { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .order-btn { background: #2b7bc3; color: white; padding: 15px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 20px; }
-        
-        @media (max-width: 768px) {
-            .product-container { flex-direction: column; width: 100%; padding: 10px; }
-            #mainProductImage { width: 100%; height: auto; }
-        }
-    </style>
-</head>
-<body>
-
-    <!-- 헤더 영역 -->
-    <div id="header-container"></div>
-
-    <!-- 제품 상세 영역 -->
-    <div class="product-container">
-        <img id="mainProductImage" src="https://sowonnamoo1005.cafe24.com/1/26070301.jpg" alt="제품 이미지">
-        <div class="options-section">
-            <h2 style="margin: 0;">명함</h2>
-            <button class="order-btn">셀프편집 & 주문하기</button>
+<header class="header">
+    <div class="header-top">
+        <div class="menu-icon">☰</div>
+        <div class="logo">ECO</div>
+        <div class="search-wrap">
+            <input type="text" placeholder="~~~ 을 검색해주세요">
+            <button class="search-btn"></button>
+        </div>
+        <div class="icons">
+            <span>👤</span>
+            <span>🛒</span>
         </div>
     </div>
-
-    <!-- 푸터 영역 -->
-    <div id="footer-container"></div>
-
-    <script>
-        // 헤더와 푸터 불러오기 (경로 수정 적용)[cite: 5]
-        fetch('../includes/header.html')
-            .then(r => r.text())
-            .then(d => document.getElementById('header-container').innerHTML = d);
-
-        fetch('../includes/footer.html')
-            .then(r => r.text())
-            .then(d => document.getElementById('footer-container').innerHTML = d);
-    </script>
-</body>
-</html>
+</header>
