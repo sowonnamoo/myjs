@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>견적서 출력</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print { body { background: none; } .a4-page { width: 210mm; height: 297mm; margin: 0; border: none !important; } }
+        .a4-page { width: 210mm; height: 297mm; padding: 20mm; background: white; margin: 20px auto; border: 1px solid #e5e7eb; display: flex; flex-direction: column; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="a4-page" id="printable">
+        <div class="flex-grow">
+            <div class="text-center py-8 mb-12 border-2 border-black bg-gray-200">
+                <h1 class="text-5xl font-bold tracking-widest">견 적 서</h1>
+            </div>
+            <table class="w-full border-collapse border border-black mb-10 table-fixed">
+                <thead class="bg-gray-100">
+                    <tr class="h-16">
+                        <th class="border border-black p-4">품목</th>
+                        <th class="border border-black p-4">규격</th>
+                        <th class="border border-black p-4">수량(건수)</th>
+                        <th class="border border-black p-4">공급가</th>
+                        <th class="border border-black p-4">부가세</th>
+                        <th class="border border-black p-4">합계</th>
+                    </tr>
+                </thead>
+                <tbody id="print-tbody"></tbody>
+            </table>
+        </div>
+        <div class="text-center font-bold border-t pt-6">
+            <p>발행일자: <span id="print-date"></span></p>
+        </div>
+    </div>
+
+    <script>
+       const params = new URLSearchParams(window.location.search);
+const product = params.get('product') || "제품명 미상";
+const finishings = params.get('finishings');
+// 후가공이 있다면 제품명 아래에 추가
+const displayProduct = finishings ? `${product} <br><span class="text-xs text-gray-500">[후가공: ${finishings}]</span>` : product;
+
+const finalPrice = Math.round((parseInt(params.get('price')) || 0) / 100) * 100; //
+const supply = Math.round(finalPrice / 1.1); //
+const tax = finalPrice - supply; //[cite: 7]
+
+document.getElementById('print-tbody').innerHTML = `
+    <tr class="h-12 text-center">
+        <td class="border border-black p-2">${displayProduct}</td>
+        <td class="border border-black">${params.get('size') || "-"}</td>
+        <td class="border border-black">${params.get('qty') || "0"}매 x ${params.get('count') || "1"}건</td>
+        <td class="border border-black">${supply.toLocaleString()}</td>
+        <td class="border border-black">${tax.toLocaleString()}</td>
+        <td class="border border-black font-bold">${finalPrice.toLocaleString()}원</td>
+    </tr>`;
+        document.getElementById('print-date').innerText = new Date().toLocaleDateString('ko-KR');
+        window.onload = () => { setTimeout(window.print, 500); };
+    </script>
+</body>
+</html>
