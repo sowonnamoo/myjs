@@ -4,11 +4,11 @@ const searchData = [
     { "name":"명함", "url":"/products/namecard.html" },
     { "name":"박명함", "url":"/products/parkcard.html" },
     { "name":"카드명함", "url":"/products/namecard.html" },
-    { "name":"수입지", "url":"/products/parkcard.html" },
-    { "name":"하드지", "url":"/products/namecard.html" },
-    { "name":"벨벨", "url":"/products/parkcard.html" },
-    { "name":"저렴한", "url":"/products/namecard.html" },
-    { "name":"회사", "url":"/products/parkcard.html" },
+    { "name":"수입지명함", "url":"/products/parkcard.html" },
+    { "name":"하드지명함", "url":"/products/namecard.html" },
+    { "name":"벨벨명함", "url":"/products/parkcard.html" },
+    { "name":"저렴한명함", "url":"/products/namecard.html" },
+    { "name":"회사명함", "url":"/products/parkcard.html" },
 ];
 
 window.onload = function(){
