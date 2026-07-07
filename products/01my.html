@@ -64,22 +64,6 @@
         width: 100% !important;
         box-sizing: border-box !important;
     }
-
-
-#detailContent {
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    #toggleDetailBtn {
-        width: 100%;
-        max-width: 300px;
-    }
-
-    
-
-
-
-    
 }
 
 </style>
@@ -238,22 +222,8 @@
             <h2 style="font-size:24px; color:#333;">저렴한 가격 & 가장 많은 매수</h2>
             <div id="bottomProductImage" style="width:1200px; height:1000px; background:#222; margin-top:80px; background-size: cover; background-position: center;"></div>
         </div>
-<!-- [추가] 상세 보기 버튼 및 내용 영역 -->
-<div style="margin-top: 30px; text-align: center;">
-    <button id="toggleDetailBtn" style="padding: 15px 40px; font-size: 16px; cursor: pointer; background: #666; color: white; border: none;">상세 정보 펼쳐보기 ▼</button>
-    
-    <div id="detailContent" style="display: none; margin-top: 30px; padding: 20px; border: 1px solid #ccc; text-align: left;">
-        <h3>제품 상세 설명</h3>
-        <p>이곳에 제품의 상세 특징, 재질 정보, 인쇄 방식 등을 입력하세요.</p>
-        <img src="https://via.placeholder.com/800x400" style="width: 100%; height: auto;" alt="상세 샘플 이미지">
-        <p style="margin-top:20px;">추가적인 상세 안내 문구를 자유롭게 작성하실 수 있습니다.</p>
     </div>
 </div>
-
-
-
-
-    
 
 <div id="ai-recommendation-zone" style="display:none; width: 100%; margin-top: 40px; border: 2px dashed #2b7bc3; padding: 20px; border-radius: 10px; text-align: center;">
     <h3 style="margin-bottom: 15px; color: #333;">이런 상품은 어떠세요?</h3>
@@ -668,6 +638,17 @@ document.getElementById('addFinishingBtn').addEventListener('click', () => {
 // 2. 초기 로드 시 기존 후가공 셀렉트박스에도 적용:
 setupFinishingListener(document.querySelector('.finishing-select'));
 
+</script>
+<!-- 푸터 자리 -->
+    <div id="footer-container"></div>
+
+
+
+
+    
+
+
+
 <script>
     fetch('../includes/header.html')
         .then(r => r.text())
@@ -683,29 +664,19 @@ setupFinishingListener(document.querySelector('.finishing-select'));
                 document.body.appendChild(newScript);
             });
         });
-    
 </script>
+
+
 <div id="footer-container"></div>
 
 <script>
-    // 1. 상세 보기 토글 기능
-    document.getElementById('toggleDetailBtn').addEventListener('click', function() {
-        const detailContent = document.getElementById('detailContent');
-        if (detailContent.style.display === 'none') {
-            detailContent.style.display = 'block';
-            this.textContent = '상세 정보 닫기 ▲';
-        } else {
-            detailContent.style.display = 'none';
-            this.textContent = '상세 정보 펼쳐보기 ▼';
-        }
-    });
-
-  // 2. 푸터 가져오기 기능
     fetch('../includes/footer.html')
         .then(r => r.text())
         .then(d => {
             const container = document.getElementById('footer-container');
             container.innerHTML = d;
+
+            // 푸터 내부에 포함된 스크립트가 있다면 재실행
             const scripts = container.querySelectorAll('script');
             scripts.forEach(oldScript => {
                 const newScript = document.createElement('script');
@@ -718,6 +689,9 @@ setupFinishingListener(document.querySelector('.finishing-select'));
             });
         });
 </script>
-<!-- 위 스크립트 블록이 파일의 마지막입니다. 여기 이후에 </script>가 또 있으면 모두 지우세요. -->
+
+
+
+    
 </body>
 </html>
