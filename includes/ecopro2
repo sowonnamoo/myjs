@@ -1,21 +1,19 @@
-// 페이지 로드 시 바로 데이터 받기
+// 전역 변수로 선언해서 어디서든 쓸 수 있게 함
+let orderData = {};
+
 window.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     
-    // URLSearchParams를 객체로 변환하고 디코딩
-    const orderData = {};
+    // 1. 반복문을 통해 모든 파라미터를 한 번에 객체로 변환
     for (const [key, value] of urlParams.entries()) {
         orderData[key] = decodeURIComponent(value);
     }
 
-    // 후가공 리스트가 있다면 배열로 변환
+    // 2. 후가공 리스트가 있다면 배열로 별도 저장
     if (orderData.finishings) {
         orderData.finishingsArray = orderData.finishings.split(',');
     }
 
     console.log("받아온 주문 정보:", orderData);
-    
-    // [예시] 화면에 값 뿌려주기
-    // document.getElementById('orderPaper').textContent = orderData.paper;
-    // document.getElementById('orderPrice').textContent = orderData.price;
+
 });
