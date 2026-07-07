@@ -1,330 +1,158 @@
 <!-- [header.html] -->
-
 <style>
+    * { box-sizing: border-box; }
 
-*{
-    box-sizing:border-box;
-}
-
-/* =========================
-   HEADER
-========================= */
-
-.header-component{
-    width:100%;
-    max-width:1192px;
-    margin:0 auto;
-    padding:20px;
-    font-family:sans-serif;
-}
-
-.header-top{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    position:relative;
-    min-height:70px;
-}
-
-/* 햄버거 */
-
-.menu-icon{
-    position:absolute;
-    left:20px;
-    top:50%;
-    transform:translateY(-50%);
-}
-
-/* 우측 아이콘 */
-
-.icons{
-    position:absolute;
-    right:20px;
-    top:50%;
-    transform:translateY(-50%);
-    display:flex;
-    gap:8px;
-}
-
-/* 로고 + 검색창 */
-
-.logo-search-wrap{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-
-.logo{
-    font-size:28px;
-    font-weight:bold;
-    white-space:nowrap;
-}
-
-.search-container{
-    width:450px;
-}
-
-
-.search-wrap{
-    display:flex;
-    align-items:center;
-    background:#fff;
-
-    border:3px solid #9a9a9a;
-
-    border-radius:40px;
-
-    padding:8px 18px;
-
-    height:56px;
-}
-
-
-.logo img {
-    width: 200px; /* 원하는 가로 크기로 변경하세요 */
-    height: auto; /* 비율을 유지하면서 자동으로 높이 조절 */
-}
-
-
-.search-wrap input{
-    border:none;
-    width:100%;
-    outline:none;
-    padding:0 10px;
-    font-size:16px;
-}
-
-.search-btn{
-    width:25px;
-    height:25px;
-    background:#b0b0b0;
-    border-radius:50%;
-    border:none;
-    cursor:pointer;
-    flex-shrink:0;
-}
-
-.header-btn{
-
-    height:35px;
-
-    min-width:80px;
-
-    padding:0 16px;
-
-    background:#fff;
-
-    border:2px solid #ccc;
-
-    border-radius:8px;
-
-    font-size:15px;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-}
-
-
-
-/* =========================
-   SEARCH RESULT
-========================= */
-
-#searchResultArea{
-
-    width:100%;
-
-    margin-top:20px;
-    padding-left:20px;
-    padding-right:20px;
-
-    font-size:22px;
-    font-weight:bold;
-
-    display:flex;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:10px;
-
-    max-height:0;
-    overflow:hidden;
-    opacity:0;
-
-    border-top:0 solid #ccc;
-
-    transition:all .4s ease-in-out;
-}
-
-#searchResultArea.active{
-
-    max-height:300px;
-    opacity:1;
-
-    border-top:2px solid #ccc;
-
-    padding-top:20px;
-}
-
-.result-item{
-    color:#007bff;
-    text-decoration:none;
-}
-
-.more-btn{
-    background:#999;
-    color:#fff;
-    border:none;
-    border-radius:8px;
-    padding:4px 12px;
-    cursor:pointer;
-}
-
-.hidden-results{
-    display:none;
-}
-
-.hidden-results.show{
-    display:inline;
-}
-
-/* =========================
-   MOBILE
-========================= */
-
-@media(max-width:768px){
-
-    .header-component{
-        padding:15px;
+    .header-component {
+        width: 1199px;
+        margin: 0 auto;
+        padding: 0;
+        font-family: sans-serif;
     }
 
-    .header-top{
-        flex-direction:column;
-        align-items:stretch;
-        gap:15px;
+    .header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 80px;
+        width: 100%;
+        padding: 0 10px;
     }
 
-    .menu-icon{
-        left:0;
-        top:5px;
-        transform:none;
-        font-size:42px;
+    .logo img { 
+        display: block;
+        max-width: 240px; 
+        height: auto; 
     }
 
-    .icons{
-        right:0;
-        top:10px;
-        transform:none;
-        font-size:24px;
+    .header-right-wrap {
+        display: flex;
+        align-items: center;
+        gap: 15px;
     }
 
-    .logo-search-wrap{
-        display:block;
-        width:100%;
+    /* 검색창 영역 */
+    .search-container { width: 350px; position: relative; }
+    .search-wrap {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border: 2px solid #ccc;
+        border-radius: 40px;
+        padding: 0 18px;
+        height: 40px;
+    }
+    .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
+    .search-btn {
+        width: 20px; height: 20px;
+        background: #b0b0b0; border-radius: 50%; border: none; cursor: pointer;
     }
 
-    .logo{
-        text-align:center;
-        margin-bottom:10px;
-        font-size:24px;
+    /* 연관 검색어 (혓바닥) */
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 15px 15px;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        padding: 5px 0;
+    }
+    .suggestion-item { padding: 8px 20px; cursor: pointer; font-size: 14px; }
+    .suggestion-item:hover { background: #f0f0f0; }
+
+    .icons { display: flex; gap: 8px; }
+    .header-btn {
+        height: 35px; padding: 0 16px;
+        background: #fff; border: 1px solid #ccc;
+        border-radius: 5px; cursor: pointer; font-size: 14px;
+        white-space: nowrap;
     }
 
-.search-container{
-    width:100%;
-    position:relative;
-    top:15px;
-}
-
-    .search-wrap{
-        height:38px;
-        padding:4px 12px;
+    /* 모바일 대응 */
+    @media(max-width: 768px) {
+        .header-component { width: 100%; padding: 15px; }
+        .header-top { height: auto; flex-direction: column; gap: 15px; }
+        .header-right-wrap { width: 100%; flex-direction: column; gap: 10px; }
+        .search-container { width: 100%; max-width: 100%; }
+        .menu-image-wrap, map { display: none !important; }
     }
-
-.search-wrap input{
-    font-size:18px;
-}
-
-    .search-btn{
-        width:20px;
-        height:20px;
-    }
-
-    #searchResultArea{
-        font-size:16px;
-        padding-left:15px;
-        padding-right:15px;
-    }
-
-    .more-btn{
-        font-size:13px;
-        padding:3px 10px;
-    }
-
-
-    .header-btn{
-        padding:2px 6px;
-        font-size:12px;
-        border-radius:4px;
-        min-width:30px;
-        height:30px;
-    }
-}
-
-
-
-
 </style>
 
-
 <div class="header-component">
-
     <header class="header-top">
-
-<div class="menu-icon">
-    <button class="header-btn">MENU</button>
-</div>
-
-        <div class="logo-search-wrap">
-
-          <div class="logo">
-    <a href="/">
-        <img src="https://raw.githubusercontent.com/sowonnamoo/myjs/bb0eb5731e4ef577eeeaa485f8a624a537d1582f/ecographics.svg" alt="ECO">
-    </a>
-</div>
-
-            <div class="search-container">
-
-                <div class="search-wrap">
-
-                    <input
-                        type="text"
-                        id="searchInput"
-                        placeholder="~~~ 을 검색해주세요"
-                        onkeyup="filterSearch()">
-
-                    <button
-                        class="search-btn"
-                        onclick="executeSearch()">
-                    </button>
-
-                </div>
-
-            </div>
-
+        <div class="logo">
+            <a href="/"><img src="https://raw.githubusercontent.com/sowonnamoo/myjs/e2570cadaf597629823755d1a67ccc53706f51c7/image/iogo.svg" alt="ECO"></a>
         </div>
 
-<div class="icons">
-    <button class="header-btn">MY</button>
-    <button class="header-btn">CART</button>
-</div>
+        <div class="header-right-wrap">
+            <div class="search-container">
+                <div class="search-wrap">
+                    <input type="text" id="searchInput" placeholder="검색어를 입력하세요">
+                    <button class="search-btn" onclick="executeSearch()"></button>
+                </div>
+                <div id="suggestions" class="search-suggestions"></div>
+            </div>
 
+            <div class="icons">
+                <button class="header-btn" onclick="location.href='/products/all'">전체메뉴</button>
+                <button class="header-btn" onclick="location.href='https://sowonnamoo.github.io/myboard/search'">내정보</button>
+                <button class="header-btn" onclick="location.href='/includes/cart'">장바구니</button>
+            </div>
+        </div>
     </header>
 
+    <img src="https://github.com/sowonnamoo/myjs/blob/main/image/menu.jpg?raw=true" class="menu-image-wrap" border="0" usemap="#Map">
+    <map name="Map">
+        <!-- 기존 맵 좌표를 여기에 넣어주세요 -->
+    </map>
 </div>
 
-<!-- 검색결과는 컨테이너 밖 -->
-<div id="searchResultArea"></div>
+<script>
+    const searchData = [
+        { name: "명함", url: "/products/01my" },
+        { name: "박명함", url: "/products/01my" },
+        { name: "카드명함", url: "/products/01my" },
+        { name: "회사명함", url: "/products/01my" },
+        { name: "수입지명함", url: "/products/01my" },
+        { name: "빠른명함", url: "/products/01my" }
 
+    ];
 
+    const input = document.getElementById('searchInput');
+    const suggBox = document.getElementById('suggestions');
+
+    function executeSearch() {
+        const query = input.value.trim();
+        if (!query) return;
+        const item = searchData.find(d => d.name === query);
+        if (item) location.href = item.url;
+        else location.href = "/search?q=" + encodeURIComponent(query);
+    }
+
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') executeSearch(); });
+
+    input.addEventListener('input', () => {
+        const val = input.value;
+        suggBox.innerHTML = '';
+        if (val.length < 1) { suggBox.style.display = 'none'; return; }
+
+        const filtered = searchData.filter(d => d.name.includes(val)).slice(0, 3);
+        if (filtered.length > 0) {
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerText = item.name;
+                div.onclick = () => location.href = item.url;
+                suggBox.appendChild(div);
+            });
+            suggBox.style.display = 'block';
+        } else {
+            suggBox.style.display = 'none';
+        }
+    });
+</script>
