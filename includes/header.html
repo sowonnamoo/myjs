@@ -22,7 +22,7 @@
 .icons { display:flex; gap:8px; }
 .header-btn { height: 35px; padding: 0 16px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; white-space: nowrap; }
 
-/* 메가메뉴 스타일 */
+/* 메가메뉴 */
 .mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
 .mega-menu-list { display: flex; justify-content: center; list-style: none; margin: 0; padding: 0; }
 .menu-item { position: relative; padding: 15px 20px; }
@@ -55,8 +55,8 @@
         <button onclick="toggleSlider()">닫기</button>
     </div>
     <div style="padding:10px;">
-<span style="display:block; font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">명함</span>
-        <div style="padding-left:10px;">
+        <div onclick="toggleSubMenu(this)" style="font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">명함 ▾</div>
+        <div class="mobile-sub-menu" style="padding-left:10px; display:none;">
             <a href="/products/01my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">박명함</a>
             <a href="/products/01my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">카드명함</a>
             <a href="/products/01my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">수입지명함</a>
@@ -100,12 +100,13 @@ function toggleSlider() {
     document.getElementById("sliderOverlay").classList.toggle("active");
 }
 
+function toggleSubMenu(el) {
+    const sub = el.nextElementSibling;
+    sub.style.display = (sub.style.display === "none") ? "block" : "none";
+}
+
 (function() {
-    const searchData = [
-        { name: "명함", url: "/products/01my" },
-        { name: "박명함", url: "/products/01my" },
-        { name: "카드명함", url: "/products/01my" }
-    ];
+    const searchData = [{ name: "명함", url: "/products/01my" }, { name: "박명함", url: "/products/01my" }, { name: "카드명함", url: "/products/01my" }];
     const input = document.getElementById('searchInput');
     const suggBox = document.getElementById('suggestions');
 
@@ -136,14 +137,4 @@ function toggleSlider() {
         });
     }
 })();
-
-// 대분류 클릭 시 소분류 토글 함수
-function toggleSubMenu(el) {
-    const sub = el.nextElementSibling;
-    sub.style.display = (sub.style.display === "none") ? "block" : "none";
-}
-
-    
-
-    
 </script>
