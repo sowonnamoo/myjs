@@ -612,20 +612,23 @@ finishingOptionsCache.forEach(opt => {
         }
     }
 
-    document.getElementById('addFinishingBtn').addEventListener('click', () => {
-        const container = document.getElementById('finishingContainer');
-        const newRow = document.createElement('div');
-        newRow.className = 'option-row';
-        newRow.innerHTML = `
-            <div class="label">후가공 추가</div>
-            <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
-            <button type="button" style="margin-left:5px; background:#eee;" onclick="this.parentElement.remove(); updatePrice();">삭제</button>
-        `;
-        container.appendChild(newRow);
-        
-        loadFinishingOptions(newRow.querySelector('.finishing-select'));
-        newRow.querySelector('.finishing-select').addEventListener('change', updatePrice);
-    });
+  document.getElementById('addFinishingBtn').addEventListener('click', () => {
+    const container = document.getElementById('finishingContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'option-row';
+    newRow.innerHTML = `
+        <div class="label">후가공 추가</div>
+        <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
+        <button type="button" style="margin-left:5px; background:#eee;" onclick="this.parentElement.remove(); updatePrice();">삭제</button>
+    `;
+    container.appendChild(newRow);
+    
+    const newSelect = newRow.querySelector('.finishing-select');
+    loadFinishingOptions(newSelect);
+    
+    // 이 부분이 핵심: 새로 생성된 셀렉트 박스에도 동일한 로직 적용
+    setupFinishingListener(newSelect); 
+});
 
 
 // 후가공 선택 시 새 창 열기 및 가격 업데이트 로직
