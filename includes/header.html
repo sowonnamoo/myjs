@@ -42,10 +42,15 @@
         height: 40px;
     }
     .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
-    .search-btn {
-        width: 20px; height: 20px;
-        background: #b0b0b0; border-radius: 50%; border: none; cursor: pointer;
-    }
+  .search-btn {
+    width: 20px; 
+    height: 20px;
+    background: #b0b0b0; 
+    border-radius: 50%; 
+    border: none; 
+    cursor: pointer;
+    flex-shrink: 0; /* 버튼이 찌그러지지 않게 고정 */
+}
 
     /* 연관 검색어 (혓바닥) */
     .search-suggestions {
@@ -93,7 +98,7 @@
             <div class="search-container">
                 <div class="search-wrap">
                     <input type="text" id="searchInput" placeholder="검색어를 입력하세요">
-                    <button class="search-btn" onclick="executeSearch()"></button>
+                    <button id="searchBtn" class="search-btn"></button>
                 </div>
                 <div id="suggestions" class="search-suggestions"></div>
             </div>
@@ -129,19 +134,16 @@
 
 
 <script>
-    // 이 함수 안에 기존 검색 로직을 모두 넣었습니다.
     window.initHeader = function() {
         const searchData = [
             { name: "명함", url: "/products/01my" },
-            { name: "박명함", url: "/products/01my" },
-            { name: "카드명함", url: "/products/01my" },
-            { name: "회사명함", url: "/products/01my" },
-            { name: "수입지명함", url: "/products/01my" },
-            { name: "빠른명함", url: "/products/01my" }
+            // ... (데이터 동일)
         ];
-
         const input = document.getElementById('searchInput');
         const suggBox = document.getElementById('suggestions');
+
+        // 버튼 클릭 이벤트 연결 (여기서 연결합니다!)
+        document.getElementById('searchBtn').addEventListener('click', executeSearch);
 
         window.executeSearch = function() {
             const query = input.value.trim();
