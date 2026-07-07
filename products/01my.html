@@ -633,20 +633,28 @@ function setupFinishingListener(selectElement) {
     selectElement.addEventListener('change', (e) => {
         const selectedOpt = e.target.options[e.target.selectedIndex];
         
-        // URL이 있으면 새 창으로 이동
-      if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
-    // 혹시라도 중복 호출되는 것을 방지하기 위해 0.1초 차이로 한 번만 실행되게 함
-    if (!window.isOpening) {
-        window.isOpening = true;
-        window.open(selectedOpt.dataset.url, '_blank');
-        setTimeout(() => { window.isOpening = false; }, 500);
-    }
-}
+        if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
+            
+            // confirm 사용 (취소 버튼 있음)
+            const move = confirm("선택하신 옵션은 상세 페이지로 이동해야 주문이 가능합니다.\n이동하시겠습니까? \n\n(취소 시 페이지가 초기화됩니다.)");
+            
+            if (move) {
+                // 확인 시 이동
+                if (!window.isOpening) {
+                    window.isOpening = true;
+                    window.open(selectedOpt.dataset.url, '_blank');
+                    setTimeout(() => { window.isOpening = false; }, 500);
+                }
+            } else {
+                // 취소 시 페이지 새로고침 (데이터 초기화)
+                location.reload(); 
+            }
+        }
+        
         updatePrice();
         updateDeliveryDisplay();
     });
 }
-
 
 
 
