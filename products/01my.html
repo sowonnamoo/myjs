@@ -633,17 +633,18 @@ function setupFinishingListener(selectElement) {
     selectElement.addEventListener('change', (e) => {
         const selectedOpt = e.target.options[e.target.selectedIndex];
         
-        // URL이 있으면 새 창으로 이동
-      if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
-    // 혹시라도 중복 호출되는 것을 방지하기 위해 0.1초 차이로 한 번만 실행되게 함
-    if (!window.isOpening) {
-        window.isOpening = true;
-        window.open(selectedOpt.dataset.url, '_blank');
-        setTimeout(() => { window.isOpening = false; }, 500);
-    }
-}
-        updatePrice();
-        updateDeliveryDisplay();
+        // 1. URL이 있는 경우 새 창으로 열기
+        if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
+            if (!window.isOpening) {
+                window.isOpening = true;
+                window.open(selectedOpt.dataset.url, '_blank');
+                setTimeout(() => { window.isOpening = false; }, 500);
+            }
+        }
+
+        // 2. 부모 창 강제 새로고침
+        // 가격 계산 등이 완료된 후 즉시 새로고침이 실행됩니다.
+        window.location.reload();
     });
 }
 
