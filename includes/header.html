@@ -30,9 +30,7 @@
 .sub-menu { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ddd; min-width: 150px; padding: 10px 0; box-shadow: 0 5px 10px rgba(0,0,0,0.1); z-index: 1000; }
 .menu-item:hover .sub-menu { display: block; }
 .sub-menu a { display: block; padding: 8px 15px; color: #666; text-decoration: none; font-size: 13px; }
-.menu-item > a[onclick] {
-    cursor: default;
-}
+.menu-item > a[onclick] { cursor: default; }
     
 /* 모바일 슬라이더 */
 .mobile-slider-nav { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
@@ -112,6 +110,7 @@ function toggleSubMenu(el) {
     const searchData = [{ name: "명함", url: "/products/01my" }, { name: "박명함", url: "/products/01my" }, { name: "카드명함", url: "/products/01my" }];
     const input = document.getElementById('searchInput');
     const suggBox = document.getElementById('suggestions');
+    const searchContainer = document.querySelector('.search-container');
 
     window.executeSearch = function() {
         const query = input.value.trim();
@@ -119,6 +118,13 @@ function toggleSubMenu(el) {
         const item = searchData.find(d => d.name === query);
         location.href = item ? item.url : "/search?q=" + encodeURIComponent(query);
     };
+
+    // 검색창 외부 클릭 시 닫기
+    document.addEventListener('click', (e) => {
+        if (!searchContainer.contains(e.target)) {
+            suggBox.style.display = 'none';
+        }
+    });
 
     if (input) {
         input.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.executeSearch(); });
