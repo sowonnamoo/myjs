@@ -103,14 +103,14 @@
 }
 
 .header-btn {
-    height:35px;
-    padding:0 16px;
-    background:white;
-    border:1px solid #ccc;
-    border-radius:5px;
-    cursor:pointer;
-    font-size:14px;
-    white-space:nowrap;
+    height: 35px;
+    padding: 0 16px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
 }
 
 
@@ -262,15 +262,14 @@ map {
     /* 혹시 만약 메뉴가 로고나 다른 걸 가릴까 봐 여백도 조정 */
     .header-area {
         margin-bottom: 0;
-    }
+  
 }
 
 .all-menu-btn {
-    background-color: #333;
-    color: #fff;
-    padding: 8px 15px;
-    border: none;
-    cursor: pointer;
+        background-color: #ff0000 !important; /* 빨간색 배경 */
+        color: #ffffff !important;            /* 흰색 글자 */
+        border: none !important;
+        font-weight: bold;
 }
 
 /* 2. 모바일에서 [전체메뉴] 버튼만 빨간색으로 변경 */
@@ -281,7 +280,7 @@ map {
         font-weight: bold;
     }
 
-
+  }
     
 </style>
 
@@ -333,7 +332,7 @@ map {
 
         <div class="icons">
 
-            <button class="header-btn"
+<button class="header-btn all-menu-btn" onclick="location.href='/products/all'">전체메뉴</button>
             onclick="location.href='/products/all'">
             전체메뉴
             </button>
