@@ -667,7 +667,28 @@ setupFinishingListener(document.querySelector('.finishing-select'));
 </script>
 
 
+<div id="footer-container"></div>
 
+<script>
+    fetch('../includes/footer.html')
+        .then(r => r.text())
+        .then(d => {
+            const container = document.getElementById('footer-container');
+            container.innerHTML = d;
+
+            // 푸터 내부에 포함된 스크립트가 있다면 재실행
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                if (oldScript.src) {
+                    newScript.src = oldScript.src;
+                } else {
+                    newScript.textContent = oldScript.textContent;
+                }
+                document.body.appendChild(newScript);
+            });
+        });
+</script>
 
 
 
