@@ -34,7 +34,7 @@
 
 /* 검색 */
 .search-container {
-    width: 350px;
+    width: 250px;
     position: relative;
 }
 
@@ -44,7 +44,7 @@
     background: #fff;
     border: 2px solid #ccc;
     border-radius: 40px;
-    padding: 0 18px;
+    padding: 0 10px;
     height: 40px;
 }
 
@@ -63,6 +63,8 @@
     border-radius: 50%;
     border: none;
     cursor: pointer;
+    flex-shrink: 0; 
+    margin-left: 5px; 
 }
 
 
@@ -174,7 +176,7 @@ map {
 
                 <input type="text"
                        id="searchInput"
-                       placeholder="검색어를 입력하세요">
+                       placeholder="제품을 검색해주세요.">
 
                 <button class="search-btn"
                         onclick="executeSearch()">
