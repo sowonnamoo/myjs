@@ -650,16 +650,18 @@ setupFinishingListener(document.querySelector('.finishing-select'));
 
 
 <script>
-    fetch('../includes/header.html')
-        .then(r => r.text())
-        .then(d => {
-            document.getElementById('header-container').innerHTML = d;
-            
-            // ★ 바로 여기를 추가하세요! 헤더를 넣은 뒤 기능을 켜는 것입니다.
-            if (window.initHeader) {
-                window.initHeader();
-            }
-        });
+    // 헤더를 확실하게 다 불러온 뒤 기능을 연결하도록 수정[cite: 5]
+    async function loadHeader() {
+        const response = await fetch('../includes/header.html');
+        const data = await response.text();
+        document.getElementById('header-container').innerHTML = data;
+        
+        // 헤더 HTML이 들어간 후, initHeader 함수를 실행[cite: 4, 5]
+        if (typeof window.initHeader === 'function') {
+            window.initHeader();
+        }
+    }
+    loadHeader();
 </script>
 
 
