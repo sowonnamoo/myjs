@@ -274,34 +274,34 @@ function setTab(el) {
     let priceConfigCache = null;
     let finishingOptionsCache = null;
 
-    async function loadAllOptions() {
-        const optionConfigs = [
-            { id: "paperSelect", docId: "myeong_paper" },
-            { id: "inkSelect", docId: "myeong_ink" },
-        ];
+ async function loadAllOptions() {
+    const optionConfigs = [
+        { id: "paperSelect", docId: "myeong_paper" },
+        { id: "inkSelect", docId: "myeong_ink" },
+    ];
 
-        for (const config of optionConfigs) {
-            const docSnap = await getDoc(doc(db, "products", config.docId));
-            if (docSnap.exists()) {
-                const select = document.getElementById(config.id);
-                if (!select) continue;
-                select.innerHTML = '';
-                
-                docSnap.data().options.forEach(opt => {
-                    const el = document.createElement('option');
-                    el.value = opt.name;
-                    el.textContent = opt.name;
-                    el.dataset.price = opt.price || 0;
-                    el.dataset.margin = opt.margin || 0;
-                    el.dataset.url = opt.url || "";
-                    el.dataset.imageUrl = opt.imageUrl || ""; 
-                    el.dataset.costMargin = opt.costMargin || 0;
-                    el.dataset.delivery = opt.delivery || 0; 
-                    el.dataset.weight = opt.weight || 0; 
-                    select.appendChild(el);
-                });
-            }
+    for (const config of optionConfigs) {
+        const docSnap = await getDoc(doc(db, "products", config.docId));
+        if (docSnap.exists()) {
+            const select = document.getElementById(config.id);
+            if (!select) continue;
+            select.innerHTML = '';
+            
+            docSnap.data().options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.name;
+                el.textContent = opt.name;
+                // 가격 및 데이터 속성 유지
+                el.dataset.price = opt.price || 0;
+                el.dataset.margin = opt.margin || 0;
+                el.dataset.costMargin = opt.costMargin || 0;
+                el.dataset.delivery = opt.delivery || 0; 
+                el.dataset.weight = opt.weight || 0;
+                el.dataset.imageUrl = opt.imageUrl || ""; 
+                select.appendChild(el);
+            });
         }
+    }
 
         const sizeType = document.getElementById('sizeType');
         const sizeList = document.getElementById('sizeList');
@@ -571,34 +571,32 @@ document.getElementById('setCountInput').addEventListener('input', updatePrice);
 
 loadFinishingOptions(document.querySelector('.finishing-select'));
 
-    async function loadFinishingOptions(selectElement) {
-        selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
+   async function loadFinishingOptions(selectElement) {
+    selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
 
-        if (!finishingOptionsCache) {
-            const docSnap = await getDoc(doc(db, "products", "myeong_bg"));
-            if (!docSnap.exists()) return;
-            finishingOptionsCache = docSnap.data().options;
-        }
-
-        const currentValue = selectElement.value;
-
-        // [기존 함수 내 수정]
-finishingOptionsCache.forEach(opt => {
-    const el = document.createElement('option');
-    el.value = opt.name;
-    el.textContent = opt.name;
-    el.dataset.price = opt.price || 0;
-    el.dataset.imageUrl = opt.imageUrl || "";
-    el.dataset.delivery = opt.delivery || 0;
-    // URL 추가
-    el.dataset.url = opt.url || ""; 
-    selectElement.appendChild(el);
-});
-
-        if (currentValue) {
-            selectElement.value = currentValue;
-        }
+    if (!finishingOptionsCache) {
+        const docSnap = await getDoc(doc(db, "products", "myeong_bg"));
+        if (!docSnap.exists()) return;
+        finishingOptionsCache = docSnap.data().options;
     }
+
+    const currentValue = selectElement.value;
+
+    finishingOptionsCache.forEach(opt => {
+        const el = document.createElement('option');
+        el.value = opt.name;
+        el.textContent = opt.name;
+        // 후가공 가격 및 데이터 속성 유지
+        el.dataset.price = opt.price || 0;
+        el.dataset.imageUrl = opt.imageUrl || "";
+        el.dataset.delivery = opt.delivery || 0;
+        selectElement.appendChild(el);
+    });
+
+    if (currentValue) {
+        selectElement.value = currentValue;
+    }
+}
 
     
 
