@@ -153,53 +153,65 @@ map {
 
 <style>
 .text-menu-wrap {
-    width: 1199px; /* 기존 헤더와 동일 폭 */
+    width: 1199px; 
     margin: 0 auto;
-    background: #f8f8f8; /* 메뉴 배경색 (원하는 대로 수정) */
-    border-top: 1px solid #eee;
-    padding: 10px 0;
+    
+    /* 배경색과 2px 라인 설정 */
+    background-color: #fcfcfc;        /* 메뉴 전체 배경색 */
+    border-top: 2px solid #333;      /* 상단 2px 라인 */
+    border-bottom: 2px solid #333;   /* 하단 2px 라인 */
+    
+    padding: 12px 0;                 /* 메뉴 위아래 여백 */
 }
 
 .text-menu-list {
     display: flex;
-    justify-content: center; /* 중앙 정렬 */
-    gap: 5px; /* 메뉴 사이 간격 */
+    justify-content: center;         /* 메뉴 중앙 정렬 */
+    gap: 10px;                       /* 메뉴 사이 간격 */
     list-style: none;
     margin: 0;
     padding: 0;
-    flex-wrap: wrap; /* 줄바꿈 허용 (모바일 대응) */
+    flex-wrap: wrap;                 /* 화면 좁아지면 줄바꿈 */
 }
 
 .text-menu-list li a {
     display: block;
-    padding: 8px 15px;
-    color: #333;
+    padding: 5px 12px;
+    color: #444;                     /* 글자색 */
     text-decoration: none;
     font-size: 14px;
-    font-weight: bold;
-    border-radius: 4px;
-    transition: background 0.2s;
+    font-weight: 600;                /* 글자 굵기 */
+    transition: all 0.2s;
 }
 
 .text-menu-list li a:hover {
-    background: #e0e0e0;
-    color: #000;
+    color: #000;                     /* 마우스 올리면 글자색 진하게 */
+    text-decoration: underline;      /* 밑줄 효과 */
 }
 
-/* 모바일 반응형 스타일 (기존 모바일 CSS에 통합하거나 추가) */
+
+
+    
+
+/* 모바일 대응 */
 @media(max-width: 768px) {
     .text-menu-wrap {
         width: 100%;
+        padding: 10px 5px;
     }
     .text-menu-list {
-        gap: 2px;
-        justify-content: space-around;
+        gap: 5px;
     }
     .text-menu-list li a {
-        padding: 6px 10px;
-        font-size: 12px;
+        font-size: 13px;
+        padding: 4px 8px;
     }
 }
+
+
+
+
+    
 </style>
 
     
