@@ -13,19 +13,23 @@
 .search-wrap { display: flex; align-items: center; background: #fff; border: 2px solid #ccc; border-radius: 40px; padding: 0 10px; height: 40px; }
 .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
 .search-btn { 
-    width: 0px; 
-    height: 27px; 
-    background: #68b600; /* 요청하신 연두색 적용 */
+    width: 25px; 
+    height: 25px; 
+    background: #68b600; 
+    color: white;             /* 특수문자 색상 */
     border-radius: 50%; 
     border: none; 
     cursor: pointer; 
-    flex-shrink: 0; 
-    margin-left: 5px; 
-}
-
-/* 마우스를 올렸을 때 살짝 어두워지게 하려면 아래 코드를 추가해보세요 */
-.search-btn:hover {
-    background: #5a9f00;
+    flex: 0 0 25px;           /* 찌그러짐 방지 */
+    
+    /* 글자 중앙 정렬 */
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    
+    font-size: 12px;          /* 글자 크기 조절 */
+    line-height: 1;           /* 줄간격 제거 */
+    padding: 0; 
 }
 
 .search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 15px 15px; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; }
@@ -109,7 +113,7 @@
             <div class="search-container">
                 <div class="search-wrap">
                     <input type="text" id="searchInput" placeholder="제품♥을 검색해주세요.">
-                    <button class="search-btn" onclick="executeSearch()"></button>
+                    <button class="search-btn" onclick="executeSearch()">●</button>
                 </div>
                 <div id="suggestions" class="search-suggestions"></div>
             </div>
