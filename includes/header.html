@@ -3,9 +3,9 @@
 <style>
 /* 1. 기본 스타일 */
 * { box-sizing: border-box; }
-.header-component { width: 1199px; margin: 0 auto; font-family: sans-serif; }
+.header-component { width: 1199px; margin: 0 auto; padding: 0; font-family: sans-serif; }
 .header-top { display: flex; align-items: center; justify-content: space-between; height: 80px; width: 100%; padding: 0 10px; }
-.logo img { display: block; max-width: 240px; }
+.logo img { display: block; max-width: 240px; height: auto; }
 .header-right-wrap { display: flex; align-items: center; gap: 15px; }
 
 /* 검색 스타일 */
@@ -13,39 +13,58 @@
 .search-wrap { display: flex; align-items: center; background: #fff; border: 2px solid #ccc; border-radius: 40px; padding: 0 10px; height: 40px; }
 .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
 .search-btn { width: 25px; height: 25px; background: #b0b0b0; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0; margin-left: 5px; }
-.search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; }
-.suggestion-item { padding:8px 20px; cursor:pointer; font-size:14px; }
 
-/* PC 메가메뉴 */
-.mega-menu-wrap { width: 1199px; margin: 0 auto; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
+.search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 15px 15px; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; }
+.suggestion-item { padding:8px 20px; cursor:pointer; font-size:14px; }
+.suggestion-item:hover { background:#f0f0f0; }
+
+/* 버튼 */
+.icons { display:flex; gap:8px; }
+.header-btn { height: 35px; padding: 0 16px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; white-space: nowrap; }
+
+/* 메가메뉴 스타일 */
+.mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
 .mega-menu-list { display: flex; justify-content: center; list-style: none; margin: 0; padding: 0; }
 .menu-item { position: relative; padding: 15px 20px; }
-.sub-menu { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ddd; min-width: 150px; padding: 10px 0; z-index: 1000; }
+.menu-item > a { text-decoration: none; color: #333; font-weight: bold; }
+.sub-menu { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ddd; min-width: 150px; padding: 10px 0; box-shadow: 0 5px 10px rgba(0,0,0,0.1); z-index: 1000; }
 .menu-item:hover .sub-menu { display: block; }
 .sub-menu a { display: block; padding: 8px 15px; color: #666; text-decoration: none; font-size: 13px; }
 
 /* 모바일 슬라이더 */
-.mobile-slider { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.2); padding: 20px; }
-.mobile-slider.active { left: 0; }
+.mobile-slider-nav { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+.mobile-slider-nav.active { left: 0; }
+.slider-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
 .slider-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998; }
 .slider-overlay.active { display: block; }
 
-/* 모바일 전용 */
+/* 2. 모바일 대응 */
 @media(max-width: 768px) {
-    .header-component { width: 100%; }
-    .mega-menu-wrap { display: none; } /* PC용 메뉴 숨김 */
-    .all-menu-btn { background-color: #ff0000 !important; color: #ffffff !important; font-weight: bold; }
+    .header-component { width: 100%; padding: 15px; }
+    .header-top { height: auto; flex-direction: column; gap: 15px; }
+    .header-right-wrap { width: 100%; flex-direction: column; }
+    .search-container { width: 100%; }
+    .mega-menu-wrap { display: none; }
+    .all-menu-btn { background-color: #ff0000 !important; color: #ffffff !important; border: none !important; font-weight: bold; }
 }
 </style>
 
-<!-- 슬라이더 메뉴 HTML -->
+<!-- 슬라이더 메뉴 -->
 <div class="slider-overlay" id="sliderOverlay" onclick="toggleSlider()"></div>
-<div class="mobile-slider" id="mobileSlider">
-    <h3>메뉴</h3>
-    <ul style="list-style:none; padding:0;">
-        <li><a href="/products/01my">명함</a></li>
-        <!-- 필요한 만큼 추가 -->
-    </ul>
+<div class="mobile-slider-nav" id="mobileSlider">
+    <div class="slider-header">
+        <strong>전체 메뉴</strong>
+        <button onclick="toggleSlider()">닫기</button>
+    </div>
+    <div style="padding:10px;">
+        <!-- 메뉴 복사 영역 -->
+        <div style="font-weight:bold; margin-bottom:10px;">명함</div>
+        <div style="padding-left:10px;">
+            <a href="/products/01my" style="display:block; padding:5px 0;">박명함</a>
+            <a href="/products/01my" style="display:block; padding:5px 0;">카드명함</a>
+            <a href="/products/01my" style="display:block; padding:5px 0;">수입지명함</a>
+        </div>
+    </div>
 </div>
 
 <div class="header-component">
@@ -54,26 +73,24 @@
         <div class="header-right-wrap">
             <div class="search-container">
                 <div class="search-wrap">
-                    <input type="text" id="searchInput" placeholder="제품검색">
+                    <input type="text" id="searchInput" placeholder="제품♥을 검색해주세요.">
                     <button class="search-btn" onclick="executeSearch()"></button>
                 </div>
                 <div id="suggestions" class="search-suggestions"></div>
             </div>
             <div class="icons">
-                <!-- 모바일 클릭 시 toggleSlider 실행 -->
                 <button class="header-btn all-menu-btn" onclick="toggleSlider()">전체메뉴</button>
-                <button class="header-btn" onclick="location.href='/myboard'">내정보</button>
-                <button class="header-btn" onclick="location.href='/cart'">장바구니</button>
+                <button class="header-btn" onclick="location.href='https://sowonnamoo.github.io/myboard/search'">내정보</button>
+                <button class="header-btn" onclick="location.href='/includes/cart'">장바구니</button>
             </div>
         </div>
     </header>
 
-    <!-- PC용 메가메뉴 -->
     <nav class="mega-menu-wrap">
         <ul class="mega-menu-list">
             <li class="menu-item"><a href="/products/01my">명함</a>
                 <div class="sub-menu">
-                    <a href="/products/01my">박명함</a><a href="/products/01my">카드명함</a>
+                    <a href="/products/01my">박명함</a><a href="/products/01my">카드명함</a><a href="/products/01my">수입지명함</a>
                 </div>
             </li>
         </ul>
@@ -81,17 +98,22 @@
 </div>
 
 <script>
-// 슬라이더 토글 함수
 function toggleSlider() {
     document.getElementById("mobileSlider").classList.toggle("active");
     document.getElementById("sliderOverlay").classList.toggle("active");
 }
 
-// 기존 검색 스크립트
 (function() {
+    const searchData = [{ name: "명함", url: "/products/01my" }];
     const input = document.getElementById('searchInput');
+    const suggBox = document.getElementById('suggestions');
+    window.executeSearch = function() {
+        const query = input.value.trim();
+        if (!query) return;
+        location.href = "/search?q=" + encodeURIComponent(query);
+    };
     if (input) {
-        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') executeSearch(); });
+        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.executeSearch(); });
     }
 })();
 </script>
