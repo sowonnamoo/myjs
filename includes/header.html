@@ -150,6 +150,60 @@ map {
 
 }
 
+
+<style>
+.text-menu-wrap {
+    width: 1199px; /* 기존 헤더와 동일 폭 */
+    margin: 0 auto;
+    background: #f8f8f8; /* 메뉴 배경색 (원하는 대로 수정) */
+    border-top: 1px solid #eee;
+    padding: 10px 0;
+}
+
+.text-menu-list {
+    display: flex;
+    justify-content: center; /* 중앙 정렬 */
+    gap: 5px; /* 메뉴 사이 간격 */
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap; /* 줄바꿈 허용 (모바일 대응) */
+}
+
+.text-menu-list li a {
+    display: block;
+    padding: 8px 15px;
+    color: #333;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.text-menu-list li a:hover {
+    background: #e0e0e0;
+    color: #000;
+}
+
+/* 모바일 반응형 스타일 (기존 모바일 CSS에 통합하거나 추가) */
+@media(max-width: 768px) {
+    .text-menu-wrap {
+        width: 100%;
+    }
+    .text-menu-list {
+        gap: 2px;
+        justify-content: space-around;
+    }
+    .text-menu-list li a {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+</style>
+
+    
+
 </style>
 
 
@@ -229,28 +283,26 @@ map {
      usemap="#Map">
 
 
-
-<map name="Map">
-
-<area shape="rect" coords="15,7,86,47" href="/products/01my">
-<area shape="rect" coords="85,7,135,46" href="/products/02my">
-<area shape="rect" coords="134,7,204,45" href="/products/03my">
-<area shape="rect" coords="203,7,267,45" href="/products/04my">
-<area shape="rect" coords="267,7,325,45" href="/products/05my">
-<area shape="rect" coords="325,7,456,44" href="/products/06my">
-<area shape="rect" coords="456,7,528,44" href="/products/07my">
-<area shape="rect" coords="527,8,623,45" href="/products/08my">
-<area shape="rect" coords="622,7,688,45" href="/products/09my">
-<area shape="rect" coords="688,7,756,45" href="/products/10my">
-<area shape="rect" coords="756,8,822,45" href="/products/11my">
-<area shape="rect" coords="822,8,904,45" href="/products/12my">
-<area shape="rect" coords="904,8,970,45" href="/products/13my">
-<area shape="rect" coords="970,8,1052,46" href="/products/14my">
-<area shape="rect" coords="1052,8,1103,46" href="/products/15my">
-<area shape="rect" coords="1103,8,1177,47" href="/products/16my">
-
-</map>
-
+<nav class="text-menu-wrap">
+    <ul class="text-menu-list">
+        <li><a href="/products/01my">명함</a></li>
+        <li><a href="/products/02my">박명함</a></li>
+        <li><a href="/products/03my">카드명함</a></li>
+        <li><a href="/products/04my">회사명함</a></li>
+        <li><a href="/products/05my">수입지명함</a></li>
+        <li><a href="/products/06my">명함</a></li>
+        <li><a href="/products/07my">명함</a></li>
+        <li><a href="/products/08my">명함</a></li>
+        <li><a href="/products/09my">명함</a></li>
+        <li><a href="/products/10my">명함</a></li>
+        <li><a href="/products/11my">명함</a></li>
+        <li><a href="/products/12my">명함</a></li>
+        <li><a href="/products/13my">명함</a></li>
+        <li><a href="/products/14my">명함</a></li>
+        <li><a href="/products/15my">명함</a></li>
+        <li><a href="/products/16my">명함</a></li>
+    </ul>
+</nav>
 
 </div>
 
