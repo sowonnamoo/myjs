@@ -55,7 +55,7 @@
         <button onclick="toggleSlider()">닫기</button>
     </div>
     <div style="padding:10px;">
-        <a href="/products/01my" style="display:block; font-weight:bold; margin-bottom:10px; color:#333; text-decoration:none;">명함</a>
+<span style="display:block; font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">명함</span>
         <div style="padding-left:10px;">
             <a href="/products/01my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">박명함</a>
             <a href="/products/01my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">카드명함</a>
@@ -136,4 +136,14 @@ function toggleSlider() {
         });
     }
 })();
+
+// 대분류 클릭 시 소분류 토글 함수
+function toggleSubMenu(el) {
+    const sub = el.nextElementSibling;
+    sub.style.display = (sub.style.display === "none") ? "block" : "none";
+}
+</scrip
+    
+
+    
 </script>
