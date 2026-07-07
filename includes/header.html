@@ -12,7 +12,21 @@
 .search-container { width: 250px; position: relative; }
 .search-wrap { display: flex; align-items: center; background: #fff; border: 2px solid #ccc; border-radius: 40px; padding: 0 10px; height: 40px; }
 .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
-.search-btn { width: 25px; height: 25px; background: #68b600; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0; margin-left: 5px; }
+.search-btn { 
+    width: 25px; 
+    height: 25px; 
+    background: #68b600; /* 요청하신 연두색 적용 */
+    border-radius: 50%; 
+    border: none; 
+    cursor: pointer; 
+    flex-shrink: 0; 
+    margin-left: 5px; 
+}
+
+/* 마우스를 올렸을 때 살짝 어두워지게 하려면 아래 코드를 추가해보세요 */
+.search-btn:hover {
+    background: #5a9f00;
+}
 
 .search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 15px 15px; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; }
 .suggestion-item { padding:8px 20px; cursor:pointer; font-size:14px; }
