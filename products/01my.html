@@ -179,19 +179,20 @@
             <div id="deliveryDisplay" style="color:red; border:1px dashed red; padding:3px 10px; font-size:13px;">통상 1일</div>
         </div>
 
-        <div class="total-price" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
-            <!-- 좌측: 견적서 출력 버튼 -->
-            <button type="button" id="printQuoteBtn" style="padding: 10px 20px; cursor: pointer; background: #eee; border: 1px solid #ccc;">
-                견적서
-            </button>
+      <div class="total-price" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
+    
+    <!-- 견적서 버튼: height를 명시하고 flex-shrink를 0으로 설정 -->
+    <button type="button" id="printQuoteBtn" style="height: 45px; width: 80px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center;">
+        견적서
+    </button>
 
-            <!-- 우측: 총 결제액 영역 -->
-            <div style="text-align: right;">
-                <div id="selectedOptionsSummary" style="font-size:12px; color:#999; margin-bottom:5px;"></div>
-                총 결제액 <br>
-                <span id="priceDisplay" style="color:#4aa3ff; font-size:1.3em; font-weight:700;">0원</span>
-            </div>
-        </div>
+    <!-- 우측: 총 결제액 영역 -->
+    <div style="text-align: right;">
+        <div id="selectedOptionsSummary" style="font-size:12px; color:#999; margin-bottom:5px;"></div>
+        총 결제액 <br>
+        <span id="priceDisplay" style="color:#4aa3ff; font-size:1.3em; font-weight:700;">0원</span>
+    </div>
+</div>
 
         <button class="order-btn">셀프편집 & 주문하기</button>
     </div>
