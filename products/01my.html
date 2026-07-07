@@ -232,6 +232,7 @@
 
 <script>
 function setTab(el) {
+    // 1. 탭 버튼 색상 변경 (기존 기능 유지)
     const tabs = el.parentElement.children;
     for (let i = 0; i < tabs.length; i++) {
         tabs[i].style.background = "white";
@@ -239,6 +240,14 @@ function setTab(el) {
     }
     el.style.background = "#999";
     el.style.color = "white";
+
+    // 2. '제품정보' 탭이 아닐 때만 맨 아래로 이동
+    if (el.textContent.trim() !== "제품정보") {
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
 }
 </script>
 
