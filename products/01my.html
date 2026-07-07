@@ -670,7 +670,9 @@ setupFinishingListener(document.querySelector('.finishing-select'));
 
 
 
+
 window.handleOrder = function() {
+    // 1. 데이터 수집
     const paper = document.getElementById('paperSelect').value;
     const ink = document.getElementById('inkSelect').value;
     const qty = document.getElementById('qtySelect').value;
@@ -678,23 +680,36 @@ window.handleOrder = function() {
     const width = document.getElementById('widthInput').value;
     const height = document.getElementById('heightInput').value;
     const price = document.getElementById('priceDisplay').textContent;
-    
+
+    // 2. 무게 추출 (kg 단위 통일)
+    const weightText = document.getElementById('weightDisplay').textContent;
+    let weightValue = 0;
+    if (weightText.includes('kg')) {
+        weightValue = parseFloat(weightText);
+    } else if (weightText.includes('g')) {
+        weightValue = parseFloat(weightText) / 1000;
+    }
+
+    // 3. 후가공 목록 추출
     const finishings = [];
     document.querySelectorAll('.finishing-select').forEach(sel => {
         if (sel.value && sel.value !== "선택안함") finishings.push(sel.value);
     });
 
+    // 4. 파라미터 생성 (한글 깨짐 방지 encodeURIComponent 적용)
     const params = new URLSearchParams({
-        paper: paper,
-        ink: ink,
+        paper: encodeURIComponent(paper),
+        ink: encodeURIComponent(ink),
         qty: qty,
         count: count,
         width: width,
         height: height,
-        price: price,
-        finishings: finishings.join(',')
+        price: encodeURIComponent(price),
+        weight: weightValue,
+        finishings: encodeURIComponent(finishings.join(','))
     }).toString();
 
+    // 5. URL 분기
     let targetUrl = "";
     if (ink.includes("즉시인쇄")) {
         targetUrl = "/includes/ecopro1";
@@ -704,10 +719,9 @@ window.handleOrder = function() {
         targetUrl = "/includes/ecopro3";
     }
 
+    // 6. 새 창 열기
     window.open(`${targetUrl}?${params}`, '_blank');
 }
-
-
 
     
 
