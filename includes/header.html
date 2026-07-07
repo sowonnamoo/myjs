@@ -255,16 +255,13 @@ map {
 
 /* 모바일 대응 */
 @media(max-width: 768px) {
-    .text-menu-wrap {
-        width: 100%;
-        padding: 10px 5px;
+   .mega-menu-wrap {
+        display: none; /* 모바일에서는 메뉴 영역 전체를 안 보이게 합니다 */
     }
-    .text-menu-list {
-        gap: 5px;
-    }
-    .text-menu-list li a {
-        font-size: 13px;
-        padding: 4px 8px;
+    
+    /* 혹시 만약 메뉴가 로고나 다른 걸 가릴까 봐 여백도 조정 */
+    .header-area {
+        margin-bottom: 0;
     }
 }
 
