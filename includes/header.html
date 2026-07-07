@@ -14,6 +14,7 @@
 .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
 .search-btn { width: 25px; height: 25px; background: #b0b0b0; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0; margin-left: 5px; }
 
+/* 자동완성 */
 .search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 15px 15px; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; }
 .suggestion-item { padding:8px 20px; cursor:pointer; font-size:14px; }
 .suggestion-item:hover { background:#f0f0f0; }
@@ -22,7 +23,7 @@
 .icons { display:flex; gap:8px; }
 .header-btn { height: 35px; padding: 0 16px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; white-space: nowrap; }
 
-/* 메가메뉴 스타일 */
+/* 메가메뉴 */
 .mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
 .mega-menu-list { display: flex; justify-content: center; list-style: none; margin: 0; padding: 0; }
 .menu-item { position: relative; padding: 15px 20px; }
@@ -32,13 +33,12 @@
 .sub-menu a { display: block; padding: 8px 15px; color: #666; text-decoration: none; font-size: 13px; }
 
 /* 모바일 슬라이더 */
-.mobile-slider-nav { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+.mobile-slider-nav { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.2); overflow-y: auto; }
 .mobile-slider-nav.active { left: 0; }
 .slider-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
 .slider-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998; }
 .slider-overlay.active { display: block; }
 
-/* 2. 모바일 대응 */
 @media(max-width: 768px) {
     .header-component { width: 100%; padding: 15px; }
     .header-top { height: auto; flex-direction: column; gap: 15px; }
@@ -49,20 +49,17 @@
 }
 </style>
 
-<!-- 슬라이더 메뉴 -->
 <div class="slider-overlay" id="sliderOverlay" onclick="toggleSlider()"></div>
 <div class="mobile-slider-nav" id="mobileSlider">
     <div class="slider-header">
         <strong>전체 메뉴</strong>
         <button onclick="toggleSlider()">닫기</button>
     </div>
-    <div style="padding:10px;">
-        <!-- 메뉴 복사 영역 -->
-        <div style="font-weight:bold; margin-bottom:10px;">명함</div>
-        <div style="padding-left:10px;">
-            <a href="/products/01my" style="display:block; padding:5px 0;">박명함</a>
-            <a href="/products/01my" style="display:block; padding:5px 0;">카드명함</a>
-            <a href="/products/01my" style="display:block; padding:5px 0;">수입지명함</a>
+    <div style="padding:15px;">
+        <a href="/products/01my" style="font-weight:bold; display:block; margin-bottom:10px; color:#333; text-decoration:none;">명함 (대분류 이동)</a>
+        <div style="padding-left:15px;">
+            <a href="/products/01my" style="display:block; padding:5px 0; color:#666;">박명함</a>
+            <a href="/products/01my" style="display:block; padding:5px 0; color:#666;">카드명함</a>
         </div>
     </div>
 </div>
@@ -85,16 +82,6 @@
             </div>
         </div>
     </header>
-
-    <nav class="mega-menu-wrap">
-        <ul class="mega-menu-list">
-            <li class="menu-item"><a href="/products/01my">명함</a>
-                <div class="sub-menu">
-                    <a href="/products/01my">박명함</a><a href="/products/01my">카드명함</a><a href="/products/01my">수입지명함</a>
-                </div>
-            </li>
-        </ul>
-    </nav>
 </div>
 
 <script>
@@ -104,16 +91,39 @@ function toggleSlider() {
 }
 
 (function() {
-    const searchData = [{ name: "명함", url: "/products/01my" }];
+    const searchData = [
+        { name: "명함", url: "/products/01my" },
+        { name: "박명함", url: "/products/01my" },
+        { name: "카드명함", url: "/products/01my" }
+    ];
     const input = document.getElementById('searchInput');
     const suggBox = document.getElementById('suggestions');
+
     window.executeSearch = function() {
         const query = input.value.trim();
         if (!query) return;
-        location.href = "/search?q=" + encodeURIComponent(query);
+        const item = searchData.find(d => d.name === query);
+        location.href = item ? item.url : "/search?q=" + encodeURIComponent(query);
     };
+
     if (input) {
         input.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.executeSearch(); });
+        input.addEventListener('input', () => {
+            const val = input.value;
+            suggBox.innerHTML = '';
+            if (val.length < 1) { suggBox.style.display = 'none'; return; }
+            const filtered = searchData.filter(d => d.name.includes(val)).slice(0, 3);
+            if (filtered.length > 0) {
+                filtered.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.innerText = item.name;
+                    div.onclick = () => location.href = item.url;
+                    suggBox.appendChild(div);
+                });
+                suggBox.style.display = 'block';
+            } else { suggBox.style.display = 'none'; }
+        });
     }
 })();
 </script>
