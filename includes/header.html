@@ -265,7 +265,21 @@ map {
     }
 }
 
+.all-menu-btn {
+    background-color: #333;
+    color: #fff;
+    padding: 8px 15px;
+    border: none;
+    cursor: pointer;
+}
 
+/* 2. 모바일에서 [전체메뉴] 버튼만 빨간색으로 변경 */
+@media(max-width: 768px) {
+    .all-menu-btn {
+        background-color: #ff0000 !important; /* 전체메뉴만 빨간색 */
+        color: #ffffff !important;            /* 글자는 흰색 */
+        font-weight: bold;
+    }
 
 
     
