@@ -560,9 +560,14 @@ function updateMainImage(imageUrl) {
     document.querySelectorAll('select').forEach(sel => {
         sel.addEventListener('change', (e) => {
             const selectedOpt = e.target.options[e.target.selectedIndex];
-            if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
-                window.open(selectedOpt.dataset.url, '_blank');
-            }
+           if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
+    // 혹시라도 중복 호출되는 것을 방지하기 위해 0.1초 차이로 한 번만 실행되게 함
+    if (!window.isOpening) {
+        window.isOpening = true;
+        window.open(selectedOpt.dataset.url, '_blank');
+        setTimeout(() => { window.isOpening = false; }, 500);
+    }
+}
             updatePrice();
             updateDeliveryDisplay();
         });
