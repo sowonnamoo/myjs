@@ -33,10 +33,18 @@
 .menu-item > a[onclick] { cursor: default; }
     
 /* 모바일 슬라이더 */
-.mobile-slider-nav { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
-    /* 아래 두 줄을 추가하세요 */
-    overflow-y: auto; /* 메뉴가 길어지면 자동으로 스크롤 생성 */
-    -webkit-overflow-scrolling: touch; /* 모바일에서 스크롤 부드럽게 처리 */
+.mobile-slider-nav { 
+    position: fixed; 
+    top: 0; 
+    left: -300px; 
+    width: 280px; 
+    height: 100%; 
+    background: #fff; 
+    z-index: 9999; 
+    transition: left 0.3s ease; 
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    overflow-y: auto;           /* 정상 위치로 이동 */
+    -webkit-overflow-scrolling: touch; 
 }
 .mobile-slider-nav.active { left: 0; }
 .slider-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
