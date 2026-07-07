@@ -205,14 +205,14 @@
 
 
 
-<div style="width:100%; display:flex; justify-content:center; margin-top:80px;">
-    <div style="width:1195px;">
-        <div style="display:flex; border:1px solid #ccc; text-align:center; border-bottom:2px solid #ccc;">
-            <div onclick="setTab(this)" style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:pointer;">제품정보/제품상세보기</div>
-            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">별도 후가공 안내</div>
-            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">출고 납기일 안내</div>
-            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">재작업/취소/환불</div>
-        </div>
+<div style="display:flex; border:1px solid #ccc; text-align:center; border-bottom:2px solid #ccc;">
+    <!-- onclick을 지우고, cursor를 default로 변경 -->
+    <div style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:default;">제품정보/제품상세보기</div>
+    
+    <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">별도 후가공 안내</div>
+    <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">출고 납기일 안내</div>
+    <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">재작업/취소/환불</div>
+</div>
 
         <div id="ai-holiday-banner" style="display:none; width: 100%; margin-bottom: 20px;">
             <div style="background: #2b7bc3; color: white; padding: 15px; text-align: center; font-size: 16px; font-weight: bold; border-radius: 5px;"></div>
