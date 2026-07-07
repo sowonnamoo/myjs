@@ -1,119 +1,236 @@
-1<!-- [header.html] -->
+<!-- /includes/header.html -->
+
 <style>
-    * { box-sizing: border-box; }
+* { box-sizing: border-box; }
 
-    .header-component {
-        width: 1199px;
-        margin: 0 auto;
-        padding: 0;
-        font-family: sans-serif;
-    }
-
-    .header-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 80px;
-        width: 100%;
-        padding: 0 10px;
-    }
-
-    .logo img { 
-        display: block;
-        max-width: 240px; 
-        height: auto; 
-    }
-
-    .header-right-wrap {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-
-    /* 검색창 영역 */
-    .search-container { width: 350px; position: relative; }
-    .search-wrap {
-        display: flex;
-        align-items: center;
-        background: #fff;
-        border: 2px solid #ccc;
-        border-radius: 40px;
-        padding: 0 18px;
-        height: 40px;
-    }
-    .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
-  .search-btn {
-    width: 20px; 
-    height: 20px;
-    background: #b0b0b0; 
-    border-radius: 50%; 
-    border: none; 
-    cursor: pointer;
-    flex-shrink: 0; /* 버튼이 찌그러지지 않게 고정 */
+.header-component {
+    width: 1199px;
+    margin: 0 auto;
+    padding: 0;
+    font-family: sans-serif;
 }
 
-    /* 연관 검색어 (혓바닥) */
-    .search-suggestions {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: 100%;
-        background: #fff;
-        border: 1px solid #ccc;
-        border-top: none;
-        border-radius: 0 0 15px 15px;
-        display: none;
-        z-index: 1000;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        padding: 5px 0;
-    }
-    .suggestion-item { padding: 8px 20px; cursor: pointer; font-size: 14px; }
-    .suggestion-item:hover { background: #f0f0f0; }
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px;
+    width: 100%;
+    padding: 0 10px;
+}
 
-    .icons { display: flex; gap: 8px; }
-    .header-btn {
-        height: 35px; padding: 0 16px;
-        background: #fff; border: 1px solid #ccc;
-        border-radius: 5px; cursor: pointer; font-size: 14px;
-        white-space: nowrap;
-    }
+.logo img {
+    display: block;
+    max-width: 240px;
+    height: auto;
+}
 
-    /* 모바일 대응 */
-    @media(max-width: 768px) {
-        .header-component { width: 100%; padding: 15px; }
-        .header-top { height: auto; flex-direction: column; gap: 15px; }
-        .header-right-wrap { width: 100%; flex-direction: column; gap: 10px; }
-        .search-container { width: 100%; max-width: 100%; }
-        .menu-image-wrap, map { display: none !important; }
-    }
+.header-right-wrap {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+
+/* 검색 */
+.search-container {
+    width: 350px;
+    position: relative;
+}
+
+.search-wrap {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 2px solid #ccc;
+    border-radius: 40px;
+    padding: 0 18px;
+    height: 40px;
+}
+
+.search-wrap input {
+    border: none;
+    width: 100%;
+    outline: none;
+    padding: 0 10px;
+}
+
+
+.search-btn {
+    width: 20px;
+    height: 20px;
+    background: #b0b0b0;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+}
+
+
+/* 자동완성 */
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 15px 15px;
+    display: none;
+    z-index: 1000;
+    box-shadow:0 4px 6px rgba(0,0,0,.1);
+    padding:5px 0;
+}
+
+
+.suggestion-item {
+    padding:8px 20px;
+    cursor:pointer;
+    font-size:14px;
+}
+
+.suggestion-item:hover {
+    background:#f0f0f0;
+}
+
+
+/* 버튼 */
+.icons {
+    display:flex;
+    gap:8px;
+}
+
+.header-btn {
+    height:35px;
+    padding:0 16px;
+    background:white;
+    border:1px solid #ccc;
+    border-radius:5px;
+    cursor:pointer;
+    font-size:14px;
+    white-space:nowrap;
+}
+
+
+/* 메뉴 이미지 */
+.menu-image-wrap {
+    display:block;
+}
+
+
+/* 모바일 */
+@media(max-width:768px){
+
+.header-component {
+    width:100%;
+    padding:15px;
+}
+
+.header-top {
+    height:auto;
+    flex-direction:column;
+    gap:15px;
+}
+
+.header-right-wrap {
+    width:100%;
+    flex-direction:column;
+}
+
+.search-container {
+    width:100%;
+}
+
+.menu-image-wrap,
+map {
+    display:none !important;
+}
+
+}
+
 </style>
 
+
+
 <div class="header-component">
-    <header class="header-top">
-        <div class="logo">
-            <a href="/"><img src="https://raw.githubusercontent.com/sowonnamoo/myjs/e2570cadaf597629823755d1a67ccc53706f51c7/image/iogo.svg" alt="ECO"></a>
-        </div>
 
-        <div class="header-right-wrap">
-            <div class="search-container">
-                <div class="search-wrap">
-                    <input type="text" id="searchInput" placeholder="검색어를 입력하세요">
-                    <button id="searchBtn" class="search-btn"></button>
-                </div>
-                <div id="suggestions" class="search-suggestions"></div>
+<header class="header-top">
+
+    <div class="logo">
+        <a href="/">
+            <img src="https://raw.githubusercontent.com/sowonnamoo/myjs/e2570cadaf597629823755d1a67ccc53706f51c7/image/iogo.svg"
+            alt="ECO">
+        </a>
+    </div>
+
+
+
+    <div class="header-right-wrap">
+
+
+        <div class="search-container">
+
+            <div class="search-wrap">
+
+                <input type="text"
+                       id="searchInput"
+                       placeholder="검색어를 입력하세요">
+
+                <button class="search-btn"
+                        onclick="executeSearch()">
+                </button>
+
             </div>
 
-            <div class="icons">
-                <button class="header-btn" onclick="location.href='/products/all'">전체메뉴</button>
-                <button class="header-btn" onclick="location.href='https://sowonnamoo.github.io/myboard/search'">내정보</button>
-                <button class="header-btn" onclick="location.href='/includes/cart'">장바구니</button>
-            </div>
-        </div>
-    </header>
 
-    <img src="https://github.com/sowonnamoo/myjs/blob/main/image/menu.jpg?raw=true" class="menu-image-wrap" border="0" usemap="#Map">
-    <map name="Map">
-    <area shape="rect" coords="15,7,86,47" href="/products/01my">
+            <div id="suggestions"
+                 class="search-suggestions">
+            </div>
+
+
+        </div>
+
+
+
+        <div class="icons">
+
+            <button class="header-btn"
+            onclick="location.href='/products/all'">
+            전체메뉴
+            </button>
+
+
+            <button class="header-btn"
+            onclick="location.href='https://sowonnamoo.github.io/myboard/search'">
+            내정보
+            </button>
+
+
+            <button class="header-btn"
+            onclick="location.href='/includes/cart'">
+            장바구니
+            </button>
+
+        </div>
+
+
+    </div>
+
+
+</header>
+
+
+
+
+<img src="https://github.com/sowonnamoo/myjs/blob/main/image/menu.jpg?raw=true"
+     class="menu-image-wrap"
+     usemap="#Map">
+
+
+
+<map name="Map">
+
+<area shape="rect" coords="15,7,86,47" href="/products/01my">
 <area shape="rect" coords="85,7,135,46" href="/products/02my">
 <area shape="rect" coords="134,7,204,45" href="/products/03my">
 <area shape="rect" coords="203,7,267,45" href="/products/04my">
@@ -128,52 +245,9 @@
 <area shape="rect" coords="904,8,970,45" href="/products/13my">
 <area shape="rect" coords="970,8,1052,46" href="/products/14my">
 <area shape="rect" coords="1052,8,1103,46" href="/products/15my">
-<area shape="rect" coords="1103,8,1177,47" href="/products/16my"></map>
+<area shape="rect" coords="1103,8,1177,47" href="/products/16my">
+
+</map>
+
+
 </div>
-
-
-
-<script>
-    window.initHeader = function() {
-        const searchData = [
-            { name: "명함", url: "/products/01my" },
-            // ... (데이터 동일)
-        ];
-        const input = document.getElementById('searchInput');
-        const suggBox = document.getElementById('suggestions');
-
-        // 버튼 클릭 이벤트 연결 (여기서 연결합니다!)
-        document.getElementById('searchBtn').addEventListener('click', executeSearch);
-
-        window.executeSearch = function() {
-            const query = input.value.trim();
-            if (!query) return;
-            const item = searchData.find(d => d.name === query);
-            if (item) location.href = item.url;
-            else location.href = "/search?q=" + encodeURIComponent(query);
-        }
-
-        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') executeSearch(); });
-
-        input.addEventListener('input', () => {
-            const val = input.value;
-            suggBox.innerHTML = '';
-            if (val.length < 1) { suggBox.style.display = 'none'; return; }
-            const filtered = searchData.filter(d => d.name.includes(val)).slice(0, 3);
-            if (filtered.length > 0) {
-                filtered.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerText = item.name;
-                    div.onclick = () => location.href = item.url;
-                    suggBox.appendChild(div);
-                });
-                suggBox.style.display = 'block';
-            } else {
-                suggBox.style.display = 'none';
-            }
-        });
-    };
-    
-    // 파일이 로드되자마자 실행하지 않고 메인 페이지 호출을 기다림
-</script>
