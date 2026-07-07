@@ -1,5 +1,95 @@
-<!-- includes/footer.html -->
-<footer style="padding: 40px; text-align: center; border-top: 1px solid #ddd; margin-top: 80px;">
-    <p>ECO | 대표: OOO | 사업자등록번호: 000-00-00000</p>
-    <p>&copy; 2026 ECO. All rights reserved.</p>
-</footer>
+<style>
+/* 푸터 전체 스타일 */
+.footer-wrapper { font-family: sans-serif; color: #333; margin-top: 50px; }
+
+/* 1. 작업 주의사항 섹션 */
+.notice-section { width: 1199px; margin: 0 auto; padding: 20px 0; }
+.notice-tabs { display: flex; gap: 10px; margin-top: 15px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+.tab-btn { flex: 1; border: 1px solid #ccc; padding: 15px; text-align: center; cursor: pointer; background: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* 아코디언 메뉴 */
+.accordion-item { border-bottom: 1px solid #eee; padding: 20px 0; cursor: pointer; font-weight: bold; }
+.accordion-content { display: none; padding: 15px; background: #f9f9f9; border: 1px solid #eee; font-weight: normal; color: #666; }
+
+/* 2. 하단 회색 푸터 영역 (좌우 꽉 차게 설정) */
+.footer-bottom { 
+    background: #888; /* 배경색 */
+    color: #eee; 
+    padding: 40px 0; 
+    margin-top: 40px; 
+    width: 100%; /* 브라우저 너비 100% */
+}
+
+/* 내부 콘텐츠만 1199px로 중앙 정렬 */
+.footer-inner { 
+    width: 1199px; 
+    margin: 0 auto; 
+    padding: 0 15px; /* 좌우 여백 확보 */
+}
+
+.footer-links { border-bottom: 1px solid #aaa; padding-bottom: 20px; margin-bottom: 20px; display: flex; gap: 20px; }
+.footer-links a { color: #fff; text-decoration: none; font-size: 14px; }
+.footer-columns { display: flex; justify-content: space-between; font-size: 13px; line-height: 1.8; }
+
+/* 에스크로 버튼 스타일 */
+.escrow-btn { display: inline-block; background: #555; color: #fff; padding: 2px 8px; border-radius: 3px; text-decoration: none; font-size: 11px; margin-left: 5px; border: 1px solid #333; }
+.escrow-btn:hover { background: #333; }
+
+/* 모바일 대응 */
+@media (max-width: 1200px) {
+    .notice-section, .footer-inner { width: 100%; box-sizing: border-box; }
+}
+@media (max-width: 768px) {
+    .footer-columns { flex-direction: column; gap: 20px; }
+}
+</style>
+
+<div class="footer-wrapper">
+    <div class="notice-section">
+        <h3>작업 주의사항안내</h3>
+        <p style="font-size:13px; color:#666;">반드시 주의사항 및 작업규약 확인 후 제작을 진행하시기 바랍니다.</p>
+        <div class="notice-tabs">
+            <div class="tab-btn">작업방법 ▾</div>
+            <div class="tab-btn">재질 ▾</div>
+            <div class="tab-btn">유의사항 ▾</div>
+        </div>
+
+        <div class="accordion-item" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'block' ? 'none' : 'block')">▶ 후가공안내</div>
+        <div class="accordion-content">후가공 관련 상세 내용이 들어갑니다.</div>
+
+        <div class="accordion-item" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'block' ? 'none' : 'block')">▶ 출고/배송</div>
+        <div class="accordion-content">배송 정책 및 출고 안내 내용입니다.</div>
+
+        <div class="accordion-item" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'block' ? 'none' : 'block')">▶ 재작업/취소/환불안내</div>
+        <div class="accordion-content">환불 정책 안내 내용입니다.</div>
+    </div>
+
+    <div class="footer-bottom">
+        <div class="footer-inner">
+            <div class="footer-links">
+                <a href="#">회사소개</a> | <a href="#">이용약관</a> | <a href="#">개인정보취급방침</a> | 
+                <a href="#">찾아오시는길</a> | <a href="#">인재채용</a> | <a href="#">Q&A</a> | <a href="#">FAQ</a> | <a href="#">부서별 연락처</a>
+            </div>
+            <div class="footer-columns">
+                <div>
+                    <strong>위치안내</strong><br>
+                    본사: 경기도 파주시 장명산길 36-32<br>
+                    디지털캠퍼스: 경기도 파주시 직지길 206 (파주출판도시)<br>
+                    서울사무소: 서울시 중구 마른내로 72
+                </div>
+                <div>
+                    <strong>고객센터 1644-5720</strong><br>
+                    근무시간 09:00~20:00 토/일요일, 공휴일 휴무<br>
+                    토요일은 서울 출고실만 운영 (09:00~15:00)<br>
+                    점심시간 12:00~13:00
+                </div>
+                <div>
+                    <strong>에코그래픽스</strong><br>
+                    사업자등록번호: 201-81-59476 <a href="#" style="color:white;">[사업자 정보 확인]</a><br>
+                    통신판매허가번호: 2009-경기파주-2121호<br>
+                    팩스: 02-2276-1126 <a href="#" class="escrow-btn">에스크로</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
