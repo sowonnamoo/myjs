@@ -189,7 +189,66 @@ map {
     text-decoration: underline;      /* 밑줄 효과 */
 }
 
+.mega-menu-wrap {
+    width: 1199px;
+    margin: 0 auto;
+    background: #fcfcfc;
+    border-top: 2px solid #333;
+    border-bottom: 2px solid #333;
+    position: relative; /* 중요: 서브메뉴의 기준점 */
+}
 
+.mega-menu-list {
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.menu-item {
+    position: relative;
+    padding: 15px 20px;
+}
+
+/* 1단계 메뉴 */
+.menu-item > a {
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+}
+
+/* 2단계 메뉴 (기본은 숨김) */
+.sub-menu {
+    display: none; /* 평소엔 숨김 */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    min-width: 150px;
+    padding: 10px 0;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+/* 마우스 올리면 등장 */
+.menu-item:hover .sub-menu {
+    display: block;
+}
+
+.sub-menu a {
+    display: block;
+    padding: 8px 15px;
+    color: #666;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.sub-menu a:hover {
+    background: #f0f0f0;
+    color: #000;
+}
 
     
 
@@ -289,26 +348,47 @@ map {
 
 
 
+<nav class="mega-menu-wrap">
+    <ul class="mega-menu-list">
+        <!-- 예시 메뉴 하나 -->
+        <li class="menu-item">
+            <a href="/products/01my">명함</a>
+            <div class="sub-menu">
+                <a href="/products/01my">박명함</a>
+                <a href="/products/01my">카드명함</a>
+                <a href="/products/01my">수입지명함</a>
+            </div>
+        </li>
+       <!-- 예시 메뉴 하나 -->
+        <li class="menu-item">
+            <a href="/products/01my">명함</a>
+            <div class="sub-menu">
+                <a href="/products/01my">박명함</a>
+                <a href="/products/01my">카드명함</a>
+                <a href="/products/01my">수입지명함</a>
+            </div>
+        </li>
+       <!-- 예시 메뉴 하나 -->
+        <li class="menu-item">
+            <a href="/products/01my">명함</a>
+            <div class="sub-menu">
+                <a href="/products/01my">박명함</a>
+                <a href="/products/01my">카드명함</a>
+                <a href="/products/01my">수입지명함</a>
+            </div>
+        </li>
+       <!-- 예시 메뉴 하나 -->
+        <li class="menu-item">
+            <a href="/products/01my">명함</a>
+            <div class="sub-menu">
+                <a href="/products/01my">박명함</a>
+                <a href="/products/01my">카드명함</a>
+                <a href="/products/01my">수입지명함</a>
+            </div>
+        </li>
+        <!-- 나머지 메뉴들도 동일한 구조로 반복 --></nav>
 
-<nav class="text-menu-wrap">
-    <ul class="text-menu-list">
-        <li><a href="/products/01my">명함</a></li>
-        <li><a href="/products/02my">박명함</a></li>
-        <li><a href="/products/03my">카드명함</a></li>
-        <li><a href="/products/04my">회사명함</a></li>
-        <li><a href="/products/05my">수입지명함</a></li>
-        <li><a href="/products/06my">명함</a></li>
-        <li><a href="/products/07my">명함</a></li>
-        <li><a href="/products/08my">명함</a></li>
-        <li><a href="/products/09my">명함</a></li>
-        <li><a href="/products/10my">명함</a></li>
-        <li><a href="/products/11my">명함</a></li>
-        <li><a href="/products/12my">명함</a></li>
-        <li><a href="/products/13my">명함</a></li>
-        <li><a href="/products/14my">명함</a></li>
-        <li><a href="/products/15my">명함</a></li>
-        <li><a href="/products/16my">명함</a></li>
-    </ul>
+
 </nav>
 
 </div>
