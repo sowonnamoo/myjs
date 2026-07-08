@@ -35,65 +35,49 @@
 
 <script>
     let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText;
-// [추가] 모바일에서 화면 사이즈가 꼬이는 현상을 방지하기 위한 강제 리사이징
-    window.addEventListener('pageshow', (event) => {
-        if (canvas) {
-            const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
-            // 캔버스 크기 재조정
-            canvas.setDimensions({
-                width: containerWidth,
-                height: containerWidth * (ratioH / ratioW)
-            });
-            // 가이드라인 위치 및 크기 초기화
-            const padding = canvas.width * 0.02;
-            guideRect.set({
-                width: canvas.width - (padding * 2),
-                height: canvas.height - (padding * 2)
-            });
-            // 이미지가 있다면 다시 캔버스에 맞춰 스케일 조정
-            if (designData[currentIdx][currentSide]) {
-                designData[currentIdx][currentSide].scaleToWidth(canvas.width);
-            }
-            canvas.renderAll();
-        }
-    });
 
-
-
-
-    
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
-        // ... (이전 URL 파라미터 처리 로직 유지) ...
-        
-        // 캔버스 생성 및 가이드 설정을 setTimeout 0으로 감싸서 레이아웃 계산 후 실행
-        setTimeout(() => {
-            const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
-            
-            canvas = new fabric.Canvas('main-canvas', {
-                width: containerWidth,
-                height: containerWidth * (ratioH / ratioW),
-                backgroundColor: '#ffffff'
-            });
+        let hasDouble = false;
 
-            const padding = canvas.width * 0.02; 
-            guideRect = new fabric.Rect({
-                left: padding, top: padding,
-                width: canvas.width - (padding * 2), height: canvas.height - (padding * 2),
-                fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
-                selectable: false, evented: false, visible: true
-            });
-            canvas.add(guideRect);
+        for (const [key, value] of urlParams.entries()) {
+            const decodedValue = decodeURIComponent(value);
+            orderData[key] = decodedValue;
+            if (decodedValue.includes('양면')) hasDouble = true;
+        }
 
-            guideText = new fabric.Text("이미지를 업로드하세요.", {
-                fontSize: 14, fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
-                left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
-            });
-            canvas.add(guideText);
+        window.count = parseInt(orderData.count) || 1;
+        window.isDouble = hasDouble; 
+        const ratioW = parseInt(orderData.width) || 16;
+        const ratioH = parseInt(orderData.height) || 9;
 
-            document.getElementById('display-info').innerText = `${isDouble ? "양면" : "단면"} 모드`;
-            updateView();
-        }, 100); // 0.1초 뒤 실행
+        designData = Array.from({length: count}, () => ({ front: null, back: null }));
+        currentIdx = 0; currentSide = 'front';
+
+        const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
+        canvas = new fabric.Canvas('main-canvas', {
+            width: containerWidth,
+            height: containerWidth * (ratioH / ratioW),
+            backgroundColor: '#ffffff'
+        });
+
+        const padding = canvas.width * 0.02; 
+        guideRect = new fabric.Rect({
+            left: padding, top: padding,
+            width: canvas.width - (padding * 2), height: canvas.height - (padding * 2),
+            fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
+            selectable: false, evented: false, visible: true
+        });
+        canvas.add(guideRect);
+
+        guideText = new fabric.Text("이미지를 업로드하세요.", {
+            fontSize: 14, fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
+            left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
+        });
+        canvas.add(guideText);
+
+        document.getElementById('display-info').innerText = `${isDouble ? "양면" : "단면"} 모드`;
+        updateView();
     });
 
     function updateView() {
