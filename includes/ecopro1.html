@@ -133,6 +133,13 @@
         link.click();
     });
 
+    window.onload = function() {
+        if(!window.location.hash) {
+            window.location = window.location + '#loaded';
+            window.location.reload();
+        }
+    }
+
     document.getElementById('guide-btn').addEventListener('mousedown', () => { guideRect.visible = true; canvas.renderAll(); });
     document.getElementById('guide-btn').addEventListener('mouseup', () => { guideRect.visible = false; canvas.renderAll(); });
 </script>
