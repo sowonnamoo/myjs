@@ -35,7 +35,28 @@
 
 <script>
     let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText;
-
+// [추가] 모바일에서 화면 사이즈가 꼬이는 현상을 방지하기 위한 강제 리사이징
+    window.addEventListener('pageshow', (event) => {
+        if (canvas) {
+            const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
+            // 캔버스 크기 재조정
+            canvas.setDimensions({
+                width: containerWidth,
+                height: containerWidth * (ratioH / ratioW)
+            });
+            // 가이드라인 위치 및 크기 초기화
+            const padding = canvas.width * 0.02;
+            guideRect.set({
+                width: canvas.width - (padding * 2),
+                height: canvas.height - (padding * 2)
+            });
+            // 이미지가 있다면 다시 캔버스에 맞춰 스케일 조정
+            if (designData[currentIdx][currentSide]) {
+                designData[currentIdx][currentSide].scaleToWidth(canvas.width);
+            }
+            canvas.renderAll();
+        }
+    });
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         let hasDouble = false;
