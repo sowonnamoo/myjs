@@ -177,17 +177,19 @@
         }
     }
 
-    // 캔버스 자체 클릭 시 배경이면 선택 해제
+   // 캔버스 배경 클릭 시 선택 해제 (guideRect가 맨 밑에 있도록 설정)
 canvas.on('mouse:down', (e) => {
-    if (!e.target) {
+    // 클릭한 객체가 없거나, 캔버스 배경을 클릭했을 때 선택 해제
+    if (!e.target || e.target === guideRect) {
         canvas.discardActiveObject();
         canvas.renderAll();
     }
 });
 
-// 캔버스 밖 영역(바디) 클릭 시에도 선택 해제
+// body 클릭 시 캔버스 외부 클릭 처리
 document.body.addEventListener('click', (e) => {
-    if (e.target.tagName !== 'CANVAS' && !e.target.closest('.canvas-container')) {
+    // 클릭된 대상이 캔버스가 아니라면 선택 해제
+    if (e.target.id !== 'main-canvas' && !e.target.closest('#canvas-wrapper')) {
         canvas.discardActiveObject();
         canvas.renderAll();
     }
