@@ -42,9 +42,9 @@
     <div id="canvas-wrapper"><canvas id="main-canvas"></canvas></div>
 
     <div class="controls">
-        <label class="btn" style="background:#3498db;" for="file-input">이미지 업로드</label>
+        <label class="btn" style="background:#3498db;" for="file-input">업로드/재업로드</label>
         <input type="file" id="file-input" accept="image/*" style="display:none;">
-        <button id="save-btn" class="btn" style="background:#bbb;">전체 저장</button>
+        <button id="save-btn" class="btn" style="background:#bbb;">전체저장</button>
     </div>
 
 <script>
@@ -84,7 +84,7 @@
         });
         canvas.add(guideRect);
 
-        guideText = new fabric.Text("이미지를 업로드하세요.  \n 배경을 이미지로 꽉 채워주세요. \n  붉은 박스 가까이 글씨나 테두리가 있다면 실출력시 잘릴 수 있습니다.", {
+        guideText = new fabric.Text("이미지를 업로드하세요.   \n 배경을 이미지로 꽉 채워주세요. \n  붉은 박스 가까이 글씨나 테두리가 있다면 실출력시 잘릴 수 있습니다.", {
             fontSize: 20, fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
             left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
         });
