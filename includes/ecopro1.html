@@ -141,11 +141,22 @@
     reader.readAsDataURL(file);
 });
 
-    document.getElementById('save-btn').addEventListener('click', () => {
-        const link = document.createElement('a');
-        link.download = `design_${currentIdx}_${currentSide}.png`;
-        link.href = canvas.toDataURL({ format: 'png', multiplier: 3 });
-        link.click();
+document.getElementById('save-btn').addEventListener('click', () => {
+        // 1. 저장 전 가이드라인 숨기기
+        guideRect.visible = false;
+        canvas.renderAll();
+
+        // 2. 잠시 대기 후 저장 (이미지가 확실히 갱신되도록)
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.download = `design_${currentIdx}_${currentSide}.png`;
+            link.href = canvas.toDataURL({ format: 'png', multiplier: 3 });
+            link.click();
+
+            // 3. 저장 후 다시 가이드라인 보이기
+            guideRect.visible = true;
+            canvas.renderAll();
+        }, 100);
     });
 
     window.onload = function() {
