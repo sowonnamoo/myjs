@@ -46,10 +46,12 @@
             orderData.finishingsArray = orderData.finishings.split(',');
         }
 
-        // [수정] 주문 데이터 처리
+        // 데이터 설정: '양면' 키워드 포함 시 양면 모드 활성화
         window.count = parseInt(orderData.count) || 1;
-        // '양면'이라는 글자가 포함되어 있으면 무조건 true로 처리
-        window.isDouble = (orderData.side && orderData.side.includes('양면')); 
+        window.isDouble = (
+            (orderData.side && orderData.side.includes('양면')) || 
+            (orderData.ink && orderData.ink.includes('양면'))
+        );
         const ratioW = parseInt(orderData.width) || 16;
         const ratioH = parseInt(orderData.height) || 9;
 
@@ -57,14 +59,14 @@
         currentIdx = 0;
         currentSide = 'front';
 
-        // 캔버스 초기화
+        // 캔버스 생성
         canvas = new fabric.Canvas('main-canvas', {
             width: window.innerWidth - 60,
             height: (window.innerWidth - 60) * (ratioH / ratioW),
             backgroundColor: '#ffffff'
         });
 
-        // 안내선 설정
+        // 가이드 생성
         const padding = canvas.width * 0.02; 
         guideRect = new fabric.Rect({
             left: padding, top: padding,
