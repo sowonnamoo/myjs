@@ -38,31 +38,43 @@
 
 <script>
 const params = new URLSearchParams(window.location.search);
-    const count = parseInt(params.get('count')) || 1;
-    const width = parseFloat(params.get('width')) || 90;
-    const height = parseFloat(params.get('height')) || 50;
-    const isDouble = params.get('ink') && decodeURIComponent(params.get('ink')).includes('양면'); 
+const count = parseInt(params.get('count')) || 1;
+const width = parseFloat(params.get('width')) || 90;
+const height = parseFloat(params.get('height')) || 50;
+const isDouble = params.get('ink') && decodeURIComponent(params.get('ink')).includes('양면');
 
-    const pxScale = 3.78; 
-    const canvasWidth = width * pxScale;
-    const canvasHeight = height * pxScale;
+// 2. 비율 계산 및 사이즈 설정
+const pxScale = 3.78; 
+const canvasWidth = width * pxScale;
+const canvasHeight = height * pxScale;
 
-    const canvas = new fabric.Canvas('main-canvas', {
-        width: canvasWidth,
-        height: canvasHeight,
-        backgroundColor: '#ffffff'
-    });
+// 3. 캔버스 생성 및 적용
+const canvas = new fabric.Canvas('main-canvas', {
+    backgroundColor: '#ffffff'
+});
 
-    let designData = Array.from({length: count}, () => ({ 
-        front: null, 
-        back: isDouble ? null : undefined 
-    }));
-    
-    let currentIdx = 0;
-    let currentSide = 'front';
+// [핵심] 여기서 캔버스 크기를 강제로 설정합니다.
+canvas.setDimensions({ 
+    width: canvasWidth, 
+    height: canvasHeight 
+});
 
-    document.getElementById('display-info').innerText = 
-        `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
+// [보완] 캔버스 외부 wrapper도 비율에 맞춰 조정 (스타일 조정)
+const wrapper = document.getElementById('canvas-wrapper');
+wrapper.style.width = `${canvasWidth}px`; 
+wrapper.style.height = `${canvasHeight}px`;
+
+// 4. 디자인 데이터 및 초기화
+let designData = Array.from({length: count}, () => ({ 
+    front: null, 
+    back: isDouble ? null : undefined 
+}));
+
+let currentIdx = 0;
+let currentSide = 'front';
+
+// 결과 확인용
+document.getElementById('display-info').innerText = `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
 
 
 
