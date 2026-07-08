@@ -138,12 +138,36 @@
     reader.readAsDataURL(file);
 });
 
-    document.getElementById('save-btn').addEventListener('click', () => {
-        const link = document.createElement('a');
-        link.download = `design_${currentIdx}_${currentSide}.png`;
-        link.href = canvas.toDataURL({ format: 'png', multiplier: 3 });
-        link.click();
+
+
+document.getElementById('save-btn').addEventListener('click', () => {
+
+    const guideVisible = guideRect.visible;
+    const textVisible = guideText.visible;
+
+    // 저장 시 숨김
+    guideRect.visible = false;
+    guideText.visible = false;
+    canvas.renderAll();
+
+    const dataURL = canvas.toDataURL({
+        format: 'png',
+        multiplier: 3
     });
+
+    // 원상복구
+    guideRect.visible = guideVisible;
+    guideText.visible = textVisible;
+    canvas.renderAll();
+
+    const link = document.createElement('a');
+    link.download = `design_${currentIdx}_${currentSide}.png`;
+    link.href = dataURL;
+    link.click();
+});
+    
+
+    
 
     window.onload = function() {
         if(!window.location.hash) {
