@@ -43,28 +43,30 @@ const width = parseFloat(params.get('width')) || 90;
 const height = parseFloat(params.get('height')) || 50;
 const isDouble = params.get('ink') && decodeURIComponent(params.get('ink')).includes('양면');
 
-// 2. 비율 계산 및 사이즈 설정
-const pxScale = 3.78; 
-const canvasWidth = width * pxScale;
-const canvasHeight = height * pxScale;
+// 2. 가로 1024 고정 및 세로 비율 계산
+const targetWidth = 1024;
+const aspectRatio = height / width;
+const targetHeight = targetWidth * aspectRatio;
 
-// 3. 캔버스 생성 및 적용
+// 3. 캔버스 생성 (CSS와 스크립트 분리)
 const canvas = new fabric.Canvas('main-canvas', {
+    width: targetWidth,
+    height: targetHeight,
     backgroundColor: '#ffffff'
 });
 
-// [핵심] 여기서 캔버스 크기를 강제로 설정합니다.
-canvas.setDimensions({ 
-    width: canvasWidth, 
-    height: canvasHeight 
-});
-
-// [보완] 캔버스 외부 wrapper도 비율에 맞춰 조정 (스타일 조정)
+// 4. 모바일 대응 및 Wrapper 설정
 const wrapper = document.getElementById('canvas-wrapper');
-wrapper.style.width = `${canvasWidth}px`; 
-wrapper.style.height = `${canvasHeight}px`;
+wrapper.style.width = `calc(100% - 40px)`; // 양 옆 20px씩 총 40px 여백
+wrapper.style.maxWidth = `${targetWidth}px`; // 최대 폭 1024px 제한
+wrapper.style.aspectRatio = `${width} / ${height}`; // 비율 유지
+wrapper.style.overflow = 'hidden';
 
-// 4. 디자인 데이터 및 초기화
+// 캔버스 자체 사이즈는 1024로 고정하고, CSS로 화면에 맞게 조절
+canvas.setWidth(targetWidth);
+canvas.setHeight(targetHeight);
+
+// 디자인 데이터 초기화
 let designData = Array.from({length: count}, () => ({ 
     front: null, 
     back: isDouble ? null : undefined 
@@ -73,9 +75,8 @@ let designData = Array.from({length: count}, () => ({
 let currentIdx = 0;
 let currentSide = 'front';
 
-// 결과 확인용
-document.getElementById('display-info').innerText = `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
-
+document.getElementById('display-info').innerText = 
+    `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
 
 
 
