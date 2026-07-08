@@ -2,70 +2,228 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas Project</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고해상도 멀티 디자인 에디터</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
-        body { display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        
-        #drop-zone { 
-            border: 2px dashed #999; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            cursor: pointer; 
-            transition: background 0.3s;
-            position: relative;
-            overflow: hidden;
-            background-color: #f9f9f9;
-        }
-        
-        #drop-zone.has-image { border-style: solid; }
-        
-        #canvas { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; 
-            display: none; 
-        }
-
-        #guide-text { color: #888; font-size: 14px; }
+        body { display: flex; flex-direction: column; align-items: center; padding: 20px; padding-bottom: 80px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
+        #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #tab-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
+        .design-btn.active { background: #3498db; color: white; }
+        .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
+        .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
+        .side-btn.active { background: #e67e22; color: white; }
+        #canvas-wrapper { border: 3px dashed #3498db; background: #fff; max-width: calc(100vw - 60px); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="drop-zone">
-        <span id="guide-text">이미지를 드래그하거나 클릭하세요</span>
-        <img id="canvas" alt="preview">
+    <div id="status-bar">작업 규격: <span id="display-info"></span></div>
+    <div id="tab-container"></div>
+    <div id="canvas-wrapper"><canvas id="main-canvas"></canvas></div>
+
+    <div class="controls">
+        <label class="btn" style="background:#3498db;" for="file-input">이미지 불러오기</label>
+        <input type="file" id="file-input" accept="image/*" style="display:none;">
+        <button id="guide-btn" class="btn" style="background:#f1c40f; color: #333;">재단선 체크</button>
+        <button id="save-btn" class="btn" style="background:#2ecc71;">전체 검사 후 저장</button>
     </div>
-    <input type="file" id="file-input" hidden accept="image/*">
 
-    <script>
-        // 전역 변수 선언
-        let orderData = {};
+    
 
-        // 페이지 로드 시 파라미터 처리 및 캔버스 크기 설정
-        window.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const dropZone = document.getElementById('drop-zone');
 
-            for (const [key, value] of urlParams.entries()) {
-                orderData[key] = decodeURIComponent(value);
-            }
+<script>
+const params = new URLSearchParams(window.location.search);
+    const count = parseInt(params.get('count')) || 1;
+    const width = parseFloat(params.get('width')) || 90;
+    const height = parseFloat(params.get('height')) || 50;
+    const isDouble = params.get('ink') && decodeURIComponent(params.get('ink')).includes('양면'); 
 
-            if (orderData.finishings) {
-                orderData.finishingsArray = orderData.finishings.split(',');
-            }
+    const pxScale = 3.78; 
+    const canvasWidth = width * pxScale;
+    const canvasHeight = height * pxScale;
 
-            // 파라미터로 넘어온 사이즈 적용 (없을 경우 기본값 300x200)
-            const w = orderData.width || orderData.w || 300;
-            const h = orderData.height || orderData.h || 200;
-            
-            dropZone.style.width = `${w}px`;
-            dropZone.style.height = `${h}px`;
+    const canvas = new fabric.Canvas('main-canvas', {
+        width: canvasWidth,
+        height: canvasHeight,
+        backgroundColor: '#ffffff'
+    });
 
-            console.log("받아온 주문 정보:", orderData);
+    let designData = Array.from({length: count}, () => ({ 
+        front: null, 
+        back: isDouble ? null : undefined 
+    }));
+    
+    let currentIdx = 0;
+    let currentSide = 'front';
+
+    document.getElementById('display-info').innerText = 
+        `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
+
+
+
+
+
+
+
+     // [추가] 선명도 및 품질 체크 함수
+function checkQuality(fabricImg) {
+    const imgElement = fabricImg._element;
+    const realWidth = imgElement.naturalWidth || imgElement.width;
+    const dpi = (realWidth / canvas.width) * 72;
+    
+    // 1. DPI 체크: 30 DPI 미만인 경우만 반려
+    // 숫자를 조정하여 기준을 더 낮추거나 높일 수 있습니다.
+    if (dpi < 30) {
+        return { valid: false, message: `해상도가 너무 낮습니다 (${Math.round(dpi)} DPI). 고해상도 이미지를 사용해주세요.` };
+    }
+
+    // 2. 선명도(엣지) 검사 로직 삭제 완료
+    return { valid: true };
+       }
+
+
+        // 1. 재단선 및 안내문 생성
+        const padding = canvas.width * 0.02; 
+        const guideRect = new fabric.Rect({
+            left: padding, top: padding,
+            width: canvas.width - (padding * 2), height: canvas.height - (padding * 2),
+            fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
+            selectable: false, evented: false, visible: true // 초기 노출[cite: 3]
         });
+        canvas.add(guideRect);
+
+        const guideText = new fabric.Text(
+            "JPEG, PNG만 접수가능 300dpi이하 흐린사진은 셀프편집 이용바랍니다.\n붉은선 위치에 글씨나 테두리가 있는 경우 실 출력시 잘릴 수 있습니다.\n꼭 안 쪽에 배치해주세요. 디자인 배경은 푸른점선까지 꽉 채워주세요\n(실 출력시 붉은선/푸른점선은 보이지 않습니다.)", {
+            fontSize: Math.max(12, canvas.width * 0.025),
+            fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
+            left: canvas.width / 2, top: canvas.height / 2,
+            selectable: false, evented: false, fontWeight: 'bold'
+        });
+        canvas.add(guideText);
+
+        function updateView() {
+            renderTabs();
+            const img = designData[currentIdx][currentSide];
+            canvas.clear();
+            canvas.add(guideRect);
+            if(img) { 
+                canvas.add(img); canvas.sendToBack(img); 
+                guideText.visible = false; guideRect.visible = false; 
+            } else { 
+                guideText.visible = true; guideRect.visible = true;
+                canvas.add(guideText);
+            }
+            canvas.renderAll();
+        }
+
+        // (기존 renderTabs, file-input 이벤트 등은 동일)
+        function renderTabs() {
+            const tabContainer = document.getElementById('tab-container');
+            tabContainer.innerHTML = '';
+            for(let i = 0; i < count; i++) {
+                const group = document.createElement('div'); group.className = 'design-group';
+                const dBtn = document.createElement('div'); dBtn.className = 'design-btn' + (i === currentIdx ? ' active' : ''); dBtn.innerText = `디자인 ${i+1}`; dBtn.onclick = () => { currentIdx = i; updateView(); };
+                group.appendChild(dBtn);
+                if(isDouble) {
+                    const switchDiv = document.createElement('div'); switchDiv.className = 'side-switch';
+                    ['front', 'back'].forEach(s => {
+                        const sBtn = document.createElement('button'); sBtn.className = 'side-btn' + (currentIdx === i && currentSide === s ? ' active' : ''); sBtn.innerText = s === 'front' ? '앞' : '뒤'; sBtn.onclick = () => { currentIdx = i; currentSide = s; updateView(); };
+                        switchDiv.appendChild(sBtn);
+                    });
+                    group.appendChild(switchDiv);
+                }
+                tabContainer.appendChild(group);
+            }
+        }
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              fabric.Image.fromURL(event.target.result, (img) => {
+    img.set({ 
+        scaleX: canvas.width / img.width, 
+        scaleY: canvas.height / img.height,
+        // 아래 속성들을 추가하여 핸들 디자인을 개선합니다
+        borderColor: '#3498db',    // 선택 박스 테두리 색상
+        cornerColor: '#3498db',    // 조절 핸들 색상
+        cornerSize: 12,            // 조절 핸들 크기
+        cornerStyle: 'rect',       // 조절 핸들 모양(직사각형)
+        transparentCorners: false, // 조절 핸들 내부 채우기
+        borderScaleFactor: 3       // 선택 박스 테두리 굵기(기본보다 3배)
+    });
+    designData[currentIdx][currentSide] = img;
+    updateView();
+});
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 일괄 저장 로직[cite: 3]
+      document.getElementById('save-btn').addEventListener('click', async () => {
+            for (let i = 0; i < designData.length; i++) {
+                const sides = isDouble ? ['front', 'back'] : ['front'];
+                for (const side of sides) {
+                    const imgObj = designData[i][side];
+                    if (!imgObj) return alert(`디자인 ${i+1} ${side}면 이미지가 없습니다.`);
+                    
+                    // [적용] 품질 검사기 작동
+                    const qResult = checkQuality(imgObj);
+                    if (!qResult.valid) return alert(`[디자인 ${i+1} ${side}면 품질 오류]\n${qResult.message}`);
+                }
+            }
+            
+            for (let i = 0; i < designData.length; i++) {
+                const sides = isDouble ? ['front', 'back'] : ['front'];
+                for (const side of sides) {
+                    currentIdx = i; currentSide = side; updateView();
+                    const link = document.createElement('a');
+                    link.download = `디자인${i+1}_${side}.png`;
+                    link.href = canvas.toDataURL({ format: 'png', multiplier: 5 });
+                    link.click();
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+        });
+
+        document.getElementById('guide-btn').addEventListener('mousedown', () => { guideRect.visible = true; canvas.renderAll(); });
+        document.getElementById('guide-btn').addEventListener('mouseup', () => { if(!designData[currentIdx][currentSide]) guideRect.visible = true; else guideRect.visible = false; canvas.renderAll(); });
+
+        document.getElementById('display-info').innerText = 
+    `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
+
+
+// 1. 캔버스 내부에서 빈 공간 클릭 시 선택 해제
+canvas.on('mouse:down', function(e) {
+    if (!e.target) {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
+
+// 2. 캔버스 외부(바탕) 클릭 시 선택 해제
+document.body.addEventListener('click', function(e) {
+    // 클릭한 대상이 캔버스가 아니라면 선택 해제
+    if (e.target.tagName !== 'CANVAS') {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
+
+
+
+
+
+
+
+
+        updateView();
     </script>
-    <script src="script1.js"></script>
 </body>
 </html>
