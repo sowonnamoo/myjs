@@ -7,12 +7,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
-        #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; }
+        #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         #tab-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; border-radius: 4px; text-align: center; }
+        .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
         .design-btn.active { background: #3498db; color: white; }
+        .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
+        .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
+        .side-btn.active { background: #e67e22; color: white; }
         #canvas-wrapper { border: 3px dashed #3498db; background: #fff; width: 100%; max-width: 1024px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
         .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; }
     </style>
 </head>
@@ -23,9 +27,10 @@
     <div id="canvas-wrapper"><canvas id="main-canvas"></canvas></div>
 
     <div class="controls">
-        <label class="btn" style="background:#3498db;" for="file-input">이미지 불러오기</label>
+        <label class="btn" style="background:#3498db;" for="file-input">이미지 업로드</label>
         <input type="file" id="file-input" accept="image/*" style="display:none;">
-        <button id="save-btn" class="btn" style="background:#2ecc71;">저장</button>
+        <button id="guide-btn" class="btn" style="background:#f1c40f; color: #333;">재단선 체크</button>
+        <button id="save-btn" class="btn" style="background:#2ecc71;">전체 저장</button>
     </div>
 
 <script>
@@ -33,45 +38,43 @@
 
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
-        let hasDoubleKeyword = false;
+        let hasDouble = false;
 
         for (const [key, value] of urlParams.entries()) {
             const decodedValue = decodeURIComponent(value);
             orderData[key] = decodedValue;
-            if (decodedValue.includes('양면')) hasDoubleKeyword = true;
+            if (decodedValue.includes('양면')) hasDouble = true;
         }
 
         window.count = parseInt(orderData.count) || 1;
-        window.isDouble = hasDoubleKeyword; 
-        
-        // 가로/세로 비율 (기본값 설정)
+        window.isDouble = hasDouble; 
         const ratioW = parseInt(orderData.width) || 16;
         const ratioH = parseInt(orderData.height) || 9;
 
         designData = Array.from({length: count}, () => ({ front: null, back: null }));
         currentIdx = 0; currentSide = 'front';
 
-        // [수정] 캔버스 초기 크기를 2배로 확장
-        // max-width 1024px 내에서 부모 너비를 가져옴
         const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
-        
-        // 캔버스 생성 시 기존 대비 2배의 해상도 효과를 위해 가로폭을 크게 잡음
-        // 비율 계산은 유지
         canvas = new fabric.Canvas('main-canvas', {
             width: containerWidth,
             height: containerWidth * (ratioH / ratioW),
             backgroundColor: '#ffffff'
         });
 
-        // 안내선 및 텍스트 
         const padding = canvas.width * 0.02; 
         guideRect = new fabric.Rect({
             left: padding, top: padding,
             width: canvas.width - (padding * 2), height: canvas.height - (padding * 2),
             fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
-            selectable: false, evented: false
+            selectable: false, evented: false, visible: true
         });
         canvas.add(guideRect);
+
+        guideText = new fabric.Text("이미지를 업로드하세요.", {
+            fontSize: 14, fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
+            left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
+        });
+        canvas.add(guideText);
 
         document.getElementById('display-info').innerText = `${isDouble ? "양면" : "단면"} 모드`;
         updateView();
@@ -80,13 +83,31 @@
     function updateView() {
         const tabContainer = document.getElementById('tab-container');
         tabContainer.innerHTML = '';
-        // 탭 렌더링 생략(간소화)
-        
+        for(let i = 0; i < count; i++) {
+            const group = document.createElement('div'); group.className = 'design-group';
+            const dBtn = document.createElement('div'); dBtn.className = 'design-btn' + (i === currentIdx ? ' active' : ''); 
+            dBtn.innerText = `디자인 ${i+1}`; dBtn.onclick = () => { currentIdx = i; updateView(); };
+            group.appendChild(dBtn);
+            if(isDouble) {
+                const switchDiv = document.createElement('div'); switchDiv.className = 'side-switch';
+                ['front', 'back'].forEach(s => {
+                    const sBtn = document.createElement('button'); sBtn.className = 'side-btn' + (currentIdx === i && currentSide === s ? ' active' : ''); 
+                    sBtn.innerText = s === 'front' ? '앞' : '뒤'; sBtn.onclick = () => { currentIdx = i; currentSide = s; updateView(); };
+                    switchDiv.appendChild(sBtn);
+                });
+                group.appendChild(switchDiv);
+            }
+            tabContainer.appendChild(group);
+        }
+
         const img = designData[currentIdx][currentSide];
         canvas.clear();
         canvas.add(guideRect);
         if(img) { 
             canvas.add(img); canvas.sendToBack(img); 
+            guideText.visible = false; 
+        } else { 
+            canvas.add(guideText); guideText.visible = true;
         }
         canvas.renderAll();
     }
@@ -97,7 +118,6 @@
         const reader = new FileReader();
         reader.onload = (event) => {
             fabric.Image.fromURL(event.target.result, (img) => {
-                // 이미지를 불러올 때 캔버스 전체에 꽉 차게 조절
                 img.scaleToWidth(canvas.width);
                 designData[currentIdx][currentSide] = img;
                 updateView();
@@ -108,11 +128,13 @@
 
     document.getElementById('save-btn').addEventListener('click', () => {
         const link = document.createElement('a');
-        link.download = `design.png`;
-        // 저장 시 multiplier를 높여 고해상도 이미지 생성
-        link.href = canvas.toDataURL({ format: 'png', multiplier: 2 });
+        link.download = `design_${currentIdx}_${currentSide}.png`;
+        link.href = canvas.toDataURL({ format: 'png', multiplier: 3 });
         link.click();
     });
+
+    document.getElementById('guide-btn').addEventListener('mousedown', () => { guideRect.visible = true; canvas.renderAll(); });
+    document.getElementById('guide-btn').addEventListener('mouseup', () => { guideRect.visible = false; canvas.renderAll(); });
 </script>
 </body>
 </html>
