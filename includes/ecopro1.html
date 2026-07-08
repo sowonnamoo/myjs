@@ -112,25 +112,37 @@
         canvas.renderAll();
     }
 
-    document.getElementById('file-input').addEventListener('change', (e) => {
+  요청하신 수정 사항을 모두 반영한 코드입니다.
+
+이미지 업로드 시 가이드라인(빨간선) 숨김 처리
+
+저장 시 가이드라인이 보이지 않도록 updateView 호출 방식 최적화
+
+화면 어디를 클릭해도 선택 해제되도록 수정
+
+JavaScript
+// 1. 이미지 업로드 이벤트 수정
+document.getElementById('file-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
         fabric.Image.fromURL(event.target.result, (img) => {
-            // 조절 핸들 및 박스 스타일 설정 (굵게)
             img.set({
                 borderColor: '#3498db',
                 cornerColor: '#3498db',
-                cornerSize: 12, // 핸들 크기
+                cornerSize: 12,
                 transparentCorners: false,
-                borderScaleFactor: 4 // 박스 테두리 굵기
+                borderScaleFactor: 4
             });
             img.scaleToWidth(canvas.width);
             designData[currentIdx][currentSide] = img;
+            
+            // 이미지 업로드 시 가이드라인 즉시 숨김
+            guideRect.visible = false;
+            
             updateView();
             
-            // 업로드 즉시 선택 상태로 전환
             canvas.setActiveObject(img);
             canvas.renderAll();
         });
@@ -138,19 +150,36 @@
     reader.readAsDataURL(file);
 });
 
-    document.getElementById('save-btn').addEventListener('click', () => {
-        const link = document.createElement('a');
-        link.download = `design_${currentIdx}_${currentSide}.png`;
-        link.href = canvas.toDataURL({ format: 'png', multiplier: 3 });
-        link.click();
-    });
+// 2. 저장 버튼 이벤트 수정
+document.getElementById('save-btn').addEventListener('click', () => {
+    // 저장 전 선택 상태 해제 (파란색 박스/핸들 제거)
+    canvas.discardActiveObject();
+    // 가이드라인이 명시적으로 보이지 않게 처리
+    guideRect.visible = false;
+    canvas.renderAll();
 
-    window.onload = function() {
-        if(!window.location.hash) {
-            window.location = window.location + '#loaded';
-            window.location.reload();
-        }
+    const link = document.createElement('a');
+    link.download = `design_${currentIdx}_${currentSide}.png`;
+    // 현재 캔버스 상태를 이미지로 변환
+    link.href = canvas.toDataURL({ format: 'png', multiplier: 3 });
+    link.click();
+});
+
+// 3. 페이지 로드 시 설정
+window.onload = function() {
+    if(!window.location.hash) {
+        window.location = window.location + '#loaded';
+        window.location.reload();
     }
+}
+
+// 4. 화면 전체 어디를 클릭하든 선택 해제 (누락된 부분 통합)
+window.addEventListener('click', (e) => {
+    if (canvas && !e.target.closest('.canvas-container') && e.target.tagName !== 'CANVAS') {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
 
 // 화면 전체 어디를 클릭하든 캔버스 내부 오브젝트 선택 해제
 window.addEventListener('click', (e) => {
