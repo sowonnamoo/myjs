@@ -201,8 +201,17 @@ document.body.addEventListener('click', (e) => {
     }
 });
 
-    document.getElementById('guide-btn').addEventListener('mousedown', () => { guideRect.visible = true; canvas.renderAll(); });
-    document.getElementById('guide-btn').addEventListener('mouseup', () => { guideRect.visible = false; canvas.renderAll(); });
+   const guideBtn = document.getElementById('guide-btn');
+
+guideBtn.addEventListener('mouseenter', () => {
+    guideRect.visible = true;
+    canvas.renderAll();
+});
+
+guideBtn.addEventListener('mouseleave', () => {
+    guideRect.visible = false;
+    canvas.renderAll();
+});
 </script>
 </body>
 </html>
