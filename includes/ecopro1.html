@@ -45,11 +45,12 @@
 
 <script>
     // 1. 파라미터 및 규격 설정
-    const params = new URLSearchParams(window.location.search);
-    const count = parseInt(params.get('count')) || 1;
-    const width = parseFloat(params.get('width')) || 90;
-    const height = parseFloat(params.get('height')) || 50;
-    const isDouble = params.get('ink') && decodeURIComponent(params.get('ink')).includes('양면');
+   const params = new URLSearchParams(window.location.search);
+const count = parseInt(params.get('count')) || 1;
+const width = parseFloat(params.get('width')) || 90;
+const height = parseFloat(params.get('height')) || 50;
+const inkParam = params.get('ink') || "";
+const isDouble = decodeURIComponent(inkParam).includes('양면');
     
     // 비율 계산 및 CSS 변수 주입
     const ratio = height / width;
@@ -63,7 +64,10 @@
     });
 
     // 3. 상태 관리 변수
-    let designData = Array.from({length: count}, () => ({ front: null, back: isDouble ? null : undefined }));
+    let designData = Array.from({length: count}, () => ({ 
+    front: null, 
+    back: isDouble ? null : undefined // 단면이면 back을 아예 undefined로 설정
+}));
     let currentIdx = 0;
     let currentSide = 'front';
     document.getElementById('display-info').innerText = `${width}x${height}mm / ${count}건 / ${isDouble ? "양면" : "단면"}`;
