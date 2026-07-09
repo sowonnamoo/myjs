@@ -14,7 +14,6 @@
         input{ width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; }
         .bottom{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
         .pay-btn{ width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; margin-bottom:8px; }
-        .paypal-btn{ width:100%; padding:15px; background:#003087; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; font-weight:bold; margin-bottom:8px; }
         .bank-btn{ width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; }
     </style>
 
@@ -52,15 +51,13 @@
     <div class="bottom">
         <div id="total-price">총 결제금액 : 0원</div>
         <button class="pay-btn" onclick="goCard()">카드결제</button>
-        <button class="paypal-btn" onclick="goPaypal()">PayPal 결제</button>
         <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
     </div>
 </div>
 
 <script>
 // 각 결제 수단별 독립적인 Worker 주소
-const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/"; 
-const WORKER_PAYPAL = "https://paypal.ecogr.workers.dev/";
+const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/";
 
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
@@ -121,14 +118,7 @@ window.goCard = async function() {
     } catch (e) { alert("카드 서버 연결 실패"); }
 };
 
-// [2] 페이팔 결제 전용
-window.goPaypal = async function() {
-    try {
-        const res = await fetch(WORKER_PAYPAL);
-        const data = await res.json();
-        processPayment("페이팔결제", "PAYPAL", "USD", data.CHANNEL_KEY_PAYPAL, data.STORE_ID);
-    } catch (e) { alert("페이팔 서버 연결 실패"); }
-};
+
 
 // [3] 핵심 결제 처리 엔진 (공통)
 async function processPayment(paymentType, payMethod, currency, channelKey, storeId) {
@@ -142,16 +132,7 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
         const paymentId = "PAY_" + Date.now();
         const orderData = saveOrder(paymentType, paymentId);
 
-        const response = await PortOne.requestPayment({
-            storeId: storeId,
-            channelKey: channelKey,
-            paymentId: paymentId,
-            orderName: "주문상품",
-            totalAmount: Number(total),
-            currency: currency,
-            payMethod: payMethod,
-            customer: { name: name, phoneNumber: String(phone) }
-        });
+        
 
         if(response.code != null){ alert("결제 실패: " + response.message); return; }
 
