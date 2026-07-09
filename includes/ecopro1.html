@@ -213,12 +213,15 @@ canvas.on('mouse:down', (e) => {
         fabric.Image.fromURL(event.target.result, (img) => {
             // 조절 핸들 및 박스 스타일 설정 (굵게)
             img.set({
-                borderColor: '#3498db',
-                cornerColor: '#3498db',
-                cornerSize: 5, // 핸들 크기
-                transparentCorners: false,
-                borderScaleFactor: 1 // 박스 테두리 굵기
-            });
+    borderColor: '#3498db',
+    cornerColor: '#3498db',
+    cornerSize: 5,
+    transparentCorners: false,
+    borderScaleFactor: 1,
+
+    // 회전 핸들 위치
+    rotatingPointOffset: 30
+});
             img.scaleToWidth(canvas.width);
             designData[currentIdx][currentSide] = img;
             updateView();
