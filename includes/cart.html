@@ -224,6 +224,35 @@
             line-height:1.5;
         }
 
+        .address-row{
+            display:flex;
+            gap:8px;
+        }
+        .address-row input{
+            flex:1;
+            min-width:0;
+            cursor:pointer;
+            background:var(--surface);
+        }
+        .address-row input::placeholder{ color:var(--ink-faint); }
+        .address-search-btn{
+            flex-shrink:0;
+            padding:0 16px;
+            border:1.5px solid var(--line);
+            border-radius:var(--radius-sm);
+            background:var(--surface);
+            color:var(--ink);
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+            white-space:nowrap;
+            transition:border-color .15s, background .15s;
+        }
+        .address-search-btn:hover{
+            border-color:var(--blue);
+            background:var(--paper);
+        }
+
         /* ---------- Receipt / summary ---------- */
         .receipt{
             position:relative;
@@ -324,6 +353,7 @@
     </style>
 
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
@@ -369,12 +399,15 @@
                 <div class="field">
                     <label for="phone">전화번호</label>
                     <input id="phone" type="tel" placeholder="010-0000-0000" />
-                    <p class="field-hint">전화번호를 잘못 입력하면 결제창이 열리지 않아요.</p>
+                    <p class="field-hint">작업자 핸드폰 번호를 입력해주세요. (숫자 11자리, 잘못 입력하면 결제창이 열리지 않아요.)</p>
                 </div>
 
                 <div class="field">
                     <label for="address">주소</label>
-                    <input id="address" type="text" placeholder="도로명 주소" />
+                    <div class="address-row">
+                        <input id="address" type="text" placeholder="주소 검색을 눌러주세요" readonly />
+                        <button type="button" id="addressSearchBtn" class="address-search-btn">주소 검색</button>
+                    </div>
                 </div>
 
                 <div class="field">
@@ -494,6 +527,58 @@ async function uploadRemainingOriginals(onProgress){
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
 
+// ---- 다음(카카오) 우편번호 서비스로 주소 검색 ----
+document.getElementById('addressSearchBtn').addEventListener('click', function () {
+    new daum.Postcode({
+        oncomplete: function (data) {
+            let fullAddress = data.address;
+            let extraAddress = '';
+
+            if (data.addressType === 'R') {
+                if (data.bname !== '') extraAddress += data.bname;
+                if (data.buildingName !== '') {
+                    extraAddress += (extraAddress !== '' ? ', ' + data.buildingName : data.buildingName);
+                }
+                if (extraAddress !== '') fullAddress += ' (' + extraAddress + ')';
+            }
+
+            document.getElementById('address').value = fullAddress;
+            document.getElementById('detailAddress').focus();
+        }
+    }).open();
+});
+
+// ---- 주문자 정보 공통 유효성 검사 (이름 / 핸드폰 11자리 / 주소 / 상세주소) ----
+function validateOrderForm(){
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const detailAddress = document.getElementById("detailAddress").value.trim();
+
+    if(!name){
+        alert("성함을 입력해주세요.");
+        return false;
+    }
+
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    if(!phone || phoneDigits.length !== 11){
+        alert("작업자 핸드폰 번호를 11자리 숫자로 정확히 입력해주세요.\n(예: 01012345678)\n번호가 잘못되면 결제창이 호출되지 않습니다.");
+        return false;
+    }
+
+    if(!address){
+        alert("주소 검색 버튼을 눌러 주소를 입력해주세요.");
+        return false;
+    }
+
+    if(!detailAddress){
+        alert("상세주소를 입력해주세요.");
+        return false;
+    }
+
+    return true;
+}
+
 function render(){
     const list = document.getElementById("cart-list");
     total = 0;
@@ -577,6 +662,8 @@ function saveOrder(type, paymentId){
 
 // [1] 카드 결제 전용 (KCP)
 window.goCard = async function() {
+    if(!validateOrderForm()) return;
+
     const btn = document.querySelector('.pay-btn');
     const originalText = btn ? btn.textContent : '';
     if(btn) btn.disabled = true;
@@ -612,7 +699,7 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
     const phone = document.getElementById("phone").value.trim();
     const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
 
-    if(!name || !phone || !address.trim()){ alert("정보를 모두 입력해주세요."); return; }
+    if(!validateOrderForm()){ return; }
 
     try {
         const paymentId = "PAY_" + Date.now();
@@ -641,10 +728,11 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
 }
 
 window.goBankTransfer = async function(){
+    if(!validateOrderForm()) return;
+
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
     const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
-    if(!name || !phone || !address.trim()){ alert("모든 정보를 입력해주세요."); return; }
 
     const btn = document.querySelector('.bank-btn');
     const originalText = btn ? btn.textContent : '';
