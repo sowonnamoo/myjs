@@ -1,259 +1,256 @@
-<footer class="company-footer">
-    <div class="footer-brand">에코그래픽스</div>
-    <div class="footer-sub">그래픽스아이엠</div>
-
-    <div class="footer-divider"></div>
-
-    <p class="footer-row">사업자등록번호 411-13-76734</p>
-
-    <p class="footer-row">
-        <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a>
-    </p>
-    <p class="footer-row">
-        회사 전화번호<span class="sep">|</span>053-214-2461
-    </p>
-    
-    <p class="footer-row">
-        인쇄소 위치<span class="sep">|</span>대구광역시 달서로 18길 7-9
-    </p>
-
-    <p class="footer-row">
-        PC모드URL : www.ecogr.net
-    </p>
-
-    <p class="footer-row footer-links">
-        <button type="button" class="footer-link-btn" onclick="openInfoPopup('workmethod')">작업방법</button><span class="sep">|</span><button type="button" class="footer-link-btn" onclick="openInfoPopup('material')">재질안내</button><span class="sep">|</span><button type="button" class="footer-link-btn" onclick="openInfoPopup('notice')">유의사항</button>
-    </p>
-
-    <p class="footer-row">
-    이용약관 및 개인정보취급방침  : <a href="https://sowonnamoo.github.io/myjs/jir" target="_blank" rel="noopener noreferrer">클릭</a>
-</p>
-    
-    <p class="footer-row">
-        통신판매업 신고<span class="sep">|</span>2022-대구서구-0232
-    </p>
-
-    <p class="footer-row footer-links footer-links-small">
-        <button type="button" class="footer-link-btn" onclick="openInfoPopup('finishing')">후가공안내</button><span class="sep">|</span><button type="button" class="footer-link-btn" onclick="openInfoPopup('shipping')">출고안내</button><span class="sep">|</span><button type="button" class="footer-link-btn" onclick="openInfoPopup('refund')">환불규정</button>
-    </p>
-
-    <div class="footer-copy">
-        Copyright &copy; 2012 <strong>ECO graphics</strong> All rights reserved.<br>
-        개인정보관리책임자<span class="sep">:</span> 정상훈 / 대표자 성함 : 최대환
-
-  </p>
-<a href="https://sowonnamoo1005.cafe24.com/web/upload/aco/26052701.jpg" 
-   target="_blank" 
-   rel="noopener noreferrer" 
-   style="display: inline-block; padding: 8px 12px; font-size: 12px; color: #666; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; background-color: #f9f9f9; cursor: pointer;">
-   구매안전(에스크로) 인증
-</a>
-        
-    </div>
-    
-</footer>
-
 <style>
-.footer-links{ margin-top: 4px; }
-.footer-links-small{ font-size: 12px; opacity: .8; }
-.footer-link-btn{
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    cursor: pointer;
+/* 푸터 전체 스타일 */
+.footer-wrapper { font-family: sans-serif; color: #333; margin-top: 50px; }
+
+/* 1. 작업 주의사항 섹션 */
+.notice-section { width: 1199px; margin: 0 auto; padding: 20px 0; }
+.notice-tabs { display: flex; gap: 10px; margin-top: 15px; }
+.tab-btn { flex: 1; border: 1px solid #ccc; padding: 15px; text-align: center; cursor: pointer; background: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.tab-btn:hover { background: #f5f5f5; }
+.tab-btn.active { background: #333; color: #fff; border-color: #333; }
+
+/* 탭 내용 패널 */
+.tab-panel { padding: 20px; background: #f9f9f9; border: 1px solid #eee; border-top: none; margin-bottom: 20px; font-size: 13px; color: #555; line-height: 1.75; }
+.tab-panel h4 { margin: 16px 0 6px; font-size: 13.5px; color: #222; }
+.tab-panel h4:first-child { margin-top: 0; }
+.tab-panel ul, .tab-panel ol { margin: 0 0 4px; padding-left: 18px; }
+.tab-panel li { margin-bottom: 5px; }
+.tab-panel .panel-note { margin-top: 12px; font-size: 12px; color: #999; }
+
+/* 아코디언 메뉴 */
+.accordion-item { border-bottom: 1px solid #eee; padding: 20px 0; cursor: pointer; font-weight: bold; user-select: none; }
+.accordion-item .arrow { display: inline-block; margin-right: 6px; transition: transform .15s ease; }
+.accordion-item.open .arrow { transform: rotate(90deg); }
+.accordion-content { display: none; padding: 18px 20px; background: #f9f9f9; border: 1px solid #eee; border-top: none; font-weight: normal; color: #666; font-size: 13px; line-height: 1.75; }
+.accordion-content h4 { margin: 16px 0 6px; font-size: 13.5px; color: #222; }
+.accordion-content h4:first-child { margin-top: 0; }
+.accordion-content ul, .accordion-content ol { margin: 0 0 4px; padding-left: 18px; }
+.accordion-content li { margin-bottom: 5px; }
+.accordion-content .panel-note { margin-top: 12px; font-size: 12px; color: #999; }
+
+/* 2. 하단 회색 푸터 영역 (좌우 꽉 차게 설정) */
+.footer-bottom { 
+    background: #888; /* 배경색 */
+    color: #eee; 
+    padding: 40px 0; 
+    margin-top: 40px; 
+    width: 100%; /* 브라우저 너비 100% */
 }
-.footer-link-btn:hover{ opacity: .75; }
+
+/* 내부 콘텐츠만 1199px로 중앙 정렬 */
+.footer-inner { 
+    width: 1199px; 
+    margin: 0 auto; 
+    padding: 0 15px; /* 좌우 여백 확보 */
+}
+
+.footer-links { border-bottom: 1px solid #aaa; padding-bottom: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.footer-links a { color: #fff; text-decoration: none; font-size: 14px; }
+.footer-links a:hover { text-decoration: underline; }
+.footer-links .sep { color: #ccc; }
+.footer-columns { display: flex; justify-content: space-between; gap: 20px; font-size: 13px; line-height: 1.8; }
+.footer-columns a { color: #fff; }
+
+.footer-copy-row { margin-top: 25px; padding-top: 20px; border-top: 1px solid #aaa; font-size: 12px; color: #ddd; line-height: 1.8; }
+.footer-copy-row strong { color: #fff; }
+
+/* 에스크로 버튼 스타일 */
+.escrow-btn { display: inline-block; background: #555; color: #fff; padding: 2px 8px; border-radius: 3px; text-decoration: none; font-size: 11px; margin-left: 5px; border: 1px solid #333; }
+.escrow-btn:hover { background: #333; }
+
+/* 모바일 대응 */
+@media (max-width: 1200px) {
+    .notice-section, .footer-inner { width: 100%; box-sizing: border-box; }
+}
+@media (max-width: 768px) {
+    .footer-columns { flex-direction: column; gap: 20px; }
+    .notice-tabs { flex-wrap: wrap; }
+    .tab-btn { flex: 1 1 30%; padding: 12px 6px; font-size: 13px; }
+}
 </style>
+
+<div class="footer-wrapper">
+    <div class="notice-section">
+        <h3>작업 주의사항안내</h3>
+        <p style="font-size:13px; color:#666;">반드시 주의사항 및 작업규약 확인 후 제작을 진행하시기 바랍니다.</p>
+
+        <div class="notice-tabs" id="noticeTabs">
+            <div class="tab-btn active" data-tab="workmethod">작업방법 ▾</div>
+            <div class="tab-btn" data-tab="material">재질 ▾</div>
+            <div class="tab-btn" data-tab="notice">유의사항 ▾</div>
+        </div>
+        <div class="tab-panel" id="tabPanel"></div>
+
+        <div class="accordion-item" data-target="acc-finishing"><span class="arrow">▶</span>후가공안내</div>
+        <div class="accordion-content" id="acc-finishing"></div>
+
+        <div class="accordion-item" data-target="acc-shipping"><span class="arrow">▶</span>출고/배송</div>
+        <div class="accordion-content" id="acc-shipping"></div>
+
+        <div class="accordion-item" data-target="acc-refund"><span class="arrow">▶</span>재작업/취소/환불안내</div>
+        <div class="accordion-content" id="acc-refund"></div>
+    </div>
+
+    <div class="footer-bottom">
+        <div class="footer-inner">
+            <div class="footer-links">
+                <a href="https://sowonnamoo.github.io/myjs/jir" target="_blank" rel="noopener noreferrer">이용약관 및 개인정보취급방침</a>
+                <span class="sep">|</span>
+                <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a>
+                <span class="sep">|</span>
+                <a href="https://sowonnamoo1005.cafe24.com/web/upload/aco/26052701.jpg" target="_blank" rel="noopener noreferrer" class="escrow-btn">구매안전(에스크로) 인증</a>
+            </div>
+            <div class="footer-columns">
+                <div>
+                    <strong>인쇄소 위치</strong><br>
+                    대구광역시 달서로 18길 7-9
+                </div>
+                <div>
+                    <strong>고객센터 053-214-2461</strong><br>
+                    <a href="mailto:ecogr@hanmail.net">ecogr@hanmail.net</a><br>
+                    PC모드URL : www.ecogr.net
+                </div>
+                <div>
+                    <strong>에코그래픽스</strong> (그래픽스아이엠)<br>
+                    사업자등록번호 411-13-76734<br>
+                    통신판매업 신고 2022-대구서구-0232
+                </div>
+            </div>
+            <div class="footer-copy-row">
+                Copyright &copy; 2012 <strong>ECO graphics</strong> All rights reserved.<br>
+                개인정보관리책임자 : 정상훈 / 대표자 성함 : 최대환
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 /* ============================================================
-   작업방법 / 재질안내 / 유의사항 / 후가공안내 / 출고안내 / 환불규정
-   각 링크를 누르면 주소창·메뉴바 등이 없는 작은 새 창(팝업)에
-   내용을 바로 그려서 보여줍니다. (별도 페이지 없이 아래 데이터로 렌더링)
+   작업방법 / 재질안내 / 유의사항 → 탭으로 전환
+   후가공안내 / 출고배송 / 환불규정 → 아코디언으로 펼침
    문구를 수정하려면 아래 INFO_CONTENT 안의 해당 항목만 고치면 됩니다.
+   (탭/아코디언 UI는 그대로 두고 내용만 자동으로 반영됩니다)
    ============================================================ */
 const INFO_CONTENT = {
-    workmethod: {
-        title: "작업방법 안내",
-        html: `
-            <h2>주문 진행 순서</h2>
-            <ol>
-                <li>상품 페이지에서 용지, 사이즈, 수량 등 옵션을 선택합니다.</li>
-                <li>온라인 편집기에서 디자인 파일을 업로드하고 재단선에 맞게 배치합니다. (JPG, PNG, PDF 지원)</li>
-                <li>장바구니에서 주문자 정보를 입력한 뒤 카드결제 또는 무통장입금으로 결제합니다.</li>
-                <li>접수된 파일의 해상도·색상모드를 확인한 뒤 인쇄를 진행합니다. 파일에 문제가 있는 경우 입력하신 연락처로 안내드립니다.</li>
-                <li>인쇄 후 선택하신 후가공(귀도리, 미싱, 형압 등)을 진행합니다.</li>
-                <li>제작이 완료된 상품은 검수 후 포장하여 택배로 출고됩니다.</li>
-            </ol>
-            <h2>파일 제작 규격</h2>
-            <ul>
-                <li>색상 모드 : CMYK 권장 (RGB로 제작 시 화면과 인쇄물의 색상이 다르게 나올 수 있습니다.)</li>
-                <li>해상도 : 최소 150dpi, 권장 300dpi 이상</li>
-                <li>여백 : 재단선(붉은 선) 안쪽 2~3mm 이내에 글자·로고·테두리 등 중요 내용을 배치해주세요.</li>
-                <li>배경 : 재단선을 포함한 회색 안내선까지 배경을 연장하여 제작해주세요.</li>
-                <li>업로드 가능 파일 형식 : JPG, JPEG, PNG, PDF</li>
-            </ul>
-        `
-    },
-    material: {
-        title: "재질(용지) 안내",
-        html: `
-            <h2>주요 용지 종류</h2>
-            <ul>
-                <li><strong>스노우지</strong> — 은은한 광택의 코팅지로 발색이 선명해 명함·전단지 등에 가장 많이 사용됩니다. (150g~300g)</li>
-                <li><strong>아트지</strong> — 광택이 있는 대표적인 인쇄용지로, 사진·이미지 인쇄에 적합합니다. (150g~250g)</li>
-                <li><strong>랑데부</strong> — 은은한 펄감과 부드러운 촉감의 고급 용지로 청첩장, 브랜딩 명함 등에 주로 사용됩니다.</li>
-                <li><strong>반누보</strong> — 도톰하고 결이 살아있는 비도공지로, 차분하고 고급스러운 느낌을 줍니다. (아이보리/화이트)</li>
-                <li><strong>매쉬멜로우</strong> — 마시멜로우처럼 부드럽고 폭신한 촉감의 프리미엄 용지입니다.</li>
-                <li><strong>크라프트지</strong> — 갈색 톤의 자연스러운 질감으로 친환경·빈티지 콘셉트에 잘 어울립니다.</li>
-                <li><strong>스티커 원단</strong> — 아트지, 유포지, PVC 등 사용 목적(실내/실외, 방수 여부)에 따라 선택할 수 있습니다.</li>
-            </ul>
-            <h2>평량(무게감) 선택 안내</h2>
-            <ul>
-                <li>120~150g : 얇고 가벼운 두께로 전단지 등에 적합</li>
-                <li>200~250g : 명함, 카드류에 가장 많이 사용되는 표준 두께</li>
-                <li>300g 이상 : 두껍고 단단한 고급 명함에 적합</li>
-            </ul>
-            <p class="popup-note">동일한 용지명이라도 제지사 및 생산 로트에 따라 실제 촉감·두께에 미세한 차이가 있을 수 있습니다.</p>
-        `
-    },
-    notice: {
-        title: "유의사항",
-        html: `
-            <ul>
-                <li>모니터·모바일 화면은 기기별 색상 표현 방식이 달라 실제 인쇄물과 색감 차이가 있을 수 있습니다.</li>
-                <li>재단은 기계로 진행되는 공정 특성상 ±1~2mm 내외의 오차가 발생할 수 있습니다.</li>
-                <li>업로드하신 파일의 저작권·초상권 등에 대한 책임은 주문자 본인에게 있으며, 무단 도용으로 인한 법적 문제에 대해 회사는 책임지지 않습니다.</li>
-                <li>저해상도 이미지 업로드, 색상모드 오류 등 고객 파일 자체의 문제로 인한 품질 저하는 재작업·환불 사유에 해당하지 않습니다.</li>
-                <li>결제 완료 및 접수 확인 후에는 디자인 수정이 어려우니, 결제 전 반드시 시안을 다시 확인해주세요.</li>
-                <li>동일 상품이라도 인쇄 로트(batch)에 따라 미세한 색상 편차가 발생할 수 있습니다.</li>
-                <li>주문 접수 후 담당자가 파일을 확인하는 과정에서 추가 확인이 필요한 경우, 입력하신 연락처로 개별 연락드릴 수 있습니다.</li>
-            </ul>
-        `
-    },
-    finishing: {
-        title: "후가공 안내",
-        html: `
-            <h2>후가공 종류</h2>
-            <ul>
-                <li><strong>귀도리</strong> — 명함 등의 모서리를 둥글게 다듬는 가공입니다.</li>
-                <li><strong>미싱</strong> — 점선 형태의 절취선을 넣는 가공으로 쿠폰·티켓 등에 활용됩니다.</li>
-                <li><strong>오시</strong> — 접히는 부분에 미리 눌러 접기 선을 만드는 가공입니다.</li>
-                <li><strong>형압</strong> — 무늬나 로고를 도드라지거나 오목하게 눌러 입체감을 주는 가공입니다.</li>
-                <li><strong>박(금박/은박 등)</strong> — 금속 느낌의 박을 입혀 포인트를 주는 가공입니다.</li>
-                <li><strong>코팅(유광/무광)</strong> — 표면에 얇은 필름을 씌워 내구성과 광택을 더하는 가공입니다.</li>
-            </ul>
-            <h2>후가공 관련 안내</h2>
-            <ul>
-                <li>후가공 옵션을 선택하면 제작 기간이 1~2영업일 추가될 수 있습니다.</li>
-                <li>후가공 종류에 따라 최소 제작 수량이 다를 수 있습니다.</li>
-                <li>후가공이 진행된 이후에는 취소·변경이 불가합니다.</li>
-            </ul>
-        `
-    },
-    shipping: {
-        title: "출고 안내",
-        html: `
-            <h2>제작 및 배송 기간</h2>
-            <ul>
-                <li>평균 제작 기간 : 결제 확인 후 영업일 기준 2~4일 (옵션·후가공에 따라 변동될 수 있습니다.)</li>
-                <li>택배사를 통해 출고되며, 출고 후 통상 1~2일 내 수령 가능합니다.</li>
-                <li>도서산간 지역은 추가 배송비가 발생하거나 배송기간이 더 소요될 수 있습니다.</li>
-                <li>공휴일 및 택배사 사정에 따라 출고·배송 일정이 지연될 수 있습니다.</li>
-            </ul>
-            <h2>배송 조회</h2>
-            <p>출고가 완료되면 주문 시 입력하신 연락처로 송장번호를 안내드립니다.</p>
-        `
-    },
-    refund: {
-        title: "환불규정",
-        html: `
-            <h2>환불 / 취소 안내</h2>
-            <ul>
-                <li>본 상품은 고객 맞춤 주문제작 상품으로, 전자상거래 등에서의 소비자보호에 관한 법률 제17조 제2항에 따라 단순 변심에 의한 청약철회(환불·교환)가 제한될 수 있습니다.</li>
-                <li>인쇄 작업이 시작되기 전이라면 고객센터를 통해 주문 취소가 가능합니다.</li>
-                <li>인쇄가 진행된 이후에는 제작 특성상 취소 및 환불이 불가합니다.</li>
-                <li>상품 파손, 오배송, 회사 귀책의 인쇄 오류(주문 내용과 다르게 제작된 경우 등)는 상품 수령일로부터 7일 이내 고객센터로 연락 주시면 재제작 또는 환불을 도와드립니다.</li>
-                <li>무통장입금 후 24시간 이내 미입금 시 주문이 자동 취소될 수 있습니다.</li>
-            </ul>
-            <p class="popup-note">자세한 문의는 상단에 안내된 전화번호 또는 이메일로 연락해주세요.</p>
-        `
-    }
+    workmethod: `
+        <h4>주문 진행 순서</h4>
+        <ol>
+            <li>상품 페이지에서 용지, 사이즈, 수량 등 옵션을 선택합니다.</li>
+            <li>온라인 편집기에서 디자인 파일을 업로드하고 재단선에 맞게 배치합니다. (JPG, PNG, PDF 지원)</li>
+            <li>장바구니에서 주문자 정보를 입력한 뒤 카드결제 또는 무통장입금으로 결제합니다.</li>
+            <li>접수된 파일의 해상도·색상모드를 확인한 뒤 인쇄를 진행합니다. 파일에 문제가 있는 경우 입력하신 연락처로 안내드립니다.</li>
+            <li>인쇄 후 선택하신 후가공(귀도리, 미싱, 형압 등)을 진행합니다.</li>
+            <li>제작이 완료된 상품은 검수 후 포장하여 택배로 출고됩니다.</li>
+        </ol>
+        <h4>파일 제작 규격</h4>
+        <ul>
+            <li>색상 모드 : CMYK 권장 (RGB로 제작 시 화면과 인쇄물의 색상이 다르게 나올 수 있습니다.)</li>
+            <li>해상도 : 최소 150dpi, 권장 300dpi 이상</li>
+            <li>여백 : 재단선(붉은 선) 안쪽 2~3mm 이내에 글자·로고·테두리 등 중요 내용을 배치해주세요.</li>
+            <li>배경 : 재단선을 포함한 회색 안내선까지 배경을 연장하여 제작해주세요.</li>
+            <li>업로드 가능 파일 형식 : JPG, JPEG, PNG, PDF</li>
+        </ul>
+    `,
+    material: `
+        <h4>주요 용지 종류</h4>
+        <ul>
+            <li><strong>스노우지</strong> — 은은한 광택의 코팅지로 발색이 선명해 명함·전단지 등에 가장 많이 사용됩니다. (150g~300g)</li>
+            <li><strong>아트지</strong> — 광택이 있는 대표적인 인쇄용지로, 사진·이미지 인쇄에 적합합니다. (150g~250g)</li>
+            <li><strong>랑데부</strong> — 은은한 펄감과 부드러운 촉감의 고급 용지로 청첩장, 브랜딩 명함 등에 주로 사용됩니다.</li>
+            <li><strong>반누보</strong> — 도톰하고 결이 살아있는 비도공지로, 차분하고 고급스러운 느낌을 줍니다. (아이보리/화이트)</li>
+            <li><strong>매쉬멜로우</strong> — 마시멜로우처럼 부드럽고 폭신한 촉감의 프리미엄 용지입니다.</li>
+            <li><strong>크라프트지</strong> — 갈색 톤의 자연스러운 질감으로 친환경·빈티지 콘셉트에 잘 어울립니다.</li>
+            <li><strong>스티커 원단</strong> — 아트지, 유포지, PVC 등 사용 목적(실내/실외, 방수 여부)에 따라 선택할 수 있습니다.</li>
+        </ul>
+        <h4>평량(무게감) 선택 안내</h4>
+        <ul>
+            <li>120~150g : 얇고 가벼운 두께로 전단지 등에 적합</li>
+            <li>200~250g : 명함, 카드류에 가장 많이 사용되는 표준 두께</li>
+            <li>300g 이상 : 두껍고 단단한 고급 명함에 적합</li>
+        </ul>
+        <p class="panel-note">동일한 용지명이라도 제지사 및 생산 로트에 따라 실제 촉감·두께에 미세한 차이가 있을 수 있습니다.</p>
+    `,
+    notice: `
+        <ul>
+            <li>모니터·모바일 화면은 기기별 색상 표현 방식이 달라 실제 인쇄물과 색감 차이가 있을 수 있습니다.</li>
+            <li>재단은 기계로 진행되는 공정 특성상 ±1~2mm 내외의 오차가 발생할 수 있습니다.</li>
+            <li>업로드하신 파일의 저작권·초상권 등에 대한 책임은 주문자 본인에게 있으며, 무단 도용으로 인한 법적 문제에 대해 회사는 책임지지 않습니다.</li>
+            <li>저해상도 이미지 업로드, 색상모드 오류 등 고객 파일 자체의 문제로 인한 품질 저하는 재작업·환불 사유에 해당하지 않습니다.</li>
+            <li>결제 완료 및 접수 확인 후에는 디자인 수정이 어려우니, 결제 전 반드시 시안을 다시 확인해주세요.</li>
+            <li>동일 상품이라도 인쇄 로트(batch)에 따라 미세한 색상 편차가 발생할 수 있습니다.</li>
+            <li>주문 접수 후 담당자가 파일을 확인하는 과정에서 추가 확인이 필요한 경우, 입력하신 연락처로 개별 연락드릴 수 있습니다.</li>
+        </ul>
+    `,
+    finishing: `
+        <h4>후가공 종류</h4>
+        <ul>
+            <li><strong>귀도리</strong> — 명함 등의 모서리를 둥글게 다듬는 가공입니다.</li>
+            <li><strong>미싱</strong> — 점선 형태의 절취선을 넣는 가공으로 쿠폰·티켓 등에 활용됩니다.</li>
+            <li><strong>오시</strong> — 접히는 부분에 미리 눌러 접기 선을 만드는 가공입니다.</li>
+            <li><strong>형압</strong> — 무늬나 로고를 도드라지거나 오목하게 눌러 입체감을 주는 가공입니다.</li>
+            <li><strong>박(금박/은박 등)</strong> — 금속 느낌의 박을 입혀 포인트를 주는 가공입니다.</li>
+            <li><strong>코팅(유광/무광)</strong> — 표면에 얇은 필름을 씌워 내구성과 광택을 더하는 가공입니다.</li>
+        </ul>
+        <h4>후가공 관련 안내</h4>
+        <ul>
+            <li>후가공 옵션을 선택하면 제작 기간이 1~2영업일 추가될 수 있습니다.</li>
+            <li>후가공 종류에 따라 최소 제작 수량이 다를 수 있습니다.</li>
+            <li>후가공이 진행된 이후에는 취소·변경이 불가합니다.</li>
+        </ul>
+    `,
+    shipping: `
+        <h4>제작 및 배송 기간</h4>
+        <ul>
+            <li>평균 제작 기간 : 결제 확인 후 영업일 기준 2~4일 (옵션·후가공에 따라 변동될 수 있습니다.)</li>
+            <li>택배사를 통해 출고되며, 출고 후 통상 1~2일 내 수령 가능합니다.</li>
+            <li>도서산간 지역은 추가 배송비가 발생하거나 배송기간이 더 소요될 수 있습니다.</li>
+            <li>공휴일 및 택배사 사정에 따라 출고·배송 일정이 지연될 수 있습니다.</li>
+        </ul>
+        <h4>배송 조회</h4>
+        <p>출고가 완료되면 주문 시 입력하신 연락처로 송장번호를 안내드립니다.</p>
+    `,
+    refund: `
+        <h4>환불 / 취소 안내</h4>
+        <ul>
+            <li>본 상품은 고객 맞춤 주문제작 상품으로, 전자상거래 등에서의 소비자보호에 관한 법률 제17조 제2항에 따라 단순 변심에 의한 청약철회(환불·교환)가 제한될 수 있습니다.</li>
+            <li>인쇄 작업이 시작되기 전이라면 고객센터를 통해 주문 취소가 가능합니다.</li>
+            <li>인쇄가 진행된 이후에는 제작 특성상 취소 및 환불이 불가합니다.</li>
+            <li>상품 파손, 오배송, 회사 귀책의 인쇄 오류(주문 내용과 다르게 제작된 경우 등)는 상품 수령일로부터 7일 이내 고객센터로 연락 주시면 재제작 또는 환불을 도와드립니다.</li>
+            <li>무통장입금 후 24시간 이내 미입금 시 주문이 자동 취소될 수 있습니다.</li>
+        </ul>
+        <p class="panel-note">자세한 문의는 상단에 안내된 전화번호 또는 이메일로 연락해주세요.</p>
+    `
 };
 
-const INFO_POPUP_STYLE = `
-    *{ box-sizing:border-box; }
-    body{
-        margin:0;
-        padding:20px 22px 24px;
-        font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
-        color:#222;
-        font-size:13.5px;
-        line-height:1.7;
-        background:#fff;
-    }
-    h1{ font-size:17px; margin:0 0 14px; padding-bottom:10px; border-bottom:2px solid #333; }
-    h2{ font-size:14px; margin:18px 0 8px; color:#111; }
-    h2:first-of-type{ margin-top:0; }
-    ul, ol{ margin:0 0 4px; padding-left:18px; }
-    li{ margin-bottom:6px; }
-    .popup-note{ margin-top:14px; font-size:12px; color:#777; }
-    .popup-close-btn{
-        display:block;
-        width:100%;
-        margin-top:20px;
-        padding:11px;
-        background:#333;
-        color:#fff;
-        border:none;
-        border-radius:6px;
-        font-size:13.5px;
-        cursor:pointer;
-    }
-    .popup-close-btn:hover{ background:#111; }
-`;
-
-function openInfoPopup(key){
-    const data = INFO_CONTENT[key];
-    if(!data) return;
-
-    const w = 460, h = 620;
-    const left = Math.round((window.screen.width - w) / 2);
-    const top = Math.round((window.screen.height - h) / 2);
-
-    // 주소창/메뉴바/툴바 없는 작은 새 창으로 오픈합니다.
-    // (브라우저 정책에 따라 일부 요소는 표시될 수 있습니다.)
-    const popup = window.open(
-        '',
-        'infoPopup_' + key,
-        `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no,resizable=yes,scrollbars=yes`
-    );
-
-    if(!popup){
-        alert('팝업이 차단되었습니다. 브라우저의 팝업 차단 설정을 해제한 뒤 다시 시도해주세요.');
-        return;
-    }
-
-    popup.document.open();
-    popup.document.write(`<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>${data.title}</title>
-<style>${INFO_POPUP_STYLE}</style>
-</head>
-<body>
-<h1>${data.title}</h1>
-${data.html}
-<button type="button" class="popup-close-btn" onclick="window.close()">닫기</button>
-</body>
-</html>`);
-    popup.document.close();
-    popup.focus();
+// ---- 탭(작업방법/재질/유의사항) ----
+function renderTab(key){
+    const panel = document.getElementById('tabPanel');
+    if(panel) panel.innerHTML = INFO_CONTENT[key] || '';
 }
+
+document.querySelectorAll('#noticeTabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#noticeTabs .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderTab(btn.dataset.tab);
+    });
+});
+renderTab('workmethod'); // 첫 진입 시 기본으로 보여줄 탭
+
+// ---- 아코디언(후가공안내/출고배송/환불규정) ----
+const ACCORDION_MAP = { 'acc-finishing': 'finishing', 'acc-shipping': 'shipping', 'acc-refund': 'refund' };
+Object.keys(ACCORDION_MAP).forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = INFO_CONTENT[ACCORDION_MAP[id]] || '';
+});
+
+document.querySelectorAll('.accordion-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const content = document.getElementById(item.dataset.target);
+        if(!content) return;
+        const isOpen = content.style.display === 'block';
+        content.style.display = isOpen ? 'none' : 'block';
+        item.classList.toggle('open', !isOpen);
+    });
+});
 </script>
