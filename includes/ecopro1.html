@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>고해상도 멀티 디자인 에디터</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
         #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
@@ -80,7 +81,7 @@
             업로드/재업로드
         </label>
 
-        <input type="file" id="file-input" accept="image/*" style="display:none;">
+        <input type="file" id="file-input" accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf,.pdf" style="display:none;">
 
         <button id="save-btn" class="btn" style="background:#bbb;">
             전체저장
@@ -96,7 +97,7 @@
     ※ 업로드하신 파일의 배경은 회색선까지 꼭 연장해 주세요.<br>
     ※ 중요내용!!(글씨, 로고, 테두리)은 붉은선 안쪽 배치해 주세요. 닿으면 잘릴수 있어요.<br>
     ※ 재단 공정 특성상 가장자리 디자인은 일부 오차가 발생할 수 있습니다.<br>
-    ※ 업로드 가능 파일 형식 : JPG, JPEG, PNG <br>
+    ※ 업로드 가능 파일 형식 : JPG, JPEG, PNG, PDF (PDF는 자동으로 고화질 이미지로 변환됩니다) <br>
     ※ 본 이미지는 실출력물과 색상차이가 존재할수 있으며 이는 재작업 사유에 해당되지 않습니다. <br>
     ※ 최종 접수후 반드시 접수완료되신 시안을 확인해주세요.
 </div>
@@ -201,66 +202,132 @@ canvas.on('mouse:down', (e) => {
         canvas.renderAll();
     }
 
-    document.getElementById('file-input').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-
-
-
-
-        
-fabric.Image.fromURL(event.target.result, (img) => {
-
-
-    // 필터 적용용 최대 해상도 제한
-    const maxSize = 3000;
-
-    if (img.width > maxSize || img.height > maxSize) {
-
-        const ratio = Math.min(
-            maxSize / img.width,
-            maxSize / img.height
-        );
-
-        img.scale(ratio);
-        img.setCoords();
+    // pdf.js 워커 경로 설정
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
+    // 업로드된 이미지(dataUrl)를 캔버스에 반영하는 공통 처리 (기존 이미지 업로드 로직 그대로)
+    function applyUploadedImage(dataUrl) {
+        fabric.Image.fromURL(dataUrl, (img) => {
 
-    img.set({
-        borderColor: '#3498db',
-        cornerColor: '#3498db',
-        cornerSize: 5,
-        transparentCorners: false,
-        borderScaleFactor: 1,
+            // 필터 적용용 최대 해상도 제한
+            const maxSize = 3000;
 
-        rotatingPointOffset: 30
-    });
+            if (img.width > maxSize || img.height > maxSize) {
 
+                const ratio = Math.min(
+                    maxSize / img.width,
+                    maxSize / img.height
+                );
 
-
-
-
-
+                img.scale(ratio);
+                img.setCoords();
+            }
 
 
+            img.set({
+                borderColor: '#3498db',
+                cornerColor: '#3498db',
+                cornerSize: 5,
+                transparentCorners: false,
+                borderScaleFactor: 1,
 
+                rotatingPointOffset: 30
+            });
 
-            
             img.scaleToWidth(canvas.width);
-img.setCoords();
+            img.setCoords();
             designData[currentIdx][currentSide] = img;
             updateView();
-            
+
             // 업로드 즉시 선택 상태로 전환
             canvas.setActiveObject(img);
             canvas.renderAll();
         });
-    };
-    reader.readAsDataURL(file);
-});
+    }
+
+    // PDF 파일을 pdf.js로 렌더링한 뒤 고화질 JPEG dataURL로 변환
+    async function convertPdfToJpegDataUrl(arrayBuffer) {
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdfDoc = await loadingTask.promise;
+        const page = await pdfDoc.getPage(1); // 첫 페이지만 사용
+
+        // 고화질 변환을 위해 넉넉한 배율로 렌더링 (인쇄용 해상도 확보)
+        const targetLongSidePx = 2400;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const longSide = Math.max(baseViewport.width, baseViewport.height);
+        const scale = Math.min(4, Math.max(2, targetLongSidePx / longSide));
+        const viewport = page.getViewport({ scale });
+
+        const pdfCanvas = document.createElement('canvas');
+        pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
+        const ctx = pdfCanvas.getContext('2d');
+
+        // 투명 배경(png 원본 등) 대비, 인쇄물 기준 흰 배경으로 채움
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        return pdfCanvas.toDataURL('image/jpeg', 0.95);
+    }
+
+    document.getElementById('file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+        const isAllowedImage = ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)
+            || /\.(jpe?g|png)$/i.test(file.name);
+
+        if (!isPdf && !isAllowedImage) {
+            alert('지원하지 않는 파일 형식입니다.\n\nJPG, JPEG, PNG, PDF 파일만 업로드할 수 있습니다.');
+            e.target.value = '';
+            return;
+        }
+
+        if (isPdf) {
+            if (!window.pdfjsLib) {
+                alert('PDF 변환 기능을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
+                e.target.value = '';
+                return;
+            }
+
+            const label = document.querySelector('label[for="file-input"]');
+            const originalLabelText = label ? label.textContent : '';
+            if (label) label.textContent = 'PDF 변환 중...';
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const dataUrl = await convertPdfToJpegDataUrl(event.target.result);
+                    applyUploadedImage(dataUrl);
+                } catch (err) {
+                    console.error(err);
+                    alert('PDF 파일을 변환하지 못했습니다. 다른 파일로 다시 시도해주세요.');
+                } finally {
+                    if (label) label.textContent = originalLabelText;
+                    e.target.value = '';
+                }
+            };
+            reader.onerror = () => {
+                alert('PDF 파일을 읽지 못했습니다. 다시 시도해주세요.');
+                if (label) label.textContent = originalLabelText;
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
+
+        // 기존 이미지(JPG/PNG 등) 업로드 처리
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            applyUploadedImage(event.target.result);
+        };
+        reader.readAsDataURL(file);
+    });
 
 
 
