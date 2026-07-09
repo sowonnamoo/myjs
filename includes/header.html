@@ -86,24 +86,10 @@
         <button onclick="toggleSlider()">닫기</button>
     </div>
     
-   <div style="padding:10px;">
-        <div onclick="toggleSubMenu(this)" style="font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">명함 ▾</div>
-        <div class="mobile-sub-menu" style="padding-left:10px; display:none;">
-            <a href="/products/01my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">명함</a>
-            <a href="/products/02my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">박명함</a>
-            <a href="/products/03my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">카드명함</a>
-            <a href="/products/04my" style="display:block; padding:5px 0; color:#666; text-decoration:none;">수입지명함</a>
-        </div>
+    <div id="mobileMenuList" style="padding-bottom:20px;">
+        <!-- 메뉴는 아래 script의 menuData로부터 자동 생성됩니다 -->
     </div>
 
-    <div style="padding:10px;">
-        <div onclick="toggleSubMenu(this)" style="font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">스티커 ▾</div>
-        <div class="mobile-sub-menu" style="padding-left:10px; display:none;">
-            <a href="/products/sticker1" style="display:block; padding:5px 0; color:#666; text-decoration:none;">원형스티커</a>
-            <a href="/products/sticker2" style="display:block; padding:5px 0; color:#666; text-decoration:none;">사각형스티커</a>
-        </div>
-    </div>
-    <!-- 메뉴 끝 -->
 </div>
 
 <div class="header-component">
@@ -126,33 +112,8 @@
     </header>
 
     <nav class="mega-menu-wrap">
-        <ul class="mega-menu-list">
-            <li class="menu-item"><a href="#" onclick="return false;">명함</a>
-                <div class="sub-menu">
-                    <a href="/products/01my">박명함</a>
-                    <a href="/products/01my">카드명함</a>
-                    <a href="/products/01my">수입지명함</a>
-                </div>
-            </li>
-        <li class="menu-item"><a href="#" onclick="return false;">명함</a>
-                <div class="sub-menu">
-                    <a href="/products/01my">박명함</a>
-                    <a href="/products/01my">카드명함</a>
-                    <a href="/products/01my">수입지명함</a>
-                </div>
-            </li>
-        <li class="menu-item"><a href="#" onclick="return false;">명함</a>
-                <div class="sub-menu">
-                    <a href="/products/01my">박명함</a>
-                    <a href="/products/01my">카드명함</a>
-                    <a href="/products/01my">수입지명함</a>
-                </div>
-            </li>      
-
-
-
-
-            
+        <ul class="mega-menu-list" id="megaMenuList">
+            <!-- 메뉴는 아래 script의 menuData로부터 자동 생성됩니다 -->
         </ul>
     </nav>
 </div>
@@ -168,8 +129,72 @@ function toggleSubMenu(el) {
     sub.style.display = (sub.style.display === "none") ? "block" : "none";
 }
 
+/* ==========================================================================
+   메뉴 데이터는 여기 한 곳(menuData)에서만 관리합니다.
+   여기에 카테고리/하위메뉴를 추가·수정하면
+   1) PC 메가메뉴, 2) 모바일 좌측 슬라이드 메뉴, 3) 검색 자동완성
+   세 곳에 전부 자동으로 반영됩니다. (다른 곳은 손댈 필요 없음)
+   ========================================================================== */
+const menuData = [
+    {
+        name: "명함",
+        url: "#",
+        children: [
+            { name: "명함", url: "/products/01my" },
+            { name: "박명함", url: "/products/02my" },
+            { name: "카드명함", url: "/products/03my" },
+            { name: "수입지명함", url: "/products/04my" }
+        ]
+    },
+    {
+        name: "스티커",
+        url: "#",
+        children: [
+            { name: "원형스티커", url: "/products/sticker1" },
+            { name: "사각형스티커", url: "/products/sticker2" }
+        ]
+    }
+];
+
+// menuData → PC 메가메뉴(.mega-menu-list) 렌더링
+function renderMegaMenu() {
+    const list = document.getElementById('megaMenuList');
+    if (!list) return;
+    list.innerHTML = menuData.map(cat => `
+        <li class="menu-item">
+            <a href="${cat.url}"${cat.url === '#' ? ' onclick="return false;"' : ''}>${cat.name}</a>
+            ${cat.children && cat.children.length ? `
+            <div class="sub-menu">
+                ${cat.children.map(child => `<a href="${child.url}">${child.name}</a>`).join('')}
+            </div>` : ''}
+        </li>
+    `).join('');
+}
+
+// menuData → 모바일 좌측 슬라이드 메뉴(#mobileMenuList) 렌더링
+function renderMobileMenu() {
+    const wrap = document.getElementById('mobileMenuList');
+    if (!wrap) return;
+    wrap.innerHTML = menuData.map(cat => `
+        <div style="padding:10px;">
+            <div onclick="toggleSubMenu(this)" style="font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">${cat.name} ▾</div>
+            <div class="mobile-sub-menu" style="padding-left:10px; display:none;">
+                ${(cat.children || []).map(child => `<a href="${child.url}" style="display:block; padding:5px 0; color:#666; text-decoration:none;">${child.name}</a>`).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+renderMegaMenu();
+renderMobileMenu();
+
 (function() {
-    const searchData = [{ name: "명함", url: "/products/01my" }, { name: "박명함", url: "/products/01my" }, { name: "카드명함", url: "/products/01my" }];
+    // 검색 데이터도 menuData에서 자동으로 만들어집니다.
+    // 하위메뉴가 있으면 하위메뉴 항목들을, 없으면(링크가 있는 단일 메뉴면) 그 자체를 검색 대상으로 등록합니다.
+    const searchData = menuData.flatMap(cat => {
+        if (cat.children && cat.children.length) return cat.children;
+        return (cat.url && cat.url !== '#') ? [{ name: cat.name, url: cat.url }] : [];
+    });
     const input = document.getElementById('searchInput');
     const suggBox = document.getElementById('suggestions');
     const searchContainer = document.querySelector('.search-container');
