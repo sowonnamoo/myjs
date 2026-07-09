@@ -16,7 +16,7 @@
         .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
         .side-btn.active { background: #e67e22; color: white; }
 #canvas-wrapper { 
-    border: 4px solid #bdc3c7; 
+    border: 1px solid #bdc3c7; 
     background: #fff; 
     width: 100%; 
     max-width: 1024px; 
@@ -136,9 +136,9 @@
             img.set({
                 borderColor: '#3498db',
                 cornerColor: '#3498db',
-                cornerSize: 13, // 핸들 크기
+                cornerSize: 1, // 핸들 크기
                 transparentCorners: false,
-                borderScaleFactor: 5 // 박스 테두리 굵기
+                borderScaleFactor: 1 // 박스 테두리 굵기
             });
             img.scaleToWidth(canvas.width);
             designData[currentIdx][currentSide] = img;
