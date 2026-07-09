@@ -5,15 +5,322 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>주문작성</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body{ margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo',sans-serif; }
-        .wrap{ max-width:600px; margin:0 auto; padding:20px; }
-        .cart-item{ background:#fff; padding:15px; margin-bottom:10px; border-radius:12px; }
-        .form-box{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
-        input{ width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; }
-        .bottom{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
-        .pay-btn{ width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; margin-bottom:8px; }
-        .bank-btn{ width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; }
+        :root{
+            --paper:#F1F4F6;
+            --surface:#FFFFFF;
+            --ink:#142230;
+            --ink-soft:#5B6B78;
+            --ink-faint:#94A3AD;
+            --line:#E1E6EA;
+            --teal:#2F8F86;
+            --teal-dark:#256F68;
+            --blue:#2657A6;
+            --blue-dark:#1D4685;
+            --red:#D64545;
+            --red-soft:#FBEAE9;
+            --radius-lg:20px;
+            --radius-md:14px;
+            --radius-sm:10px;
+            --shadow-card:0 1px 2px rgba(20,34,48,.04), 0 10px 28px rgba(20,34,48,.07);
+        }
+
+        *{ box-sizing:border-box; }
+
+        body{
+            margin:0;
+            background:var(--paper);
+            color:var(--ink);
+            font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;
+            -webkit-font-smoothing:antialiased;
+            -webkit-tap-highlight-color:transparent;
+        }
+
+        button, input{ font-family:inherit; }
+
+        button:focus-visible,
+        input:focus-visible{
+            outline:2px solid var(--blue);
+            outline-offset:2px;
+        }
+
+        .page{
+            max-width:1080px;
+            margin:0 auto;
+            padding:36px 20px 80px;
+        }
+
+        /* ---------- Header ---------- */
+        .page-header{ margin-bottom:26px; }
+        .eyebrow{
+            display:inline-block;
+            font-family:'JetBrains Mono',ui-monospace,monospace;
+            font-size:11px;
+            font-weight:600;
+            letter-spacing:.16em;
+            color:var(--teal-dark);
+            text-transform:uppercase;
+            margin:0 0 10px;
+        }
+        .page-header h1{
+            margin:0 0 8px;
+            font-size:28px;
+            font-weight:800;
+            letter-spacing:-.02em;
+        }
+        .page-header .subtitle{
+            margin:0;
+            color:var(--ink-soft);
+            font-size:13.5px;
+            line-height:1.5;
+        }
+
+        /* ---------- Layout ---------- */
+        .layout{
+            display:flex;
+            flex-direction:column;
+            gap:18px;
+        }
+        .main-col{ display:flex; flex-direction:column; gap:18px; }
+
+        @media (min-width:960px){
+            .layout{
+                display:grid;
+                grid-template-columns:1fr 360px;
+                align-items:start;
+                gap:26px;
+            }
+            .summary-col{ position:sticky; top:26px; }
+        }
+
+        .panel{
+            background:var(--surface);
+            border:1px solid var(--line);
+            border-radius:var(--radius-lg);
+            padding:22px;
+            box-shadow:var(--shadow-card);
+        }
+        .panel-title{
+            font-size:15px;
+            font-weight:700;
+            margin:0 0 14px;
+        }
+
+        /* ---------- Cart items ---------- */
+        .empty-state{
+            text-align:center;
+            padding:38px 10px;
+        }
+        .empty-title{ font-weight:700; font-size:15px; margin:0 0 6px; }
+        .empty-sub{ font-size:13px; color:var(--ink-soft); margin:0; }
+
+        .cart-item{
+            display:flex;
+            gap:14px;
+            padding:16px 0;
+            border-bottom:1px solid var(--line);
+        }
+        .cart-item:first-child{ padding-top:2px; }
+        .cart-item:last-child{ border-bottom:none; padding-bottom:2px; }
+
+        .item-no{
+            flex-shrink:0;
+            width:32px;
+            padding-top:2px;
+            font-family:'JetBrains Mono',monospace;
+            font-size:11px;
+            font-weight:600;
+            color:var(--ink-faint);
+        }
+        .item-body{ flex:1; min-width:0; }
+        .item-top{
+            display:flex;
+            justify-content:space-between;
+            align-items:baseline;
+            gap:10px;
+        }
+        .item-name{
+            font-weight:700;
+            font-size:15px;
+            overflow-wrap:anywhere;
+        }
+        .item-qty{
+            font-size:12px;
+            color:var(--ink-soft);
+            white-space:nowrap;
+            flex-shrink:0;
+        }
+        .item-detail{
+            margin-top:6px;
+            font-size:12.5px;
+            color:var(--ink-soft);
+            line-height:1.65;
+        }
+        .item-price{
+            margin-top:10px;
+            font-family:'JetBrains Mono',monospace;
+            font-weight:700;
+            font-size:15px;
+        }
+
+        .item-actions{
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+            flex-shrink:0;
+        }
+        .item-btn{
+            border:none;
+            border-radius:8px;
+            padding:8px 13px;
+            font-size:12px;
+            font-weight:700;
+            cursor:pointer;
+            white-space:nowrap;
+            transition:opacity .15s, background .15s;
+        }
+        .view-btn{ background:var(--ink); color:#fff; }
+        .view-btn:hover{ background:#26333F; }
+        .view-btn.disabled{ background:#D7DCE1; color:#fff; cursor:not-allowed; }
+        .delete-btn{ background:var(--red-soft); color:var(--red); }
+        .delete-btn:hover{ background:#F6D6D5; }
+
+        /* ---------- Form ---------- */
+        .field{ margin-bottom:14px; }
+        .field:last-child{ margin-bottom:0; }
+        .field label{
+            display:block;
+            font-size:12.5px;
+            font-weight:600;
+            color:var(--ink-soft);
+            margin-bottom:6px;
+        }
+        .field input{
+            width:100%;
+            padding:12px 14px;
+            border:1px solid var(--line);
+            border-radius:var(--radius-sm);
+            font-size:14.5px;
+            color:var(--ink);
+            background:var(--paper);
+            transition:border-color .15s, box-shadow .15s, background .15s;
+        }
+        .field input::placeholder{ color:var(--ink-faint); }
+        .field input:focus{
+            outline:none;
+            border-color:var(--blue);
+            background:#fff;
+            box-shadow:0 0 0 3px rgba(38,87,166,.12);
+        }
+        .field-hint{
+            margin:6px 0 0;
+            font-size:11.5px;
+            color:var(--ink-soft);
+            line-height:1.5;
+        }
+
+        /* ---------- Receipt / summary ---------- */
+        .receipt{
+            position:relative;
+            overflow:hidden;
+            padding-top:22px;
+        }
+        .receipt-head h2{
+            margin:2px 0 0;
+            font-size:18px;
+            font-weight:800;
+        }
+        .receipt-divider{
+            position:relative;
+            height:0;
+            margin:18px 0;
+            border:none;
+            border-top:1px dashed var(--line);
+        }
+        .receipt-divider::before,
+        .receipt-divider::after{
+            content:"";
+            position:absolute;
+            top:50%;
+            width:20px;
+            height:20px;
+            border-radius:50%;
+            background:var(--paper);
+            transform:translateY(-50%);
+        }
+        .receipt-divider::before{ left:-32px; }
+        .receipt-divider::after{ right:-32px; }
+
+        .total-price{
+            font-family:'JetBrains Mono',monospace;
+            font-size:18px;
+            font-weight:700;
+            letter-spacing:-.01em;
+            margin:0 0 18px;
+            padding:14px 16px;
+            background:var(--paper);
+            border-radius:var(--radius-sm);
+            text-align:right;
+        }
+
+        .pay-actions{
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+        }
+        .pay-btn{
+            width:100%;
+            padding:15px;
+            background:var(--blue);
+            color:#fff;
+            border:none;
+            border-radius:var(--radius-sm);
+            font-size:15.5px;
+            font-weight:700;
+            cursor:pointer;
+            transition:background .15s, transform .05s;
+        }
+        .pay-btn:hover{ background:var(--blue-dark); }
+        .pay-btn:active{ transform:scale(.99); }
+        .pay-btn:disabled{ background:#B7C3D6; cursor:not-allowed; }
+
+        .bank-btn{
+            width:100%;
+            padding:15px;
+            background:var(--surface);
+            color:var(--ink);
+            border:1.5px solid var(--line);
+            border-radius:var(--radius-sm);
+            font-size:15.5px;
+            font-weight:700;
+            cursor:pointer;
+            transition:border-color .15s, background .15s;
+        }
+        .bank-btn:hover{ border-color:var(--ink); background:var(--paper); }
+        .bank-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+        .receipt-footnote{
+            margin:16px 0 0;
+            font-size:11px;
+            color:var(--ink-soft);
+            line-height:1.5;
+            text-align:center;
+        }
+
+        @media (prefers-reduced-motion:reduce){
+            *{ transition:none !important; animation:none !important; }
+        }
+
+        @media (max-width:480px){
+            .page{ padding:26px 14px 60px; }
+            .panel{ padding:18px; }
+            .page-header h1{ font-size:24px; }
+        }
     </style>
 
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
@@ -37,20 +344,65 @@
 </head>
 <body>
 
-<div class="wrap">
-    <h1>🛒 주문작성</h1>
-    <div id="cart-list"></div>
-    <div class="form-box">
-        <h3>주문자 정보</h3>
-        <input id="name" placeholder="성함"/>
-        <input id="phone" placeholder="전화번호(오기입시 결제창이 호출되지 않습니다.)"/>
-        <input id="address" placeholder="주소"/>
-        <input id="detailAddress" placeholder="상세주소"/>
-    </div>
-    <div class="bottom">
-        <div id="total-price">총 결제금액 : 0원</div>
-        <button class="pay-btn" onclick="goCard()">카드결제</button>
-        <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+<div class="page">
+    <header class="page-header">
+        <p class="eyebrow">ECOGR ORDER</p>
+        <h1>주문서</h1>
+        <p class="subtitle">장바구니에 담긴 상품과 주문자 정보를 확인한 뒤 결제를 진행해주세요.</p>
+    </header>
+
+    <div class="layout">
+        <div class="main-col">
+            <section class="panel">
+                <h2 class="panel-title">담긴 상품</h2>
+                <div id="cart-list"></div>
+            </section>
+
+            <section class="panel form-box">
+                <h2 class="panel-title">주문자 정보</h2>
+
+                <div class="field">
+                    <label for="name">성함</label>
+                    <input id="name" type="text" placeholder="홍길동" />
+                </div>
+
+                <div class="field">
+                    <label for="phone">전화번호</label>
+                    <input id="phone" type="tel" placeholder="010-0000-0000" />
+                    <p class="field-hint">전화번호를 잘못 입력하면 결제창이 열리지 않아요.</p>
+                </div>
+
+                <div class="field">
+                    <label for="address">주소</label>
+                    <input id="address" type="text" placeholder="도로명 주소" />
+                </div>
+
+                <div class="field">
+                    <label for="detailAddress">상세주소</label>
+                    <input id="detailAddress" type="text" placeholder="동/호수 등 상세 주소" />
+                </div>
+            </section>
+        </div>
+
+        <aside class="summary-col">
+            <div class="panel receipt">
+                <div class="receipt-head">
+                    <p class="eyebrow">ORDER SUMMARY</p>
+                    <h2>결제 정보</h2>
+                </div>
+
+                <div class="receipt-divider"></div>
+
+                <div id="total-price" class="total-price">총 결제금액 : 0원</div>
+
+                <div class="pay-actions">
+                    <button class="pay-btn" onclick="goCard()">카드결제</button>
+                    <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+                </div>
+
+                <p class="receipt-footnote">결제를 진행하면 이용약관 및 개인정보 처리방침에 동의한 것으로 간주됩니다.</p>
+            </div>
+        </aside>
     </div>
 </div>
 
@@ -144,40 +496,51 @@ let total = 0;
 
 function render(){
     const list = document.getElementById("cart-list");
-    list.innerHTML = "";
     total = 0;
-    cart.forEach((item,index)=>{
-        // price가 "12,345원" 같은 문자열로 들어와도 안전하게 숫자로 변환
-        const priceNumber = Number(String(item.price).replace(/[^0-9.-]/g, '')) || 0;
-        total += priceNumber;
 
-        // 01my.html → 에코프로1 → 시안보기를 거쳐 넘어온 상세 주문정보(용지/편집/후가공/무게)가
-        // 있으면 함께 표시하고, 없으면(기존 방식으로 담긴 항목) 기본 정보만 표시한다.
-        const detailLines = [
-            (item.width && item.height) ? `${item.width} × ${item.height}mm` : '',
-            item.paper ? `용지: ${item.paper}` : '',
-            item.ink ? `편집: ${item.ink}` : '',
-            item.finishings ? `후가공: ${item.finishings}` : '',
-            item.weight ? `무게: 약 ${item.weight}kg` : ''
-        ].filter(Boolean).join('<br/>');
-
-        list.innerHTML += `
-        <div class="cart-item">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <div>
-                    <b>${item.item}</b> (${item.qty}개${item.count && item.count != 1 ? ` × ${item.count}건` : ''})<br/>
-                    ${detailLines ? detailLines + '<br/>' : ''}
-                    ${priceNumber.toLocaleString()}원
-                </div>
-                <div style="display:flex; flex-direction:column; gap:6px;">
-                    ${ item.compositeImage && /^https?:\/\//.test(item.compositeImage)
-                        ? `<button onclick="viewComposite(${index})" style="background:#111; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; white-space:nowrap;">🖼 시안보기</button>`
-                        : `<button disabled style="background:#ccc; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:not-allowed; white-space:nowrap;">🖼 시안보기</button>` }
-                    <button onclick="deleteItem(${index})" style="background:#ff3b30; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">삭제</button>
-                </div>
-            </div>
+    if(cart.length === 0){
+        list.innerHTML = `<div class="empty-state">
+            <p class="empty-title">담긴 상품이 없어요</p>
+            <p class="empty-sub">시안 페이지에서 주문할 상품을 먼저 담아주세요.</p>
         </div>`;
-    });
+    } else {
+        list.innerHTML = "";
+        cart.forEach((item,index)=>{
+            // price가 "12,345원" 같은 문자열로 들어와도 안전하게 숫자로 변환
+            const priceNumber = Number(String(item.price).replace(/[^0-9.-]/g, '')) || 0;
+            total += priceNumber;
+
+            // 01my.html → 에코프로1 → 시안보기를 거쳐 넘어온 상세 주문정보(용지/편집/후가공/무게)가
+            // 있으면 함께 표시하고, 없으면(기존 방식으로 담긴 항목) 기본 정보만 표시한다.
+            const detailLines = [
+                (item.width && item.height) ? `${item.width} × ${item.height}mm` : '',
+                item.paper ? `용지: ${item.paper}` : '',
+                item.ink ? `편집: ${item.ink}` : '',
+                item.finishings ? `후가공: ${item.finishings}` : '',
+                item.weight ? `무게: 약 ${item.weight}kg` : ''
+            ].filter(Boolean).join('<br/>');
+
+            list.innerHTML += `
+            <div class="cart-item">
+                <div class="item-no">No.${String(index + 1).padStart(2, '0')}</div>
+                <div class="item-body">
+                    <div class="item-top">
+                        <div class="item-name">${item.item}</div>
+                        <div class="item-qty">${item.qty}개${item.count && item.count != 1 ? ` × ${item.count}건` : ''}</div>
+                    </div>
+                    ${detailLines ? `<div class="item-detail">${detailLines}</div>` : ''}
+                    <div class="item-price">${priceNumber.toLocaleString()}원</div>
+                </div>
+                <div class="item-actions">
+                    ${ item.compositeImage && /^https?:\/\//.test(item.compositeImage)
+                        ? `<button onclick="viewComposite(${index})" class="item-btn view-btn">시안보기</button>`
+                        : `<button disabled class="item-btn view-btn disabled">시안보기</button>` }
+                    <button onclick="deleteItem(${index})" class="item-btn delete-btn">삭제</button>
+                </div>
+            </div>`;
+        });
+    }
+
     document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
 }
 
