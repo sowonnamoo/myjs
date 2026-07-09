@@ -157,6 +157,31 @@ window.goBankTransfer = async function(){
     location.href = "success2.html";
 };
 
+
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    // 'price' 값이 넘어왔는지 확인하여 실행
+    if (params.has('price')) {
+        const newItem = {
+            item: params.get('item') || '커스텀 인쇄물',
+            qty: params.get('qty') || 1,
+            width: params.get('width'),
+            height: params.get('height'),
+            price: params.get('price'),
+            compositeImage: params.get('compositeImage') // 넘겨받은 시안 합본 파일명
+        };
+        
+        // 중복 추가 방지: 같은 가격/상품인 경우 제외
+        if (!cart.some(c => c.price === newItem.price && c.compositeImage === newItem.compositeImage)) {
+            cart.push(newItem);
+            localStorage.setItem("cart", JSON.stringify(cart));
+            // URL 파라미터 정리
+            window.history.replaceState({}, document.title, window.location.pathname);
+            render();
+        }
+    }
+});
+
 render();
 </script>
 
