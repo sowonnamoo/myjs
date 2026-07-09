@@ -13,7 +13,6 @@
         input{ width:100%; padding:12px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; }
         .bottom{ background:#fff; padding:20px; border-radius:15px; margin-top:20px; }
         .pay-btn{ width:100%; padding:15px; background:#007AFF; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; margin-bottom:8px; }
-        .paypal-btn{ width:100%; padding:15px; background:#003087; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; font-weight:bold; margin-bottom:8px; }
         .bank-btn{ width:100%; padding:15px; background:#111; color:#fff; border:none; border-radius:10px; cursor:pointer; font-size:16px; }
     </style>
 
@@ -58,7 +57,7 @@
 <script>
 // 각 결제 수단별 독립적인 Worker 주소
 const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/"; 
-const WORKER_PAYPAL = "https://paypal.ecogr.workers.dev/";
+const WORKER_PAYPAL = "";
 
 // ---- Cloudflare Worker를 통한 실제 R2 업로드 (시안에서 넘어온 원본 이미지들을 여기서 업로드) ----
 const R2_WORKER_URL = "https://r2.ecogr.workers.dev/";
