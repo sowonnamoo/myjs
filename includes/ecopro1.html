@@ -193,27 +193,15 @@ document.getElementById('save-btn').addEventListener('click', () => {
 
 canvas.on('selection:created', (e) => { /* 선택 시 필요 시 작업 */ });
 
-// 캔버스 영역 내의 빈 곳을 클릭했을 때 확실하게 해제
-canvas.on('mouse:down', (e) => {
-    if (!canvas.getActiveObject() || e.target === null) {
-        canvas.discardActiveObject();
-        canvas.renderAll();
-    }
-});
-
-// 문서 전체 클릭 이벤트
-document.addEventListener('mousedown', (e) => {
-    // 캔버스 밖을 클릭한 경우
-    if (!e.target.classList.contains('upper-canvas') && !e.target.classList.contains('lower-canvas')) {
-        canvas.discardActiveObject();
-        canvas.renderAll();
-    }
-});
+// [이곳에 추가] 캔버스 바깥 영역 클릭 시 선택 해제
+        document.body.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'CANVAS') {
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            }
+        });
 
 
-
-
-    
 
    const guideBtn = document.getElementById('guide-btn');
 
