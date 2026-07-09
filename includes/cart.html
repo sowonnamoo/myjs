@@ -133,14 +133,7 @@ window.goCard = async function() {
     } catch (e) { alert("카드 서버 연결 실패"); }
 };
 
-// [2] 페이팔 결제 전용
-window.goPaypal = async function() {
-    try {
-        const res = await fetch(WORKER_PAYPAL);
-        const data = await res.json();
-        processPayment("페이팔결제", "PAYPAL", "USD", data.CHANNEL_KEY_PAYPAL, data.STORE_ID);
-    } catch (e) { alert("페이팔 서버 연결 실패"); }
-};
+
 
 // [3] 핵심 결제 처리 엔진 (공통)
 async function processPayment(paymentType, payMethod, currency, channelKey, storeId) {
