@@ -60,6 +60,86 @@
 const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/"; 
 const WORKER_PAYPAL = "https://paypal.ecogr.workers.dev/";
 
+// ---- Cloudflare Worker를 통한 실제 R2 업로드 (시안에서 넘어온 원본 이미지들을 여기서 업로드) ----
+const R2_WORKER_URL = "https://r2.ecogr.workers.dev/";
+const R2_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const R2_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+function getExtFromFilename(filename, fallback){
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    return ext || fallback;
+}
+
+// data URL(또는 일반 URL) 문자열을 Blob으로 변환
+async function urlToBlob(url){
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`이미지를 불러오지 못했습니다 (status ${res.status})`);
+    return await res.blob();
+}
+
+// filename의 파일을 PUT으로 Worker(R2)에 올리고, 업로드된 파일의 URL을 돌려받는다.
+// Worker 응답이 JSON({url:"..."}) 이든, URL 문자열 그대로든 둘 다 처리한다.
+async function uploadFileToR2(blob, filename){
+    const ext = getExtFromFilename(filename, 'jpg');
+    if(!R2_ALLOWED_EXTENSIONS.includes(ext)){
+        throw new Error(`허용되지 않는 파일 형식입니다: .${ext}`);
+    }
+    if(blob.size > R2_MAX_FILE_SIZE){
+        throw new Error(`파일 크기가 너무 큽니다. (최대 500MB, 현재 ${(blob.size / 1024 / 1024).toFixed(1)}MB)`);
+    }
+
+    const res = await fetch(R2_WORKER_URL + encodeURIComponent(filename), {
+        method: 'PUT',
+        headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+        body: blob
+    });
+
+    if(!res.ok){
+        throw new Error(`R2 업로드 실패 (status ${res.status})`);
+    }
+
+    let fileUrl = '';
+    try {
+        const data = await res.clone().json();
+        fileUrl = data.url || data.fileUrl || '';
+    } catch(e){ /* JSON이 아니면 아래에서 텍스트로 재시도 */ }
+
+    if(!fileUrl){
+        fileUrl = (await res.text()).trim();
+    }
+
+    if(!fileUrl){
+        throw new Error('R2 응답에서 파일 URL을 찾을 수 없습니다.');
+    }
+    return fileUrl;
+}
+
+// 장바구니에 담긴 항목 중 아직 R2에 업로드되지 않은 원본 이미지들(item.originalImages)을
+// 모두 업로드하고, 결과 URL을 item.originalImageUrls 에 채워 넣은 뒤 localStorage에 반영한다.
+// 카드결제 시작 직전에 호출한다.
+async function uploadRemainingOriginals(onProgress){
+    let total = 0, done = 0;
+    cart.forEach(item => { if(Array.isArray(item.originalImages)) total += item.originalImages.length; });
+
+    for(const item of cart){
+        if(!Array.isArray(item.originalImages) || item.originalImages.length === 0) continue;
+
+        const uploadedUrls = [];
+        for(const orig of item.originalImages){
+            const blob = await urlToBlob(orig.sourceUrl);
+            const url = await uploadFileToR2(blob, orig.filename);
+            uploadedUrls.push({ filename: orig.filename, url });
+            done++;
+            if(onProgress) onProgress(done, total);
+        }
+
+        item.originalImageUrls = uploadedUrls;
+        delete item.originalImages; // 업로드가 끝난 원본 데이터(용량이 큰 data URL)는 더 이상 들고 있지 않는다.
+    }
+
+    localStorage.setItem("cart", JSON.stringify(cart));
+}
+
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 let total = 0;
 
@@ -90,7 +170,12 @@ function render(){
                     ${detailLines ? detailLines + '<br/>' : ''}
                     ${priceNumber.toLocaleString()}원
                 </div>
-                <button onclick="deleteItem(${index})" style="background:#ff3b30; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">삭제</button>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    ${ item.compositeImage && /^https?:\/\//.test(item.compositeImage)
+                        ? `<button onclick="viewComposite(${index})" style="background:#111; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; white-space:nowrap;">🖼 시안보기</button>`
+                        : `<button disabled style="background:#ccc; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:not-allowed; white-space:nowrap;">🖼 시안보기</button>` }
+                    <button onclick="deleteItem(${index})" style="background:#ff3b30; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">삭제</button>
+                </div>
             </div>
         </div>`;
     });
@@ -101,6 +186,11 @@ window.deleteItem = function(index){
     cart.splice(index,1);
     localStorage.setItem("cart",JSON.stringify(cart));
     render();
+};
+
+window.viewComposite = function(index){
+    const url = cart[index] && cart[index].compositeImage;
+    if(url) window.open(url, '_blank');
 };
 
 async function saveOrderToFirestore(orderData) {
@@ -125,11 +215,31 @@ function saveOrder(type, paymentId){
 
 // [1] 카드 결제 전용 (KCP)
 window.goCard = async function() {
+    const btn = document.querySelector('.pay-btn');
+    const originalText = btn ? btn.textContent : '';
+    if(btn) btn.disabled = true;
+
     try {
+        // 1. 아직 R2에 올라가지 않은 원본 이미지들을 먼저 업로드한다.
+        const totalToUpload = cart.reduce((sum, item) => sum + (Array.isArray(item.originalImages) ? item.originalImages.length : 0), 0);
+        if(totalToUpload > 0){
+            if(btn) btn.textContent = `원본 이미지 업로드 중... (0/${totalToUpload})`;
+            await uploadRemainingOriginals((done, total) => {
+                if(btn) btn.textContent = `원본 이미지 업로드 중... (${done}/${total})`;
+            });
+        }
+
+        // 2. 카드결제 채널 정보를 받아와 결제창을 띄운다.
+        if(btn) btn.textContent = '결제창 준비 중...';
         const res = await fetch(WORKER_CARD);
         const data = await res.json();
-        processPayment("카드결제", "CARD", "KRW", data.CHANNEL_KEY_CARD, data.STORE_ID);
-    } catch (e) { alert("카드 서버 연결 실패"); }
+        await processPayment("카드결제", "CARD", "KRW", data.CHANNEL_KEY_CARD, data.STORE_ID);
+    } catch (e) {
+        console.error(e);
+        alert("카드결제 준비 중 오류가 발생했습니다.\n" + (e.message || "서버 연결을 확인하세요."));
+    } finally {
+        if(btn){ btn.disabled = false; btn.textContent = originalText; }
+    }
 };
 
 
