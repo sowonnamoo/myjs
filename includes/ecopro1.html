@@ -74,7 +74,16 @@
             height: containerWidth * (ratioH / ratioW),
             backgroundColor: '#ffffff'
         });
+        
+canvas.on('selection:created', (e) => {});
 
+canvas.on('mouse:down', (e) => {
+    if (!e.target) {
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+    }
+});
+        
         const padding = canvas.width * 0.02; 
         guideRect = new fabric.Rect({
             left: padding, top: padding,
@@ -191,23 +200,31 @@ document.getElementById('save-btn').addEventListener('click', () => {
     }
 
 
-canvas.on('selection:created', (e) => { /* 선택 시 필요 시 작업 */ });
+/*
+canvas.on('selection:created', (e) => {});
 
-// 캔버스 배경 클릭 시 선택 해제
 canvas.on('mouse:down', (e) => {
     if (!e.target) {
         canvas.discardActiveObject();
         canvas.renderAll();
     }
 });
+*/
 
 // 캔버스 외부 영역(body) 클릭 시 선택 해제
-document.addEventListener('click', (e) => {
-    // 캔버스 요소나 fabric.js의 조절 핸들(upper-canvas)을 클릭한 게 아니라면
-    if (!e.target.closest('.canvas-container') && e.target.tagName !== 'CANVAS') {
-        canvas.discardActiveObject();
-        canvas.renderAll();
+document.addEventListener('mousedown', (e) => {
+
+    const wrapper = document.querySelector('.canvas-container');
+
+    if (wrapper && !wrapper.contains(e.target)) {
+
+        if (canvas && canvas.getActiveObject()) {
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+        }
+
     }
+
 });
 
 
@@ -215,17 +232,21 @@ document.addEventListener('click', (e) => {
 
     
 
-   const guideBtn = document.getElementById('guide-btn');
+const guideBtn = document.getElementById('guide-btn');
 
-guideBtn.addEventListener('mouseenter', () => {
-    guideRect.visible = true;
-    canvas.renderAll();
-});
+if (guideBtn) {
 
-guideBtn.addEventListener('mouseleave', () => {
-    guideRect.visible = false;
-    canvas.renderAll();
-});
+    guideBtn.addEventListener('mouseenter', () => {
+        guideRect.visible = true;
+        canvas.renderAll();
+    });
+
+    guideBtn.addEventListener('mouseleave', () => {
+        guideRect.visible = false;
+        canvas.renderAll();
+    });
+
+}
 </script>
 </body>
 </html>
