@@ -462,7 +462,7 @@ cartCheckoutBtn.addEventListener('click', withButtonLoading(cartCheckoutBtn, '�
     const params = new URLSearchParams(window.location.search);
     
     // 4. 주문작성 페이지로 넘길 주소 만들기
-    const checkoutUrl = new URL('주문작성.html', window.location.origin);
+    const checkoutUrl = new URL('/myjs/includes/cart.html', window.location.origin);
     
     // 5. 기존 주문 정보(paper, price 등) 복사
     params.forEach((value, key) => {
