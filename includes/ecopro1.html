@@ -191,15 +191,7 @@ document.getElementById('save-btn').addEventListener('click', () => {
     }
 
 
-canvas.on('selection:created', (e) => { /* 선택 시 필요 시 작업 */ });
 
-// [이곳에 추가] 캔버스 바깥 영역 클릭 시 선택 해제
-        document.body.addEventListener('click', function(e) {
-            if (e.target.tagName !== 'CANVAS') {
-                canvas.discardActiveObject();
-                canvas.renderAll();
-            }
-        });
 
 
 
