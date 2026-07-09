@@ -15,7 +15,7 @@
         .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
         .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
         .side-btn.active { background: #e67e22; color: white; }
-        
+
      #notice-box{
     width:100%;
     max-width:1024px;
@@ -28,14 +28,14 @@
 
     text-align:left;
 }
-        
-#canvas-wrapper { 
-    border: 1px solid #bdc3c7; 
-    background: #fff; 
-    width: 100%; 
-    max-width: 1024px; 
-    overflow: hidden; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+
+#canvas-wrapper {
+    border: 1px solid #bdc3c7;
+    background: #fff;
+    width: 100%;
+    max-width: 1024px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .left-tools,
 .right-tools{
@@ -55,7 +55,12 @@
 
     font-family: 'Malgun Gothic', sans-serif;
     font-size: 14px;
-}    </style>
+}
+.btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+}
+    </style>
 </head>
 <body>
 
@@ -103,6 +108,12 @@
     
 <script>
     let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText;
+
+    // 시안보기 페이지로 넘길 때 사용할 세션 스토리지 키
+    // (같은 브라우저 탭 세션 동안만 유지되며, 새 탭/새 세션에서는 사라집니다)
+    const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
+    // 시안보기 페이지 경로 (같은 폴더에 있다고 가정, 실제 배포 경로에 맞게 수정하세요)
+    const PREVIEW_PAGE_URL = '/includes/sian.html';
 
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -253,7 +264,7 @@ img.setCoords();
 
 
 
-document.getElementById('save-btn').addEventListener('click', () => {
+document.getElementById('save-btn').addEventListener('click', async () => {
 
 
     // 이미지 업로드 여부 검사
@@ -283,49 +294,66 @@ document.getElementById('save-btn').addEventListener('click', () => {
         return;
     }
 
+    const saveBtn = document.getElementById('save-btn');
+    const originalBtnText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '이미지 생성 중...';
 
+    // 원래 보고 있던 디자인/사이드를 기억해뒀다가 작업 끝나면 복원
+    const originalIdx = currentIdx;
+    const originalSide = currentSide;
 
-    const guideVisible = guideRect.visible;
+    try {
+        const exportedDesigns = [];
 
+        // 모든 디자인(양면이면 앞/뒤 각각)을 순회하며 캔버스에 잠깐씩 올려 내보냄
+        for (let i = 0; i < count; i++) {
+            const sides = isDouble ? ['front', 'back'] : ['front'];
+            for (const side of sides) {
+                currentIdx = i;
+                currentSide = side;
+                updateView();
 
+                // 가이드(빨간 박스/안내문구)는 저장 이미지에서 제외
+                canvas.remove(guideRect);
+                canvas.remove(guideText);
+                canvas.renderAll();
 
+                // 시안보기 페이지 전달용이라 용량을 고려해 JPEG로 내보냄
+                // (붙여넣기용 고해상도 PNG가 필요하면 format을 'png'로 바꾸세요)
+                const dataUrl = canvas.toDataURL({
+                    format: 'jpeg',
+                    quality: 0.92,
+                    multiplier: 2
+                });
 
+                const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
+                exportedDesigns.push({ label, dataUrl });
+            }
+        }
 
+        // 세션 스토리지에 담아서 시안보기 페이지로 전달
+        // (같은 브라우저 탭 세션 동안 유지됩니다. 용량이 매우 큰 경우 실패할 수 있어
+        //  실제 서비스에서는 캔버스를 서버/R2에 업로드하고 URL만 전달하는 방식을 권장합니다)
+        try {
+            sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(exportedDesigns));
+        } catch (storageErr) {
+            console.error(storageErr);
+            alert('이미지 용량이 너무 커서 시안보기 페이지로 바로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
+            return;
+        }
 
+        // 시안보기 페이지로 이동
+        window.location.href = PREVIEW_PAGE_URL;
 
-
-
-    
-    const textVisible = guideText.visible;
-
-    // 저장 시 숨김
-   canvas.remove(guideRect);
-canvas.remove(guideText);
-
-canvas.renderAll();
-
-const dataURL = canvas.toDataURL({
-    format: 'png',
-    multiplier: 3
-});
-
-canvas.add(guideRect);
-
-if (textVisible) {
-    canvas.add(guideText);
-}
-
-canvas.renderAll();
-    
-    // 원상복구
-    guideRect.visible = guideVisible;
-    guideText.visible = textVisible;
-    canvas.renderAll();
-
-    const link = document.createElement('a');
-    link.download = `design_${currentIdx}_${currentSide}.png`;
-    link.href = dataURL;
-    link.click();
+    } finally {
+        // 페이지 이동이 실패한 경우를 대비해 원래 화면으로 복원
+        currentIdx = originalIdx;
+        currentSide = originalSide;
+        updateView();
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalBtnText;
+    }
 });
     
 
