@@ -223,6 +223,7 @@ canvas.on('mouse:down', (e) => {
     rotatingPointOffset: 30
 });
             img.scaleToWidth(canvas.width);
+img.setCoords();
             designData[currentIdx][currentSide] = img;
             updateView();
             
@@ -246,7 +247,7 @@ document.getElementById('bright-up').addEventListener('click', () => {
         return;
     }
 
-    brightnessValue += 0.1;
+    brightnessValue += 0.03;
 
     img.filters = [
         new fabric.Image.filters.Brightness({
@@ -254,9 +255,10 @@ document.getElementById('bright-up').addEventListener('click', () => {
         })
     ];
 
-  img.applyFilters();
+img.applyFilters();
 
 img.setCoords();
+img.dirty = true;
 
 canvas.requestRenderAll();
 
@@ -272,7 +274,7 @@ document.getElementById('bright-down').addEventListener('click', () => {
         return;
     }
 
-    brightnessValue -= 0.1;
+    brightnessValue -= 0.03;
 
     img.filters = [
         new fabric.Image.filters.Brightness({
