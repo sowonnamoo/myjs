@@ -363,7 +363,12 @@ document.addEventListener('mousedown', (e) => {
 
     const wrapper = document.querySelector('.canvas-container');
 
-    if (wrapper && !wrapper.contains(e.target)) {
+    if (
+        wrapper &&
+        !wrapper.contains(e.target) &&
+        !e.target.closest('.left-tools') &&
+        !e.target.closest('.right-tools')
+    ) {
 
         if (canvas && canvas.getActiveObject()) {
             canvas.discardActiveObject();
@@ -373,7 +378,6 @@ document.addEventListener('mousedown', (e) => {
     }
 
 });
-
 
 
 
