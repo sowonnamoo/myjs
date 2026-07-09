@@ -1,1 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시안보기 - 그리드 배경</title>
+<style>
+  :root{
+    --grid-line: rgba(0,0,0,0.06);
+    --grid-size: 32px;
+    --bg: #efeee9;
+    --gap: 70px; /* 고정 */
+    --sat: 50%; /* 채도 -50% 고정 */
+    --img-width: 700px;
+  }
 
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{
+    background:var(--bg);
+    min-height:100vh;
+  }
+
+  /* 바닥 그리드 무늬 */
+  .grid-floor{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    background-color: var(--bg);
+    pointer-events:none;
+  }
+
+  /* 이미지 레이어 */
+  .board{
+    position:relative;
+    z-index:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: var(--gap);
+    padding: var(--gap) 0 60px;
+  }
+
+  /* 이미지 프레임 (워터마크 오버레이용) */
+  .photo-frame{
+    position:relative;
+    width: var(--img-width);
+    max-width: calc(100vw - 40px);
+    line-height:0;
+  }
+
+  .board img{
+    position:relative;
+    z-index:1;
+    width:100%;
+    height:auto;
+    display:block;
+    filter: saturate(var(--sat));
+    clip-path: inset(2.5%); /* 가로/세로 각각 95%만 노출, 나머지 5%(상하좌우 2.5%씩)는 숨김 */
+    opacity:0;
+    transform: translateY(40px);
+    animation: rise-up 0.7s ease forwards;
+  }
+
+  .photo-frame:nth-child(2) img{ animation-delay: 0.05s; }
+  .photo-frame:nth-child(3) img{ animation-delay: 0.2s; }
+  .photo-frame:nth-child(4) img{ animation-delay: 0.35s; }
+  .photo-frame:nth-child(5) img{ animation-delay: 0.5s; }
+  .photo-frame:nth-child(n+6) img{ animation-delay: 0.65s; }
+
+  @keyframes rise-up{
+    from{
+      opacity:0;
+      transform: translateY(40px);
+      filter: saturate(var(--sat));
+    }
+    to{
+      opacity:1;
+      transform: translateY(0);
+      filter: saturate(var(--sat));
+    }
+  }
+
+  /* 워터마크: 이미지 너비가 700px를 초과할 때만 노출, 인쇄 시에는 항상 숨김 */
+  .watermark{
+    position:absolute;
+    inset: 2.5%; /* 클리핑된 실제 노출 영역과 맞춤 */
+    display:none;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+    align-items:center;
+    justify-items:center;
+    pointer-events:none;
+    overflow:hidden;
+    z-index:3;
+  }
+  body.watermark-on .watermark{
+    display:grid;
+  }
+  .watermark span{
+    color:rgba(255,255,255,0.55);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.02em;
+    transform: rotate(-28deg);
+    white-space:nowrap;
+  }
+  @media print{
+    .watermark{ display:none !important; }
+  }
+
+  /* 빠른 조절 바 - 상단 공백(gap) 영역 안에 한 줄로 배치, 문서 흐름에 포함되어 스크롤 시 함께 이동하므로 사진을 절대 가리지 않음 */
+  .quick-bar{
+    position:absolute;
+    top:0;
+    left:50%;
+    transform:translateX(-50%);
+    width:min(700px, calc(100vw - 40px));
+    height: var(--gap);
+    max-height:70px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    z-index:2;
+  }
+
+  .quick-bar label{
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
+    font-size:12px;
+    color:#666;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .quick-bar .val{
+    font-weight:700;
+    color:#111;
+  }
+  .quick-bar input[type=range]{
+    width:180px;
+    max-width:40vw;
+  }
+
+  /* 하단 액션 버튼 영역 */
+  .action-wrap{
+    position:relative;
+    z-index:1;
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:12px;
+    padding: 0 20px 90px;
+  }
+  .action-btn{
+    appearance:none;
+    border:none;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
+    font-size:14px;
+    font-weight:700;
+    padding:14px 26px;
+    border-radius:999px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  .action-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 28px rgba(0,0,0,0.22);
+  }
+  .action-btn:active{ transform:translateY(0); }
+  .action-btn:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+    transform:none;
+  }
+  .action-btn.dark{
+    background:#1c1b19;
+    color:#fff;
+  }
+  .action-btn.outline{
+    background:#fff;
+    color:#1c1b19;
+    box-shadow:0 4px 14px rgba(0,0,0,0.1);
+    border:1px solid rgba(0,0,0,0.1);
+  }
+  .action-btn.accent{
+    background:#d4622a;
+    color:#fff;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-floor"></div>
+
+<div class="board" id="board">
+  <div class="quick-bar">
+    <label>이미지 너비 <span class="val" id="widthVal">700px</span></label>
+    <input type="range" id="widthSlider" min="300" max="1200" step="10" value="700" />
+  </div>
+
+  <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치 뒤에 채워집니다 -->
+</div>
+
+<div class="action-wrap">
+  <button class="action-btn dark" id="downloadBtn">⬇ 시안 다운로드 (JPEG)</button>
+  <button class="action-btn accent" id="cartCheckoutBtn">🛒 장바구니담기/결제</button>
+</div>
+
+<script>
+  // ---- 디자인 에디터에서 넘어온 시안 이미지를 동적으로 채워 넣기 ----
+  const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
+  const WATERMARK_TEXT = '에코그래픽스 ecogr.net';
+  const WATERMARK_COUNT = 18; // 3열 x 6행
+
+  // 폴백용 샘플 이미지 (에디터를 거치지 않고 이 페이지를 단독으로 열었을 때 표시)
+  const FALLBACK_DESIGNS = [
+    { label: 'sample 1', dataUrl: 'https://picsum.photos/id/1015/1400/900' },
+    { label: 'sample 2', dataUrl: 'https://picsum.photos/id/1025/1400/1000' },
+    { label: 'sample 3', dataUrl: 'https://picsum.photos/id/1035/1400/700' },
+    { label: 'sample 4', dataUrl: 'https://picsum.photos/id/1043/1400/1050' }
+  ];
+
+  function buildWatermarkEl(){
+    const wm = document.createElement('div');
+    wm.className = 'watermark';
+    for(let i = 0; i < WATERMARK_COUNT; i++){
+      const span = document.createElement('span');
+      span.textContent = WATERMARK_TEXT;
+      wm.appendChild(span);
+    }
+    return wm;
+  }
+
+  function buildPhotoFrame(design){
+    const frame = document.createElement('div');
+    frame.className = 'photo-frame';
+
+    const img = document.createElement('img');
+    img.src = design.dataUrl;
+    img.alt = design.label || '';
+
+    frame.appendChild(img);
+    frame.appendChild(buildWatermarkEl());
+    return frame;
+  }
+
+  function loadDesignsFromSession(){
+    try{
+      const raw = sessionStorage.getItem(PREVIEW_STORAGE_KEY);
+      if(!raw) return null;
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed) && parsed.length > 0) return parsed;
+      return null;
+    }catch(e){
+      console.error('시안 데이터를 읽는 중 오류:', e);
+      return null;
+    }
+  }
+
+  function renderBoard(){
+    const board = document.getElementById('board');
+    const designs = loadDesignsFromSession() || FALLBACK_DESIGNS;
+    designs.forEach(design => {
+      board.appendChild(buildPhotoFrame(design));
+    });
+  }
+
+  renderBoard();
+
+  const root = document.documentElement.style;
+
+  const widthSlider = document.getElementById('widthSlider');
+  const widthVal = document.getElementById('widthVal');
+
+  widthSlider.addEventListener('input', ()=>{
+    const val = Number(widthSlider.value);
+    root.setProperty('--img-width', val + 'px');
+    widthVal.textContent = val + 'px';
+    document.body.classList.toggle('watermark-on', val > 700);
+  });
+
+  // ---- 시안 전체 합쳐서 JPEG로 다운로드 (가로 700px 고정) ----
+  const downloadBtn = document.getElementById('downloadBtn');
+  const CROP_RATIO = 0.95;   // 화면과 동일하게 상하좌우 2.5%씩(총 5%) 크롭
+  const COMPOSITE_WIDTH = 700;
+  const COMPOSITE_GAP = 70;  // 화면의 고정 간격(gap)과 동일
+  const COMPOSITE_SAT = 50;  // 채도 -50% 고정과 동일
+
+  function loadImageEl(src){
+    return new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = ()=> resolve(im);
+      im.onerror = ()=> reject(new Error('이미지를 불러오지 못했습니다: ' + src));
+      im.src = src;
+    });
+  }
+
+  async function buildCompositeCanvas(){
+    const srcEls = Array.from(document.querySelectorAll('.photo-frame img'));
+    const loaded = await Promise.all(srcEls.map(el => loadImageEl(el.src)));
+
+    const items = loaded.map(im => {
+      const cropW = im.naturalWidth * CROP_RATIO;
+      const cropH = im.naturalHeight * CROP_RATIO;
+      const sx = (im.naturalWidth - cropW) / 2;
+      const sy = (im.naturalHeight - cropH) / 2;
+      const destH = Math.round(COMPOSITE_WIDTH * (cropH / cropW));
+      return { img: im, sx, sy, sw: cropW, sh: cropH, destH };
+    });
+
+    const totalHeight =
+      items.reduce((sum, it) => sum + it.destH, 0) +
+      COMPOSITE_GAP * (items.length + 1);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = COMPOSITE_WIDTH;
+    canvas.height = Math.round(totalHeight);
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#efeee9';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let y = COMPOSITE_GAP;
+    items.forEach(it => {
+      ctx.filter = `saturate(${COMPOSITE_SAT}%)`;
+      ctx.drawImage(it.img, it.sx, it.sy, it.sw, it.sh, 0, y, COMPOSITE_WIDTH, it.destH);
+      y += it.destH + COMPOSITE_GAP;
+    });
+    ctx.filter = 'none';
+
+    return canvas;
+  }
+
+  downloadBtn.addEventListener('click', async ()=>{
+    downloadBtn.disabled = true;
+    const original = downloadBtn.textContent;
+    downloadBtn.textContent = '이미지 합치는 중...';
+    try{
+      const canvas = await buildCompositeCanvas();
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = '시안모음_700px.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }catch(err){
+      console.error(err);
+      alert('다운로드 중 오류가 발생했습니다. 이미지 서버의 CORS 정책으로 차단되었을 수 있습니다.');
+    }finally{
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = original;
+    }
+  });
+
+  // ---- 장바구니담기 / 결제하기 → R2 업로드 준비 ----
+  // 실제 서비스에서는 이 부분에서 백엔드(R2 업로드 API)로 원본 이미지들과
+  // 합성된 시안모음 이미지를 함께 전송합니다. 파일명은 절대 중복되지 않도록
+  // "시간(36진수) + 랜덤 UUID" 조합으로 생성합니다.
+
+  function generateUniqueFileName(prefix, ext){
+    const ts = Date.now().toString(36);                 // 밀리초 타임스탬프(36진수)
+    const rand = (crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)));
+    return `${prefix}-${ts}-${rand}.${ext}`;
+  }
+
+  function getExtFromUrl(url, fallback){
+    try{
+      const clean = url.split('?')[0].split('#')[0];
+      const ext = clean.split('.').pop();
+      if(ext && ext.length <= 5 && /^[a-zA-Z0-9]+$/.test(ext)) return ext.toLowerCase();
+    }catch(e){}
+    return fallback;
+  }
+
+  // 쿼리스트링으로 넘어온 원본 이미지 URL 목록을 읽음
+  // 예) ?images=https%3A%2F%2Fexample.com%2Fa.jpg,https%3A%2F%2Fexample.com%2Fb.jpg
+  // 쿼리가 없으면 현재 화면에 표시된 이미지들을 원본으로 사용
+  function getOriginalImageUrls(){
+    const params = new URLSearchParams(window.location.search);
+    const queryImages = params.get('images');
+    if(queryImages){
+      return queryImages.split(',').map(s => decodeURIComponent(s.trim())).filter(Boolean);
+    }
+    return Array.from(document.querySelectorAll('.photo-frame img')).map(img => img.src);
+  }
+
+  async function buildUploadManifest(){
+    const originalUrls = getOriginalImageUrls();
+
+    // 원본 이미지 각각에 고유 파일명 부여
+    const originals = originalUrls.map(url => ({
+      sourceUrl: url,
+      filename: generateUniqueFileName('original', getExtFromUrl(url, 'jpg'))
+    }));
+
+    // 합성 시안모음 이미지 생성 + 고유 파일명 부여
+    const compositeCanvas = await buildCompositeCanvas();
+    const compositeBlob = await new Promise(resolve => compositeCanvas.toBlob(resolve, 'image/jpeg', 0.92));
+    const composite = {
+      filename: generateUniqueFileName('composite', 'jpg'),
+      blob: compositeBlob
+    };
+
+    return { originals, composite };
+  }
+
+  // TODO: 실제 배포 시 아래 함수 내부를 R2 업로드 API 호출로 교체하세요.
+  // 예시:
+  // const form = new FormData();
+  // manifest.originals.forEach(o => form.append('files', o.blob, o.filename));
+  // form.append('files', manifest.composite.blob, manifest.composite.filename);
+  // await fetch('/api/upload-to-r2', { method:'POST', body: form });
+  async function uploadToR2(manifest){
+    console.log('R2 업로드 예정 파일 목록:', manifest);
+    // 지금은 실제 업로드 대신 콘솔에만 출력합니다 (백엔드 연동 전 데모용)
+    await new Promise(r => setTimeout(r, 400)); // 업로드 시뮬레이션
+    return manifest;
+  }
+
+  const cartItems = []; // 메모리 내 장바구니 (새로고침 시 초기화됨)
+
+  function withButtonLoading(btn, loadingText, fn){
+    return async (...args)=>{
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = loadingText;
+      try{
+        return await fn(...args);
+      }catch(err){
+        console.error(err);
+        alert('처리 중 오류가 발생했습니다. 이미지 서버의 CORS 정책으로 차단되었을 수 있습니다.');
+      }finally{
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    };
+  }
+
+  const cartCheckoutBtn = document.getElementById('cartCheckoutBtn');
+
+  cartCheckoutBtn.addEventListener('click', withButtonLoading(cartCheckoutBtn, '처리 중...', async ()=>{
+    const manifest = await buildUploadManifest();
+    await uploadToR2(manifest);
+    cartItems.push(manifest);
+    // TODO: 업로드 완료 후 실제 장바구니/결제 페이지로 이동시키세요.
+    // 예: window.location.href = `/cart?composite=${manifest.composite.filename}`;
+    alert(`장바구니에 담고 결제 페이지로 이동합니다.\n원본 ${manifest.originals.length}장 + 시안모음 1장\n합성파일명: ${manifest.composite.filename}`);
+  }));
+</script>
+
+</body>
+</html>
