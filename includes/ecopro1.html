@@ -11,11 +11,13 @@
         #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         #tab-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
         .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
-        .design-btn.active { background: #3498db; color: white; }
-        .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
-        .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
-        .side-btn.active { background: #e67e22; color: white; }
+        .design-btn { width: 84px; padding: 9px 0; cursor: pointer; border: 1.5px solid #3498db; background: #fff; color: #3498db; font-weight: 700; font-size: 13px; border-radius: 8px; text-align: center; transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .design-btn:hover { background: #eaf4fc; box-shadow: 0 3px 8px rgba(52,152,219,.25); transform: translateY(-1px); }
+        .design-btn.active { background: linear-gradient(135deg, #4aa3e0, #2f7fc9); color: #fff; border-color: transparent; box-shadow: 0 4px 10px rgba(41,128,185,.35); }
+        .side-switch { display: flex; border: 1.5px solid #d7dde3; border-radius: 8px; overflow: hidden; width: 84px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .side-btn { flex: 1; padding: 4px 0; cursor: pointer; font-size: 11px; background: #f5f6f7; border: none; font-weight: 700; color: #667380; text-align: center; transition: background .15s ease, color .15s ease; }
+        .side-btn:hover { background: #e9edf1; }
+        .side-btn.active { background: linear-gradient(135deg, #f0a352, #e67e22); color: white; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
 
      #notice-box{
     width:100%;
@@ -47,19 +49,49 @@
 
         
 .btn {
-    padding: 12px 24px;
+    padding: 13px 28px;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     color: white;
-    font-weight: bold;
+    font-weight: 700;
 
     font-family: 'Malgun Gothic', sans-serif;
     font-size: 14px;
+    letter-spacing: .2px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.14);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease, opacity .15s ease;
+}
+.btn:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,.18);
+}
+.btn:active{
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,.14);
 }
 .btn:disabled{
     opacity:.55;
     cursor:not-allowed;
+    transform:none;
+    box-shadow:none;
+}
+
+.btn-upload{
+    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
+}
+.btn-upload:hover{
+    background: linear-gradient(135deg, #3f97d6, #2569ad);
+}
+
+.btn-save{
+    background: linear-gradient(135deg, #97a1ac, #767f89);
+}
+.btn-save:hover{
+    background: linear-gradient(135deg, #878f99, #666e77);
+}
+.btn-save:disabled:hover{
+    background: linear-gradient(135deg, #97a1ac, #767f89);
 }
     </style>
 </head>
@@ -77,13 +109,13 @@
     <!-- 오른쪽 기존 버튼 -->
     <div class="right-tools">
 
-        <label class="btn" style="background:#3498db;" for="file-input">
+        <label class="btn btn-upload" for="file-input">
             업로드/재업로드
         </label>
 
         <input type="file" id="file-input" accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf,.pdf" style="display:none;">
 
-        <button id="save-btn" class="btn" style="background:#bbb;">
+        <button id="save-btn" class="btn btn-save">
             전체저장
         </button>
 
