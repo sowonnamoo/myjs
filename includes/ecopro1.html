@@ -174,9 +174,12 @@ document.getElementById('save-btn').addEventListener('click', () => {
     canvas.renderAll();
 
     const dataURL = canvas.toDataURL({
-        format: 'png',
-        multiplier: 3
-    });
+    format: 'png',
+    multiplier: 3,
+    filter: function(obj) {
+        return obj !== guideRect && obj !== guideText;
+    }
+});
 
     // 원상복구
     guideRect.visible = guideVisible;
