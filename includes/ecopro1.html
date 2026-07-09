@@ -231,7 +231,75 @@ canvas.on('mouse:down', (e) => {
     reader.readAsDataURL(file);
 });
 
+let brightnessValue = 0;
 
+
+// 밝게
+document.getElementById('bright-up').addEventListener('click', () => {
+
+    const img = canvas.getActiveObject();
+
+    if (!img || img.type !== 'image') {
+        return;
+    }
+
+    brightnessValue += 0.1;
+
+    img.filters = [
+        new fabric.Image.filters.Brightness({
+            brightness: brightnessValue
+        })
+    ];
+
+    img.applyFilters();
+
+    canvas.renderAll();
+
+});
+
+
+// 어둡게
+document.getElementById('bright-down').addEventListener('click', () => {
+
+    const img = canvas.getActiveObject();
+
+    if (!img || img.type !== 'image') {
+        return;
+    }
+
+    brightnessValue -= 0.1;
+
+    img.filters = [
+        new fabric.Image.filters.Brightness({
+            brightness: brightnessValue
+        })
+    ];
+
+    img.applyFilters();
+
+    canvas.renderAll();
+
+});
+
+
+// 원본
+document.getElementById('reset-filter').addEventListener('click', () => {
+
+    const img = canvas.getActiveObject();
+
+    if (!img || img.type !== 'image') {
+        return;
+    }
+
+    brightnessValue = 0;
+
+    img.filters = [];
+
+    img.applyFilters();
+
+    canvas.renderAll();
+
+});
 
 document.getElementById('save-btn').addEventListener('click', () => {
 
