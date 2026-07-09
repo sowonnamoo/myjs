@@ -254,9 +254,11 @@ document.getElementById('bright-up').addEventListener('click', () => {
         })
     ];
 
-    img.applyFilters();
+  img.applyFilters();
 
-    canvas.renderAll();
+img.setCoords();
+
+canvas.requestRenderAll();
 
 });
 
