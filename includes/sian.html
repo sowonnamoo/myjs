@@ -510,9 +510,11 @@ async function buildUploadManifest(){
       throw new Error(`파일 크기가 너무 큽니다. (최대 500MB, 현재 ${(blob.size / 1024 / 1024).toFixed(1)}MB)`);
     }
 
-    const res = await fetch(R2_WORKER_URL + encodeURIComponent(filename), {
+    // 예시 페이지(정상 동작 중)와 동일하게 파일명을 쿼리스트링(?name=)으로 전달합니다.
+    // 기존 코드는 파일명을 URL 경로에 붙여서 보냈는데, Worker가 ?name= 쿼리로
+    // 파일명을 읽도록 되어 있어 업로드가 실패했던 것으로 보입니다.
+    const res = await fetch(`${R2_WORKER_URL}?name=${encodeURIComponent(filename)}`, {
       method: 'PUT',
-      headers: { 'Content-Type': blob.type || 'application/octet-stream' },
       body: blob
     });
 
