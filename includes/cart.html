@@ -1,5 +1,5 @@
 
-11<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8" />
@@ -67,14 +67,27 @@ function render(){
     list.innerHTML = "";
     total = 0;
     cart.forEach((item,index)=>{
-        total += Number(item.price);
+        // price가 "12,345원" 같은 문자열로 들어와도 안전하게 숫자로 변환
+        const priceNumber = Number(String(item.price).replace(/[^0-9.-]/g, '')) || 0;
+        total += priceNumber;
+
+        // 01my.html → 에코프로1 → 시안보기를 거쳐 넘어온 상세 주문정보(용지/편집/후가공/무게)가
+        // 있으면 함께 표시하고, 없으면(기존 방식으로 담긴 항목) 기본 정보만 표시한다.
+        const detailLines = [
+            (item.width && item.height) ? `${item.width} × ${item.height}mm` : '',
+            item.paper ? `용지: ${item.paper}` : '',
+            item.ink ? `편집: ${item.ink}` : '',
+            item.finishings ? `후가공: ${item.finishings}` : '',
+            item.weight ? `무게: 약 ${item.weight}kg` : ''
+        ].filter(Boolean).join('<br/>');
+
         list.innerHTML += `
         <div class="cart-item">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <div>
-                    <b>${item.item}</b> (${item.qty}개)<br/>
-                    ${item.width} × ${item.height}<br/>
-                    ${Number(item.price).toLocaleString()}원
+                    <b>${item.item}</b> (${item.qty}개${item.count && item.count != 1 ? ` × ${item.count}건` : ''})<br/>
+                    ${detailLines ? detailLines + '<br/>' : ''}
+                    ${priceNumber.toLocaleString()}원
                 </div>
                 <button onclick="deleteItem(${index})" style="background:#ff3b30; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">삭제</button>
             </div>
