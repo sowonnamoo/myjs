@@ -65,22 +65,7 @@
 
    <div class="controls">
 
-    <!-- 왼쪽 보정 버튼 -->
-    <div class="left-tools">
 
-        <button id="bright-up" class="btn" style="background:#27ae60;">
-            밝게
-        </button>
-
-        <button id="bright-down" class="btn" style="background:#16a085;">
-            어둡게
-        </button>
-
-        <button id="reset-filter" class="btn" style="background:#7f8c8d;">
-            원본
-        </button>
-
-    </div>
 
 
     <!-- 오른쪽 기존 버튼 -->
@@ -266,78 +251,7 @@ img.setCoords();
     reader.readAsDataURL(file);
 });
 
-let brightnessValue = 0;
 
-
-// 밝게
-document.getElementById('bright-up').addEventListener('click', () => {
-
-    const img = canvas.getActiveObject();
-
-    if (!img || img.type !== 'image') {
-        return;
-    }
-
-    brightnessValue += 0.03;
-
-    img.filters = [
-        new fabric.Image.filters.Brightness({
-            brightness: brightnessValue
-        })
-    ];
-
-img.applyFilters();
-
-img.setCoords();
-img.dirty = true;
-
-canvas.requestRenderAll();
-
-});
-
-
-// 어둡게
-document.getElementById('bright-down').addEventListener('click', () => {
-
-    const img = canvas.getActiveObject();
-
-    if (!img || img.type !== 'image') {
-        return;
-    }
-
-    brightnessValue -= 0.03;
-
-    img.filters = [
-        new fabric.Image.filters.Brightness({
-            brightness: brightnessValue
-        })
-    ];
-
-    img.applyFilters();
-
-    canvas.renderAll();
-
-});
-
-
-// 원본
-document.getElementById('reset-filter').addEventListener('click', () => {
-
-    const img = canvas.getActiveObject();
-
-    if (!img || img.type !== 'image') {
-        return;
-    }
-
-    brightnessValue = 0;
-
-    img.filters = [];
-
-    img.applyFilters();
-
-    canvas.renderAll();
-
-});
 
 document.getElementById('save-btn').addEventListener('click', () => {
 
