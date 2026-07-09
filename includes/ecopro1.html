@@ -255,7 +255,47 @@ img.setCoords();
 
 document.getElementById('save-btn').addEventListener('click', () => {
 
+
+    // 이미지 업로드 여부 검사
+    let emptyDesign = [];
+
+    designData.forEach((item, index) => {
+
+        if (!item.front) {
+            emptyDesign.push(`디자인 ${index + 1} 앞면`);
+        }
+
+        if (isDouble && !item.back) {
+            emptyDesign.push(`디자인 ${index + 1} 뒷면`);
+        }
+
+    });
+
+
+    if (emptyDesign.length > 0) {
+
+        alert(
+            "이미지가 등록되지 않은 시안이 있습니다.\n\n" +
+            emptyDesign.join("\n") +
+            "\n\n모든 디자인을 등록해주세요."
+        );
+
+        return;
+    }
+
+
+
     const guideVisible = guideRect.visible;
+
+
+
+
+
+
+
+
+
+    
     const textVisible = guideText.visible;
 
     // 저장 시 숨김
