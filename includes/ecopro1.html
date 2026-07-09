@@ -210,18 +210,49 @@ canvas.on('mouse:down', (e) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-        fabric.Image.fromURL(event.target.result, (img) => {
-            // 조절 핸들 및 박스 스타일 설정 (굵게)
-            img.set({
-    borderColor: '#3498db',
-    cornerColor: '#3498db',
-    cornerSize: 5,
-    transparentCorners: false,
-    borderScaleFactor: 1,
 
-    // 회전 핸들 위치
-    rotatingPointOffset: 30
-});
+
+
+
+        
+fabric.Image.fromURL(event.target.result, (img) => {
+
+
+    // 필터 적용용 최대 해상도 제한
+    const maxSize = 3000;
+
+    if (img.width > maxSize || img.height > maxSize) {
+
+        const ratio = Math.min(
+            maxSize / img.width,
+            maxSize / img.height
+        );
+
+        img.scale(ratio);
+        img.setCoords();
+    }
+
+
+    img.set({
+        borderColor: '#3498db',
+        cornerColor: '#3498db',
+        cornerSize: 5,
+        transparentCorners: false,
+        borderScaleFactor: 1,
+
+        rotatingPointOffset: 30
+    });
+
+
+
+
+
+
+
+
+
+
+            
             img.scaleToWidth(canvas.width);
 img.setCoords();
             designData[currentIdx][currentSide] = img;
