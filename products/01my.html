@@ -25,6 +25,17 @@
     .btn-group { display: flex; gap: 5px; }
     button { padding: 6px 15px; cursor: pointer; border: 1px solid #ccc; background: #eee; font-size: 13px; }
     button.active { background: #66a8a8; color: white; border-color: #66a8a8; }
+
+    /* 후가공 추가하기/삭제 버튼: 기존 대비 10% 축소, 항상 한 줄 유지 */
+    .finishing-btn {
+        padding: 5.4px 13.5px;
+        font-size: 11.7px;
+        margin-left: 5px;
+        background: #eee;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    #addFinishingBtn { background: #ddd; }
     .total-price { text-align: right; font-size: 1.3em; font-weight: bold; margin-top: 10px; }
     .order-btn { background: #2b7bc3; color: white; padding: 15px; text-align: center; border: none; cursor: pointer; margin-top: 15px; font-size: 16px; }
     input:disabled { background-color: #eee; cursor: not-allowed; border: 1px solid #ccc; }
@@ -64,6 +75,98 @@
         width: 100% !important;
         box-sizing: border-box !important;
     }
+
+    /* 5. 후가공선택 줄: 모바일에서도 무조건 한 줄 유지 */
+    #finishingContainer .option-row {
+        flex-wrap: nowrap !important;
+    }
+    #finishingContainer .label {
+        flex-shrink: 0;
+    }
+    #finishingContainer .finishing-select {
+        min-width: 0;
+        flex: 1 1 0;
+    }
+    .finishing-btn {
+        padding: 5.4px 8px;
+        font-size: 11px;
+    }
+}
+
+/* ---- 모바일 커스텀 셀렉트 피커 (네이티브 select 툴바 대체) ---- */
+.select-wrap {
+    position: relative;
+    flex: 1;
+    display: flex;
+}
+.select-wrap select {
+    flex: 1;
+    width: 100%;
+}
+.select-tap-overlay {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    pointer-events: none;
+}
+@media (max-width: 768px) {
+    .select-tap-overlay {
+        pointer-events: auto;
+        cursor: pointer;
+    }
+}
+.custom-select-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end;
+}
+.custom-select-sheet {
+    width: 100%;
+    max-height: 70vh;
+    background: #fff;
+    border-radius: 14px 14px 0 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.custom-select-title {
+    padding: 14px 16px 8px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #666;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+}
+.custom-select-list {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 0;
+}
+.custom-select-item {
+    padding: 14px 18px;
+    font-size: 15px;
+    color: #333;
+    border-bottom: 1px solid #f2f2f2;
+}
+.custom-select-item.selected {
+    background: #eef6ff;
+    color: #007AFF;
+    font-weight: bold;
+}
+.custom-select-done-btn {
+    flex-shrink: 0;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    background: #007AFF;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 </style>
@@ -163,7 +266,7 @@
             <div class="option-row" id="finishingRow">
                 <div class="label">후가공선택</div>
                 <select class="finishing-select" style="flex:1"><option>불러오는 중...</option></select>
-                <button type="button" id="addFinishingBtn" style="margin-left:5px; background:#ddd;">추가하기</button>
+                <button type="button" id="addFinishingBtn" class="finishing-btn">추가하기</button>
             </div>
         </div>
 
@@ -252,6 +355,83 @@ function setTab(el) {
         behavior: 'smooth'
     });
 }
+
+// ---- 모바일 커스텀 셀렉트 피커 (긴 옵션 목록에서 완료 버튼이 안 보이던 문제 해결) ----
+// 네이티브 select의 "이전/다음" 툴바 대신, 하단에서 올라오는 목록 + 완료 버튼으로 대체한다.
+// 실제 선택 처리는 원래의 <select>에 그대로 반영하고 'change' 이벤트를 그대로 발생시키므로
+// 기존 가격계산/url이동 등의 로직은 전혀 손대지 않아도 그대로 동작한다.
+function isMobileViewport() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function openCustomSelectModal(selectEl) {
+    if (selectEl.disabled || !selectEl.options.length) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-select-overlay';
+
+    const sheet = document.createElement('div');
+    sheet.className = 'custom-select-sheet';
+
+    const list = document.createElement('div');
+    list.className = 'custom-select-list';
+
+    Array.from(selectEl.options).forEach((opt, idx) => {
+        const item = document.createElement('div');
+        item.className = 'custom-select-item' + (idx === selectEl.selectedIndex ? ' selected' : '');
+        item.textContent = opt.textContent;
+        item.addEventListener('click', () => {
+            list.querySelectorAll('.custom-select-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            selectEl.selectedIndex = idx;
+        });
+        list.appendChild(item);
+    });
+
+    const doneBtn = document.createElement('button');
+    doneBtn.type = 'button';
+    doneBtn.className = 'custom-select-done-btn';
+    doneBtn.textContent = '완료';
+    doneBtn.addEventListener('click', () => {
+        overlay.remove();
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    sheet.appendChild(list);
+    sheet.appendChild(doneBtn);
+    overlay.appendChild(sheet);
+
+    // 바깥(어두운 배경) 탭하면 선택 반영 없이 닫기
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    document.body.appendChild(overlay);
+
+    const selectedEl = list.querySelector('.custom-select-item.selected');
+    if (selectedEl) selectedEl.scrollIntoView({ block: 'center' });
+}
+
+// select를 감싸서, 모바일에서는 탭 시 네이티브 피커 대신 커스텀 모달을 띄운다.
+// (PC에서는 오버레이가 pointer-events:none 이라 기존 select 동작 그대로 유지됨)
+window.enableMobileCustomPicker = function(selectEl) {
+    if (!selectEl || selectEl.dataset.customPickerEnabled) return;
+    selectEl.dataset.customPickerEnabled = '1';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'select-wrap';
+    selectEl.parentNode.insertBefore(wrap, selectEl);
+    wrap.appendChild(selectEl);
+
+    const overlayBtn = document.createElement('div');
+    overlayBtn.className = 'select-tap-overlay';
+    wrap.appendChild(overlayBtn);
+
+    overlayBtn.addEventListener('click', () => {
+        if (!isMobileViewport()) return;
+        openCustomSelectModal(selectEl);
+    });
+};
 </script>
 
 
@@ -596,7 +776,12 @@ loadQtyOptions();
     updateDeliveryDisplay();
 document.getElementById('setCountInput').addEventListener('input', updatePrice);
 
+// 모바일에서 긴 옵션 목록도 하단 완료 버튼으로 선택할 수 있게 커스텀 피커 적용
+window.enableMobileCustomPicker(document.getElementById('paperSelect'));
+window.enableMobileCustomPicker(document.getElementById('inkSelect'));
+
 loadFinishingOptions(document.querySelector('.finishing-select'));
+window.enableMobileCustomPicker(document.querySelector('.finishing-select'));
 
     async function loadFinishingOptions(selectElement) {
         selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
@@ -634,7 +819,7 @@ finishingOptionsCache.forEach(opt => {
     newRow.innerHTML = `
         <div class="label">후가공 추가</div>
         <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
-        <button type="button" style="margin-left:5px; background:#eee;" onclick="this.parentElement.remove(); updatePrice();">삭제</button>
+        <button type="button" class="finishing-btn" onclick="this.parentElement.remove(); updatePrice();">삭제</button>
     `;
     container.appendChild(newRow);
     
@@ -643,6 +828,7 @@ finishingOptionsCache.forEach(opt => {
     
     // 이 부분이 핵심: 새로 생성된 셀렉트 박스에도 동일한 로직 적용
     setupFinishingListener(newSelect); 
+    window.enableMobileCustomPicker(newSelect);
 });
 
 
