@@ -169,18 +169,24 @@ document.getElementById('save-btn').addEventListener('click', () => {
     const textVisible = guideText.visible;
 
     // 저장 시 숨김
-    guideRect.visible = false;
-    guideText.visible = false;
-    canvas.renderAll();
+   canvas.remove(guideRect);
+canvas.remove(guideText);
 
-    const dataURL = canvas.toDataURL({
+canvas.renderAll();
+
+const dataURL = canvas.toDataURL({
     format: 'png',
-    multiplier: 3,
-    filter: function(obj) {
-        return obj !== guideRect && obj !== guideText;
-    }
+    multiplier: 3
 });
 
+canvas.add(guideRect);
+
+if (textVisible) {
+    canvas.add(guideText);
+}
+
+canvas.renderAll();
+    
     // 원상복구
     guideRect.visible = guideVisible;
     guideText.visible = textVisible;
