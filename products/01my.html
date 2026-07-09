@@ -558,9 +558,24 @@ function updateMainImage(imageUrl) {
         if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
             updateMainImage(selectedOpt.dataset.imageUrl);
         }
+
+        // 용지 옵션에 파이어베이스 url이 설정되어 있으면 새 창으로 이동
+        const paperUrl = selectedOpt.dataset.url && selectedOpt.dataset.url.trim();
+        if (paperUrl) {
+            if (!window.isOpening) {
+                window.isOpening = true;
+                window.open(paperUrl, '_blank');
+                setTimeout(() => { window.isOpening = false; }, 500);
+            }
+        }
+
+        // 공통 select 루프에서 paperSelect를 제외했으므로 여기서 직접 호출
+        updatePrice();
+        updateDeliveryDisplay();
     });
 
     document.querySelectorAll('select').forEach(sel => {
+        if (sel.id === 'paperSelect') return; // 용지는 위 전용 리스너에서 이미 처리함
         sel.addEventListener('change', (e) => {
             const selectedOpt = e.target.options[e.target.selectedIndex];
            if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
