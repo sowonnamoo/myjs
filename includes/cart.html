@@ -303,7 +303,7 @@ window.goBankTransfer = async function(){
         const orderData = saveOrder("무통장입금", orderId);
         await saveOrderToFirestore(orderData);
         localStorage.removeItem("cart");
-        location.href = "success2.html";
+        location.href = "/myjs/success2";
     } catch(e) {
         console.error(e);
         alert("무통장입금 주문 처리 중 오류가 발생했습니다.\n" + (e.message || "서버 연결을 확인하세요."));
