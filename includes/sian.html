@@ -1,4 +1,4 @@
-222<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -6,9 +6,9 @@
 <title>시안보기 - 그리드 배경</title>
 <style>
   :root{
-    --grid-line: rgba(0,0,0,0.06);
+    --grid-line: rgba(255,255,255,0.06);
     --grid-size: 32px;
-    --bg: #efeee9;
+    --bg: #232323;
     --gap: 70px; /* 고정 */
     --sat: 50%; /* 채도 -50% 고정 */
     --img-width: 700px;
@@ -51,6 +51,8 @@
     width: var(--img-width);
     max-width: calc(100vw - 40px);
     line-height:0;
+    box-shadow: 0 24px 50px rgba(0,0,0,0.55), 0 8px 20px rgba(0,0,0,0.4);
+    border-radius: 6px;
   }
 
   .board img{
@@ -60,7 +62,7 @@
     height:auto;
     display:block;
     filter: saturate(var(--sat));
-    clip-path: inset(2.5%); /* 가로/세로 각각 95%만 노출, 나머지 5%(상하좌우 2.5%씩)는 숨김 */
+    clip-path: inset(2.5% round 6px); /* 가로/세로 각각 95%만 노출, 나머지 5%(상하좌우 2.5%씩)는 숨김 */
     opacity:0;
     transform: translateY(40px);
     animation: rise-up 0.7s ease forwards;
@@ -134,13 +136,13 @@
   .quick-bar label{
     font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
     font-size:12px;
-    color:#666;
+    color:#bbb;
     white-space:nowrap;
     flex-shrink:0;
   }
   .quick-bar .val{
     font-weight:700;
-    color:#111;
+    color:#fff;
   }
   .quick-bar input[type=range]{
     width:180px;
@@ -185,6 +187,7 @@
   .action-btn.dark{
     background:#1c1b19;
     color:#fff;
+    border:1px solid rgba(255,255,255,0.14);
   }
   .action-btn.outline{
     background:#fff;
@@ -193,8 +196,11 @@
     border:1px solid rgba(0,0,0,0.1);
   }
   .action-btn.accent{
-    background:#d4622a;
+    background:#2f7fc9;
     color:#fff;
+  }
+  .action-btn.accent:hover{
+    background:#2569ad;
   }
 </style>
 </head>
