@@ -87,9 +87,9 @@ async function uploadFileToR2(blob, filename){
         throw new Error(`파일 크기가 너무 큽니다. (최대 500MB, 현재 ${(blob.size / 1024 / 1024).toFixed(1)}MB)`);
     }
 
-    const res = await fetch(R2_WORKER_URL + encodeURIComponent(filename), {
+    // 예시 페이지(정상 동작 중)와 동일하게 파일명을 쿼리스트링(?name=)으로 전달합니다.
+    const res = await fetch(`${R2_WORKER_URL}?name=${encodeURIComponent(filename)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': blob.type || 'application/octet-stream' },
         body: blob
     });
 
@@ -282,11 +282,34 @@ window.goBankTransfer = async function(){
     const phone = document.getElementById("phone").value.trim();
     const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
     if(!name || !phone || !address.trim()){ alert("모든 정보를 입력해주세요."); return; }
-    const orderId = "BANK_" + Date.now();
-    const orderData = saveOrder("무통장입금", orderId);
-    await saveOrderToFirestore(orderData);
-    localStorage.removeItem("cart");
-    location.href = "success2.html";
+
+    const btn = document.querySelector('.bank-btn');
+    const originalText = btn ? btn.textContent : '';
+    if(btn) btn.disabled = true;
+
+    try {
+        // 1. 카드결제와 동일하게, 아직 R2에 올라가지 않은 원본 이미지들을 먼저 업로드한다.
+        const totalToUpload = cart.reduce((sum, item) => sum + (Array.isArray(item.originalImages) ? item.originalImages.length : 0), 0);
+        if(totalToUpload > 0){
+            if(btn) btn.textContent = `원본 이미지 업로드 중... (0/${totalToUpload})`;
+            await uploadRemainingOriginals((done, total) => {
+                if(btn) btn.textContent = `원본 이미지 업로드 중... (${done}/${total})`;
+            });
+        }
+
+        // 2. 업로드가 끝난 뒤에만 주문 저장 + success2.html 이동
+        if(btn) btn.textContent = '주문 저장 중...';
+        const orderId = "BANK_" + Date.now();
+        const orderData = saveOrder("무통장입금", orderId);
+        await saveOrderToFirestore(orderData);
+        localStorage.removeItem("cart");
+        location.href = "success2.html";
+    } catch(e) {
+        console.error(e);
+        alert("무통장입금 주문 처리 중 오류가 발생했습니다.\n" + (e.message || "서버 연결을 확인하세요."));
+    } finally {
+        if(btn){ btn.disabled = false; btn.textContent = originalText; }
+    }
 };
 
 render();
