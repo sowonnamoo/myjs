@@ -132,20 +132,20 @@
     const reader = new FileReader();
     reader.onload = (event) => {
         fabric.Image.fromURL(event.target.result, (img) => {
+            // 조절 핸들 및 박스 스타일 설정 (굵게)
             img.set({
                 borderColor: '#3498db',
                 cornerColor: '#3498db',
-                cornerSize: 13,
+                cornerSize: 13, // 핸들 크기
                 transparentCorners: false,
-                borderScaleFactor: 5
+                borderScaleFactor: 5 // 박스 테두리 굵기
             });
             img.scaleToWidth(canvas.width);
             designData[currentIdx][currentSide] = img;
             updateView();
             
-            // 아래 코드를 삭제하거나 주석 처리하세요
-            // canvas.setActiveObject(img); 
-            
+            // 업로드 즉시 선택 상태로 전환
+            canvas.setActiveObject(img);
             canvas.renderAll();
         });
     };
@@ -191,9 +191,29 @@ document.getElementById('save-btn').addEventListener('click', () => {
     }
 
 
+canvas.on('selection:created', (e) => { /* 선택 시 필요 시 작업 */ });
+
+// 캔버스 배경 클릭 시 선택 해제
+canvas.on('mouse:down', (e) => {
+    if (!e.target) {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
+
+// 캔버스 외부 영역(body) 클릭 시 선택 해제
+document.addEventListener('click', (e) => {
+    // 캔버스 요소나 fabric.js의 조절 핸들(upper-canvas)을 클릭한 게 아니라면
+    if (!e.target.closest('.canvas-container') && e.target.tagName !== 'CANVAS') {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
 
 
 
+
+    
 
    const guideBtn = document.getElementById('guide-btn');
 
