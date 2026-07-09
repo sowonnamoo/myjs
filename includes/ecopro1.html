@@ -37,6 +37,14 @@
     overflow: hidden; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
 }        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.left-tools,
+.right-tools{
+    display:flex;
+    gap:10px;
+}
+
+
+        
 .btn {
     padding: 12px 24px;
     border: none;
@@ -47,46 +55,19 @@
 
     font-family: 'Malgun Gothic', sans-serif;
     font-size: 14px;
-}   
-    
-    .controls{
-    width:100%;
-    max-width:1024px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.left-tools,
-.right-tools{
-    display:flex;
-    gap:10px;
-}
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    </style>
+}    </style>
 </head>
 <body>
-
-
-
-
 
     <div id="status-bar">작업 규격: <span id="display-info"></span></div>
     <div id="tab-container"></div>
     <div id="canvas-wrapper"><canvas id="main-canvas"></canvas></div>
 
-    <div class="controls">
+   <div class="controls">
 
+    <!-- 왼쪽 보정 버튼 -->
     <div class="left-tools">
+
         <button id="bright-up" class="btn" style="background:#27ae60;">
             밝게
         </button>
@@ -98,83 +79,11 @@
         <button id="reset-filter" class="btn" style="background:#7f8c8d;">
             원본
         </button>
+
     </div>
 
 
-
-let brightnessValue = 0;
-
-
-// 밝게
-document.getElementById('bright-up').addEventListener('click', () => {
-
-    const img = canvas.getActiveObject();
-
-    if (!img || img.type !== 'image') return;
-
-    brightnessValue += 0.1;
-
-    img.filters = [
-        new fabric.Image.filters.Brightness({
-            brightness: brightnessValue
-        })
-    ];
-
-    img.applyFilters();
-    canvas.renderAll();
-
-});
-
-
-// 어둡게
-document.getElementById('bright-down').addEventListener('click', () => {
-
-    const img = canvas.getActiveObject();
-
-    if (!img || img.type !== 'image') return;
-
-    brightnessValue -= 0.1;
-
-    img.filters = [
-        new fabric.Image.filters.Brightness({
-            brightness: brightnessValue
-        })
-    ];
-
-    img.applyFilters();
-    canvas.renderAll();
-
-});
-
-
-// 원본
-document.getElementById('reset-filter').addEventListener('click', () => {
-
-    const img = canvas.getActiveObject();
-
-    if (!img || img.type !== 'image') return;
-
-    brightnessValue = 0;
-
-    img.filters = [];
-
-    img.applyFilters();
-
-    canvas.renderAll();
-
-});
-
-
-        
-
-        
-
-
-
-
-
-
-        
+    <!-- 오른쪽 기존 버튼 -->
     <div class="right-tools">
 
         <label class="btn" style="background:#3498db;" for="file-input">
@@ -183,7 +92,6 @@ document.getElementById('reset-filter').addEventListener('click', () => {
 
         <input type="file" id="file-input" accept="image/*" style="display:none;">
 
-        
         <button id="save-btn" class="btn" style="background:#bbb;">
             전체저장
         </button>
@@ -191,6 +99,7 @@ document.getElementById('reset-filter').addEventListener('click', () => {
     </div>
 
 </div>
+
 
 <div id="notice-box">
       <strong>※ 작업 시 주의사항</strong>
