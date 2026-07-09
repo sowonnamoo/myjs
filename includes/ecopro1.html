@@ -132,20 +132,20 @@
     const reader = new FileReader();
     reader.onload = (event) => {
         fabric.Image.fromURL(event.target.result, (img) => {
-            // 조절 핸들 및 박스 스타일 설정 (굵게)
             img.set({
                 borderColor: '#3498db',
                 cornerColor: '#3498db',
-                cornerSize: 13, // 핸들 크기
+                cornerSize: 13,
                 transparentCorners: false,
-                borderScaleFactor: 5 // 박스 테두리 굵기
+                borderScaleFactor: 5
             });
             img.scaleToWidth(canvas.width);
             designData[currentIdx][currentSide] = img;
             updateView();
             
-            // 업로드 즉시 선택 상태로 전환
-            canvas.setActiveObject(img);
+            // 아래 코드를 삭제하거나 주석 처리하세요
+            // canvas.setActiveObject(img); 
+            
             canvas.renderAll();
         });
     };
