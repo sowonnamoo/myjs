@@ -1,259 +1,1868 @@
-        body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
-        #status-bar { font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        #tab-container { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-        .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
-        .design-btn.active { background: #3498db; color: white; }
-        .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
-        .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
-        .side-btn.active { background: #e67e22; color: white; }
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고해상도 멀티 디자인 에디터</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;700&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Black+Han+Sans&family=Gugi&family=Do+Hyeon&family=Jua&family=Gaegu&family=Gowun+Dodum&family=Gowun+Batang&family=Song+Myung&family=Gothic+A1:wght@400;700;900&family=East+Sea+Dokdo&family=Poor+Story&family=Stylish&family=Sunflower:wght@500;700&family=Yeon+Sung&family=Hi+Melody&family=Gamja+Flower&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Poppins:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Oswald:wght@400;600&family=Lato:wght@400;700;900&family=Raleway:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <!-- 브랜드 무료 한글 폰트: 프리텐다드 / 스포카 한 산스 네오 (각 공식 CDN 제공) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link rel="stylesheet" href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css" />
+    <link rel="stylesheet" href="ecopro2.css">
+</head>
+<body>
 
-/* 캔버스 하단: 작업 규격 + 디자인/앞뒤 탭을 모아두는 카드 */
-.bottom-info-panel{
-    width: 100%;
-    max-width: 1024px;
-    margin-top: 24px;
-    padding: 18px 20px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-}
+    <div class="mobile-mode-banner" id="mobileModeBanner">모바일모드 (우측 슬라이딩시 더 많은 메뉴가 보입니다.)</div>
 
-#canvas-wrapper {
-    position: relative;
-    border: 1px solid #bdc3c7;
-    background: #fff;
-    width: 100%;
-    max-width: 1024px;
-    overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-.left-tools,
-.right-tools{
-    display:flex;
-    gap:10px;
-}
+    <div class="editor-toolbar">
+        <div class="toolbar-group">
+            <button type="button" class="tool-btn icon-only active" id="moveToolBtn" title="이동 도구 (V) — 자유롭게 클릭·드래그로 선택/이동">↖</button>
+            <button type="button" class="tool-btn" id="addTextBtn">🅣 텍스트</button>
+            <button type="button" class="tool-btn" id="addRectBtn">▭ 사각형</button>
+            <button type="button" class="tool-btn" id="addCircleBtn">◯ 원</button>
+            <button type="button" class="tool-btn" id="addTriangleBtn">▲ 삼각형</button>
+            <button type="button" class="tool-btn" id="addLineBtn">╱ 선</button>
+            <button type="button" class="tool-btn" id="drawBtn">✎ 그리기</button>
+        </div>
+        <div class="toolbar-group hidden" id="brushControls">
+            <span class="tool-label">펜 색상</span>
+            <input type="color" class="tool-color" id="brushColorInput" value="#111111">
+            <span class="tool-label">굵기</span>
+            <input type="range" id="brushWidthInput" min="1" max="40" value="4">
+        </div>
+        <div class="toolbar-group">
+            <button type="button" class="tool-btn icon-only" id="undoBtn" disabled>↶ 실행취소</button>
+            <button type="button" class="tool-btn icon-only" id="redoBtn" disabled>↷ 다시실행</button>
+        </div>
+        <div class="toolbar-group">
+            <button type="button" class="tool-btn icon-only" id="zoomOutBtn">－</button>
+            <span class="zoom-label" id="zoomLabel">100%</span>
+            <button type="button" class="tool-btn icon-only" id="zoomInBtn">＋</button>
+            <button type="button" class="tool-btn" id="zoomResetBtn">100%로</button>
+            <span class="tool-label desktop-hint">(마우스 휠: 확대·축소 / Alt+드래그 또는 스페이스바+드래그: 화면 이동)</span>
+        </div>
+        <div class="toolbar-group">
+            <span class="tool-label">캔버스 배경색</span>
+            <input type="color" class="tool-color" id="canvasBgInput" value="#ffffff">
+        </div>
+
+        <!-- 우측 끝 여백에 넣는 작은 로고 (실제 로고 이미지 파일을 주시면 바로 교체해 드립니다) -->
+        <a class="toolbar-logo" href="https://www.ecogr.net" target="_blank" rel="noopener" title="ecogr.net">
+            <span class="toolbar-logo-mark">E</span>
+            <span class="toolbar-logo-text">ecogr<em>.net</em></span>
+        </a>
+    </div>
+
+    <div class="prop-panel" id="propPanel">
+        <div class="prop-flow">
+            <div class="prop-row">
+                <label>불투명도</label>
+                <input type="range" id="opacityInput" min="0" max="1" step="0.05" value="1">
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="rotateLeftBtn" title="왼쪽으로 90도 회전">↺</button>
+                <button type="button" class="tool-btn icon-only" id="rotateRightBtn" title="오른쪽으로 90도 회전">↻</button>
+                <input type="number" id="angleInput" min="0" max="359" value="0" class="angle-input" title="각도">
+                <button type="button" class="tool-btn icon-only" id="flipXBtn" title="좌우반전">↔</button>
+                <button type="button" class="tool-btn icon-only" id="flipYBtn" title="상하반전">↕</button>
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="alignLeftBtn" title="왼쪽 정렬">좌</button>
+                <button type="button" class="tool-btn icon-only" id="alignCenterHBtn" title="가로 중앙 정렬">중</button>
+                <button type="button" class="tool-btn icon-only" id="alignRightBtn" title="오른쪽 정렬">우</button>
+                <button type="button" class="tool-btn icon-only" id="alignCenterVBtn" title="세로 가운데 정렬 (위아래 여백을 동일하게)">세로중앙</button>
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="layerFrontBtn" title="맨 앞으로">맨앞</button>
+                <button type="button" class="tool-btn icon-only" id="layerForwardBtn" title="한 단계 앞으로">앞</button>
+                <button type="button" class="tool-btn icon-only" id="layerBackwardBtn" title="한 단계 뒤로">뒤</button>
+                <button type="button" class="tool-btn icon-only" id="layerBackBtn" title="맨 뒤로">맨뒤</button>
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="duplicateBtn" title="복제">⧉</button>
+                <button type="button" class="tool-btn icon-only" id="lockBtn" title="잠금">🔒</button>
+                <button type="button" class="tool-btn danger icon-only" id="deleteBtn" title="삭제">🗑</button>
+            </div>
+        </div>
+
+        <div class="sub-panel" id="textPanel">
+            <div class="prop-row">
+                <label>폰트</label>
+                <select id="fontFamilySelect">
+                    <optgroup label="브랜드 무료 폰트">
+                        <option value="Pretendard">프리텐다드 (Pretendard)</option>
+                        <option value="GMarketSans">G마켓 산스</option>
+                        <option value="Spoqa Han Sans Neo">스포카 한 산스 네오</option>
+                    </optgroup>
+                    <optgroup label="한글 고딕/본문">
+                        <option value="Noto Sans KR">Noto Sans KR (노토 산스)</option>
+                        <option value="Nanum Gothic">나눔고딕</option>
+                        <option value="Gothic A1">고딕 A1</option>
+                        <option value="Gowun Dodum">고운돋움</option>
+                        <option value="IBM Plex Sans KR">IBM Plex Sans KR</option>
+                    </optgroup>
+                    <optgroup label="한글 명조/세리프">
+                        <option value="Noto Serif KR">Noto Serif KR (노토 세리프)</option>
+                        <option value="Nanum Myeongjo">나눔명조</option>
+                        <option value="Gowun Batang">고운바탕</option>
+                        <option value="Song Myung">송명체</option>
+                    </optgroup>
+                    <optgroup label="한글 포인트/굵은 제목용">
+                        <option value="Black Han Sans">검은고딕</option>
+                        <option value="Gugi">구기체 (아주 굵은 글자)</option>
+                        <option value="Do Hyeon">도현체</option>
+                        <option value="Jua">주아체</option>
+                        <option value="Gaegu">개구체</option>
+                        <option value="Stylish">스타일리쉬체</option>
+                        <option value="Yeon Sung">연성체</option>
+                        <option value="Sunflower">해바라기체</option>
+                    </optgroup>
+                    <optgroup label="한글 손글씨">
+                        <option value="Nanum Pen Script">나눔손글씨 펜</option>
+                        <option value="Nanum Brush Script">나눔손글씨 붓</option>
+                        <option value="East Sea Dokdo">동해 독도체</option>
+                        <option value="Poor Story">푸어스토리체</option>
+                        <option value="Hi Melody">하이멜로디체</option>
+                        <option value="Gamja Flower">감자꽃체 (귀여운 글자)</option>
+                    </optgroup>
+                    <optgroup label="영문 산세리프">
+                        <option value="Roboto">Roboto</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Poppins">Poppins</option>
+                        <option value="Lato">Lato</option>
+                        <option value="Raleway">Raleway</option>
+                        <option value="Oswald">Oswald</option>
+                        <option value="Bebas Neue">Bebas Neue</option>
+                    </optgroup>
+                    <optgroup label="영문 세리프">
+                        <option value="Playfair Display">Playfair Display</option>
+                    </optgroup>
+                    <optgroup label="시스템 기본 폰트">
+                        <option value="Malgun Gothic">맑은 고딕</option>
+                        <option value="Dotum">돋움</option>
+                        <option value="Gulim">굴림</option>
+                        <option value="Batang">바탕</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="prop-row">
+                <label>크기</label>
+                <input type="number" id="fontSizeInput" min="8" max="200" value="28">
+            </div>
+            <div class="prop-row">
+                <label>자간</label>
+                <input type="range" id="letterSpacingInput" min="-200" max="800" step="10" value="0">
+            </div>
+            <div class="prop-row">
+                <label>색상</label>
+                <input type="color" class="tool-color" id="textColorInput" value="#111111">
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="boldBtn" title="굵게"><b>B</b></button>
+                <button type="button" class="tool-btn icon-only" id="italicBtn" title="기울임"><i>I</i></button>
+                <button type="button" class="tool-btn icon-only" id="underlineBtn" title="밑줄"><u>U</u></button>
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="textAlignLeftBtn" title="왼쪽 정렬">좌</button>
+                <button type="button" class="tool-btn icon-only" id="textAlignCenterBtn" title="가운데 정렬">중</button>
+                <button type="button" class="tool-btn icon-only" id="textAlignRightBtn" title="오른쪽 정렬">우</button>
+            </div>
+        </div>
+
+        <div class="sub-panel" id="shapePanel">
+            <div class="prop-row" id="fillColorRow">
+                <label>채우기</label>
+                <input type="color" class="tool-color" id="fillColorInput" value="#3498db">
+            </div>
+            <div class="prop-row">
+                <label>테두리색</label>
+                <input type="color" class="tool-color" id="strokeColorInput" value="#111111">
+            </div>
+            <div class="prop-row">
+                <label>테두리두께</label>
+                <input type="number" id="strokeWidthInput" min="0" max="40" value="0">
+            </div>
+        </div>
+
+        <div class="sub-panel" id="imagePanel">
+            <div class="prop-row">
+                <label class="filter-chip"><input type="checkbox" id="filterGrayscale"> 흑백</label>
+                <label class="filter-chip"><input type="checkbox" id="filterSepia"> 세피아</label>
+                <label class="filter-chip"><input type="checkbox" id="filterInvert"> 반전</label>
+            </div>
+            <div class="prop-row">
+                <label>밝기</label>
+                <input type="range" id="filterBrightness" min="-1" max="1" step="0.05" value="0">
+            </div>
+            <div class="prop-row">
+                <label>대비</label>
+                <input type="range" id="filterContrast" min="-1" max="1" step="0.05" value="0">
+            </div>
+            <div class="prop-row">
+                <label>채도</label>
+                <input type="range" id="filterSaturation" min="-1" max="1" step="0.05" value="0">
+            </div>
+            <div class="prop-row">
+                <label>블러</label>
+                <input type="range" id="filterBlur" min="0" max="1" step="0.02" value="0">
+            </div>
+            <div class="prop-row">
+                <label>선명도</label>
+                <input type="range" id="filterSharpen" min="0" max="2" step="0.1" value="0">
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn" id="resetFiltersBtn">필터 초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+        <div class="guide-warning-toast" id="guideWarningToast">⚠ 글자는 붉은선에 가까이 배치하면 잘릴 수 있어요.</div>
+    </div>
+
+   <div class="controls">
+
+    <!-- 왼쪽: 작업중인 내용을 파일로 저장했다가 나중에 다시 불러와 이어서 수정할 수 있는 버튼 -->
+    <div class="left-tools">
+
+        <button id="export-project-btn" type="button" class="btn btn-primary">
+            프로젝트 저장(이어하기용)
+        </button>
+
+        <label class="btn btn-muted" for="project-input">
+            프로젝트 불러오기
+        </label>
+        <input type="file" id="project-input" accept="application/json,.json" class="hidden">
+
+    </div>
+
+    <!-- 오른쪽 기존 버튼 -->
+    <div class="right-tools">
+
+        <label class="btn btn-primary" for="file-input">
+            업로드/재업로드
+        </label>
+
+        <input type="file" id="file-input" accept="image/*" class="hidden">
+
+        <button id="save-btn" class="btn btn-muted">
+            전체저장
+        </button>
+
+    </div>
+
+</div>
 
 
-        
-.btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: white;
-    font-weight: bold;
+<div class="bottom-info-panel">
+    <div id="status-bar">작업 규격: <span id="display-info"></span></div>
+    <div id="tab-container"></div>
+</div>
 
-    font-family: 'Malgun Gothic', sans-serif;
-    font-size: 14px;
-}
-.btn:disabled{
-    opacity:.55;
-    cursor:not-allowed;
-}
-.btn-primary{ background:#3498db; }
-.btn-muted{ background:#bbb; }
-.hidden{ display:none !important; }
-.angle-input{ width:60px; padding:4px; border:1px solid #ddd; border-radius:5px; }
+<div class="shortcuts-panel">
+    <div class="shortcuts-title">⌨ 단축키</div>
+    <div class="shortcuts-grid">
+        <div class="shortcut-item"><span class="shortcut-key">V</span><span class="shortcut-desc">이동 도구</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">T</span><span class="shortcut-desc">텍스트 생성</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Space</span><span class="shortcut-desc">100%로 맞춤(확대/축소 초기화)</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">F1</span><span class="shortcut-desc">이미지 불러오기/재업로드</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">F5</span><span class="shortcut-desc">선택한 이미지/오브젝트 90도 회전</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">F6</span><span class="shortcut-desc">선택한 이미지/오브젝트 좌우 반전</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">&lt;</span><span class="shortcut-desc">글자 크기 작게</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">&gt;</span><span class="shortcut-desc">글자 크기 크게</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">C</span><span class="shortcut-desc">텍스트 가운데 정렬</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">R</span><span class="shortcut-desc">텍스트 오른쪽 정렬</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">L</span><span class="shortcut-desc">텍스트 왼쪽 정렬</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">]</span><span class="shortcut-desc">레이어 한 단계 위로</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">[</span><span class="shortcut-desc">레이어 한 단계 아래로</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">방향키</span><span class="shortcut-desc">1px씩 미세 이동</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">방향키</span><span class="shortcut-desc">10px씩 이동</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Delete</span><span class="shortcut-desc">선택한 오브젝트 삭제</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Z</span><span class="shortcut-desc">실행취소</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">Z</span><span class="shortcut-desc">다시실행</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">D</span><span class="shortcut-desc">복제</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">C</span><span class="shortcut-desc">복사</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">V</span><span class="shortcut-desc">붙여넣기</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">M</span><span class="shortcut-plus">+</span><span class="shortcut-key">드래그</span><span class="shortcut-desc">화면 이동(패닝)</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">마우스 휠</span><span class="shortcut-desc">확대/축소</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Esc</span><span class="shortcut-desc">선택 해제</span></div>
+    </div>
+</div>
 
-/* G마켓 산스 (GMarketSans) - 눈누(noonnu) 공식 배포 파일, 상업용 무료 */
-@font-face {
-    font-family: 'GMarketSans';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff') format('woff');
-    font-weight: 300;
-    font-display: swap;
-}
-@font-face {
-    font-family: 'GMarketSans';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff') format('woff');
-    font-weight: 500;
-    font-display: swap;
-}
-@font-face {
-    font-family: 'GMarketSans';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff') format('woff');
-    font-weight: 700;
-    font-display: swap;
-}
+<button type="button" id="floatingDeleteBtn" class="floating-delete-btn" title="삭제">🗑</button>
 
-/* ===================== 편집 툴바 / 속성 패널 (신규) ===================== */
-.editor-toolbar{
-    width:100%; max-width:1024px;
-    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-    background:#fff; border-radius:10px; padding:10px 12px; margin-bottom:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.06);
-    box-sizing:border-box;
-}
-.toolbar-group{
-    display:flex; align-items:center; gap:6px;
-    padding-right:10px; margin-right:2px;
-    border-right:1px solid #e5e5e5;
-}
-.toolbar-group:last-child{ border-right:none; padding-right:0; }
-.tool-btn{
-    display:inline-flex; align-items:center; gap:4px;
-    padding:7px 12px; border:1px solid #ddd; background:#fff; color:#333;
-    border-radius:7px; cursor:pointer; font-size:12.5px; font-weight:600;
-    font-family:'Malgun Gothic', sans-serif;
-    transition: background .15s ease, border-color .15s ease, color .15s ease;
-    white-space:nowrap;
-}
-.tool-btn:hover{ background:#f2f8fd; border-color:#3498db; color:#3498db; }
-.tool-btn.active{ background:#3498db; border-color:#3498db; color:#fff; }
-.tool-btn:disabled{ opacity:.4; cursor:not-allowed; }
-.tool-btn:disabled:hover{ background:#fff; border-color:#ddd; color:#333; }
-.tool-btn.icon-only{ padding:7px 10px; }
-.tool-btn.danger{ color:#e74c3c; border-color:#f2b6ae; }
-.tool-btn.danger:hover{ background:#fdecea; border-color:#e74c3c; color:#e74c3c; }
-.zoom-label{ font-size:12px; color:#555; min-width:40px; text-align:center; }
-.tool-label{ font-size:12px; color:#666; white-space:nowrap; }
-input.tool-color{
-    width:30px; height:30px; padding:0; border:1px solid #ddd; border-radius:6px; cursor:pointer; background:none;
-}
 
-.prop-panel{
-    display:none;
-    width:100%; max-width:1024px;
-    flex-direction:column; gap:6px;
-    background:#fff; border-radius:10px; padding:10px 12px; margin-bottom:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.06);
-    font-size:12.5px; color:#444;
-    box-sizing:border-box;
-}
-.prop-panel.visible{ display:flex; }
-.prop-flow{ display:flex; flex-wrap:wrap; row-gap:8px; align-items:center; }
-.prop-row{
-    display:flex; align-items:center; gap:6px;
-    padding-right:10px; margin-right:4px;
-    border-right:1px solid #eee;
-}
-.prop-row:last-child{ border-right:none; padding-right:0; margin-right:0; }
-.prop-row label{ font-weight:600; color:#555; white-space:nowrap; font-size:12px; }
-.prop-row input[type="range"]{ width:90px; }
-.prop-row input[type="number"]{ width:52px; padding:4px; border:1px solid #ddd; border-radius:5px; }
-.prop-row select{ padding:5px 6px; border:1px solid #ddd; border-radius:5px; font-family:inherit; max-width:160px; }
-#fontFamilySelect{ max-width:190px; }
-.sub-panel{ display:none; }
-.sub-panel.visible{ display:flex; flex-wrap:wrap; row-gap:8px; align-items:center; padding-top:8px; border-top:1px dashed #eee; }
 
-/* 필터 체크박스를 압축한 칩(chip) 버튼으로 표시 */
-.filter-chip{
-    display:inline-flex; align-items:center; gap:4px;
-    padding:6px 10px; border:1px solid #ddd; border-radius:999px;
-    font-size:12px; font-weight:600; color:#555; cursor:pointer;
-    white-space:nowrap;
-}
-.filter-chip input{ display:none; }
-.filter-chip:has(input:checked){ background:#3498db; border-color:#3498db; color:#fff; }
+    
+<script>
+    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, outerGuideRect;
 
-/* 붉은선(재단/안전선) 근접 경고 토스트 */
-.guide-warning-toast{
-    position:absolute;
-    top:12px;
-    left:50%;
-    transform:translateX(-50%);
-    background:rgba(231,76,60,0.95);
-    color:#fff;
-    padding:10px 18px;
-    border-radius:999px;
-    font-size:13px;
-    font-weight:700;
-    box-shadow:0 6px 16px rgba(0,0,0,0.25);
-    opacity:0;
-    pointer-events:none;
-    transition:opacity .25s ease;
-    z-index:50;
-    white-space:nowrap;
-    font-family:'Malgun Gothic', sans-serif;
-}
-.guide-warning-toast.visible{ opacity:1; }
+    // 시안보기 페이지로 넘길 때 사용할 세션 스토리지 키
+    // (같은 브라우저 탭 세션 동안만 유지되며, 새 탭/새 세션에서는 사라집니다)
+    const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
+    // 시안보기 페이지 경로 (같은 폴더에 있다고 가정, 실제 배포 경로에 맞게 수정하세요)
+    const PREVIEW_PAGE_URL = '/myjs/includes/sian.html';
 
-/* 선택된 오브젝트 모서리에 붙는 떠다니는 삭제(휴지통) 아이콘 */
-.floating-delete-btn{
-    position:fixed;
-    display:none;
-    align-items:center;
-    justify-content:center;
-    width:30px;
-    height:30px;
-    border-radius:50%;
-    background:#e74c3c;
-    color:#fff;
-    border:2px solid #fff;
-    box-shadow:0 3px 8px rgba(0,0,0,0.3);
-    cursor:pointer;
-    font-size:15px;
-    line-height:1;
-    padding:0;
-    z-index:1000;
-    transform:translate(-50%, -50%);
-    transition:background .15s ease, transform .1s ease;
-}
-.floating-delete-btn.visible{ display:flex; }
-.floating-delete-btn:hover{ background:#c0392b; transform:translate(-50%, -50%) scale(1.1); }
+    // ===================== 편집 기록(실행취소/다시실행) =====================
+    let historyStack = [];
+    let historyIndex = -1;
+    let isRestoring = false;
+    const HISTORY_LIMIT = 30;
+    let currentZoom = 1;
+    let isDrawMode = false;
 
-/* 캔버스 위에서 손가락으로 그리거나 오브젝트를 드래그할 때
-   브라우저가 그 제스처를 "페이지 스크롤"로 가로채지 않도록 처리 */
-#canvas-wrapper, #canvas-wrapper .canvas-container, #main-canvas{
-    touch-action: none;
-}
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let hasDouble = false;
 
-/* ===================== 모바일 반응형 ===================== */
-@media (max-width: 768px){
-    body{ padding:10px; }
+        for (const [key, value] of urlParams.entries()) {
+            const decodedValue = decodeURIComponent(value);
+            orderData[key] = decodedValue;
+            if (decodedValue.includes('양면')) hasDouble = true;
+        }
 
-    #status-bar{ font-size:12.5px; padding:6px 14px; text-align:center; }
+        window.count = parseInt(orderData.count) || 1;
+        window.isDouble = hasDouble; 
+        const ratioW = parseInt(orderData.width) || 16;
+        const ratioH = parseInt(orderData.height) || 9;
 
-    /* 디자인/앞뒤 탭이 많아지면 줄바꿈으로 뭉개지는 대신 가로로 스크롤 */
-    #tab-container{
-        flex-wrap:nowrap;
-        justify-content:flex-start;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-        padding-bottom:4px;
+        // designData[i][side] 는 이제 "그 디자인/면의 전체 캔버스 내용(오브젝트 배열+배경색)"을
+        // 저장합니다. (이미지 하나만이 아니라 텍스트/도형/그림까지 전부 포함)
+        designData = Array.from({length: count}, () => ({ front: null, back: null }));
+        currentIdx = 0; currentSide = 'front';
+
+        const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
+        canvas = new fabric.Canvas('main-canvas', {
+            width: containerWidth,
+            height: containerWidth * (ratioH / ratioW),
+            backgroundColor: '#ffffff'
+        });
+
+        canvas.on('mouse:down', (e) => {
+            if (!e.target) {
+                canvas.discardActiveObject();
+                canvas.requestRenderAll();
+            }
+        });
+
+        const padding = canvas.width * 0.02; 
+        guideRect = new fabric.Rect({
+            left: padding, top: padding,
+            width: canvas.width - (padding * 2), height: canvas.height - (padding * 2),
+            fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
+            selectable: false, evented: false, visible: true
+        });
+        guideRect.isGuide = true;
+        canvas.add(guideRect);
+
+        // 붉은선(재단/안전선)보다 한 바퀴 바깥, 초기 캔버스 크기와 동일한 회색 여유선.
+        // 붉은선과 항상 함께 다니도록(표시/숨김, 저장 시 제외, 리사이즈 등) 같은 자리에서 관리합니다.
+        outerGuideRect = new fabric.Rect({
+            left: 0, top: 0,
+            width: canvas.width, height: canvas.height,
+            fill: 'transparent', stroke: '#999999', strokeWidth: 2,
+            selectable: false, evented: false, visible: true
+        });
+        outerGuideRect.isGuide = true;
+        canvas.add(outerGuideRect);
+
+        window.orderRatioW = ratioW;
+        window.orderRatioH = ratioH;
+        updateDisplayInfo();
+
+        // ---- 선택 변경 시 속성 패널 갱신 ----
+        canvas.on('selection:created', () => { updatePropPanel(); updateDeleteIconPosition(); });
+        canvas.on('selection:updated', () => { updatePropPanel(); updateDeleteIconPosition(); });
+        canvas.on('selection:cleared', () => { hideDeleteIcon(); });
+
+        // ---- 텍스트를 제외한 오브젝트(도형/이미지/손그림)는 더블클릭으로만 선택 (데스크톱) ----
+        canvas.on('mouse:dblclick', (e) => {
+            const t = e.target;
+            if (t && !t.isGuide && t.type !== 'textbox' && !t.selectable) {
+                canvas.setActiveObject(t);
+                canvas.requestRenderAll();
+            }
+        });
+
+        // ---- 모바일(터치)에서는 더블탭 대신 "꾹 누르기(롱프레스)"로 같은 오브젝트를 선택 ----
+        // (터치 환경에서는 더블탭 인식이 불안정하므로, 일정 시간 이상 같은 자리를 누르고 있으면 선택)
+        let longPressTimer = null;
+        let longPressTarget = null;
+        let longPressStartPt = null;
+        const LONG_PRESS_MS = 450;
+        const LONG_PRESS_MOVE_TOLERANCE = 10;
+
+        function clearLongPress(){
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+            longPressTarget = null;
+            longPressStartPt = null;
+        }
+
+        canvas.on('mouse:down', (e) => {
+            clearLongPress();
+            const isTouch = e.e && typeof e.e.type === 'string' && e.e.type.indexOf('touch') === 0;
+            const t = e.target;
+            if (isTouch && t && !t.isGuide && t.type !== 'textbox' && !t.selectable) {
+                longPressTarget = t;
+                longPressStartPt = canvas.getPointer(e.e);
+                longPressTimer = setTimeout(() => {
+                    if (longPressTarget) {
+                        canvas.setActiveObject(longPressTarget);
+                        canvas.requestRenderAll();
+                        if (navigator.vibrate) navigator.vibrate(15); // 선택됨을 알리는 짧은 진동(지원 기기만)
+                    }
+                    longPressTimer = null;
+                }, LONG_PRESS_MS);
+            }
+        });
+        canvas.on('mouse:move', (e) => {
+            if (!longPressTimer || !longPressStartPt) return;
+            const p = canvas.getPointer(e.e);
+            const dist = Math.hypot(p.x - longPressStartPt.x, p.y - longPressStartPt.y);
+            if (dist > LONG_PRESS_MOVE_TOLERANCE) clearLongPress();
+        });
+        canvas.on('mouse:up', () => clearLongPress());
+
+        // ---- 편집 기록에 남길 이벤트들 ----
+        canvas.on('object:added', (e) => { if (e.target && !e.target.isGuide) pushHistory(); });
+        canvas.on('object:modified', (e) => { checkGuideProximity(e.target); pushHistory(); });
+        canvas.on('object:removed', (e) => { if (e.target && !e.target.isGuide) pushHistory(); });
+        canvas.on('path:created', (e) => {
+            if (e.path) applySelectionMode(e.path);
+            bringGuideToFront();
+            pushHistory();
+        });
+
+        // ---- 붉은선(재단/안전선)에 가까워지면 경고 토스트 표시 ----
+        canvas.on('object:moving', (e) => { checkGuideProximity(e.target); updateDeleteIconPosition(); });
+        canvas.on('object:scaling', (e) => { checkGuideProximity(e.target); updateDeleteIconPosition(); });
+        canvas.on('object:rotating', (e) => { checkGuideProximity(e.target); updateDeleteIconPosition(); });
+
+        // ---- 마우스 휠로 커서 위치를 기준으로 확대/축소 ----
+        canvas.on('mouse:wheel', (opt) => {
+            const delta = opt.e.deltaY;
+            let zoom = canvas.getZoom() * (0.999 ** delta);
+            zoom = Math.min(3, Math.max(0.3, zoom));
+            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+            currentZoom = zoom;
+            document.getElementById('zoomLabel').textContent = Math.round(zoom * 100) + '%';
+            updateDeleteIconPosition();
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+        });
+
+        // ---- Alt 키 또는 M 키(포토샵 손 도구)를 누른 채 드래그하면 화면(뷰포트)을 이동(패닝) ----
+        canvas.on('mouse:down', (opt) => {
+            if (opt.e.altKey || isPanKeyDown) {
+                isPanning = true;
+                canvas.selection = false;
+                canvas.discardActiveObject();
+                canvas.requestRenderAll();
+                canvas.defaultCursor = 'grabbing';
+                canvas.hoverCursor = 'grabbing';
+                canvas.setCursor('grabbing');
+                panLastX = opt.e.clientX;
+                panLastY = opt.e.clientY;
+            }
+        });
+        canvas.on('mouse:move', (opt) => {
+            if (!isPanning) return;
+            const vpt = canvas.viewportTransform;
+            vpt[4] += opt.e.clientX - panLastX;
+            vpt[5] += opt.e.clientY - panLastY;
+            canvas.requestRenderAll();
+            updateDeleteIconPosition();
+            panLastX = opt.e.clientX;
+            panLastY = opt.e.clientY;
+        });
+        canvas.on('mouse:up', () => {
+            if (isPanning) {
+                canvas.setViewportTransform(canvas.viewportTransform);
+                isPanning = false;
+                canvas.selection = true;
+                canvas.defaultCursor = isPanKeyDown ? 'grab' : 'default';
+                canvas.hoverCursor = isPanKeyDown ? 'grab' : 'move';
+                canvas.setCursor(canvas.defaultCursor);
+            }
+        });
+
+        renderTabs();
+        resetHistory();
+        preloadFreeFonts();
+    });
+
+    // 드롭다운에 추가된 무료 웹폰트(구글폰트)들을 미리 다운로드해둬서
+    // 사용자가 처음 폰트를 고를 때 버벅이지 않도록 함
+    function preloadFreeFonts(){
+        if (!document.fonts || !document.fonts.load) return;
+        const freeFonts = [
+            'Pretendard', 'GMarketSans', 'Spoqa Han Sans Neo',
+            'Noto Sans KR', 'Nanum Gothic', 'Gothic A1', 'Gowun Dodum', 'IBM Plex Sans KR',
+            'Noto Serif KR', 'Nanum Myeongjo', 'Gowun Batang', 'Song Myung',
+            'Black Han Sans', 'Gugi', 'Do Hyeon', 'Jua', 'Gaegu', 'Stylish', 'Yeon Sung', 'Sunflower',
+            'Nanum Pen Script', 'Nanum Brush Script', 'East Sea Dokdo', 'Poor Story', 'Hi Melody', 'Gamja Flower',
+            'Roboto', 'Montserrat', 'Poppins', 'Lato', 'Raleway', 'Oswald', 'Bebas Neue',
+            'Playfair Display'
+        ];
+        freeFonts.forEach(f => {
+            document.fonts.load(`400 30px "${f}"`).catch(() => {});
+        });
     }
-    .design-group{ flex-shrink:0; }
 
-    /* 편집 툴바: 줄바꿈으로 여러 줄이 되어 뭉개지는 대신 한 줄 가로 스크롤 */
-    .editor-toolbar{
-        flex-wrap:nowrap;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-        padding:8px 10px;
-        gap:6px;
+    // 상단 "작업 규격" 표시 텍스트 갱신 (프로젝트 파일을 불러온 뒤에도 다시 호출됨)
+    function updateDisplayInfo(){
+        const info = document.getElementById('display-info');
+        if (!info) return;
+        info.innerText = `${isDouble ? "양면" : "단면"} | 사이즈 ${window.orderRatioW || 16} × ${window.orderRatioH || 9} mm (붉은박스)`;
     }
-    .toolbar-group{ flex-shrink:0; }
-    .desktop-hint{ display:none; } /* 마우스/Alt 안내문구는 터치 환경에서 의미 없음 */
 
-    /* 속성 패널도 동일하게 가로 스크롤 처리 */
-    .prop-panel{ padding:8px 10px; }
-    .prop-flow, .sub-panel{
-        flex-wrap:nowrap;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
+    // ===================== 탭(디자인/앞뒤) 렌더링 & 전환 =====================
+    function renderTabs() {
+        const tabContainer = document.getElementById('tab-container');
+        tabContainer.innerHTML = '';
+        for(let i = 0; i < count; i++) {
+            const group = document.createElement('div'); group.className = 'design-group';
+            const dBtn = document.createElement('div'); dBtn.className = 'design-btn' + (i === currentIdx ? ' active' : '');
+            dBtn.innerText = `디자인 ${i+1}`; dBtn.onclick = () => { switchTo(i, currentSide); };
+            group.appendChild(dBtn);
+            if(isDouble) {
+                const switchDiv = document.createElement('div'); switchDiv.className = 'side-switch';
+                ['front', 'back'].forEach(s => {
+                    const sBtn = document.createElement('button'); sBtn.className = 'side-btn' + (currentIdx === i && currentSide === s ? ' active' : '');
+                    sBtn.innerText = s === 'front' ? '앞' : '뒤';
+                    sBtn.onclick = (e) => { e.stopPropagation(); switchTo(i, s); };
+                    switchDiv.appendChild(sBtn);
+                });
+                group.appendChild(switchDiv);
+            }
+            tabContainer.appendChild(group);
+        }
     }
-    .prop-row{ flex-shrink:0; }
 
-    /* 터치로 누르기 편하도록 버튼 크기를 살짝 키움 */
-    .tool-btn{ padding:9px 12px; font-size:13px; }
-    .tool-btn.icon-only{ padding:9px 12px; min-width:38px; }
-    input.tool-color{ width:34px; height:34px; }
-    .floating-delete-btn{ width:36px; height:36px; font-size:17px; }
+    // 현재 캔버스(가이드 제외)를 순수 데이터로 추출
+    function serializeCurrentCanvas(){
+        const objs = canvas.getObjects().filter(o => !o.isGuide);
+        return {
+            objects: objs.map(o => o.toObject(['selectable', 'evented'])),
+            background: canvas.backgroundColor || '#ffffff'
+        };
+    }
 
-    /* 하단 업로드/저장 버튼은 세로 폭 꽉 채워서 누르기 쉽게 */
-    .controls{ width:100%; }
-    .left-tools, .right-tools{ width:100%; }
-    .btn{ flex:1 1 auto; padding:14px 18px; font-size:14px; }
+    // 저장된 데이터를 캔버스에 다시 그려 넣음 (가이드는 항상 다시 맨 위에 추가)
+    function loadCanvasObjects(data, callback){
+        isRestoring = true;
+        const payload = {
+            objects: (data && data.objects) || [],
+            background: (data && data.background) || '#ffffff'
+        };
+        canvas.loadFromJSON(payload, () => {
+            canvas.add(guideRect, outerGuideRect);
+            bringGuideToFront();
+            const bgInput = document.getElementById('canvasBgInput');
+            if (bgInput) bgInput.value = payload.background;
+            canvas.discardActiveObject();
+            hidePropPanel();
+            canvas.requestRenderAll();
+            isRestoring = false;
+            if (callback) callback();
+        });
+    }
 
-    .bottom-info-panel{ margin-top:18px; padding:14px 16px; }
+    // 디자인/면 전환 (현재 내용 저장 → 대상 내용 불러오기 → 편집기록 초기화)
+    function switchTo(idx, side){
+        return new Promise((resolve) => {
+            if (designData[currentIdx]) {
+                designData[currentIdx][currentSide] = serializeCurrentCanvas();
+            }
+            currentIdx = idx;
+            currentSide = side;
+            loadCanvasObjects(designData[currentIdx][currentSide], () => {
+                resetHistory();
+                renderTabs();
+                resolve();
+            });
+        });
+    }
+
+    function hasContent(data){
+        return !!(data && data.objects && data.objects.length > 0);
+    }
+
+    // ===================== 가이드(붉은 박스 + 회색 여유선) 헬퍼 =====================
+    function bringGuideToFront(){
+        canvas.bringToFront(guideRect);
+        canvas.bringToFront(outerGuideRect);
+    }
+
+    // ===================== 붉은선(재단/안전선) 근접 경고 =====================
+    const GUIDE_PROXIMITY_PX = 15; // 이 값(px) 안쪽까지 가까워지면(또는 넘어가면) 경고
+    let guideWarningTimeout = null;
+
+    function showGuideWarning(){
+        const toast = document.getElementById('guideWarningToast');
+        if (!toast) return;
+        toast.classList.add('visible');
+        clearTimeout(guideWarningTimeout);
+        guideWarningTimeout = setTimeout(() => {
+            toast.classList.remove('visible');
+        }, 1500);
+    }
+
+    function checkGuideProximity(obj){
+        if (!obj || obj.isGuide || !guideRect) return;
+        const objBox = obj.getBoundingRect(true, true);
+        const guideBox = {
+            left: guideRect.left,
+            top: guideRect.top,
+            right: guideRect.left + guideRect.width,
+            bottom: guideRect.top + guideRect.height
+        };
+        const nearLeft   = objBox.left <= guideBox.left + GUIDE_PROXIMITY_PX;
+        const nearTop    = objBox.top <= guideBox.top + GUIDE_PROXIMITY_PX;
+        const nearRight  = (objBox.left + objBox.width) >= guideBox.right - GUIDE_PROXIMITY_PX;
+        const nearBottom = (objBox.top + objBox.height) >= guideBox.bottom - GUIDE_PROXIMITY_PX;
+        if (nearLeft || nearTop || nearRight || nearBottom) {
+            showGuideWarning();
+        }
+    }
+
+    // ===================== 실행취소 / 다시실행 =====================
+    function pushHistory(){
+        if (isRestoring || !canvas) return;
+        const snapshot = serializeCurrentCanvas();
+        historyStack = historyStack.slice(0, historyIndex + 1);
+        historyStack.push(snapshot);
+        if (historyStack.length > HISTORY_LIMIT) historyStack.shift();
+        historyIndex = historyStack.length - 1;
+        updateUndoRedoButtons();
+    }
+    function resetHistory(){
+        historyStack = [serializeCurrentCanvas()];
+        historyIndex = 0;
+        updateUndoRedoButtons();
+    }
+    function undo(){
+        if (historyIndex <= 0) return;
+        historyIndex--;
+        loadCanvasObjects(historyStack[historyIndex], updateUndoRedoButtons);
+    }
+    function redo(){
+        if (historyIndex >= historyStack.length - 1) return;
+        historyIndex++;
+        loadCanvasObjects(historyStack[historyIndex], updateUndoRedoButtons);
+    }
+    function updateUndoRedoButtons(){
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+        if (redoBtn) redoBtn.disabled = historyIndex >= historyStack.length - 1;
+    }
+    document.getElementById('undoBtn').addEventListener('click', undo);
+    document.getElementById('redoBtn').addEventListener('click', redo);
+
+    // ===================== 삽입 도구: 텍스트 / 도형 / 그리기 =====================
+    const moveToolBtn = document.getElementById('moveToolBtn');
+
+    // 패널을 열어둔 채로 선택만 해제(닫기)할 때 쓰는 공통 함수 (Esc 키에서 사용)
+    function closeSelectionPanel(){
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        hidePropPanel();
+        hideDeleteIcon();
+    }
+
+    // 오브젝트 종류에 따라 "몇 번 클릭해야 선택되는지"를 정해주는 공통 함수.
+    // 텍스트는 기존처럼 한 번 클릭으로 바로 선택되고, 그 외(도형/이미지/손그림)는
+    // selectable을 꺼둬서 한 번 클릭으로는 선택되지 않게 하고, 더블클릭으로만 선택되게 함.
+    function applySelectionMode(obj){
+        if (!obj || obj.isGuide) return;
+        if (obj.lockMovementX) return; // 잠금된 오브젝트는 상태를 건드리지 않음
+        obj.evented = true;
+        obj.selectable = (obj.type === 'textbox');
+    }
+
+    // 포토샵의 "이동 도구(V)"에 해당. 그리기 모드를 끄고, 오브젝트를
+    // 자유롭게 클릭·드래그로 선택/이동할 수 있는 기본 상태로 되돌립니다.
+    function setMoveTool(){
+        if (isDrawMode) toggleDrawMode();
+        canvas.selection = true;
+        canvas.skipTargetFind = false;
+        canvas.forEachObject(o => applySelectionMode(o));
+        moveToolBtn.classList.add('active');
+        drawBtn.classList.remove('active');
+        canvas.requestRenderAll();
+    }
+    moveToolBtn.addEventListener('click', () => setMoveTool());
+
+    function addText(){
+        setMoveTool();
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        // 캔버스 폭에 비례해서 넉넉하게(너무 좁으면 스페이스바 칠 때마다 줄바꿈 되어버림)
+        const textWidth = Math.max(260, Math.min(canvas.width * 0.7, 500));
+        const text = new fabric.Textbox('텍스트를 입력하세요', {
+            left: cx - textWidth / 2, top: cy - 20, width: textWidth,
+            fontSize: 28, fill: '#111111', fontFamily: 'Malgun Gothic', textAlign: 'left'
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        bringGuideToFront();
+        canvas.requestRenderAll();
+        text.enterEditing();
+        text.selectAll();
+    }
+
+    function addShape(type){
+        setMoveTool();
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        let shape;
+        if (type === 'rect') {
+            shape = new fabric.Rect({ left: cx - 60, top: cy - 40, width: 120, height: 80, fill: '#3498db' });
+        } else if (type === 'circle') {
+            shape = new fabric.Circle({ left: cx - 60, top: cy - 60, radius: 60, fill: '#3498db' });
+        } else if (type === 'triangle') {
+            shape = new fabric.Triangle({ left: cx - 60, top: cy - 50, width: 120, height: 100, fill: '#3498db' });
+        } else if (type === 'line') {
+            shape = new fabric.Line([cx - 70, cy, cx + 70, cy], { stroke: '#111111', strokeWidth: 4 });
+        }
+        if (!shape) return;
+        applySelectionMode(shape);
+        canvas.add(shape);
+        canvas.setActiveObject(shape);
+        bringGuideToFront();
+        canvas.requestRenderAll();
+    }
+
+    document.getElementById('addTextBtn').addEventListener('click', addText);
+    document.getElementById('addRectBtn').addEventListener('click', () => addShape('rect'));
+    document.getElementById('addCircleBtn').addEventListener('click', () => addShape('circle'));
+    document.getElementById('addTriangleBtn').addEventListener('click', () => addShape('triangle'));
+    document.getElementById('addLineBtn').addEventListener('click', () => addShape('line'));
+
+    const drawBtn = document.getElementById('drawBtn');
+    const brushControls = document.getElementById('brushControls');
+    const brushColorInput = document.getElementById('brushColorInput');
+    const brushWidthInput = document.getElementById('brushWidthInput');
+
+    function toggleDrawMode(){
+        isDrawMode = !isDrawMode;
+        canvas.isDrawingMode = isDrawMode;
+        if (isDrawMode) {
+            if (canvas.getActiveObject()) closeSelectionPanel();
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.color = brushColorInput.value;
+            canvas.freeDrawingBrush.width = parseInt(brushWidthInput.value, 10) || 4;
+            drawBtn.classList.add('active');
+            moveToolBtn.classList.remove('active');
+            brushControls.classList.remove('hidden');
+        } else {
+            drawBtn.classList.remove('active');
+            moveToolBtn.classList.add('active');
+            brushControls.classList.add('hidden');
+        }
+    }
+    drawBtn.addEventListener('click', toggleDrawMode);
+    brushColorInput.addEventListener('input', () => { if (canvas.freeDrawingBrush) canvas.freeDrawingBrush.color = brushColorInput.value; });
+    brushWidthInput.addEventListener('input', () => { if (canvas.freeDrawingBrush) canvas.freeDrawingBrush.width = parseInt(brushWidthInput.value, 10) || 1; });
+
+    // ===================== 줌 & 화면 이동(패닝) =====================
+    const zoomLabel = document.getElementById('zoomLabel');
+    function setZoom(z){
+        currentZoom = Math.min(3, Math.max(0.3, z));
+        const center = { x: canvas.width / 2, y: canvas.height / 2 };
+        canvas.zoomToPoint(center, currentZoom);
+        zoomLabel.textContent = Math.round(currentZoom * 100) + '%';
+    }
+    function resetZoom(){
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        currentZoom = 1;
+        zoomLabel.textContent = '100%';
+    }
+    document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(currentZoom + 0.1));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(currentZoom - 0.1));
+    document.getElementById('zoomResetBtn').addEventListener('click', resetZoom);
+
+    let isPanning = false;
+    let panLastX = 0, panLastY = 0;
+    let isPanKeyDown = false; // M 키를 누르고 있는 동안 = 포토샵 손 도구
+
+    // ===================== 캔버스 배경색 =====================
+    document.getElementById('canvasBgInput').addEventListener('input', (e) => {
+        canvas.setBackgroundColor(e.target.value, () => canvas.requestRenderAll());
+    });
+    document.getElementById('canvasBgInput').addEventListener('change', () => pushHistory());
+
+    // ===================== 속성 패널 (선택된 오브젝트 편집) =====================
+    const propPanel = document.getElementById('propPanel');
+    const textPanel = document.getElementById('textPanel');
+    const shapePanel = document.getElementById('shapePanel');
+    const imagePanel = document.getElementById('imagePanel');
+    const fillColorRow = document.getElementById('fillColorRow');
+
+    const opacityInput = document.getElementById('opacityInput');
+    const lockBtn = document.getElementById('lockBtn');
+
+    const fontFamilySelect = document.getElementById('fontFamilySelect');
+    const fontSizeInput = document.getElementById('fontSizeInput');
+    const letterSpacingInput = document.getElementById('letterSpacingInput');
+    const textColorInput = document.getElementById('textColorInput');
+    const boldBtn = document.getElementById('boldBtn');
+    const italicBtn = document.getElementById('italicBtn');
+    const underlineBtn = document.getElementById('underlineBtn');
+
+    const fillColorInput = document.getElementById('fillColorInput');
+    const strokeColorInput = document.getElementById('strokeColorInput');
+    const strokeWidthInput = document.getElementById('strokeWidthInput');
+
+    const filterGrayscale = document.getElementById('filterGrayscale');
+    const filterSepia = document.getElementById('filterSepia');
+    const filterInvert = document.getElementById('filterInvert');
+    const filterBrightness = document.getElementById('filterBrightness');
+    const filterContrast = document.getElementById('filterContrast');
+    const filterSaturation = document.getElementById('filterSaturation');
+    const filterBlur = document.getElementById('filterBlur');
+    const filterSharpen = document.getElementById('filterSharpen');
+
+    function hidePropPanel(){
+        propPanel.classList.remove('visible');
+        textPanel.classList.remove('visible');
+        shapePanel.classList.remove('visible');
+        imagePanel.classList.remove('visible');
+    }
+
+    // ---- 선택된 오브젝트 모서리에 붙는 떠다니는 삭제(휴지통) 아이콘 ----
+    const floatingDeleteBtn = document.getElementById('floatingDeleteBtn');
+
+    // 오브젝트의 캔버스 내부 좌표를 실제 화면(페이지) 좌표로 변환 (줌/이동 반영)
+    function getObjectScreenRect(obj){
+        const objBox = obj.getBoundingRect(true, true);
+        const vpt = canvas.viewportTransform;
+        const left = objBox.left * vpt[0] + vpt[4];
+        const top = objBox.top * vpt[3] + vpt[5];
+        const width = objBox.width * vpt[0];
+        const height = objBox.height * vpt[3];
+        const canvasRect = canvas.getElement().getBoundingClientRect();
+        const scaleX = canvasRect.width / canvas.getWidth();
+        const scaleY = canvasRect.height / canvas.getHeight();
+        return {
+            left: canvasRect.left + left * scaleX,
+            top: canvasRect.top + top * scaleY,
+            width: width * scaleX,
+            height: height * scaleY
+        };
+    }
+
+    function updateDeleteIconPosition(){
+        if (!canvas) return;
+        const obj = canvas.getActiveObject();
+        if (!obj || obj.isGuide) { hideDeleteIcon(); return; }
+        const rect = getObjectScreenRect(obj);
+        floatingDeleteBtn.style.left = (rect.left + rect.width) + 'px';
+        floatingDeleteBtn.style.top = rect.top + 'px';
+        floatingDeleteBtn.classList.add('visible');
+    }
+    function hideDeleteIcon(){
+        floatingDeleteBtn.classList.remove('visible');
+    }
+    floatingDeleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteActive();
+    });
+    window.addEventListener('scroll', updateDeleteIconPosition, { passive: true });
+    window.addEventListener('resize', updateDeleteIconPosition);
+
+    // ===================== 반응형 캔버스 크기 조정 (모바일 회전/리사이즈 대응) =====================
+    // 화면 크기가 바뀌면(모바일 세로↔가로 회전 등) 캔버스 폭을 컨테이너에 맞게 다시 계산하고,
+    // 현재 캔버스의 오브젝트뿐 아니라 아직 화면에 없는 다른 디자인/면의 저장된 좌표까지
+    // 전부 같은 비율로 함께 조정해서, 나중에 다른 탭으로 전환해도 배치가 어긋나지 않게 합니다.
+    function rescaleStoredDesigns(ratio){
+        designData.forEach(entry => {
+            ['front', 'back'].forEach(side => {
+                const data = entry && entry[side];
+                if (!data || !data.objects || !data.objects.length) return;
+                data.objects.forEach(o => {
+                    if (typeof o.left === 'number') o.left *= ratio;
+                    if (typeof o.top === 'number') o.top *= ratio;
+                    if (typeof o.scaleX === 'number') o.scaleX *= ratio;
+                    if (typeof o.scaleY === 'number') o.scaleY *= ratio;
+                });
+            });
+        });
+    }
+
+    function resizeCanvasToContainer(){
+        if (!canvas) return;
+        const wrapper = document.getElementById('canvas-wrapper');
+        const newWidth = wrapper.clientWidth;
+        const oldWidth = canvas.getWidth();
+        if (!newWidth || Math.abs(newWidth - oldWidth) < 2) return;
+
+        const ratio = newWidth / oldWidth;
+        const newHeight = canvas.getHeight() * ratio;
+
+        canvas.getObjects().forEach(obj => {
+            if (obj.isGuide) return;
+            obj.set({
+                left: obj.left * ratio,
+                top: obj.top * ratio,
+                scaleX: obj.scaleX * ratio,
+                scaleY: obj.scaleY * ratio
+            });
+            obj.setCoords();
+        });
+
+        const padding = newWidth * 0.02;
+        guideRect.set({ left: padding, top: padding, width: newWidth - padding * 2, height: newHeight - padding * 2 });
+        guideRect.setCoords();
+        outerGuideRect.set({ left: 0, top: 0, width: newWidth, height: newHeight });
+        outerGuideRect.setCoords();
+
+        canvas.setDimensions({ width: newWidth, height: newHeight });
+        rescaleStoredDesigns(ratio);
+        canvas.requestRenderAll();
+        updateDeleteIconPosition();
+    }
+
+    let canvasResizeTimer;
+    function scheduleCanvasResize(delay){
+        clearTimeout(canvasResizeTimer);
+        canvasResizeTimer = setTimeout(resizeCanvasToContainer, delay);
+    }
+    window.addEventListener('resize', () => scheduleCanvasResize(200));
+    window.addEventListener('orientationchange', () => scheduleCanvasResize(350));
+
+    // 현재 선택된 것 안에 들어있는 텍스트박스만 모아서 반환.
+    // (텍스트 하나만 선택 → 그 하나, 여러 개를 함께 선택 → 그중 텍스트박스들만, 텍스트가 없으면 빈 배열)
+    // 이걸 이용하면 텍스트를 여러 개 한꺼번에 선택해도 폰트/크기/색상 등을 한 번에 바꿀 수 있습니다.
+    function getSelectedTextboxes(){
+        const obj = canvas.getActiveObject();
+        if (!obj) return [];
+        if (obj.type === 'textbox') return [obj];
+        if (obj.type === 'activeSelection' && typeof obj.getObjects === 'function') {
+            return obj.getObjects().filter(o => o.type === 'textbox');
+        }
+        return [];
+    }
+
+    function updatePropPanel(){
+        const obj = canvas.getActiveObject();
+        if (!obj) { hidePropPanel(); return; }
+
+        propPanel.classList.add('visible');
+        opacityInput.value = obj.opacity != null ? obj.opacity : 1;
+        lockBtn.textContent = obj.lockMovementX ? '🔓 잠금해제' : '🔒 잠금';
+        angleInput.value = Math.round(((obj.angle || 0) % 360 + 360) % 360);
+
+        const selectedTextboxes = getSelectedTextboxes();
+        const isText = selectedTextboxes.length > 0;
+        const isFillShape = ['rect', 'circle', 'triangle'].includes(obj.type);
+        const isLine = obj.type === 'line';
+        const isImage = obj.type === 'image';
+
+        textPanel.classList.toggle('visible', isText);
+        if (isText) {
+            // 여러 개를 선택했을 때는 맨 처음(가장 앞선) 텍스트의 값을 기준으로 표시
+            const first = selectedTextboxes[0];
+            fontFamilySelect.value = first.fontFamily || 'Malgun Gothic';
+            fontSizeInput.value = first.fontSize || 28;
+            letterSpacingInput.value = first.charSpacing || 0;
+            textColorInput.value = (typeof first.fill === 'string' ? first.fill : '#111111');
+            boldBtn.classList.toggle('active', first.fontWeight === 'bold');
+            italicBtn.classList.toggle('active', first.fontStyle === 'italic');
+            underlineBtn.classList.toggle('active', !!first.underline);
+        }
+
+        shapePanel.classList.toggle('visible', isFillShape || isLine);
+        if (isFillShape || isLine) {
+            fillColorRow.classList.toggle('hidden', !isFillShape);
+            fillColorInput.value = (typeof obj.fill === 'string' && obj.fill) ? obj.fill : '#3498db';
+            strokeColorInput.value = obj.stroke || '#111111';
+            strokeWidthInput.value = obj.strokeWidth || 0;
+        }
+
+        imagePanel.classList.toggle('visible', isImage);
+        if (isImage) syncFilterPanelFromObject(obj);
+    }
+
+    // ---- 공통(불투명도/회전/반전/정렬/레이어/복제/잠금/삭제) ----
+    opacityInput.addEventListener('input', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.set('opacity', parseFloat(opacityInput.value));
+        canvas.requestRenderAll();
+    });
+    opacityInput.addEventListener('change', () => pushHistory());
+
+    function rotateBy(deg){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        const newAngle = (((obj.angle || 0) + deg) % 360 + 360) % 360;
+        obj.set('angle', newAngle);
+        obj.setCoords();
+        canvas.requestRenderAll();
+        updatePropPanel();
+        pushHistory();
+    }
+    document.getElementById('rotateLeftBtn').addEventListener('click', () => rotateBy(-90));
+    document.getElementById('rotateRightBtn').addEventListener('click', () => rotateBy(90));
+
+    const angleInput = document.getElementById('angleInput');
+    angleInput.addEventListener('input', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        let deg = parseFloat(angleInput.value);
+        if (isNaN(deg)) return;
+        deg = ((deg % 360) + 360) % 360;
+        obj.set('angle', deg);
+        obj.setCoords();
+        canvas.requestRenderAll();
+    });
+    angleInput.addEventListener('change', () => pushHistory());
+
+    function flip(axis){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        if (axis === 'x') obj.set('flipX', !obj.flipX);
+        else obj.set('flipY', !obj.flipY);
+        canvas.requestRenderAll();
+        pushHistory();
+    }
+    document.getElementById('flipXBtn').addEventListener('click', () => flip('x'));
+    document.getElementById('flipYBtn').addEventListener('click', () => flip('y'));
+
+    function alignObject(axis, pos){
+        // 여러 개를 한꺼번에 선택했을 때, 선택 전체를 하나의 덩어리로 옮기는 게 아니라
+        // 각 오브젝트를 "개별적으로" 같은 기준선에 맞춰야 여러 텍스트의 시작점이 한 줄로 나란히 맞춰집니다.
+        // (단, 세로 가운데 정렬만은 예외 — 아래 참고)
+        const objs = canvas.getActiveObjects();
+        if (!objs.length) return;
+        const wasMultiple = objs.length > 1;
+
+        // 다중 선택 상태에서는 각 오브젝트의 좌표가 "선택 그룹 기준 상대좌표"로 바뀌어 있으므로,
+        // 먼저 선택을 풀어서 캔버스 절대좌표로 되돌린 뒤 계산합니다.
+        if (wasMultiple) canvas.discardActiveObject();
+
+        objs.forEach(obj => obj.setCoords());
+
+        if (wasMultiple && axis === 'v' && pos === 'center') {
+            // 세로 가운데 정렬을 여러 개 선택한 채로 누르면 캔버스 중앙으로 모으는 게 아니라,
+            // 맨 위에 있는 것의 위치는 그대로 두고 나머지를 위에서 아래 순서로
+            // 간격이 정확히 10px씩 되도록 나란히 배치합니다.
+            const GAP = 10;
+            const sorted = objs.slice().sort((a, b) => {
+                return a.getBoundingRect(true, true).top - b.getBoundingRect(true, true).top;
+            });
+            let nextTop = sorted[0].getBoundingRect(true, true).top;
+            sorted.forEach(obj => {
+                const r = obj.getBoundingRect(true, true);
+                obj.top += (nextTop - r.top);
+                obj.setCoords();
+                const newRect = obj.getBoundingRect(true, true);
+                nextTop = newRect.top + newRect.height + GAP;
+            });
+        } else {
+            objs.forEach(obj => {
+                const rect = obj.getBoundingRect(true, true);
+                if (axis === 'h') {
+                    let targetLeft = 0;
+                    if (pos === 'center') targetLeft = (canvas.width - rect.width) / 2;
+                    else if (pos === 'end') targetLeft = canvas.width - rect.width;
+                    obj.left += (targetLeft - rect.left);
+                } else {
+                    let targetTop = 0;
+                    if (pos === 'center') targetTop = (canvas.height - rect.height) / 2;
+                    else if (pos === 'end') targetTop = canvas.height - rect.height;
+                    obj.top += (targetTop - rect.top);
+                }
+                obj.setCoords();
+            });
+        }
+
+        // 원래 여러 개를 함께 선택한 상태였다면, 각자 새 위치로 옮긴 뒤 다시 하나의 선택으로 묶어줌
+        if (wasMultiple) {
+            const selection = new fabric.ActiveSelection(objs, { canvas });
+            canvas.setActiveObject(selection);
+        }
+
+        canvas.requestRenderAll();
+        pushHistory();
+    }
+    document.getElementById('alignLeftBtn').addEventListener('click', () => alignObject('h', 'start'));
+    document.getElementById('alignCenterHBtn').addEventListener('click', () => alignObject('h', 'center'));
+    document.getElementById('alignRightBtn').addEventListener('click', () => alignObject('h', 'end'));
+    document.getElementById('alignCenterVBtn').addEventListener('click', () => alignObject('v', 'center'));
+
+    function layerAction(action){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        if (action === 'front') canvas.bringToFront(obj);
+        else if (action === 'forward') canvas.bringForward(obj);
+        else if (action === 'backward') canvas.sendBackwards(obj);
+        else if (action === 'back') canvas.sendToBack(obj);
+        bringGuideToFront();
+        canvas.requestRenderAll();
+        pushHistory();
+    }
+    document.getElementById('layerFrontBtn').addEventListener('click', () => layerAction('front'));
+    document.getElementById('layerForwardBtn').addEventListener('click', () => layerAction('forward'));
+    document.getElementById('layerBackwardBtn').addEventListener('click', () => layerAction('backward'));
+    document.getElementById('layerBackBtn').addEventListener('click', () => layerAction('back'));
+
+    function duplicateActive(){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.clone((cloned) => {
+            canvas.discardActiveObject();
+            cloned.set({ left: (obj.left || 0) + 20, top: (obj.top || 0) + 20 });
+            applySelectionMode(cloned);
+            canvas.add(cloned);
+            canvas.setActiveObject(cloned);
+            bringGuideToFront();
+            canvas.requestRenderAll();
+            pushHistory();
+        }, ['selectable', 'evented']);
+    }
+    document.getElementById('duplicateBtn').addEventListener('click', duplicateActive);
+
+    // ===================== 복사(Ctrl+C) / 붙여넣기(Ctrl+V) =====================
+    // 텍스트를 입력창/텍스트 편집 중일 때는 브라우저 기본 복사·붙여넣기가 그대로
+    // 동작하도록, 위쪽 keydown 핸들러의 기존 가드(입력창 포커스, 텍스트 편집중)를 그대로 탄다.
+    let clipboardObject = null;
+
+    function copyActive(){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.clone((cloned) => {
+            clipboardObject = cloned;
+        }, ['selectable', 'evented']);
+    }
+
+    function pasteClipboard(){
+        if (!clipboardObject) return;
+        clipboardObject.clone((cloned) => {
+            canvas.discardActiveObject();
+
+            // 오른쪽 아래로 밀려나지 않고, 원본과 같은 왼쪽 위치를 유지한 채
+            // 바로 아래로 붙여넣어서 줄맞춤이 쉽도록 함
+            const gap = 10;
+            const sourceHeight = (typeof clipboardObject.getScaledHeight === 'function')
+                ? clipboardObject.getScaledHeight()
+                : (clipboardObject.height || 0) * (clipboardObject.scaleY || 1);
+            cloned.set({
+                left: clipboardObject.left,
+                top: (clipboardObject.top || 0) + sourceHeight + gap,
+                evented: true
+            });
+
+            if (cloned.type === 'activeSelection') {
+                // 여러 개를 한 번에 복사한 경우: 그룹을 풀어서 각각 캔버스에 추가
+                cloned.canvas = canvas;
+                cloned.forEachObject((o) => {
+                    applySelectionMode(o);
+                    canvas.add(o);
+                });
+                cloned.setCoords();
+            } else {
+                applySelectionMode(cloned);
+                canvas.add(cloned);
+            }
+
+            canvas.setActiveObject(cloned);
+            bringGuideToFront();
+            canvas.requestRenderAll();
+            pushHistory();
+
+            // 연속으로 붙여넣기 하면 계속 바로 아래로 이어서 쌓이도록 기준 위치 갱신
+            clipboardObject = cloned;
+        }, ['selectable', 'evented']);
+    }
+
+    function toggleLock(){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        const locked = !obj.lockMovementX;
+        obj.set({
+            lockMovementX: locked, lockMovementY: locked,
+            lockScalingX: locked, lockScalingY: locked,
+            lockRotation: locked, hasControls: !locked
+        });
+        canvas.requestRenderAll();
+        updatePropPanel();
+        pushHistory();
+    }
+    lockBtn.addEventListener('click', toggleLock);
+
+    function deleteActive(){
+        const objs = canvas.getActiveObjects();
+        if (!objs.length) return;
+        objs.forEach(o => canvas.remove(o));
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        refreshGuideTextVisibility();
+        hidePropPanel();
+        pushHistory();
+    }
+    document.getElementById('deleteBtn').addEventListener('click', deleteActive);
+
+    // ---- 텍스트 전용 컨트롤 ----
+    // 텍스트를 편집하다가(더블클릭 후 일부 글자를 드래그로 선택해둔 채) 속성 패널에서
+    // 폰트/크기/색상/굵게 등을 바꾸면, Fabric.js 특성상 "선택된 일부 글자에만" 적용되고
+    // 나머지 글자는 그대로 남아 마치 "일부 글자만 바뀌는" 것처럼 보이는 문제가 있었습니다.
+    // 패널에서 바꾸는 스타일은 항상 텍스트 전체에 고르게 적용되도록,
+    // 적용 전에 편집 모드를 빠져나오고 예전에 남아있을 수 있는 글자별 스타일 덮어쓰기를 정리합니다.
+    function applyTextStyle(obj, key, value){
+        if (!obj || obj.type !== 'textbox') return;
+        if (obj.isEditing) obj.exitEditing();
+        if (obj.styles && Object.keys(obj.styles).length) obj.styles = {};
+        obj.set(key, value);
+    }
+
+    fontFamilySelect.addEventListener('change', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const chosenFont = fontFamilySelect.value;
+        textboxes.forEach(obj => applyTextStyle(obj, 'fontFamily', chosenFont));
+        canvas.requestRenderAll();
+        pushHistory();
+        // 웹폰트(구글폰트)는 첫 선택 시 아직 다운로드 중일 수 있어서,
+        // 로드가 끝나면 한 번 더 다시 그려서 폰트가 정상 적용된 모습으로 보이게 함
+        if (document.fonts && document.fonts.load) {
+            document.fonts.load(`400 30px "${chosenFont}"`).then(() => canvas.requestRenderAll()).catch(() => {});
+        }
+    });
+    fontSizeInput.addEventListener('input', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const size = parseInt(fontSizeInput.value, 10) || 28;
+        textboxes.forEach(obj => applyTextStyle(obj, 'fontSize', size));
+        canvas.requestRenderAll();
+    });
+    fontSizeInput.addEventListener('change', () => pushHistory());
+
+    // ---- 자간(글자 사이 간격) ----
+    letterSpacingInput.addEventListener('input', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const spacing = parseInt(letterSpacingInput.value, 10) || 0;
+        textboxes.forEach(obj => applyTextStyle(obj, 'charSpacing', spacing));
+        canvas.requestRenderAll();
+    });
+    letterSpacingInput.addEventListener('change', () => pushHistory());
+
+    // Ctrl+Shift+< / Ctrl+Shift+> 로 선택된 텍스트(들) 크기를 키우고 줄이는 단축키에서 사용
+    function changeFontSize(delta){
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const min = parseInt(fontSizeInput.min, 10) || 8;
+        const max = parseInt(fontSizeInput.max, 10) || 200;
+        let lastSize = null;
+        textboxes.forEach(obj => {
+            const newSize = Math.max(min, Math.min(max, (obj.fontSize || 28) + delta));
+            applyTextStyle(obj, 'fontSize', newSize);
+            lastSize = newSize;
+        });
+        canvas.requestRenderAll();
+        if (fontSizeInput && lastSize != null) fontSizeInput.value = lastSize; // 패널이 열려있으면 숫자도 같이 갱신
+        pushHistory();
+    }
+    textColorInput.addEventListener('input', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        textboxes.forEach(obj => applyTextStyle(obj, 'fill', textColorInput.value));
+        canvas.requestRenderAll();
+    });
+    textColorInput.addEventListener('change', () => pushHistory());
+
+    boldBtn.addEventListener('click', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const makeBold = textboxes[0].fontWeight !== 'bold'; // 맨 처음 것 기준으로 켜고 끄기
+        textboxes.forEach(obj => applyTextStyle(obj, 'fontWeight', makeBold ? 'bold' : 'normal'));
+        canvas.requestRenderAll();
+        updatePropPanel();
+        pushHistory();
+    });
+    italicBtn.addEventListener('click', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const makeItalic = textboxes[0].fontStyle !== 'italic';
+        textboxes.forEach(obj => applyTextStyle(obj, 'fontStyle', makeItalic ? 'italic' : 'normal'));
+        canvas.requestRenderAll();
+        updatePropPanel();
+        pushHistory();
+    });
+    underlineBtn.addEventListener('click', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const makeUnderline = !textboxes[0].underline;
+        textboxes.forEach(obj => applyTextStyle(obj, 'underline', makeUnderline));
+        canvas.requestRenderAll();
+        updatePropPanel();
+        pushHistory();
+    });
+    document.getElementById('textAlignLeftBtn').addEventListener('click', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        textboxes.forEach(obj => obj.set('textAlign', 'left'));
+        canvas.requestRenderAll(); pushHistory();
+    });
+    document.getElementById('textAlignCenterBtn').addEventListener('click', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        textboxes.forEach(obj => obj.set('textAlign', 'center'));
+        canvas.requestRenderAll(); pushHistory();
+    });
+    document.getElementById('textAlignRightBtn').addEventListener('click', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        textboxes.forEach(obj => obj.set('textAlign', 'right'));
+        canvas.requestRenderAll(); pushHistory();
+    });
+
+    // ---- 도형 전용 컨트롤 ----
+    fillColorInput.addEventListener('input', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.set('fill', fillColorInput.value);
+        canvas.requestRenderAll();
+    });
+    fillColorInput.addEventListener('change', () => pushHistory());
+    strokeColorInput.addEventListener('input', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.set('stroke', strokeColorInput.value);
+        canvas.requestRenderAll();
+    });
+    strokeColorInput.addEventListener('change', () => pushHistory());
+    strokeWidthInput.addEventListener('input', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.set('strokeWidth', parseInt(strokeWidthInput.value, 10) || 0);
+        canvas.requestRenderAll();
+    });
+    strokeWidthInput.addEventListener('change', () => pushHistory());
+
+    // ---- 이미지 필터 컨트롤 ----
+    function syncFilterPanelFromObject(obj){
+        filterGrayscale.checked = false;
+        filterSepia.checked = false;
+        filterInvert.checked = false;
+        filterBrightness.value = 0;
+        filterContrast.value = 0;
+        filterSaturation.value = 0;
+        filterBlur.value = 0;
+        filterSharpen.value = 0;
+        (obj.filters || []).forEach(f => {
+            const t = f.type;
+            if (t === 'Grayscale') filterGrayscale.checked = true;
+            else if (t === 'Sepia') filterSepia.checked = true;
+            else if (t === 'Invert') filterInvert.checked = true;
+            else if (t === 'Brightness') filterBrightness.value = f.brightness;
+            else if (t === 'Contrast') filterContrast.value = f.contrast;
+            else if (t === 'Saturation') filterSaturation.value = f.saturation;
+            else if (t === 'Blur') filterBlur.value = f.blur;
+            else if (t === 'Convolution' && f.matrix) {
+                // 샤픈 매트릭스는 identity + (sharpen-identity)*t 형태로 만들었으므로
+                // 가운데 값(matrix[4])에서 역으로 강도(t)를 계산합니다.
+                filterSharpen.value = Math.max(0, ((f.matrix[4] - 1) / 4)).toFixed(2);
+            }
+        });
+    }
+
+    function computeSharpenMatrix(t){
+        const identity = [0,0,0, 0,1,0, 0,0,0];
+        const sharpen  = [0,-1,0, -1,5,-1, 0,-1,0];
+        return identity.map((v, i) => v + (sharpen[i] - v) * t);
+    }
+
+    function applyImageFilters(){
+        const obj = canvas.getActiveObject();
+        if (!obj || obj.type !== 'image') return;
+        const filters = [];
+        if (filterGrayscale.checked) filters.push(new fabric.Image.filters.Grayscale());
+        if (filterSepia.checked) filters.push(new fabric.Image.filters.Sepia());
+        if (filterInvert.checked) filters.push(new fabric.Image.filters.Invert());
+        const brightness = parseFloat(filterBrightness.value);
+        if (brightness !== 0) filters.push(new fabric.Image.filters.Brightness({ brightness }));
+        const contrast = parseFloat(filterContrast.value);
+        if (contrast !== 0) filters.push(new fabric.Image.filters.Contrast({ contrast }));
+        const saturation = parseFloat(filterSaturation.value);
+        if (saturation !== 0) filters.push(new fabric.Image.filters.Saturation({ saturation }));
+        const blur = parseFloat(filterBlur.value);
+        if (blur > 0) filters.push(new fabric.Image.filters.Blur({ blur }));
+        const sharpen = parseFloat(filterSharpen.value);
+        if (sharpen > 0) filters.push(new fabric.Image.filters.Convolution({ matrix: computeSharpenMatrix(sharpen), opaque: false }));
+        obj.filters = filters;
+        obj.applyFilters();
+        canvas.requestRenderAll();
+    }
+    [filterGrayscale, filterSepia, filterInvert].forEach(el => {
+        el.addEventListener('change', () => { applyImageFilters(); pushHistory(); });
+    });
+    [filterBrightness, filterContrast, filterSaturation, filterBlur, filterSharpen].forEach(el => {
+        el.addEventListener('input', applyImageFilters);
+        el.addEventListener('change', () => pushHistory());
+    });
+    document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj || obj.type !== 'image') return;
+        obj.filters = [];
+        obj.applyFilters();
+        canvas.requestRenderAll();
+        syncFilterPanelFromObject(obj);
+        pushHistory();
+    });
+
+    // ===================== 키보드 단축키 =====================
+    let nudgeHistoryTimer = null;
+    document.addEventListener('keydown', (e) => {
+        const tag = (document.activeElement && document.activeElement.tagName) || '';
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+        const active = canvas && canvas.getActiveObject();
+        if (active && active.isEditing) return;
+
+        if ((e.key === 'Delete' || e.key === 'Backspace') && active) {
+            e.preventDefault();
+            deleteActive();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) redo(); else undo();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+            e.preventDefault();
+            redo();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && active) {
+            e.preventDefault();
+            duplicateActive();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !e.shiftKey && active) {
+            e.preventDefault();
+            copyActive();
+        } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c' && active && (active.type === 'textbox' || active.type === 'activeSelection')) {
+            // Ctrl+Shift+C: 텍스트 상자 안의 글자를 가운데 정렬
+            e.preventDefault();
+            document.getElementById('textAlignCenterBtn').click();
+        } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r' && active && (active.type === 'textbox' || active.type === 'activeSelection')) {
+            // Ctrl+Shift+R: 텍스트 상자 안의 글자를 오른쪽 정렬
+            e.preventDefault();
+            document.getElementById('textAlignRightBtn').click();
+        } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l' && active && (active.type === 'textbox' || active.type === 'activeSelection')) {
+            // Ctrl+Shift+L: 텍스트 상자 안의 글자를 왼쪽 정렬
+            e.preventDefault();
+            document.getElementById('textAlignLeftBtn').click();
+        } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === ']' && active) {
+            // Ctrl+]: 선택한 레이어를 한 단계 위로 (포토샵 기본값)
+            e.preventDefault();
+            layerAction('forward');
+        } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === '[' && active) {
+            // Ctrl+[: 선택한 레이어를 한 단계 아래로 (포토샵 기본값)
+            e.preventDefault();
+            layerAction('backward');
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+            e.preventDefault();
+            pasteClipboard();
+        } else if ((e.ctrlKey || e.metaKey) && active && (active.type === 'textbox' || active.type === 'activeSelection') &&
+                   (e.key === '<' || (e.shiftKey && e.key === ','))) {
+            // Ctrl+Shift+< : 글자 크기 작게
+            e.preventDefault();
+            changeFontSize(-2);
+        } else if ((e.ctrlKey || e.metaKey) && active && (active.type === 'textbox' || active.type === 'activeSelection') &&
+                   (e.key === '>' || (e.shiftKey && e.key === '.'))) {
+            // Ctrl+Shift+> : 글자 크기 크게
+            e.preventDefault();
+            changeFontSize(2);
+        } else if (e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            setMoveTool();
+        } else if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey) {
+            // T: 새 텍스트 상자 생성 (포토샵/일러스트 단축키와 동일)
+            e.preventDefault();
+            addText();
+        } else if (e.code === 'Space' && !e.repeat) {
+            // Space: 확대/축소를 100%로 리셋 ("100%로" 버튼 클릭과 동일, 페이지 스크롤 방지)
+            e.preventDefault();
+            document.getElementById('zoomResetBtn').click();
+        } else if (e.key === 'F1') {
+            // F1: 이미지 불러오기/재업로드 (브라우저 기본 도움말 창이 뜨지 않도록 막음)
+            e.preventDefault();
+            document.getElementById('file-input').click();
+        } else if (e.key === 'F5' && active) {
+            // F5: 선택한 오브젝트를 90도 회전 (브라우저 새로고침이 되지 않도록 막음)
+            e.preventDefault();
+            rotateBy(90);
+        } else if (e.key === 'F6' && active) {
+            // F6: 선택한 오브젝트를 좌우 반전 (브라우저 주소창 포커스로 가지 않도록 막음)
+            e.preventDefault();
+            flip('x');
+        } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && active) {
+            // 방향키로 선택된 오브젝트(텍스트/도형/이미지 등)를 아주 조금씩 정밀 이동
+            // 기본 1px, Shift를 함께 누르면 10px씩 더 빠르게 이동
+            e.preventDefault();
+            const step = e.shiftKey ? 10 : 1;
+            if (e.key === 'ArrowUp') active.top -= step;
+            else if (e.key === 'ArrowDown') active.top += step;
+            else if (e.key === 'ArrowLeft') active.left -= step;
+            else if (e.key === 'ArrowRight') active.left += step;
+            active.setCoords();
+            checkGuideProximity(active);
+            updateDeleteIconPosition();
+            canvas.requestRenderAll();
+            // 방향키를 연달아 누를 때마다 실행취소 기록이 너무 많이 쌓이지 않도록,
+            // 움직임이 잠시 멈춘 뒤(400ms) 한 번만 기록으로 남김
+            clearTimeout(nudgeHistoryTimer);
+            nudgeHistoryTimer = setTimeout(() => pushHistory(), 400);
+        } else if (e.key === 'Escape' && active) {
+            e.preventDefault();
+            closeSelectionPanel();
+        } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !isPanKeyDown) {
+            // 포토샵처럼 M 키를 누르고 있는 동안 손 도구(캔버스 드래그 이동)로 전환
+            e.preventDefault();
+            isPanKeyDown = true;
+            if (!isPanning) {
+                canvas.defaultCursor = 'grab';
+                canvas.hoverCursor = 'grab';
+                canvas.setCursor('grab');
+                canvas.requestRenderAll();
+            }
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.key.toLowerCase() !== 'm') return;
+        isPanKeyDown = false;
+        if (!isPanning && canvas) {
+            canvas.defaultCursor = 'default';
+            canvas.hoverCursor = 'move';
+            canvas.setCursor('default');
+            canvas.requestRenderAll();
+        }
+    });
+
+    // ===================== 이미지 업로드 (오브젝트로 추가) =====================
+    document.getElementById('file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            fabric.Image.fromURL(event.target.result, (img) => {
+
+                // 필터 적용용 최대 해상도 제한
+                const maxSize = 3000;
+                if (img.width > maxSize || img.height > maxSize) {
+                    const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+                    img.scale(ratio);
+                    img.setCoords();
+                }
+
+                img.set({
+                    borderColor: '#3498db',
+                    cornerColor: '#3498db',
+                    cornerSize: 5,
+                    transparentCorners: false,
+                    borderScaleFactor: 1,
+                    rotatingPointOffset: 30
+                });
+
+                // 캔버스 폭의 80%로 맞추고 중앙에 배치 (다른 요소들과 함께 자유롭게 재배치 가능)
+                img.scaleToWidth(canvas.width * 0.8);
+                img.set({
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                img.setCoords();
+
+                applySelectionMode(img);
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                bringGuideToFront();
+                canvas.requestRenderAll();
+            });
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    });
+
+    // ===================== 프로젝트 저장(내보내기) / 불러오기 (이어서 수정하기) =====================
+    // "전체저장(save-btn)"은 최종 이미지를 만들어 시안보기 페이지로 넘기는 용도이고,
+    // 여기서는 그와 별개로 지금까지 편집한 모든 내용(글자/도형/이미지/배경색 등)을
+    // 그대로 파일 하나에 담아 내려받고, 그 파일을 다시 불러오면 편집을 이어서 할 수 있게 합니다.
+    function buildProjectFile(){
+        // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영
+        if (designData[currentIdx]) {
+            designData[currentIdx][currentSide] = serializeCurrentCanvas();
+        }
+        return {
+            type: 'ecopro-project',
+            version: 1,
+            savedAt: new Date().toISOString(),
+            orderData,
+            count,
+            isDouble,
+            orderRatioW: window.orderRatioW,
+            orderRatioH: window.orderRatioH,
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height,
+            currentIdx,
+            currentSide,
+            designData
+        };
+    }
+
+    document.getElementById('export-project-btn').addEventListener('click', () => {
+        try {
+            const project = buildProjectFile();
+            const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const fname = `www.ecogr.net-project-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fname;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            alert('프로젝트 파일을 만드는 중 문제가 발생했습니다.');
+        }
+    });
+
+    // 캔버스 크기가 불러온 프로젝트와 다를 경우, 가이드선까지 함께 새 크기에 맞춰 재조정
+    function resizeCanvasTo(w, h){
+        canvas.setWidth(w);
+        canvas.setHeight(h);
+        const padding = w * 0.02;
+        guideRect.set({ left: padding, top: padding, width: w - (padding * 2), height: h - (padding * 2) });
+        outerGuideRect.set({ left: 0, top: 0, width: w, height: h });
+        bringGuideToFront();
+        canvas.requestRenderAll();
+    }
+
+    // 저장 당시 캔버스 크기(px)와 지금 화면에 맞춰 계산한 캔버스 크기(px)가 다르면
+    // 그 비율만큼 모든 오브젝트의 위치(left/top)와 크기(scaleX/scaleY)를 함께 조정해서
+    // "가운데였던 게 구석으로 밀리거나, 화면 밖으로 잘려나가는" 문제를 막습니다.
+    function scaleDesignData(designArr, scale){
+        if (!scale || Math.abs(scale - 1) < 0.001) return;
+        designArr.forEach(entry => {
+            ['front', 'back'].forEach(side => {
+                const data = entry && entry[side];
+                if (!data || !Array.isArray(data.objects)) return;
+                data.objects.forEach(o => {
+                    if (typeof o.left === 'number') o.left *= scale;
+                    if (typeof o.top === 'number') o.top *= scale;
+                    if (typeof o.scaleX === 'number') o.scaleX *= scale;
+                    if (typeof o.scaleY === 'number') o.scaleY *= scale;
+                });
+            });
+        });
+    }
+
+    function loadProject(project){
+        window.count = parseInt(project.count) || count;
+        window.isDouble = !!project.isDouble;
+        window.orderRatioW = project.orderRatioW || window.orderRatioW;
+        window.orderRatioH = project.orderRatioH || window.orderRatioH;
+        if (project.orderData) orderData = project.orderData;
+
+        designData = project.designData;
+        currentIdx = Math.min(Math.max(parseInt(project.currentIdx) || 0, 0), count - 1);
+        currentSide = (project.currentSide === 'back' && isDouble) ? 'back' : 'front';
+
+        // 저장 당시 캔버스 크기를 기준으로, 지금 화면 폭에 맞는 새 캔버스 크기를 계산
+        // (가로세로 비율은 저장 당시와 동일하게 유지 — 같은 상품을 다른 화면에서 이어 작업하는 상황을 위함)
+        const savedW = project.canvasWidth || canvas.width;
+        const savedH = project.canvasHeight || canvas.height;
+        const containerWidth = document.getElementById('canvas-wrapper').clientWidth || canvas.width;
+        const newW = containerWidth;
+        const newH = containerWidth * (savedH / savedW);
+        const scale = newW / savedW;
+
+        scaleDesignData(designData, scale);
+        resizeCanvasTo(newW, newH);
+
+        loadCanvasObjects(designData[currentIdx][currentSide], () => {
+            resetHistory();
+            renderTabs();
+            updateDisplayInfo();
+        });
+    }
+
+    document.getElementById('project-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const project = JSON.parse(evt.target.result);
+                if (!project || project.type !== 'ecopro-project' || !Array.isArray(project.designData)) {
+                    throw new Error('invalid project file');
+                }
+                loadProject(project);
+            } catch (err) {
+                console.error(err);
+                alert('프로젝트 파일을 불러오지 못했습니다. 올바른 저장 파일인지 확인해주세요.');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+
+
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+
+        // 현재 보고있는 캔버스 내용을 먼저 데이터에 반영
+        designData[currentIdx][currentSide] = serializeCurrentCanvas();
+
+        // 이미지(오브젝트) 등록 여부 검사
+        let emptyDesign = [];
+        designData.forEach((item, index) => {
+            if (!hasContent(item.front)) emptyDesign.push(`디자인 ${index + 1} 앞면`);
+            if (isDouble && !hasContent(item.back)) emptyDesign.push(`디자인 ${index + 1} 뒷면`);
+        });
+
+        if (emptyDesign.length > 0) {
+            alert(
+                "내용이 비어있는 시안이 있습니다.\n\n" +
+                emptyDesign.join("\n") +
+                "\n\n모든 디자인을 완성해주세요."
+            );
+            return;
+        }
+
+        const saveBtn = document.getElementById('save-btn');
+        const originalBtnText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = '이미지 생성 중...';
+
+        // 원래 보고 있던 디자인/사이드 + 줌/이동 상태를 기억해뒀다가 작업 끝나면 복원
+        const originalIdx = currentIdx;
+        const originalSide = currentSide;
+        const originalZoom = currentZoom;
+        const originalVpt = canvas.viewportTransform.slice();
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); // 내보내기는 항상 100%·이동 없음 기준으로
+        currentZoom = 1;
+
+        try {
+            const exportedDesigns = [];
+
+            for (let i = 0; i < count; i++) {
+                const sides = isDouble ? ['front', 'back'] : ['front'];
+                for (const side of sides) {
+                    await switchTo(i, side);
+
+                    // 가이드(빨간 박스 + 회색 여유선)는 저장 이미지에서 제외
+                    canvas.discardActiveObject();
+                    guideRect.visible = false;
+                    outerGuideRect.visible = false;
+                    canvas.requestRenderAll();
+
+                    const dataUrl = canvas.toDataURL({
+                        format: 'jpeg',
+                        quality: 0.92,
+                        multiplier: 2
+                    });
+
+                    guideRect.visible = true;
+                    outerGuideRect.visible = true;
+                    canvas.requestRenderAll();
+
+                    const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
+                    exportedDesigns.push({ label, dataUrl });
+                }
+            }
+
+            try {
+                sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(exportedDesigns));
+            } catch (storageErr) {
+                console.error(storageErr);
+                alert('이미지 용량이 너무 커서 시안보기 페이지로 바로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
+                return;
+            }
+
+            window.location.href = PREVIEW_PAGE_URL;
+
+        } finally {
+            await switchTo(originalIdx, originalSide);
+            canvas.setViewportTransform(originalVpt);
+            currentZoom = originalZoom;
+            zoomLabel.textContent = Math.round(originalZoom * 100) + '%';
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalBtnText;
+        }
+    });
+
+
+
+    window.onload = function() {
+        if(!window.location.hash) {
+            window.location = window.location + '#loaded';
+            window.location.reload();
+            return;
+        }
+
+        // ---- 뒤로가기 / 새로고침 / 창 닫기 시 작업 내용 손실 경고 ----
+        // (최초 진입 시의 자동 리로드에는 이 경고가 뜨지 않도록, 리로드가 끝난 뒤에만 등록합니다)
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+    }
+
+// 캔버스 외부 영역(body) 클릭 시 선택 해제
+document.addEventListener('mousedown', (e) => {
+
+    const wrapper = document.querySelector('.canvas-container');
+
+    if (
+        wrapper &&
+        !wrapper.contains(e.target) &&
+        !e.target.closest('.left-tools') &&
+        !e.target.closest('.right-tools') &&
+        !e.target.closest('.editor-toolbar') &&
+        !e.target.closest('.prop-panel') &&
+        !e.target.closest('.floating-delete-btn')
+    ) {
+
+        if (canvas && canvas.getActiveObject()) {
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+        }
+
+    }
+
+});
+
+
+
+    
+
+const guideBtn = document.getElementById('guide-btn');
+
+if (guideBtn) {
+
+    guideBtn.addEventListener('mouseenter', () => {
+        guideRect.visible = true;
+        outerGuideRect.visible = true;
+        canvas.renderAll();
+    });
+
+    guideBtn.addEventListener('mouseleave', () => {
+        guideRect.visible = false;
+        outerGuideRect.visible = false;
+        canvas.renderAll();
+    });
+
 }
-
-@media (max-width: 420px){
-    #status-bar{ font-size:11.5px; padding:6px 10px; }
-    .tool-btn{ font-size:12.5px; }
-}
+</script>
+</body>
+</html>
