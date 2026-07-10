@@ -1,0 +1,259 @@
+        body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
+        #status-bar { font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #tab-container { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
+        .design-btn.active { background: #3498db; color: white; }
+        .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
+        .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
+        .side-btn.active { background: #e67e22; color: white; }
+
+/* 캔버스 하단: 작업 규격 + 디자인/앞뒤 탭을 모아두는 카드 */
+.bottom-info-panel{
+    width: 100%;
+    max-width: 1024px;
+    margin-top: 24px;
+    padding: 18px 20px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+#canvas-wrapper {
+    position: relative;
+    border: 1px solid #bdc3c7;
+    background: #fff;
+    width: 100%;
+    max-width: 1024px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.left-tools,
+.right-tools{
+    display:flex;
+    gap:10px;
+}
+
+
+        
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+
+    font-family: 'Malgun Gothic', sans-serif;
+    font-size: 14px;
+}
+.btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+}
+.btn-primary{ background:#3498db; }
+.btn-muted{ background:#bbb; }
+.hidden{ display:none !important; }
+.angle-input{ width:60px; padding:4px; border:1px solid #ddd; border-radius:5px; }
+
+/* G마켓 산스 (GMarketSans) - 눈누(noonnu) 공식 배포 파일, 상업용 무료 */
+@font-face {
+    font-family: 'GMarketSans';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff') format('woff');
+    font-weight: 300;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'GMarketSans';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff') format('woff');
+    font-weight: 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'GMarketSans';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+
+/* ===================== 편집 툴바 / 속성 패널 (신규) ===================== */
+.editor-toolbar{
+    width:100%; max-width:1024px;
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    background:#fff; border-radius:10px; padding:10px 12px; margin-bottom:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    box-sizing:border-box;
+}
+.toolbar-group{
+    display:flex; align-items:center; gap:6px;
+    padding-right:10px; margin-right:2px;
+    border-right:1px solid #e5e5e5;
+}
+.toolbar-group:last-child{ border-right:none; padding-right:0; }
+.tool-btn{
+    display:inline-flex; align-items:center; gap:4px;
+    padding:7px 12px; border:1px solid #ddd; background:#fff; color:#333;
+    border-radius:7px; cursor:pointer; font-size:12.5px; font-weight:600;
+    font-family:'Malgun Gothic', sans-serif;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+    white-space:nowrap;
+}
+.tool-btn:hover{ background:#f2f8fd; border-color:#3498db; color:#3498db; }
+.tool-btn.active{ background:#3498db; border-color:#3498db; color:#fff; }
+.tool-btn:disabled{ opacity:.4; cursor:not-allowed; }
+.tool-btn:disabled:hover{ background:#fff; border-color:#ddd; color:#333; }
+.tool-btn.icon-only{ padding:7px 10px; }
+.tool-btn.danger{ color:#e74c3c; border-color:#f2b6ae; }
+.tool-btn.danger:hover{ background:#fdecea; border-color:#e74c3c; color:#e74c3c; }
+.zoom-label{ font-size:12px; color:#555; min-width:40px; text-align:center; }
+.tool-label{ font-size:12px; color:#666; white-space:nowrap; }
+input.tool-color{
+    width:30px; height:30px; padding:0; border:1px solid #ddd; border-radius:6px; cursor:pointer; background:none;
+}
+
+.prop-panel{
+    display:none;
+    width:100%; max-width:1024px;
+    flex-direction:column; gap:6px;
+    background:#fff; border-radius:10px; padding:10px 12px; margin-bottom:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    font-size:12.5px; color:#444;
+    box-sizing:border-box;
+}
+.prop-panel.visible{ display:flex; }
+.prop-flow{ display:flex; flex-wrap:wrap; row-gap:8px; align-items:center; }
+.prop-row{
+    display:flex; align-items:center; gap:6px;
+    padding-right:10px; margin-right:4px;
+    border-right:1px solid #eee;
+}
+.prop-row:last-child{ border-right:none; padding-right:0; margin-right:0; }
+.prop-row label{ font-weight:600; color:#555; white-space:nowrap; font-size:12px; }
+.prop-row input[type="range"]{ width:90px; }
+.prop-row input[type="number"]{ width:52px; padding:4px; border:1px solid #ddd; border-radius:5px; }
+.prop-row select{ padding:5px 6px; border:1px solid #ddd; border-radius:5px; font-family:inherit; max-width:160px; }
+#fontFamilySelect{ max-width:190px; }
+.sub-panel{ display:none; }
+.sub-panel.visible{ display:flex; flex-wrap:wrap; row-gap:8px; align-items:center; padding-top:8px; border-top:1px dashed #eee; }
+
+/* 필터 체크박스를 압축한 칩(chip) 버튼으로 표시 */
+.filter-chip{
+    display:inline-flex; align-items:center; gap:4px;
+    padding:6px 10px; border:1px solid #ddd; border-radius:999px;
+    font-size:12px; font-weight:600; color:#555; cursor:pointer;
+    white-space:nowrap;
+}
+.filter-chip input{ display:none; }
+.filter-chip:has(input:checked){ background:#3498db; border-color:#3498db; color:#fff; }
+
+/* 붉은선(재단/안전선) 근접 경고 토스트 */
+.guide-warning-toast{
+    position:absolute;
+    top:12px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(231,76,60,0.95);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:700;
+    box-shadow:0 6px 16px rgba(0,0,0,0.25);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+    z-index:50;
+    white-space:nowrap;
+    font-family:'Malgun Gothic', sans-serif;
+}
+.guide-warning-toast.visible{ opacity:1; }
+
+/* 선택된 오브젝트 모서리에 붙는 떠다니는 삭제(휴지통) 아이콘 */
+.floating-delete-btn{
+    position:fixed;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:#e74c3c;
+    color:#fff;
+    border:2px solid #fff;
+    box-shadow:0 3px 8px rgba(0,0,0,0.3);
+    cursor:pointer;
+    font-size:15px;
+    line-height:1;
+    padding:0;
+    z-index:1000;
+    transform:translate(-50%, -50%);
+    transition:background .15s ease, transform .1s ease;
+}
+.floating-delete-btn.visible{ display:flex; }
+.floating-delete-btn:hover{ background:#c0392b; transform:translate(-50%, -50%) scale(1.1); }
+
+/* 캔버스 위에서 손가락으로 그리거나 오브젝트를 드래그할 때
+   브라우저가 그 제스처를 "페이지 스크롤"로 가로채지 않도록 처리 */
+#canvas-wrapper, #canvas-wrapper .canvas-container, #main-canvas{
+    touch-action: none;
+}
+
+/* ===================== 모바일 반응형 ===================== */
+@media (max-width: 768px){
+    body{ padding:10px; }
+
+    #status-bar{ font-size:12.5px; padding:6px 14px; text-align:center; }
+
+    /* 디자인/앞뒤 탭이 많아지면 줄바꿈으로 뭉개지는 대신 가로로 스크롤 */
+    #tab-container{
+        flex-wrap:nowrap;
+        justify-content:flex-start;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        padding-bottom:4px;
+    }
+    .design-group{ flex-shrink:0; }
+
+    /* 편집 툴바: 줄바꿈으로 여러 줄이 되어 뭉개지는 대신 한 줄 가로 스크롤 */
+    .editor-toolbar{
+        flex-wrap:nowrap;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        padding:8px 10px;
+        gap:6px;
+    }
+    .toolbar-group{ flex-shrink:0; }
+    .desktop-hint{ display:none; } /* 마우스/Alt 안내문구는 터치 환경에서 의미 없음 */
+
+    /* 속성 패널도 동일하게 가로 스크롤 처리 */
+    .prop-panel{ padding:8px 10px; }
+    .prop-flow, .sub-panel{
+        flex-wrap:nowrap;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+    .prop-row{ flex-shrink:0; }
+
+    /* 터치로 누르기 편하도록 버튼 크기를 살짝 키움 */
+    .tool-btn{ padding:9px 12px; font-size:13px; }
+    .tool-btn.icon-only{ padding:9px 12px; min-width:38px; }
+    input.tool-color{ width:34px; height:34px; }
+    .floating-delete-btn{ width:36px; height:36px; font-size:17px; }
+
+    /* 하단 업로드/저장 버튼은 세로 폭 꽉 채워서 누르기 쉽게 */
+    .controls{ width:100%; }
+    .left-tools, .right-tools{ width:100%; }
+    .btn{ flex:1 1 auto; padding:14px 18px; font-size:14px; }
+
+    .bottom-info-panel{ margin-top:18px; padding:14px 16px; }
+}
+
+@media (max-width: 420px){
+    #status-bar{ font-size:11.5px; padding:6px 10px; }
+    .tool-btn{ font-size:12.5px; }
+}
