@@ -81,6 +81,224 @@
     font-display: swap;
 }
 
+/* ===================== 매우 두꺼운체 5종 (모두 상업용 무료) ===================== */
+/* 여기어때 잘난체 - 굵기 1종(Regular)뿐이지만 자체가 굉장히 두꺼운 블록형 글자 */
+@font-face {
+    font-family: 'YeogiOttaeJalnan';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_four@1.2/JalnanOTF00.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+/* 배달의민족 을지로체 - 을지로 간판 글씨체를 모티브로 한 두꺼운 붓글씨 고딕 */
+@font-face {
+    font-family: 'Euljiro';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/BMEULJIRO.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+/* 배달의민족 한나체 Pro - 꽉 찬 초굵은 고딕 */
+@font-face {
+    font-family: 'HannaPro';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_seven@1.0/BMHANNAPro.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+/* 카페24 써라운드 - 두툼한 획 + 완전히 둥근 모서리 */
+@font-face {
+    font-family: 'Cafe24Ssurround';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+/* 티머니 둥근바람 - Regular/ExtraBold 두 굵기 제공, ExtraBold가 매우 두꺼움 */
+@font-face {
+    font-family: 'TMoneyDungunbaram';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-07@1.0/TmoneyRoundWindRegular.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'TMoneyDungunbaram';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-07@1.0/TmoneyRoundWindExtraBold.woff') format('woff');
+    font-weight: 800;
+    font-display: swap;
+}
+
+/* ===================== 마루 부리 (네이버, 명조/세리프 라이트~볼드) ===================== */
+@font-face {
+    font-family: 'Maru Buri';
+    font-weight: 200;
+    font-style: normal;
+    font-display: swap;
+    src: url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-ExtraLight.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-ExtraLight.woff') format('woff');
+}
+@font-face {
+    font-family: 'Maru Buri';
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+    src: url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-Light.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-Light.woff') format('woff');
+}
+@font-face {
+    font-family: 'Maru Buri';
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    src: url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-Regular.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-Regular.woff') format('woff');
+}
+@font-face {
+    font-family: 'Maru Buri';
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    src: url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-Bold.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri-Bold.woff') format('woff');
+}
+
+/* ===================== 부산체 (부산광역시 배포, 공식 굵기는 Regular 1종뿐) ===================== */
+@font-face {
+    font-family: 'Busan';
+    src: url('https://cdn.jsdelivr.net/korean-webfonts/1/orgs/govs/busan/Busan/Busan.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/korean-webfonts/1/orgs/govs/busan/Busan/Busan.woff') format('woff');
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'D2Coding';
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    src: url('https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/D2Coding-Regular.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/D2Coding-Regular.woff') format('woff');
+}
+@font-face {
+    font-family: 'D2Coding';
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    src: url('https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/D2Coding-Bold.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/fonts-archive/D2Coding/D2Coding-Bold.woff') format('woff');
+}
+
+/* 쿠키런체(CookieRun) - 데브시스터즈 배포, 상업용 무료, 귀엽고 캐주얼한 느낌으로 인기 많은 폰트 */
+@font-face {
+    font-family: 'CookieRun';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/CookieRun-Regular.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'CookieRun';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/CookieRunOTF-Bold00.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'CookieRun';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/CookieRunOTF-Black00.woff') format('woff');
+    font-weight: 900;
+    font-display: swap;
+}
+
+/* tvN 즐거운이야기체 - CJ ENM 배포, 손글씨 감성 폰트 */
+@font-face {
+    font-family: 'JoyfulStory';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/OTEnjoystoriesBA.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
+/* 넥슨 배찌체 - 넥슨 배포, 손글씨풍 */
+@font-face {
+    font-family: 'NexonBazzi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@2.1/Bazzi.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
+/* 고도체(Godo) - NHN커머스/지마켓 배포, Medium/Bold 두 굵기 */
+@font-face {
+    font-family: 'Godo';
+    src: url('//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoM.woff2') format('woff2'),
+         url('//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoM.woff') format('woff');
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Godo';
+    src: url('//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoB.woff2') format('woff2'),
+         url('//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoB.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+
+/* 빙그레 싸만코체 - 빙그레 배포, Regular/Bold */
+@font-face {
+    font-family: 'BinggraeSsamanco';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10@1.0/BinggraeSamanco.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'BinggraeSsamanco';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10@1.0/BinggraeSamanco-Bold.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+
+/* 신비는 일곱살체 - 상상토끼 배포, 아이 손글씨 느낌 */
+@font-face {
+    font-family: 'ShinbiIsSevenYearsOld';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.1/SangSangShinb7.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
+/* 꽃집막내딸 - 상상토끼 배포(네이버 나눔손글씨는 아니고 상상토끼 자체 손글씨 시리즈) */
+@font-face {
+    font-family: 'FlowerShopSYoungestDaughter';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2202@1.0/SangSangYoungestDaughter.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
+/* 카페24 동동체 - 카페24 배포, 동글동글한 손글씨 느낌 */
+@font-face {
+    font-family: 'Cafe24Dongdong';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/Cafe24Dongdong.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
+/* ===================== 네이버 나눔손글씨 시리즈 (한글날 손글씨 공모전 배포) ===================== */
+@font-face {
+    font-family: 'Dahaeng';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/naverfont_02@1.0/Daheng.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Sonpyeonji';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/naverfont_05@1.0/Handletter.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'NotGothicButGoding';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/naverfont_05@1.0/Gothic_Goding.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'MomToDaughter';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/naverfont_08@1.0/mom_to_daughter.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
 /* ===================== 편집 툴바 / 속성 패널 (신규) ===================== */
 .editor-toolbar{
     width:100%; max-width:1024px;
@@ -108,6 +326,17 @@
 .tool-btn:disabled{ opacity:.4; cursor:not-allowed; }
 .tool-btn:disabled:hover{ background:#fff; border-color:#ddd; color:#333; }
 .tool-btn.icon-only{ padding:7px 10px; }
+
+/* 프로젝트 불러오기 아이콘 버튼: 다른 버튼처럼 흰 배경 + 검은 아이콘 (여백만 줄여서 옆 버튼과 크기 맞춤) */
+.project-load-btn{
+    background:#fff;
+    border:1px solid #ddd;
+    padding:5px;
+    border-radius:7px;
+    align-items:center;
+    justify-content:center;
+}
+.project-load-btn:hover{ background:#f2f8fd; border-color:#3498db; }
 .tool-btn.danger{ color:#e74c3c; border-color:#f2b6ae; }
 .tool-btn.danger:hover{ background:#fdecea; border-color:#e74c3c; color:#e74c3c; }
 .zoom-label{ font-size:12px; color:#555; min-width:40px; text-align:center; }
@@ -197,6 +426,32 @@ input.tool-color{
 .floating-delete-btn.visible{ display:flex; }
 .floating-delete-btn:hover{ background:#c0392b; transform:translate(-50%, -50%) scale(1.1); }
 
+/* 선택된 오브젝트 아래쪽 모서리에 붙는 떠다니는 자유 회전 아이콘 */
+.floating-rotate-btn{
+    position:fixed;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:#3498db;
+    color:#fff;
+    border:2px solid #fff;
+    box-shadow:0 3px 8px rgba(0,0,0,0.3);
+    cursor:grab;
+    font-size:15px;
+    line-height:1;
+    padding:0;
+    z-index:1000;
+    transform:translate(-50%, -50%);
+    transition:background .15s ease, transform .1s ease;
+    touch-action:none; /* 드래그 제스처를 브라우저 스크롤로 가로채지 않도록 */
+}
+.floating-rotate-btn.visible{ display:flex; }
+.floating-rotate-btn:hover{ background:#2d84bf; transform:translate(-50%, -50%) scale(1.1); }
+.floating-rotate-btn.dragging{ cursor:grabbing; background:#2d84bf; }
+
 /* 캔버스 위에서 손가락으로 그리거나 오브젝트를 드래그할 때
    브라우저가 그 제스처를 "페이지 스크롤"로 가로채지 않도록 처리 */
 #canvas-wrapper, #canvas-wrapper .canvas-container, #main-canvas{
@@ -205,7 +460,7 @@ input.tool-color{
 
 /* ===================== 모바일 반응형 ===================== */
 @media (max-width: 768px){
-    body{ padding:10px; }
+    body{ padding:10px; padding-bottom:calc(90px + env(safe-area-inset-bottom, 0px)); }
 
     #status-bar{ font-size:12.5px; padding:6px 14px; text-align:center; }
 
@@ -239,11 +494,34 @@ input.tool-color{
     }
     .prop-row{ flex-shrink:0; }
 
+    /* ---- 모바일 전용: 복제·레이어 버튼을 맨 앞(불투명도 자리)으로 이동. 복제가 맨 앞, 그다음 맨앞/앞/뒤/맨뒤가 구획 없이 한 덩어리로 이어짐 ---- */
+    #duplicateRow{ order:1; }
+    #layerRow{ order:2; }
+    #opacityRow{ order:3; }
+    #rotateRow{ order:4; }
+    #lockDeleteRow{ order:5; }
+    #alignRow{ order:6; } /* 정렬 버튼은 맨 뒤로 보내서 텍스트 정렬 버튼과 이어지도록 */
+
+    /* 텍스트 패널 안에서도 정렬(좌중우) 버튼을 맨 앞으로 보내, prop-flow 끝의 정렬 버튼과 바로 이어지게 함 */
+    /* 정렬의 "우" 버튼과 바로 다음에 오는 "폰트" 항목이 붙어보이지 않도록 오른쪽에 여백을 줌 */
+    #textAlignRow{ order:-1; margin-right:16px; }
+
+    /* 도형/선 선택 시 채우기·테두리 색상이 스크롤에 묻히지 않도록 별도 박스에서 바로 보이게 함 */
+    #shapeColorPanel.visible{
+        display:flex;
+        background:#fafafa;
+        border-radius:8px;
+        padding:8px 10px;
+        margin-top:2px;
+    }
+
     /* 터치로 누르기 편하도록 버튼 크기를 살짝 키움 */
     .tool-btn{ padding:9px 12px; font-size:13px; }
     .tool-btn.icon-only{ padding:9px 12px; min-width:38px; }
+    .project-load-btn{ padding:7px; }
     input.tool-color{ width:34px; height:34px; }
     .floating-delete-btn{ width:36px; height:36px; font-size:17px; }
+    .floating-rotate-btn{ width:36px; height:36px; font-size:17px; }
 
     /* 하단 업로드/저장 버튼은 세로 폭 꽉 채워서 누르기 쉽게 */
     .controls{ width:100%; }
@@ -369,6 +647,139 @@ input.tool-color{
 .shortcut-desc{ color:#666; }
 
 @media (max-width: 768px){
-    .shortcuts-panel{ padding:12px 14px; margin-top:12px; }
-    .shortcuts-grid{ grid-template-columns:1fr; gap:8px; }
+    .shortcuts-panel{ display:none; } /* PC용 단축키는 모바일에서 의미 없으므로 숨김 */
+    .mobile-usage-panel{ padding:12px 14px; margin-top:12px; }
+}
+
+/* ===================== 모바일 사용법 (PC용 단축키 자리, 모바일에서만 노출) ===================== */
+.mobile-usage-panel{
+    display:none;
+}
+@media (max-width: 768px){
+    .mobile-usage-panel{
+        display:block;
+        width:100%;
+        max-width:1024px;
+        margin-top:16px;
+        padding:16px 18px;
+        background:#fff;
+        border-radius:12px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.06);
+        box-sizing:border-box;
+    }
+}
+.mobile-usage-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+.mobile-usage-item{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-size:12.5px;
+    color:#555;
+    line-height:1.4;
+}
+.mobile-usage-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:#3498db;
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+}
+
+/* ===================== 맨 아래 저작권 문구 (아주 작게) ===================== */
+.copyright-footer{
+    width:100%;
+    max-width:1024px;
+    margin-top:10px;
+    margin-bottom:4px;
+    text-align:center;
+    font-size:9px;
+    color:#bbb;
+    letter-spacing:0.2px;
+}
+
+/* ===================== 모바일 전용: 하단 고정 미리보기(확대) 버튼 ===================== */
+.mobile-preview-btn{ display:none; }
+@media (max-width: 768px){
+    .mobile-preview-btn{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:6px;
+        position:fixed;
+        left:50%;
+        bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+        transform:translateX(-50%);
+        z-index:500;
+        padding:12px 22px;
+        border:none;
+        border-radius:999px;
+        background:#3498db;
+        color:#fff;
+        font-weight:700;
+        font-size:13.5px;
+        font-family:'Malgun Gothic', sans-serif;
+        box-shadow:0 4px 14px rgba(0,0,0,0.28);
+    }
+    .mobile-preview-btn:active{ background:#2d84bf; }
+}
+
+/* ===================== 모바일 전용: 미리보기 오버레이 (핀치 확대/이동) ===================== */
+.mobile-preview-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.94);
+    z-index:2000;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    touch-action:none;
+}
+.mobile-preview-overlay.visible{ display:flex; }
+.mobile-preview-overlay img{
+    max-width:88vw;
+    max-height:76vh;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-user-drag:none;
+    pointer-events:none; /* 터치는 오버레이(부모)가 받아서 핀치/드래그/탭을 일관되게 처리 */
+    will-change:transform;
+}
+.mobile-preview-close-btn{
+    position:fixed;
+    top:calc(16px + env(safe-area-inset-top, 0px));
+    right:16px;
+    z-index:2001;
+    width:40px;
+    height:40px;
+    border:none;
+    border-radius:50%;
+    background:rgba(255,255,255,0.15);
+    color:#fff;
+    font-size:20px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.mobile-preview-hint{
+    position:fixed;
+    bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+    left:50%;
+    transform:translateX(-50%);
+    color:rgba(255,255,255,0.65);
+    font-size:12px;
+    z-index:2001;
+    white-space:nowrap;
 }
