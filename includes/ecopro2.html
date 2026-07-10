@@ -5,171 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>고해상도 멀티 디자인 에디터</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <style>
-        body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
-        #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        #tab-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
-        .design-btn.active { background: #3498db; color: white; }
-        .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
-        .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
-        .side-btn.active { background: #e67e22; color: white; }
-
-     #notice-box{
-    width:100%;
-    max-width:1024px;
-
-    margin-top:15px;
-
-    font-size:11px;
-    color:#666;
-    line-height:1.6;
-
-    text-align:left;
-}
-
-#canvas-wrapper {
-    position: relative;
-    border: 1px solid #bdc3c7;
-    background: #fff;
-    width: 100%;
-    max-width: 1024px;
-    overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-.left-tools,
-.right-tools{
-    display:flex;
-    gap:10px;
-}
-
-
-        
-.btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: white;
-    font-weight: bold;
-
-    font-family: 'Malgun Gothic', sans-serif;
-    font-size: 14px;
-}
-.btn:disabled{
-    opacity:.55;
-    cursor:not-allowed;
-}
-
-/* ===================== 편집 툴바 / 속성 패널 (신규) ===================== */
-.editor-toolbar{
-    width:100%; max-width:1024px;
-    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-    background:#fff; border-radius:10px; padding:10px 12px; margin-bottom:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.06);
-    box-sizing:border-box;
-}
-.toolbar-group{
-    display:flex; align-items:center; gap:6px;
-    padding-right:10px; margin-right:2px;
-    border-right:1px solid #e5e5e5;
-}
-.toolbar-group:last-child{ border-right:none; padding-right:0; }
-.tool-btn{
-    display:inline-flex; align-items:center; gap:4px;
-    padding:7px 12px; border:1px solid #ddd; background:#fff; color:#333;
-    border-radius:7px; cursor:pointer; font-size:12.5px; font-weight:600;
-    font-family:'Malgun Gothic', sans-serif;
-    transition: background .15s ease, border-color .15s ease, color .15s ease;
-    white-space:nowrap;
-}
-.tool-btn:hover{ background:#f2f8fd; border-color:#3498db; color:#3498db; }
-.tool-btn.active{ background:#3498db; border-color:#3498db; color:#fff; }
-.tool-btn:disabled{ opacity:.4; cursor:not-allowed; }
-.tool-btn:disabled:hover{ background:#fff; border-color:#ddd; color:#333; }
-.tool-btn.icon-only{ padding:7px 10px; }
-.tool-btn.danger{ color:#e74c3c; border-color:#f2b6ae; }
-.tool-btn.danger:hover{ background:#fdecea; border-color:#e74c3c; color:#e74c3c; }
-.zoom-label{ font-size:12px; color:#555; min-width:40px; text-align:center; }
-.tool-label{ font-size:12px; color:#666; white-space:nowrap; }
-input.tool-color{
-    width:30px; height:30px; padding:0; border:1px solid #ddd; border-radius:6px; cursor:pointer; background:none;
-}
-
-.prop-panel{
-    display:none;
-    width:100%; max-width:1024px;
-    flex-direction:column; gap:10px;
-    background:#fff; border-radius:10px; padding:12px 14px; margin-bottom:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.06);
-    font-size:12.5px; color:#444;
-    box-sizing:border-box;
-}
-.prop-panel.visible{ display:flex; }
-.prop-panel-row{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
-.prop-row{ display:flex; align-items:center; gap:6px; }
-.prop-row label{ font-weight:600; color:#555; white-space:nowrap; font-size:12px; }
-.prop-row input[type="range"]{ width:100px; }
-.prop-row input[type="number"]{ width:56px; padding:4px; border:1px solid #ddd; border-radius:5px; }
-.prop-row select{ padding:5px 6px; border:1px solid #ddd; border-radius:5px; font-family:inherit; }
-.sub-panel{ display:none; flex-wrap:wrap; gap:14px; align-items:center; padding-top:10px; border-top:1px dashed #eee; }
-.sub-panel.visible{ display:flex; }
-
-/* 붉은선(재단/안전선) 근접 경고 토스트 */
-.guide-warning-toast{
-    position:absolute;
-    top:12px;
-    left:50%;
-    transform:translateX(-50%);
-    background:rgba(231,76,60,0.95);
-    color:#fff;
-    padding:10px 18px;
-    border-radius:999px;
-    font-size:13px;
-    font-weight:700;
-    box-shadow:0 6px 16px rgba(0,0,0,0.25);
-    opacity:0;
-    pointer-events:none;
-    transition:opacity .25s ease;
-    z-index:50;
-    white-space:nowrap;
-    font-family:'Malgun Gothic', sans-serif;
-}
-.guide-warning-toast.visible{ opacity:1; }
-
-/* 선택된 오브젝트 모서리에 붙는 떠다니는 삭제(휴지통) 아이콘 */
-.floating-delete-btn{
-    position:fixed;
-    display:none;
-    align-items:center;
-    justify-content:center;
-    width:30px;
-    height:30px;
-    border-radius:50%;
-    background:#e74c3c;
-    color:#fff;
-    border:2px solid #fff;
-    box-shadow:0 3px 8px rgba(0,0,0,0.3);
-    cursor:pointer;
-    font-size:15px;
-    line-height:1;
-    padding:0;
-    z-index:1000;
-    transform:translate(-50%, -50%);
-    transition:background .15s ease, transform .1s ease;
-}
-.floating-delete-btn.visible{ display:flex; }
-.floating-delete-btn:hover{ background:#c0392b; transform:translate(-50%, -50%) scale(1.1); }
-</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@400;700&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gaegu&family=Gowun+Dodum&family=Gowun+Batang&family=Song+Myung&family=Gothic+A1:wght@400;700;900&family=East+Sea+Dokdo&family=Poor+Story&family=Stylish&family=Sunflower:wght@500;700&family=Yeon+Sung&family=Hi+Melody&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Poppins:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Oswald:wght@400;600&family=Lato:wght@400;700;900&family=Raleway:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <!-- 브랜드 무료 한글 폰트: 프리텐다드 / 스포카 한 산스 네오 (각 공식 CDN 제공) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link rel="stylesheet" href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css" />
+    <link rel="stylesheet" href="ecopro2.css">
 </head>
 <body>
 
-    <div id="status-bar">작업 규격: <span id="display-info"></span></div>
-    <div id="tab-container"></div>
-
     <div class="editor-toolbar">
         <div class="toolbar-group">
+            <button type="button" class="tool-btn icon-only active" id="moveToolBtn" title="이동 도구 (V) — 자유롭게 클릭·드래그로 선택/이동">↖</button>
             <button type="button" class="tool-btn" id="addTextBtn">🅣 텍스트</button>
             <button type="button" class="tool-btn" id="addRectBtn">▭ 사각형</button>
             <button type="button" class="tool-btn" id="addCircleBtn">◯ 원</button>
@@ -177,7 +25,7 @@ input.tool-color{
             <button type="button" class="tool-btn" id="addLineBtn">╱ 선</button>
             <button type="button" class="tool-btn" id="drawBtn">✎ 그리기</button>
         </div>
-        <div class="toolbar-group" id="brushControls" style="display:none;">
+        <div class="toolbar-group hidden" id="brushControls">
             <span class="tool-label">펜 색상</span>
             <input type="color" class="tool-color" id="brushColorInput" value="#111111">
             <span class="tool-label">굵기</span>
@@ -192,7 +40,7 @@ input.tool-color{
             <span class="zoom-label" id="zoomLabel">100%</span>
             <button type="button" class="tool-btn icon-only" id="zoomInBtn">＋</button>
             <button type="button" class="tool-btn" id="zoomResetBtn">100%로</button>
-            <span class="tool-label">(마우스 휠: 확대·축소 / Alt+드래그: 화면 이동)</span>
+            <span class="tool-label desktop-hint">(마우스 휠: 확대·축소 / Alt+드래그 또는 스페이스바+드래그: 화면 이동)</span>
         </div>
         <div class="toolbar-group">
             <span class="tool-label">캔버스 배경색</span>
@@ -201,41 +49,36 @@ input.tool-color{
     </div>
 
     <div class="prop-panel" id="propPanel">
-        <div class="prop-panel-row">
+        <div class="prop-flow">
             <div class="prop-row">
                 <label>불투명도</label>
                 <input type="range" id="opacityInput" min="0" max="1" step="0.05" value="1">
             </div>
             <div class="prop-row">
-                <button type="button" class="tool-btn icon-only" id="rotateLeftBtn" title="왼쪽으로 90도 회전">↺ 90°</button>
-                <button type="button" class="tool-btn icon-only" id="rotateRightBtn" title="오른쪽으로 90도 회전">↻ 90°</button>
-                <label>각도</label>
-                <input type="number" id="angleInput" min="0" max="359" value="0" style="width:60px; padding:4px; border:1px solid #ddd; border-radius:5px;">
-                <button type="button" class="tool-btn icon-only" id="flipXBtn">↔ 좌우반전</button>
-                <button type="button" class="tool-btn icon-only" id="flipYBtn">↕ 상하반전</button>
+                <button type="button" class="tool-btn icon-only" id="rotateLeftBtn" title="왼쪽으로 90도 회전">↺</button>
+                <button type="button" class="tool-btn icon-only" id="rotateRightBtn" title="오른쪽으로 90도 회전">↻</button>
+                <input type="number" id="angleInput" min="0" max="359" value="0" class="angle-input" title="각도">
+                <button type="button" class="tool-btn icon-only" id="flipXBtn" title="좌우반전">↔</button>
+                <button type="button" class="tool-btn icon-only" id="flipYBtn" title="상하반전">↕</button>
             </div>
             <div class="prop-row">
-                <label>정렬</label>
-                <button type="button" class="tool-btn icon-only" id="alignLeftBtn">좌</button>
-                <button type="button" class="tool-btn icon-only" id="alignCenterHBtn">가로중앙</button>
-                <button type="button" class="tool-btn icon-only" id="alignRightBtn">우</button>
-                <button type="button" class="tool-btn icon-only" id="alignTopBtn">위</button>
-                <button type="button" class="tool-btn icon-only" id="alignCenterVBtn">세로중앙</button>
-                <button type="button" class="tool-btn icon-only" id="alignBottomBtn">아래</button>
-            </div>
-        </div>
-        <div class="prop-panel-row">
-            <div class="prop-row">
-                <label>레이어</label>
-                <button type="button" class="tool-btn" id="layerFrontBtn">맨앞으로</button>
-                <button type="button" class="tool-btn" id="layerForwardBtn">앞으로</button>
-                <button type="button" class="tool-btn" id="layerBackwardBtn">뒤로</button>
-                <button type="button" class="tool-btn" id="layerBackBtn">맨뒤로</button>
+                <button type="button" class="tool-btn icon-only" id="alignLeftBtn" title="왼쪽 정렬">좌</button>
+                <button type="button" class="tool-btn icon-only" id="alignCenterHBtn" title="가로 중앙 정렬">중</button>
+                <button type="button" class="tool-btn icon-only" id="alignRightBtn" title="오른쪽 정렬">우</button>
+                <button type="button" class="tool-btn icon-only" id="alignTopBtn" title="위쪽 정렬">상</button>
+                <button type="button" class="tool-btn icon-only" id="alignCenterVBtn" title="세로 중앙 정렬">중</button>
+                <button type="button" class="tool-btn icon-only" id="alignBottomBtn" title="아래쪽 정렬">하</button>
             </div>
             <div class="prop-row">
-                <button type="button" class="tool-btn" id="duplicateBtn">⧉ 복제</button>
-                <button type="button" class="tool-btn" id="lockBtn">🔒 잠금</button>
-                <button type="button" class="tool-btn danger" id="deleteBtn">🗑 삭제</button>
+                <button type="button" class="tool-btn icon-only" id="layerFrontBtn" title="맨 앞으로">맨앞</button>
+                <button type="button" class="tool-btn icon-only" id="layerForwardBtn" title="한 단계 앞으로">앞</button>
+                <button type="button" class="tool-btn icon-only" id="layerBackwardBtn" title="한 단계 뒤로">뒤</button>
+                <button type="button" class="tool-btn icon-only" id="layerBackBtn" title="맨 뒤로">맨뒤</button>
+            </div>
+            <div class="prop-row">
+                <button type="button" class="tool-btn icon-only" id="duplicateBtn" title="복제">⧉</button>
+                <button type="button" class="tool-btn icon-only" id="lockBtn" title="잠금">🔒</button>
+                <button type="button" class="tool-btn danger icon-only" id="deleteBtn" title="삭제">🗑</button>
             </div>
         </div>
 
@@ -243,14 +86,62 @@ input.tool-color{
             <div class="prop-row">
                 <label>폰트</label>
                 <select id="fontFamilySelect">
-                    <option value="Malgun Gothic">맑은 고딕</option>
-                    <option value="Dotum">돋움</option>
-                    <option value="Gulim">굴림</option>
-                    <option value="Batang">바탕</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Courier New">Courier New</option>
+                    <optgroup label="브랜드 무료 폰트">
+                        <option value="Pretendard">프리텐다드 (Pretendard)</option>
+                        <option value="GMarketSans">G마켓 산스</option>
+                        <option value="Spoqa Han Sans Neo">스포카 한 산스 네오</option>
+                    </optgroup>
+                    <optgroup label="한글 고딕/본문">
+                        <option value="Noto Sans KR">Noto Sans KR (노토 산스)</option>
+                        <option value="Nanum Gothic">나눔고딕</option>
+                        <option value="Gothic A1">고딕 A1</option>
+                        <option value="Gowun Dodum">고운돋움</option>
+                        <option value="IBM Plex Sans KR">IBM Plex Sans KR</option>
+                    </optgroup>
+                    <optgroup label="한글 명조/세리프">
+                        <option value="Noto Serif KR">Noto Serif KR (노토 세리프)</option>
+                        <option value="Nanum Myeongjo">나눔명조</option>
+                        <option value="Gowun Batang">고운바탕</option>
+                        <option value="Song Myung">송명체</option>
+                    </optgroup>
+                    <optgroup label="한글 포인트/굵은 제목용">
+                        <option value="Black Han Sans">검은고딕</option>
+                        <option value="Do Hyeon">도현체</option>
+                        <option value="Jua">주아체</option>
+                        <option value="Gaegu">개구체</option>
+                        <option value="Stylish">스타일리쉬체</option>
+                        <option value="Yeon Sung">연성체</option>
+                        <option value="Sunflower">해바라기체</option>
+                    </optgroup>
+                    <optgroup label="한글 손글씨">
+                        <option value="Nanum Pen Script">나눔손글씨 펜</option>
+                        <option value="Nanum Brush Script">나눔손글씨 붓</option>
+                        <option value="East Sea Dokdo">동해 독도체</option>
+                        <option value="Poor Story">푸어스토리체</option>
+                        <option value="Hi Melody">하이멜로디체</option>
+                    </optgroup>
+                    <optgroup label="영문 산세리프">
+                        <option value="Roboto">Roboto</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Poppins">Poppins</option>
+                        <option value="Lato">Lato</option>
+                        <option value="Raleway">Raleway</option>
+                        <option value="Oswald">Oswald</option>
+                        <option value="Bebas Neue">Bebas Neue</option>
+                    </optgroup>
+                    <optgroup label="영문 세리프">
+                        <option value="Playfair Display">Playfair Display</option>
+                    </optgroup>
+                    <optgroup label="시스템 기본 폰트">
+                        <option value="Malgun Gothic">맑은 고딕</option>
+                        <option value="Dotum">돋움</option>
+                        <option value="Gulim">굴림</option>
+                        <option value="Batang">바탕</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                    </optgroup>
                 </select>
             </div>
             <div class="prop-row">
@@ -262,14 +153,14 @@ input.tool-color{
                 <input type="color" class="tool-color" id="textColorInput" value="#111111">
             </div>
             <div class="prop-row">
-                <button type="button" class="tool-btn icon-only" id="boldBtn"><b>B</b></button>
-                <button type="button" class="tool-btn icon-only" id="italicBtn"><i>I</i></button>
-                <button type="button" class="tool-btn icon-only" id="underlineBtn"><u>U</u></button>
+                <button type="button" class="tool-btn icon-only" id="boldBtn" title="굵게"><b>B</b></button>
+                <button type="button" class="tool-btn icon-only" id="italicBtn" title="기울임"><i>I</i></button>
+                <button type="button" class="tool-btn icon-only" id="underlineBtn" title="밑줄"><u>U</u></button>
             </div>
             <div class="prop-row">
-                <button type="button" class="tool-btn icon-only" id="textAlignLeftBtn">좌</button>
-                <button type="button" class="tool-btn icon-only" id="textAlignCenterBtn">중</button>
-                <button type="button" class="tool-btn icon-only" id="textAlignRightBtn">우</button>
+                <button type="button" class="tool-btn icon-only" id="textAlignLeftBtn" title="왼쪽 정렬">좌</button>
+                <button type="button" class="tool-btn icon-only" id="textAlignCenterBtn" title="가운데 정렬">중</button>
+                <button type="button" class="tool-btn icon-only" id="textAlignRightBtn" title="오른쪽 정렬">우</button>
             </div>
         </div>
 
@@ -290,9 +181,9 @@ input.tool-color{
 
         <div class="sub-panel" id="imagePanel">
             <div class="prop-row">
-                <label><input type="checkbox" id="filterGrayscale"> 흑백</label>
-                <label><input type="checkbox" id="filterSepia"> 세피아</label>
-                <label><input type="checkbox" id="filterInvert"> 반전</label>
+                <label class="filter-chip"><input type="checkbox" id="filterGrayscale"> 흑백</label>
+                <label class="filter-chip"><input type="checkbox" id="filterSepia"> 세피아</label>
+                <label class="filter-chip"><input type="checkbox" id="filterInvert"> 반전</label>
             </div>
             <div class="prop-row">
                 <label>밝기</label>
@@ -322,7 +213,7 @@ input.tool-color{
 
     <div id="canvas-wrapper">
         <canvas id="main-canvas"></canvas>
-        <div class="guide-warning-toast" id="guideWarningToast">⚠ 붉은선에 가까이 있어 잘릴 수 있어요.</div>
+        <div class="guide-warning-toast" id="guideWarningToast">⚠ 글자는 붉은선에 가까이 배치하면 잘릴 수 있어요.</div>
     </div>
 
    <div class="controls">
@@ -333,13 +224,13 @@ input.tool-color{
     <!-- 오른쪽 기존 버튼 -->
     <div class="right-tools">
 
-        <label class="btn" style="background:#3498db;" for="file-input">
+        <label class="btn btn-primary" for="file-input">
             업로드/재업로드
         </label>
 
-        <input type="file" id="file-input" accept="image/*" style="display:none;">
+        <input type="file" id="file-input" accept="image/*" class="hidden">
 
-        <button id="save-btn" class="btn" style="background:#bbb;">
+        <button id="save-btn" class="btn btn-muted">
             전체저장
         </button>
 
@@ -348,14 +239,9 @@ input.tool-color{
 </div>
 
 
-<div id="notice-box">
-      <strong>※ 작업 시 주의사항</strong>
-    ※ 업로드하신 파일의 배경은 회색선까지 꼭 연장해 주세요.<br>
-    ※ 중요내용!!(글씨, 로고, 테두리)은 붉은선 안쪽 배치해 주세요. 닿으면 잘릴수 있어요.<br>
-    ※ 재단 공정 특성상 가장자리 디자인은 일부 오차가 발생할 수 있습니다.<br>
-    ※ 업로드 가능 파일 형식 : JPG, JPEG, PNG <br>
-    ※ 본 이미지는 실출력물과 색상차이가 존재할수 있으며 이는 재작업 사유에 해당되지 않습니다. <br>
-    ※ 최종 접수후 반드시 접수완료되신 시안을 확인해주세요.
+<div class="bottom-info-panel">
+    <div id="status-bar">작업 규격: <span id="display-info"></span></div>
+    <div id="tab-container"></div>
 </div>
 
 <button type="button" id="floatingDeleteBtn" class="floating-delete-btn" title="삭제">🗑</button>
@@ -364,7 +250,7 @@ input.tool-color{
 
     
 <script>
-    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText;
+    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, outerGuideRect;
 
     // 시안보기 페이지로 넘길 때 사용할 세션 스토리지 키
     // (같은 브라우저 탭 세션 동안만 유지되며, 새 탭/새 세션에서는 사라집니다)
@@ -424,12 +310,16 @@ input.tool-color{
         guideRect.isGuide = true;
         canvas.add(guideRect);
 
-        guideText = new fabric.Text("이미지를 업로드하거나 텍스트·도형을 추가해 편집을 시작하세요.", {
-            fontSize: 18, fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
-            left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
+        // 붉은선(재단/안전선)보다 한 바퀴 바깥, 초기 캔버스 크기와 동일한 회색 여유선.
+        // 붉은선과 항상 함께 다니도록(표시/숨김, 저장 시 제외, 리사이즈 등) 같은 자리에서 관리합니다.
+        outerGuideRect = new fabric.Rect({
+            left: 0, top: 0,
+            width: canvas.width, height: canvas.height,
+            fill: 'transparent', stroke: '#999999', strokeWidth: 2,
+            selectable: false, evented: false, visible: true
         });
-        guideText.isGuide = true;
-        canvas.add(guideText);
+        outerGuideRect.isGuide = true;
+        canvas.add(outerGuideRect);
 
         document.getElementById('display-info').innerText =
             `${isDouble ? "양면" : "단면"} | 사이즈 ${ratioW} × ${ratioH} mm (붉은박스)`;
@@ -437,13 +327,26 @@ input.tool-color{
         // ---- 선택 변경 시 속성 패널 갱신 ----
         canvas.on('selection:created', () => { updatePropPanel(); updateDeleteIconPosition(); });
         canvas.on('selection:updated', () => { updatePropPanel(); updateDeleteIconPosition(); });
-        canvas.on('selection:cleared', () => { hidePropPanel(); hideDeleteIcon(); });
+        canvas.on('selection:cleared', () => { hideDeleteIcon(); });
+
+        // ---- 텍스트를 제외한 오브젝트(도형/이미지/손그림)는 더블클릭으로만 선택 ----
+        canvas.on('mouse:dblclick', (e) => {
+            const t = e.target;
+            if (t && !t.isGuide && t.type !== 'textbox' && !t.selectable) {
+                canvas.setActiveObject(t);
+                canvas.requestRenderAll();
+            }
+        });
 
         // ---- 편집 기록에 남길 이벤트들 ----
         canvas.on('object:added', (e) => { if (e.target && !e.target.isGuide) pushHistory(); });
         canvas.on('object:modified', (e) => { checkGuideProximity(e.target); pushHistory(); });
         canvas.on('object:removed', (e) => { if (e.target && !e.target.isGuide) pushHistory(); });
-        canvas.on('path:created', () => { bringGuideToFront(); refreshGuideTextVisibility(); pushHistory(); });
+        canvas.on('path:created', (e) => {
+            if (e.path) applySelectionMode(e.path);
+            bringGuideToFront();
+            pushHistory();
+        });
 
         // ---- 붉은선(재단/안전선)에 가까워지면 경고 토스트 표시 ----
         canvas.on('object:moving', (e) => { checkGuideProximity(e.target); updateDeleteIconPosition(); });
@@ -463,13 +366,16 @@ input.tool-color{
             opt.e.stopPropagation();
         });
 
-        // ---- Alt 키를 누른 채 드래그하면 화면(뷰포트)을 이동(패닝) ----
+        // ---- Alt 키 또는 스페이스바(포토샵 손 도구)를 누른 채 드래그하면 화면(뷰포트)을 이동(패닝) ----
         canvas.on('mouse:down', (opt) => {
-            if (opt.e.altKey) {
+            if (opt.e.altKey || isSpaceDown) {
                 isPanning = true;
                 canvas.selection = false;
                 canvas.discardActiveObject();
                 canvas.requestRenderAll();
+                canvas.defaultCursor = 'grabbing';
+                canvas.hoverCursor = 'grabbing';
+                canvas.setCursor('grabbing');
                 panLastX = opt.e.clientX;
                 panLastY = opt.e.clientY;
             }
@@ -489,13 +395,34 @@ input.tool-color{
                 canvas.setViewportTransform(canvas.viewportTransform);
                 isPanning = false;
                 canvas.selection = true;
+                canvas.defaultCursor = isSpaceDown ? 'grab' : 'default';
+                canvas.hoverCursor = isSpaceDown ? 'grab' : 'move';
+                canvas.setCursor(canvas.defaultCursor);
             }
         });
 
         renderTabs();
-        refreshGuideTextVisibility();
         resetHistory();
+        preloadFreeFonts();
     });
+
+    // 드롭다운에 추가된 무료 웹폰트(구글폰트)들을 미리 다운로드해둬서
+    // 사용자가 처음 폰트를 고를 때 버벅이지 않도록 함
+    function preloadFreeFonts(){
+        if (!document.fonts || !document.fonts.load) return;
+        const freeFonts = [
+            'Pretendard', 'GMarketSans', 'Spoqa Han Sans Neo',
+            'Noto Sans KR', 'Nanum Gothic', 'Gothic A1', 'Gowun Dodum', 'IBM Plex Sans KR',
+            'Noto Serif KR', 'Nanum Myeongjo', 'Gowun Batang', 'Song Myung',
+            'Black Han Sans', 'Do Hyeon', 'Jua', 'Gaegu', 'Stylish', 'Yeon Sung', 'Sunflower',
+            'Nanum Pen Script', 'Nanum Brush Script', 'East Sea Dokdo', 'Poor Story', 'Hi Melody',
+            'Roboto', 'Montserrat', 'Poppins', 'Lato', 'Raleway', 'Oswald', 'Bebas Neue',
+            'Playfair Display'
+        ];
+        freeFonts.forEach(f => {
+            document.fonts.load(`400 30px "${f}"`).catch(() => {});
+        });
+    }
 
     // ===================== 탭(디자인/앞뒤) 렌더링 & 전환 =====================
     function renderTabs() {
@@ -524,7 +451,7 @@ input.tool-color{
     function serializeCurrentCanvas(){
         const objs = canvas.getObjects().filter(o => !o.isGuide);
         return {
-            objects: objs.map(o => o.toObject()),
+            objects: objs.map(o => o.toObject(['selectable', 'evented'])),
             background: canvas.backgroundColor || '#ffffff'
         };
     }
@@ -537,9 +464,8 @@ input.tool-color{
             background: (data && data.background) || '#ffffff'
         };
         canvas.loadFromJSON(payload, () => {
-            canvas.add(guideRect, guideText);
+            canvas.add(guideRect, outerGuideRect);
             bringGuideToFront();
-            refreshGuideTextVisibility();
             const bgInput = document.getElementById('canvasBgInput');
             if (bgInput) bgInput.value = payload.background;
             canvas.discardActiveObject();
@@ -570,14 +496,10 @@ input.tool-color{
         return !!(data && data.objects && data.objects.length > 0);
     }
 
-    // ===================== 가이드(붉은 박스/안내문구) 헬퍼 =====================
+    // ===================== 가이드(붉은 박스 + 회색 여유선) 헬퍼 =====================
     function bringGuideToFront(){
         canvas.bringToFront(guideRect);
-        canvas.bringToFront(guideText);
-    }
-    function refreshGuideTextVisibility(){
-        const has = canvas.getObjects().some(o => !o.isGuide);
-        guideText.visible = !has;
+        canvas.bringToFront(outerGuideRect);
     }
 
     // ===================== 붉은선(재단/안전선) 근접 경고 =====================
@@ -647,10 +569,46 @@ input.tool-color{
     document.getElementById('redoBtn').addEventListener('click', redo);
 
     // ===================== 삽입 도구: 텍스트 / 도형 / 그리기 =====================
+    const moveToolBtn = document.getElementById('moveToolBtn');
+
+    // 패널을 열어둔 채로 선택만 해제(닫기)할 때 쓰는 공통 함수 (Esc 키에서 사용)
+    function closeSelectionPanel(){
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        hidePropPanel();
+        hideDeleteIcon();
+    }
+
+    // 오브젝트 종류에 따라 "몇 번 클릭해야 선택되는지"를 정해주는 공통 함수.
+    // 텍스트는 기존처럼 한 번 클릭으로 바로 선택되고, 그 외(도형/이미지/손그림)는
+    // selectable을 꺼둬서 한 번 클릭으로는 선택되지 않게 하고, 더블클릭으로만 선택되게 함.
+    function applySelectionMode(obj){
+        if (!obj || obj.isGuide) return;
+        if (obj.lockMovementX) return; // 잠금된 오브젝트는 상태를 건드리지 않음
+        obj.evented = true;
+        obj.selectable = (obj.type === 'textbox');
+    }
+
+    // 포토샵의 "이동 도구(V)"에 해당. 그리기 모드를 끄고, 오브젝트를
+    // 자유롭게 클릭·드래그로 선택/이동할 수 있는 기본 상태로 되돌립니다.
+    function setMoveTool(){
+        if (isDrawMode) toggleDrawMode();
+        canvas.selection = true;
+        canvas.skipTargetFind = false;
+        canvas.forEachObject(o => applySelectionMode(o));
+        moveToolBtn.classList.add('active');
+        drawBtn.classList.remove('active');
+        canvas.requestRenderAll();
+    }
+    moveToolBtn.addEventListener('click', () => setMoveTool());
+
     function addText(){
+        setMoveTool();
         const cx = canvas.width / 2, cy = canvas.height / 2;
+        // 캔버스 폭에 비례해서 넉넉하게(너무 좁으면 스페이스바 칠 때마다 줄바꿈 되어버림)
+        const textWidth = Math.max(260, Math.min(canvas.width * 0.7, 500));
         const text = new fabric.Textbox('텍스트를 입력하세요', {
-            left: cx - 100, top: cy - 20, width: 200,
+            left: cx - textWidth / 2, top: cy - 20, width: textWidth,
             fontSize: 28, fill: '#111111', fontFamily: 'Malgun Gothic', textAlign: 'left'
         });
         canvas.add(text);
@@ -662,6 +620,7 @@ input.tool-color{
     }
 
     function addShape(type){
+        setMoveTool();
         const cx = canvas.width / 2, cy = canvas.height / 2;
         let shape;
         if (type === 'rect') {
@@ -674,6 +633,7 @@ input.tool-color{
             shape = new fabric.Line([cx - 70, cy, cx + 70, cy], { stroke: '#111111', strokeWidth: 4 });
         }
         if (!shape) return;
+        applySelectionMode(shape);
         canvas.add(shape);
         canvas.setActiveObject(shape);
         bringGuideToFront();
@@ -695,14 +655,17 @@ input.tool-color{
         isDrawMode = !isDrawMode;
         canvas.isDrawingMode = isDrawMode;
         if (isDrawMode) {
+            if (canvas.getActiveObject()) closeSelectionPanel();
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
             canvas.freeDrawingBrush.color = brushColorInput.value;
             canvas.freeDrawingBrush.width = parseInt(brushWidthInput.value, 10) || 4;
             drawBtn.classList.add('active');
-            brushControls.style.display = 'flex';
+            moveToolBtn.classList.remove('active');
+            brushControls.classList.remove('hidden');
         } else {
             drawBtn.classList.remove('active');
-            brushControls.style.display = 'none';
+            moveToolBtn.classList.add('active');
+            brushControls.classList.add('hidden');
         }
     }
     drawBtn.addEventListener('click', toggleDrawMode);
@@ -728,6 +691,7 @@ input.tool-color{
 
     let isPanning = false;
     let panLastX = 0, panLastY = 0;
+    let isSpaceDown = false; // 스페이스바를 누르고 있는 동안 = 포토샵 손 도구
 
     // ===================== 캔버스 배경색 =====================
     document.getElementById('canvasBgInput').addEventListener('input', (e) => {
@@ -813,6 +777,66 @@ input.tool-color{
     window.addEventListener('scroll', updateDeleteIconPosition, { passive: true });
     window.addEventListener('resize', updateDeleteIconPosition);
 
+    // ===================== 반응형 캔버스 크기 조정 (모바일 회전/리사이즈 대응) =====================
+    // 화면 크기가 바뀌면(모바일 세로↔가로 회전 등) 캔버스 폭을 컨테이너에 맞게 다시 계산하고,
+    // 현재 캔버스의 오브젝트뿐 아니라 아직 화면에 없는 다른 디자인/면의 저장된 좌표까지
+    // 전부 같은 비율로 함께 조정해서, 나중에 다른 탭으로 전환해도 배치가 어긋나지 않게 합니다.
+    function rescaleStoredDesigns(ratio){
+        designData.forEach(entry => {
+            ['front', 'back'].forEach(side => {
+                const data = entry && entry[side];
+                if (!data || !data.objects || !data.objects.length) return;
+                data.objects.forEach(o => {
+                    if (typeof o.left === 'number') o.left *= ratio;
+                    if (typeof o.top === 'number') o.top *= ratio;
+                    if (typeof o.scaleX === 'number') o.scaleX *= ratio;
+                    if (typeof o.scaleY === 'number') o.scaleY *= ratio;
+                });
+            });
+        });
+    }
+
+    function resizeCanvasToContainer(){
+        if (!canvas) return;
+        const wrapper = document.getElementById('canvas-wrapper');
+        const newWidth = wrapper.clientWidth;
+        const oldWidth = canvas.getWidth();
+        if (!newWidth || Math.abs(newWidth - oldWidth) < 2) return;
+
+        const ratio = newWidth / oldWidth;
+        const newHeight = canvas.getHeight() * ratio;
+
+        canvas.getObjects().forEach(obj => {
+            if (obj.isGuide) return;
+            obj.set({
+                left: obj.left * ratio,
+                top: obj.top * ratio,
+                scaleX: obj.scaleX * ratio,
+                scaleY: obj.scaleY * ratio
+            });
+            obj.setCoords();
+        });
+
+        const padding = newWidth * 0.02;
+        guideRect.set({ left: padding, top: padding, width: newWidth - padding * 2, height: newHeight - padding * 2 });
+        guideRect.setCoords();
+        outerGuideRect.set({ left: 0, top: 0, width: newWidth, height: newHeight });
+        outerGuideRect.setCoords();
+
+        canvas.setDimensions({ width: newWidth, height: newHeight });
+        rescaleStoredDesigns(ratio);
+        canvas.requestRenderAll();
+        updateDeleteIconPosition();
+    }
+
+    let canvasResizeTimer;
+    function scheduleCanvasResize(delay){
+        clearTimeout(canvasResizeTimer);
+        canvasResizeTimer = setTimeout(resizeCanvasToContainer, delay);
+    }
+    window.addEventListener('resize', () => scheduleCanvasResize(200));
+    window.addEventListener('orientationchange', () => scheduleCanvasResize(350));
+
     function updatePropPanel(){
         const obj = canvas.getActiveObject();
         if (!obj) { hidePropPanel(); return; }
@@ -839,7 +863,7 @@ input.tool-color{
 
         shapePanel.classList.toggle('visible', isFillShape || isLine);
         if (isFillShape || isLine) {
-            fillColorRow.style.display = isFillShape ? '' : 'none';
+            fillColorRow.classList.toggle('hidden', !isFillShape);
             fillColorInput.value = (typeof obj.fill === 'string' && obj.fill) ? obj.fill : '#3498db';
             strokeColorInput.value = obj.stroke || '#111111';
             strokeWidthInput.value = obj.strokeWidth || 0;
@@ -943,14 +967,61 @@ input.tool-color{
         obj.clone((cloned) => {
             canvas.discardActiveObject();
             cloned.set({ left: (obj.left || 0) + 20, top: (obj.top || 0) + 20 });
+            applySelectionMode(cloned);
             canvas.add(cloned);
             canvas.setActiveObject(cloned);
             bringGuideToFront();
             canvas.requestRenderAll();
             pushHistory();
-        });
+        }, ['selectable', 'evented']);
     }
     document.getElementById('duplicateBtn').addEventListener('click', duplicateActive);
+
+    // ===================== 복사(Ctrl+C) / 붙여넣기(Ctrl+V) =====================
+    // 텍스트를 입력창/텍스트 편집 중일 때는 브라우저 기본 복사·붙여넣기가 그대로
+    // 동작하도록, 위쪽 keydown 핸들러의 기존 가드(입력창 포커스, 텍스트 편집중)를 그대로 탄다.
+    let clipboardObject = null;
+
+    function copyActive(){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.clone((cloned) => {
+            clipboardObject = cloned;
+        }, ['selectable', 'evented']);
+    }
+
+    function pasteClipboard(){
+        if (!clipboardObject) return;
+        clipboardObject.clone((cloned) => {
+            canvas.discardActiveObject();
+            cloned.set({
+                left: (cloned.left || 0) + 20,
+                top: (cloned.top || 0) + 20,
+                evented: true
+            });
+
+            if (cloned.type === 'activeSelection') {
+                // 여러 개를 한 번에 복사한 경우: 그룹을 풀어서 각각 캔버스에 추가
+                cloned.canvas = canvas;
+                cloned.forEachObject((o) => {
+                    applySelectionMode(o);
+                    canvas.add(o);
+                });
+                cloned.setCoords();
+            } else {
+                applySelectionMode(cloned);
+                canvas.add(cloned);
+            }
+
+            canvas.setActiveObject(cloned);
+            bringGuideToFront();
+            canvas.requestRenderAll();
+            pushHistory();
+
+            // 연속으로 붙여넣기 하면 계속 조금씩 밀려나며 쌓이도록 기준 위치 갱신
+            clipboardObject = cloned;
+        }, ['selectable', 'evented']);
+    }
 
     function toggleLock(){
         const obj = canvas.getActiveObject();
@@ -983,9 +1054,15 @@ input.tool-color{
     fontFamilySelect.addEventListener('change', () => {
         const obj = canvas.getActiveObject();
         if (!obj || obj.type !== 'textbox') return;
-        obj.set('fontFamily', fontFamilySelect.value);
+        const chosenFont = fontFamilySelect.value;
+        obj.set('fontFamily', chosenFont);
         canvas.requestRenderAll();
         pushHistory();
+        // 웹폰트(구글폰트)는 첫 선택 시 아직 다운로드 중일 수 있어서,
+        // 로드가 끝나면 한 번 더 다시 그려서 폰트가 정상 적용된 모습으로 보이게 함
+        if (document.fonts && document.fonts.load) {
+            document.fonts.load(`400 30px "${chosenFont}"`).then(() => canvas.requestRenderAll()).catch(() => {});
+        }
     });
     fontSizeInput.addEventListener('input', () => {
         const obj = canvas.getActiveObject();
@@ -994,6 +1071,18 @@ input.tool-color{
         canvas.requestRenderAll();
     });
     fontSizeInput.addEventListener('change', () => pushHistory());
+
+    // Ctrl+Shift+< / Ctrl+Shift+> 로 선택된 텍스트 크기를 키우고 줄이는 단축키에서 사용
+    function changeFontSize(obj, delta){
+        if (!obj || obj.type !== 'textbox') return;
+        const min = parseInt(fontSizeInput.min, 10) || 8;
+        const max = parseInt(fontSizeInput.max, 10) || 200;
+        const newSize = Math.max(min, Math.min(max, (obj.fontSize || 28) + delta));
+        obj.set('fontSize', newSize);
+        canvas.requestRenderAll();
+        if (fontSizeInput) fontSizeInput.value = newSize; // 패널이 열려있으면 숫자도 같이 갱신
+        pushHistory();
+    }
     textColorInput.addEventListener('input', () => {
         const obj = canvas.getActiveObject();
         if (!obj || obj.type !== 'textbox') return;
@@ -1155,6 +1244,49 @@ input.tool-color{
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && active) {
             e.preventDefault();
             duplicateActive();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && active) {
+            e.preventDefault();
+            copyActive();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+            e.preventDefault();
+            pasteClipboard();
+        } else if ((e.ctrlKey || e.metaKey) && active && active.type === 'textbox' &&
+                   (e.key === '<' || (e.shiftKey && e.key === ','))) {
+            // Ctrl+Shift+< : 글자 크기 작게
+            e.preventDefault();
+            changeFontSize(active, -2);
+        } else if ((e.ctrlKey || e.metaKey) && active && active.type === 'textbox' &&
+                   (e.key === '>' || (e.shiftKey && e.key === '.'))) {
+            // Ctrl+Shift+> : 글자 크기 크게
+            e.preventDefault();
+            changeFontSize(active, 2);
+        } else if (e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            setMoveTool();
+        } else if (e.key === 'Escape' && active) {
+            e.preventDefault();
+            closeSelectionPanel();
+        } else if (e.code === 'Space' && !isSpaceDown) {
+            // 포토샵처럼 스페이스바를 누르고 있는 동안 손 도구(캔버스 드래그 이동)로 전환
+            e.preventDefault();
+            isSpaceDown = true;
+            if (!isPanning) {
+                canvas.defaultCursor = 'grab';
+                canvas.hoverCursor = 'grab';
+                canvas.setCursor('grab');
+                canvas.requestRenderAll();
+            }
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.code !== 'Space') return;
+        isSpaceDown = false;
+        if (!isPanning && canvas) {
+            canvas.defaultCursor = 'default';
+            canvas.hoverCursor = 'move';
+            canvas.setCursor('default');
+            canvas.requestRenderAll();
         }
     });
 
@@ -1193,6 +1325,7 @@ input.tool-color{
                 });
                 img.setCoords();
 
+                applySelectionMode(img);
                 canvas.add(img);
                 canvas.setActiveObject(img);
                 bringGuideToFront();
@@ -1247,10 +1380,10 @@ input.tool-color{
                 for (const side of sides) {
                     await switchTo(i, side);
 
-                    // 가이드(빨간 박스/안내문구)는 저장 이미지에서 제외
+                    // 가이드(빨간 박스 + 회색 여유선)는 저장 이미지에서 제외
                     canvas.discardActiveObject();
                     guideRect.visible = false;
-                    guideText.visible = false;
+                    outerGuideRect.visible = false;
                     canvas.requestRenderAll();
 
                     const dataUrl = canvas.toDataURL({
@@ -1260,7 +1393,7 @@ input.tool-color{
                     });
 
                     guideRect.visible = true;
-                    refreshGuideTextVisibility();
+                    outerGuideRect.visible = true;
                     canvas.requestRenderAll();
 
                     const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
@@ -1308,7 +1441,8 @@ document.addEventListener('mousedown', (e) => {
         !e.target.closest('.left-tools') &&
         !e.target.closest('.right-tools') &&
         !e.target.closest('.editor-toolbar') &&
-        !e.target.closest('.prop-panel')
+        !e.target.closest('.prop-panel') &&
+        !e.target.closest('.floating-delete-btn')
     ) {
 
         if (canvas && canvas.getActiveObject()) {
@@ -1330,11 +1464,13 @@ if (guideBtn) {
 
     guideBtn.addEventListener('mouseenter', () => {
         guideRect.visible = true;
+        outerGuideRect.visible = true;
         canvas.renderAll();
     });
 
     guideBtn.addEventListener('mouseleave', () => {
         guideRect.visible = false;
+        outerGuideRect.visible = false;
         canvas.renderAll();
     });
 
