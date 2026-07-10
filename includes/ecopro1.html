@@ -127,6 +127,7 @@
 <div id="notice-box">
       <strong>※ 작업 시 주의사항</strong>
     ※ 업로드하신 파일의 배경은 회색선까지 꼭 연장해 주세요.<br>
+    ※ 이미지를 클릭하면 꼭지의 작은 점과 선 중앙의 점 클릭하시면 이미지를 늘릴수 있습니다.<br>
     ※ 중요내용!!(글씨, 로고, 테두리)은 붉은선 안쪽 배치해 주세요. 닿으면 잘릴수 있어요.<br>
     ※ 재단 공정 특성상 가장자리 디자인은 일부 오차가 발생할 수 있습니다.<br>
     ※ 업로드 가능 파일 형식 : JPG, JPEG, PNG, PDF (PDF는 자동으로 고화질 이미지로 변환됩니다) <br>
@@ -140,7 +141,7 @@
 
     
 <script>
-    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText;
+    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText, guideCornerText;
 
     // 시안보기 페이지로 넘길 때 사용할 세션 스토리지 키
     // (같은 브라우저 탭 세션 동안만 유지되며, 새 탭/새 세션에서는 사라집니다)
@@ -197,6 +198,19 @@ canvas.on('mouse:down', (e) => {
         });
         canvas.add(guideText);
 
+        // 붉은선 박스 우측 하단 안내문구 (실 출력에는 포함되지 않는 화면 안내용 문구)
+        guideCornerText = new fabric.Text(
+            "붉은선은 실출력시 보이지 않습니다.\n이 선 밖으로 테두리나 글씨가 넘어가면 실 출력시 잘릴 수 있습니다.",
+            {
+                fontSize: Math.max(10, canvas.width * 0.012), fill: '#ff0000', textAlign: 'right',
+                originX: 'right', originY: 'bottom',
+                left: padding + (canvas.width - padding * 2) - 6,
+                top: padding + (canvas.height - padding * 2) - 6,
+                selectable: false, evented: false, visible: true
+            }
+        );
+        canvas.add(guideCornerText);
+
      document.getElementById('display-info').innerText =
     `${isDouble ? "양면" : "단면"} | 사이즈 ${ratioW} × ${ratioH} mm (붉은박스)`;
         updateView();
@@ -225,6 +239,7 @@ canvas.on('mouse:down', (e) => {
         const img = designData[currentIdx][currentSide];
         canvas.clear();
         canvas.add(guideRect);
+        canvas.add(guideCornerText);
         if(img) { 
             canvas.add(img); canvas.sendToBack(img); 
             guideText.visible = false; 
@@ -416,6 +431,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
                 // 가이드(빨간 박스/안내문구)는 저장 이미지에서 제외
                 canvas.remove(guideRect);
                 canvas.remove(guideText);
+                canvas.remove(guideCornerText);
                 canvas.renderAll();
 
                 // 시안보기 페이지 전달용이라 용량을 고려해 JPEG로 내보냄
@@ -508,11 +524,13 @@ if (guideBtn) {
 
     guideBtn.addEventListener('mouseenter', () => {
         guideRect.visible = true;
+        guideCornerText.visible = true;
         canvas.renderAll();
     });
 
     guideBtn.addEventListener('mouseleave', () => {
         guideRect.visible = false;
+        guideCornerText.visible = false;
         canvas.renderAll();
     });
 
