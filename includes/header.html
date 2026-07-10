@@ -32,9 +32,11 @@
     padding: 0; 
 }
 
-.search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 15px 15px; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; }
-.suggestion-item { padding:8px 20px; cursor:pointer; font-size:14px; }
+.search-suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 15px 15px; display: none; z-index: 1000; box-shadow:0 4px 6px rgba(0,0,0,.1); padding:5px 0; max-height: 320px; overflow-y: auto; }
+.suggestion-item { padding:8px 20px; cursor:pointer; font-size:13px; line-height:1.4; }
 .suggestion-item:hover { background:#f0f0f0; }
+.suggestion-item .sg-leaf { color:#222; font-weight:bold; }
+.suggestion-item .sg-path { color:#999; font-size:11px; }
 
 /* 버튼 */
 .icons { display:flex; gap:8px; }
@@ -43,13 +45,39 @@
 /* 메가메뉴 */
 .mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
 .mega-menu-list { display: flex; justify-content: center; list-style: none; margin: 0; padding: 0; }
-.menu-item { position: relative; padding: 15px 20px; }
+.menu-item { position: static; padding: 15px 20px; }
 .menu-item > a { text-decoration: none; color: #333; font-weight: bold; }
-.sub-menu { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ddd; min-width: 150px; padding: 10px 0; box-shadow: 0 5px 10px rgba(0,0,0,0.1); z-index: 1000; }
-.menu-item:hover .sub-menu { display: block; }
-.sub-menu a { display: block; padding: 8px 15px; color: #666; text-decoration: none; font-size: 13px; }
 .menu-item > a[onclick] { cursor: default; }
-    
+
+/* 메가패널 (다단계 분류를 컬럼으로 표시) */
+.mega-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 1199px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    z-index: 1000;
+    padding: 28px 32px;
+}
+.menu-item:hover .mega-panel { display: block; }
+.mega-panel-inner { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
+.mega-col { flex: 1 1 140px; min-width: 140px; max-width: 190px; }
+.mega-col-title { font-size: 14px; font-weight: bold; color: #222; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #68b600; }
+.mega-col-title a { color: #222; text-decoration: none; }
+.mega-col-title a:hover { color: #68b600; }
+.mega-col-title-leaf { border-bottom: none; padding-bottom: 0; }
+.mega-sub-list { list-style: none; margin: 0; padding: 0; }
+.mega-sub-list li { margin: 0; }
+.mega-sub-list > li > a { display: block; padding: 4px 0; font-size: 13px; color: #666; text-decoration: none; }
+.mega-sub-list > li > a:hover { color: #68b600; }
+.mega-group-title { display: block; font-size: 12px; font-weight: bold; color: #333; margin: 10px 0 3px; }
+.mega-group .mega-sub-list { padding-left: 8px; border-left: 1px solid #eee; margin-top: 2px; }
+
 /* 모바일 슬라이더 */
 .mobile-slider-nav { 
     position: fixed; 
@@ -68,6 +96,11 @@
 .slider-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
 .slider-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998; }
 .slider-overlay.active { display: block; }
+
+.mobile-cat { font-weight: bold; margin-bottom: 10px; color: #333; cursor: pointer; }
+.mobile-group-title { font-weight: 600; color: #333; cursor: pointer; }
+.mobile-leaf-link { display: block; text-decoration: none; }
+.mobile-sub-menu { display: none; }
 
 @media(max-width: 768px) {
     .header-component { width: 100%; padding: 15px; }
@@ -126,7 +159,7 @@ function toggleSlider() {
 
 function toggleSubMenu(el) {
     const sub = el.nextElementSibling;
-    sub.style.display = (sub.style.display === "none") ? "block" : "none";
+    sub.style.display = (sub.style.display === "none" || sub.style.display === "") ? "block" : "none";
 }
 
 /* ==========================================================================
@@ -134,55 +167,1593 @@ function toggleSubMenu(el) {
    여기에 카테고리/하위메뉴를 추가·수정하면
    1) PC 메가메뉴, 2) 모바일 좌측 슬라이드 메뉴, 3) 검색 자동완성
    세 곳에 전부 자동으로 반영됩니다. (다른 곳은 손댈 필요 없음)
+
+   구조 (몇 단계든 자유롭게 중첩 가능):
+   {
+     name: "표시될 이름",
+     url: "#" 또는 실제 링크,   // children이 있으면 보통 "#"
+     children: [ ... 위와 동일한 구조 재귀 반복 ... ]   // 없으면 leaf(실제 상품) 링크
+   }
    ========================================================================== */
 const menuData = [
     {
-        name: "명함",
-        url: "#",
-        children: [
-            { name: "명함", url: "/products/01my" },
-            { name: "박명함", url: "/products/02my" },
-            { name: "카드명함", url: "/products/03my" },
-            { name: "수입지명함", url: "/products/04my" }
+        "name": "상업인쇄소",
+        "url": "#",
+        "children": [
+            {
+                "name": "명함",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "일반명함",
+                        "url": "/myjs/products/01my"
+                    },
+                    {
+                        "name": "특수지명함",
+                        "url": "/myjs/products/02my"
+                    },
+                    {
+                        "name": "디지털명함",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "디지털AP명함(구.넥스)",
+                                "url": "/myjs/products/03my"
+                            },
+                            {
+                                "name": "디지털인디고명함",
+                                "url": "/myjs/products/04my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "프리미엄명함",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "고평량명함",
+                                "url": "/myjs/products/05my"
+                            },
+                            {
+                                "name": "고평량에코명함",
+                                "url": "/myjs/products/06my"
+                            },
+                            {
+                                "name": "카드명함",
+                                "url": "/myjs/products/07my"
+                            },
+                            {
+                                "name": "반투명명함",
+                                "url": "/myjs/products/08my"
+                            },
+                            {
+                                "name": "색지명함",
+                                "url": "/myjs/products/09my"
+                            },
+                            {
+                                "name": "미니명함",
+                                "url": "/myjs/products/10my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "후가공명함",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "패턴명함",
+                                "url": "/myjs/products/11my"
+                            },
+                            {
+                                "name": "UV코팅명함",
+                                "url": "/myjs/products/12my"
+                            },
+                            {
+                                "name": "벨벳코팅명함",
+                                "url": "/myjs/products/13my"
+                            },
+                            {
+                                "name": "하이브리드명함",
+                                "url": "/myjs/products/14my"
+                            },
+                            {
+                                "name": "투명하이브리드명함",
+                                "url": "/myjs/products/15my"
+                            },
+                            {
+                                "name": "투명엠보싱명함",
+                                "url": "/myjs/products/16my"
+                            },
+                            {
+                                "name": "레이저컷팅명함",
+                                "url": "/myjs/products/17my"
+                            },
+                            {
+                                "name": "레이저마킹명함",
+                                "url": "/myjs/products/18my"
+                            },
+                            {
+                                "name": "모양명함",
+                                "url": "/myjs/products/19my"
+                            },
+                            {
+                                "name": "엠보싱금박명함",
+                                "url": "/myjs/products/20my"
+                            },
+                            {
+                                "name": "엠보싱은박명함",
+                                "url": "/myjs/products/21my"
+                            },
+                            {
+                                "name": "엠보싱홀로그램박명함",
+                                "url": "/myjs/products/22my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "핫딜명함",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "일반명함",
+                                "url": "/myjs/products/23my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "당일출고명함",
+                        "url": "/myjs/products/24my"
+                    },
+                    {
+                        "name": "복권",
+                        "url": "/myjs/products/25my"
+                    }
+                ]
+            },
+            {
+                "name": "스티커",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "사각스티커",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "가성비스티커",
+                                "url": "/myjs/products/26my"
+                            },
+                            {
+                                "name": "소량스티커",
+                                "url": "/myjs/products/27my"
+                            },
+                            {
+                                "name": "탈부착스티커",
+                                "url": "/myjs/products/28my"
+                            },
+                            {
+                                "name": "강접스티커",
+                                "url": "/myjs/products/29my"
+                            },
+                            {
+                                "name": "특수초강접스티커",
+                                "url": "/myjs/products/30my"
+                            },
+                            {
+                                "name": "방수스티커",
+                                "url": "/myjs/products/31my"
+                            },
+                            {
+                                "name": "종이스티커",
+                                "url": "/myjs/products/32my"
+                            },
+                            {
+                                "name": "소량레인보우스티커",
+                                "url": "/myjs/products/33my"
+                            },
+                            {
+                                "name": "소량스파클스티커",
+                                "url": "/myjs/products/34my"
+                            },
+                            {
+                                "name": "투명엠보싱스티커",
+                                "url": "/myjs/products/35my"
+                            },
+                            {
+                                "name": "엠보싱금박스티커",
+                                "url": "/myjs/products/36my"
+                            },
+                            {
+                                "name": "엠보싱은박스티커",
+                                "url": "/myjs/products/37my"
+                            },
+                            {
+                                "name": "엠보싱홀로그램박스티커",
+                                "url": "/myjs/products/38my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "도무송스티커",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "가성비스티커",
+                                "url": "/myjs/products/39my"
+                            },
+                            {
+                                "name": "소량스티커",
+                                "url": "/myjs/products/40my"
+                            },
+                            {
+                                "name": "탈부착스티커",
+                                "url": "/myjs/products/41my"
+                            },
+                            {
+                                "name": "강접스티커",
+                                "url": "/myjs/products/42my"
+                            },
+                            {
+                                "name": "특수초강접스티커",
+                                "url": "/myjs/products/43my"
+                            },
+                            {
+                                "name": "방수스티커",
+                                "url": "/myjs/products/44my"
+                            },
+                            {
+                                "name": "광택스티커",
+                                "url": "/myjs/products/45my"
+                            },
+                            {
+                                "name": "종이스티커",
+                                "url": "/myjs/products/46my"
+                            },
+                            {
+                                "name": "패브릭스티커",
+                                "url": "/myjs/products/47my"
+                            },
+                            {
+                                "name": "소량레인보우스티커",
+                                "url": "/myjs/products/48my"
+                            },
+                            {
+                                "name": "투명엠보싱스티커",
+                                "url": "/myjs/products/49my"
+                            },
+                            {
+                                "name": "엠보싱금박스티커",
+                                "url": "/myjs/products/50my"
+                            },
+                            {
+                                "name": "엠보싱은박스티커",
+                                "url": "/myjs/products/51my"
+                            },
+                            {
+                                "name": "엠보싱홀로그램박스티커",
+                                "url": "/myjs/products/52my"
+                            },
+                            {
+                                "name": "조각스티커",
+                                "url": "/myjs/products/53my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "정밀도무송스티커",
+                        "url": "/myjs/products/54my"
+                    },
+                    {
+                        "name": "롤스티커",
+                        "url": "/myjs/products/55my"
+                    },
+                    {
+                        "name": "팬시스티커",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "네임스티커",
+                                "url": "/myjs/products/56my"
+                            },
+                            {
+                                "name": "포토스티커",
+                                "url": "/myjs/products/57my"
+                            },
+                            {
+                                "name": "네컷스티커",
+                                "url": "/myjs/products/58my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "주차스티커",
+                        "url": "/myjs/products/59my"
+                    },
+                    {
+                        "name": "판스티커",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "판스티커(원형)",
+                                "url": "/myjs/products/60my"
+                            },
+                            {
+                                "name": "판스티커(사각형)",
+                                "url": "/myjs/products/61my"
+                            },
+                            {
+                                "name": "판스티커(자유형)",
+                                "url": "/myjs/products/62my"
+                            },
+                            {
+                                "name": "판스티커(이지템플릿전용)",
+                                "url": "/myjs/products/63my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "배달스티커",
+                        "url": "/myjs/products/64my"
+                    },
+                    {
+                        "name": "핫딜스티커",
+                        "url": "/myjs/products/65my"
+                    },
+                    {
+                        "name": "띠지스티커",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "띠지스티커(사각)",
+                                "url": "/myjs/products/66my"
+                            },
+                            {
+                                "name": "띠지스티커(도무송)",
+                                "url": "/myjs/products/67my"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "전단",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "합판전단",
+                        "url": "/myjs/products/68my"
+                    },
+                    {
+                        "name": "독판전단",
+                        "url": "/myjs/products/69my"
+                    },
+                    {
+                        "name": "문고리전단",
+                        "url": "/myjs/products/70my"
+                    },
+                    {
+                        "name": "소량독판전단",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "소량독판전단(옵셋)",
+                                "url": "/myjs/products/71my"
+                            },
+                            {
+                                "name": "소량독판전단(UV옵셋)",
+                                "url": "/myjs/products/72my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "소량전단",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "소량전단_KM-1",
+                                "url": "/myjs/products/73my"
+                            },
+                            {
+                                "name": "소량전단_AP(구.넥스)",
+                                "url": "/myjs/products/74my"
+                            },
+                            {
+                                "name": "소량전단_인디고",
+                                "url": "/myjs/products/75my"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "홍보물",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "대량리플렛",
+                        "url": "/myjs/products/76my"
+                    },
+                    {
+                        "name": "대량포스터",
+                        "url": "/myjs/products/77my"
+                    },
+                    {
+                        "name": "방수포스터",
+                        "url": "/myjs/products/78my"
+                    },
+                    {
+                        "name": "테이블세팅지",
+                        "url": "/myjs/products/79my"
+                    },
+                    {
+                        "name": "수저세팅지",
+                        "url": "/myjs/products/80my"
+                    }
+                ]
+            },
+            {
+                "name": "행택/쿠폰/안내장",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "행택",
+                        "url": "/myjs/products/81my"
+                    },
+                    {
+                        "name": "헤더택",
+                        "url": "/myjs/products/82my"
+                    },
+                    {
+                        "name": "쿠폰",
+                        "url": "/myjs/products/83my"
+                    },
+                    {
+                        "name": "상품권/티켓",
+                        "url": "/myjs/products/84my"
+                    },
+                    {
+                        "name": "청첩장/초대장",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "엽서형",
+                                "url": "/myjs/products/85my"
+                            },
+                            {
+                                "name": "2단접지형",
+                                "url": "/myjs/products/86my"
+                            },
+                            {
+                                "name": "3단접지형",
+                                "url": "/myjs/products/87my"
+                            },
+                            {
+                                "name": "식권",
+                                "url": "/myjs/products/88my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "소량 청첩장/초대장",
+                        "url": "/myjs/products/89my"
+                    },
+                    {
+                        "name": "프리미엄엽서",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "고평량엽서",
+                                "url": "/myjs/products/90my"
+                            },
+                            {
+                                "name": "색지엽서",
+                                "url": "/myjs/products/91my"
+                            },
+                            {
+                                "name": "모양엽서",
+                                "url": "/myjs/products/92my"
+                            },
+                            {
+                                "name": "합지엽서",
+                                "url": "/myjs/products/93my"
+                            },
+                            {
+                                "name": "투명엠보싱엽서",
+                                "url": "/myjs/products/94my"
+                            },
+                            {
+                                "name": "엠보싱금박엽서",
+                                "url": "/myjs/products/95my"
+                            },
+                            {
+                                "name": "엠보싱은박엽서",
+                                "url": "/myjs/products/96my"
+                            },
+                            {
+                                "name": "엠보싱홀로그램박엽서",
+                                "url": "/myjs/products/97my"
+                            },
+                            {
+                                "name": "캔버스엽서",
+                                "url": "/myjs/products/98my"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "봉투",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "칼라봉투",
+                        "url": "/myjs/products/99my"
+                    },
+                    {
+                        "name": "마스타봉투",
+                        "url": "/myjs/products/100my"
+                    },
+                    {
+                        "name": "소량봉투",
+                        "url": "/myjs/products/101my"
+                    }
+                ]
+            },
+            {
+                "name": "부자재",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "종이명함케이스",
+                        "url": "/myjs/products/102my"
+                    },
+                    {
+                        "name": "반투명명함케이스",
+                        "url": "/myjs/products/103my"
+                    },
+                    {
+                        "name": "전단박스",
+                        "url": "/myjs/products/104my"
+                    },
+                    {
+                        "name": "지관통",
+                        "url": "/myjs/products/105my"
+                    },
+                    {
+                        "name": "미니배너거치대",
+                        "url": "/myjs/products/106my"
+                    },
+                    {
+                        "name": "실내용배너거치대(고급형)",
+                        "url": "/myjs/products/107my"
+                    },
+                    {
+                        "name": "실내용배너거치대(일반형)",
+                        "url": "/myjs/products/108my"
+                    },
+                    {
+                        "name": "실외용배너거치대(1800)",
+                        "url": "/myjs/products/109my"
+                    },
+                    {
+                        "name": "물통",
+                        "url": "/myjs/products/110my"
+                    },
+                    {
+                        "name": "철제입간판",
+                        "url": "/myjs/products/111my"
+                    },
+                    {
+                        "name": "개폐형 철제입간판",
+                        "url": "/myjs/products/112my"
+                    },
+                    {
+                        "name": "선반형 철제입간판",
+                        "url": "/myjs/products/113my"
+                    },
+                    {
+                        "name": "걸이형 철제입간판",
+                        "url": "/myjs/products/114my"
+                    },
+                    {
+                        "name": "큐방",
+                        "url": "/myjs/products/115my"
+                    },
+                    {
+                        "name": "로프(3M×4개)",
+                        "url": "/myjs/products/116my"
+                    },
+                    {
+                        "name": "양모헤라(시트지밀대)",
+                        "url": "/myjs/products/117my"
+                    },
+                    {
+                        "name": "행택부자재",
+                        "url": "/myjs/products/118my"
+                    },
+                    {
+                        "name": "조각자석",
+                        "url": "/myjs/products/119my"
+                    },
+                    {
+                        "name": "모던액자",
+                        "url": "/myjs/products/120my"
+                    },
+                    {
+                        "name": "사원증케이스",
+                        "url": "/myjs/products/121my"
+                    },
+                    {
+                        "name": "롤스티커디스펜서",
+                        "url": "/myjs/products/122my"
+                    },
+                    {
+                        "name": "OPP봉투",
+                        "url": "/myjs/products/123my"
+                    },
+                    {
+                        "name": "비접착 OPP봉투",
+                        "url": "/myjs/products/124my"
+                    },
+                    {
+                        "name": "엽서봉투(무지)",
+                        "url": "/myjs/products/125my"
+                    },
+                    {
+                        "name": "사원증목걸이/집게",
+                        "url": "/myjs/products/126my"
+                    },
+                    {
+                        "name": "슬라이드 지퍼백",
+                        "url": "/myjs/products/127my"
+                    },
+                    {
+                        "name": "프리미엄 명함 케이스",
+                        "url": "/myjs/products/128my"
+                    }
+                ]
+            },
+            {
+                "name": "와우기획상품",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "배쑝와쑝박스",
+                        "url": "/myjs/products/129my"
+                    }
+                ]
+            }
         ]
     },
     {
-        name: "스티커",
-        url: "#",
-        children: [
-            { name: "원형스티커", url: "/products/sticker1" },
-            { name: "사각형스티커", url: "/products/sticker2" }
+        "name": "힙지로디지털",
+        "url": "#",
+        "children": [
+            {
+                "name": "소량리플렛",
+                "url": "/myjs/products/130my"
+            },
+            {
+                "name": "소량포스터",
+                "url": "/myjs/products/131my"
+            },
+            {
+                "name": "패키지",
+                "url": "/myjs/products/132my"
+            },
+            {
+                "name": "스탠드POP",
+                "url": "/myjs/products/133my"
+            },
+            {
+                "name": "소량전단_KM-1",
+                "url": "/myjs/products/134my"
+            },
+            {
+                "name": "소량전단_AP(구.넥스)",
+                "url": "/myjs/products/135my"
+            },
+            {
+                "name": "소량전단_인디고",
+                "url": "/myjs/products/136my"
+            },
+            {
+                "name": "모양포스터",
+                "url": "/myjs/products/137my"
+            }
+        ]
+    },
+    {
+        "name": "책공방",
+        "url": "#",
+        "children": [
+            {
+                "name": "무선책자",
+                "url": "/myjs/products/138my"
+            },
+            {
+                "name": "중철책자",
+                "url": "/myjs/products/139my"
+            },
+            {
+                "name": "특가책자(무선)",
+                "url": "/myjs/products/140my"
+            },
+            {
+                "name": "특가책자(스프링)",
+                "url": "/myjs/products/141my"
+            },
+            {
+                "name": "윤전책자",
+                "url": "/myjs/products/142my"
+            },
+            {
+                "name": "PVC커버노트",
+                "url": "/myjs/products/143my"
+            }
+        ]
+    },
+    {
+        "name": "가게용품",
+        "url": "#",
+        "children": [
+            {
+                "name": "사인제품",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "현수막",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "일반현수막",
+                                "url": "/myjs/products/144my"
+                            },
+                            {
+                                "name": "족자형현수막",
+                                "url": "/myjs/products/145my"
+                            },
+                            {
+                                "name": "대형현수막",
+                                "url": "/myjs/products/146my"
+                            },
+                            {
+                                "name": "미니현수막",
+                                "url": "/myjs/products/147my"
+                            },
+                            {
+                                "name": "메쉬현수막",
+                                "url": "/myjs/products/148my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "배너",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "PET배너",
+                                "url": "/myjs/products/149my"
+                            },
+                            {
+                                "name": "투명배너",
+                                "url": "/myjs/products/150my"
+                            },
+                            {
+                                "name": "메쉬배너",
+                                "url": "/myjs/products/151my"
+                            },
+                            {
+                                "name": "미니배너",
+                                "url": "/myjs/products/152my"
+                            },
+                            {
+                                "name": "미니투명배너",
+                                "url": "/myjs/products/153my"
+                            },
+                            {
+                                "name": "스프링배너",
+                                "url": "/myjs/products/154my"
+                            },
+                            {
+                                "name": "물통스프링배너",
+                                "url": "/myjs/products/155my"
+                            },
+                            {
+                                "name": "플라잉배너",
+                                "url": "/myjs/products/156my"
+                            },
+                            {
+                                "name": "LED라이트배너",
+                                "url": "/myjs/products/157my"
+                            },
+                            {
+                                "name": "윈도우플래그",
+                                "url": "/myjs/products/158my"
+                            },
+                            {
+                                "name": "현수막배너",
+                                "url": "/myjs/products/159my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "사각보드",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "폼보드",
+                                "url": "/myjs/products/160my"
+                            },
+                            {
+                                "name": "포맥스보드",
+                                "url": "/myjs/products/161my"
+                            },
+                            {
+                                "name": "아크릴보드",
+                                "url": "/myjs/products/162my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "모양보드",
+                        "url": "/myjs/products/163my"
+                    },
+                    {
+                        "name": "시트지",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "유포시트지",
+                                "url": "/myjs/products/164my"
+                            },
+                            {
+                                "name": "PVC시트지(수성잉크)",
+                                "url": "/myjs/products/165my"
+                            },
+                            {
+                                "name": "PVC시트지(UV잉크)",
+                                "url": "/myjs/products/166my"
+                            },
+                            {
+                                "name": "반투명시트지",
+                                "url": "/myjs/products/167my"
+                            },
+                            {
+                                "name": "투명시트지",
+                                "url": "/myjs/products/168my"
+                            },
+                            {
+                                "name": "반사시트지",
+                                "url": "/myjs/products/169my"
+                            },
+                            {
+                                "name": "레터링스티커",
+                                "url": "/myjs/products/170my"
+                            },
+                            {
+                                "name": "컬러레터링스티커",
+                                "url": "/myjs/products/171my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "입간판",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "철제입간판",
+                                "url": "/myjs/products/172my"
+                            },
+                            {
+                                "name": "개폐형 철제입간판",
+                                "url": "/myjs/products/173my"
+                            },
+                            {
+                                "name": "선반형 철제입간판",
+                                "url": "/myjs/products/174my"
+                            },
+                            {
+                                "name": "걸이형 철제입간판",
+                                "url": "/myjs/products/175my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "등신대",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "미니등신대",
+                                "url": "/myjs/products/176my"
+                            },
+                            {
+                                "name": "일반등신대",
+                                "url": "/myjs/products/177my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "롤블라인드",
+                        "url": "/myjs/products/178my"
+                    }
+                ]
+            },
+            {
+                "name": "판촉물",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "김서림방지안경닦이",
+                        "url": "/myjs/products/179my"
+                    },
+                    {
+                        "name": "종이썬캡",
+                        "url": "/myjs/products/180my"
+                    },
+                    {
+                        "name": "PP부채",
+                        "url": "/myjs/products/181my"
+                    },
+                    {
+                        "name": "소량종이부채",
+                        "url": "/myjs/products/182my"
+                    },
+                    {
+                        "name": "명찰",
+                        "url": "/myjs/products/183my"
+                    },
+                    {
+                        "name": "사원증",
+                        "url": "/myjs/products/184my"
+                    },
+                    {
+                        "name": "어깨띠",
+                        "url": "/myjs/products/185my"
+                    },
+                    {
+                        "name": "책받침",
+                        "url": "/myjs/products/186my"
+                    },
+                    {
+                        "name": "떡메모지",
+                        "url": "/myjs/products/187my"
+                    },
+                    {
+                        "name": "소량떡메모지",
+                        "url": "/myjs/products/188my"
+                    },
+                    {
+                        "name": "반투명떡메모지",
+                        "url": "/myjs/products/189my"
+                    },
+                    {
+                        "name": "종이슬로건",
+                        "url": "/myjs/products/190my"
+                    },
+                    {
+                        "name": "버튼",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "핀버튼",
+                                "url": "/myjs/products/191my"
+                            },
+                            {
+                                "name": "거울버튼",
+                                "url": "/myjs/products/192my"
+                            },
+                            {
+                                "name": "자석버튼",
+                                "url": "/myjs/products/193my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "텀블러",
+                        "url": "/myjs/products/194my"
+                    },
+                    {
+                        "name": "USB",
+                        "url": "/myjs/products/195my"
+                    },
+                    {
+                        "name": "웰컴키트",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "에코백키트(스탠다드형)",
+                                "url": "/myjs/products/196my"
+                            },
+                            {
+                                "name": "에코백키트(스페셜형)",
+                                "url": "/myjs/products/197my"
+                            },
+                            {
+                                "name": "G형박스키트",
+                                "url": "/myjs/products/198my"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "홀더",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "종이홀더",
+                        "url": "/myjs/products/199my"
+                    },
+                    {
+                        "name": "카드키홀더",
+                        "url": "/myjs/products/200my"
+                    },
+                    {
+                        "name": "PP홀더(칼라)",
+                        "url": "/myjs/products/201my"
+                    },
+                    {
+                        "name": "PP홀더(박)",
+                        "url": "/myjs/products/202my"
+                    },
+                    {
+                        "name": "소량PP홀더(칼라)",
+                        "url": "/myjs/products/203my"
+                    }
+                ]
+            },
+            {
+                "name": "자석제품",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "종이자석광고지(UV코팅)",
+                        "url": "/myjs/products/204my"
+                    },
+                    {
+                        "name": "자석스티커",
+                        "url": "/myjs/products/205my"
+                    },
+                    {
+                        "name": "차량용자석스티커",
+                        "url": "/myjs/products/206my"
+                    }
+                ]
+            },
+            {
+                "name": "서식류",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "먹1도",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "양식지",
+                                "url": "/myjs/products/207my"
+                            },
+                            {
+                                "name": "영수증",
+                                "url": "/myjs/products/208my"
+                            },
+                            {
+                                "name": "NCR지(2매1조)",
+                                "url": "/myjs/products/209my"
+                            },
+                            {
+                                "name": "NCR지(3매1조)",
+                                "url": "/myjs/products/210my"
+                            },
+                            {
+                                "name": "NCR지(4매1조)",
+                                "url": "/myjs/products/211my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "칼라",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "양식지",
+                                "url": "/myjs/products/212my"
+                            },
+                            {
+                                "name": "영수증",
+                                "url": "/myjs/products/213my"
+                            },
+                            {
+                                "name": "NCR지(2매1조)",
+                                "url": "/myjs/products/214my"
+                            },
+                            {
+                                "name": "NCR지(3매1조)",
+                                "url": "/myjs/products/215my"
+                            },
+                            {
+                                "name": "NCR지(4매1조)",
+                                "url": "/myjs/products/216my"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "카페용품",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "종이컵",
+                        "url": "/myjs/products/217my"
+                    },
+                    {
+                        "name": "컵뚜껑",
+                        "url": "/myjs/products/218my"
+                    },
+                    {
+                        "name": "에어홀더",
+                        "url": "/myjs/products/219my"
+                    },
+                    {
+                        "name": "이중컵",
+                        "url": "/myjs/products/220my"
+                    },
+                    {
+                        "name": "일반컵홀더",
+                        "url": "/myjs/products/221my"
+                    },
+                    {
+                        "name": "투명컵",
+                        "url": "/myjs/products/222my"
+                    },
+                    {
+                        "name": "투명컵뚜껑",
+                        "url": "/myjs/products/223my"
+                    },
+                    {
+                        "name": "음료캐리어",
+                        "url": "/myjs/products/224my"
+                    },
+                    {
+                        "name": "냅킨",
+                        "url": "/myjs/products/225my"
+                    },
+                    {
+                        "name": "스트로우",
+                        "url": "/myjs/products/226my"
+                    }
+                ]
+            },
+            {
+                "name": "접착포스터",
+                "url": "/myjs/products/227my"
+            }
+        ]
+    },
+    {
+        "name": "문구점",
+        "url": "#",
+        "children": [
+            {
+                "name": "굿즈/다꾸",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "굿즈",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "떡메모지",
+                                "url": "/myjs/products/228my"
+                            },
+                            {
+                                "name": "소량떡메모지",
+                                "url": "/myjs/products/229my"
+                            },
+                            {
+                                "name": "반투명떡메모지",
+                                "url": "/myjs/products/230my"
+                            },
+                            {
+                                "name": "소량종이부채",
+                                "url": "/myjs/products/231my"
+                            },
+                            {
+                                "name": "종이슬로건",
+                                "url": "/myjs/products/232my"
+                            },
+                            {
+                                "name": "투명포토카드",
+                                "url": "/myjs/products/233my"
+                            },
+                            {
+                                "name": "포토카드",
+                                "url": "/myjs/products/234my"
+                            },
+                            {
+                                "name": "포토카드(대량)",
+                                "url": "/myjs/products/235my"
+                            },
+                            {
+                                "name": "메시지카드",
+                                "url": "/myjs/products/236my"
+                            },
+                            {
+                                "name": "미니배너",
+                                "url": "/myjs/products/237my"
+                            },
+                            {
+                                "name": "미니투명배너",
+                                "url": "/myjs/products/238my"
+                            },
+                            {
+                                "name": "소량포스터",
+                                "url": "/myjs/products/239my"
+                            },
+                            {
+                                "name": "엽서SET",
+                                "url": "/myjs/products/240my"
+                            },
+                            {
+                                "name": "캔버스액자",
+                                "url": "/myjs/products/241my"
+                            },
+                            {
+                                "name": "핀버튼",
+                                "url": "/myjs/products/242my"
+                            },
+                            {
+                                "name": "거울버튼",
+                                "url": "/myjs/products/243my"
+                            },
+                            {
+                                "name": "자석버튼",
+                                "url": "/myjs/products/244my"
+                            },
+                            {
+                                "name": "PVC포토카드",
+                                "url": "/myjs/products/245my"
+                            },
+                            {
+                                "name": "클래퍼",
+                                "url": "/myjs/products/246my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "다꾸",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "인스",
+                                "url": "/myjs/products/247my"
+                            },
+                            {
+                                "name": "도무송",
+                                "url": "/myjs/products/248my"
+                            },
+                            {
+                                "name": "소량인스",
+                                "url": "/myjs/products/249my"
+                            },
+                            {
+                                "name": "소량도무송",
+                                "url": "/myjs/products/250my"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "폰액세서리",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "폰케이스(슬림하드)",
+                        "url": "/myjs/products/251my"
+                    },
+                    {
+                        "name": "폰케이스(투명젤리)",
+                        "url": "/myjs/products/252my"
+                    },
+                    {
+                        "name": "폰케이스(투명젤하드)",
+                        "url": "/myjs/products/253my"
+                    },
+                    {
+                        "name": "스마트톡",
+                        "url": "/myjs/products/254my"
+                    },
+                    {
+                        "name": "아크릴톡",
+                        "url": "/myjs/products/255my"
+                    },
+                    {
+                        "name": "기성아크릴톡",
+                        "url": "/myjs/products/256my"
+                    },
+                    {
+                        "name": "에어팟케이스",
+                        "url": "/myjs/products/257my"
+                    },
+                    {
+                        "name": "버즈케이스",
+                        "url": "/myjs/products/258my"
+                    }
+                ]
+            },
+            {
+                "name": "포토/액자",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "캔버스액자",
+                        "url": "/myjs/products/259my"
+                    },
+                    {
+                        "name": "노프레임액자",
+                        "url": "/myjs/products/260my"
+                    },
+                    {
+                        "name": "페이퍼포토SET",
+                        "url": "/myjs/products/261my"
+                    },
+                    {
+                        "name": "엽서SET",
+                        "url": "/myjs/products/262my"
+                    },
+                    {
+                        "name": "폴라로이드팩",
+                        "url": "/myjs/products/263my"
+                    },
+                    {
+                        "name": "네컷스티커",
+                        "url": "/myjs/products/264my"
+                    },
+                    {
+                        "name": "행잉액자",
+                        "url": "/myjs/products/265my"
+                    }
+                ]
+            },
+            {
+                "name": "캘린더",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "한장포스터캘린더",
+                        "url": "/myjs/products/266my"
+                    },
+                    {
+                        "name": "우드스탠드캘린더",
+                        "url": "/myjs/products/267my"
+                    },
+                    {
+                        "name": "우드행잉캘린더",
+                        "url": "/myjs/products/268my"
+                    },
+                    {
+                        "name": "기성탁상용캘린더",
+                        "url": "/myjs/products/269my"
+                    },
+                    {
+                        "name": "기성벽걸이캘린더",
+                        "url": "/myjs/products/270my"
+                    },
+                    {
+                        "name": "기성벽걸이캘린더(윤전)",
+                        "url": "/myjs/products/271my"
+                    },
+                    {
+                        "name": "소량탁상용캘린더",
+                        "url": "/myjs/products/272my"
+                    },
+                    {
+                        "name": "캘린더스티커",
+                        "url": "/myjs/products/273my"
+                    }
+                ]
+            },
+            {
+                "name": "팬시제품",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "마스킹테이프",
+                        "url": "/myjs/products/274my"
+                    },
+                    {
+                        "name": "마스킹테이프(기성)",
+                        "url": "/myjs/products/275my"
+                    },
+                    {
+                        "name": "오피스연필",
+                        "url": "/myjs/products/276my"
+                    },
+                    {
+                        "name": "카펜터연필",
+                        "url": "/myjs/products/277my"
+                    },
+                    {
+                        "name": "연필모양지우개",
+                        "url": "/myjs/products/278my"
+                    },
+                    {
+                        "name": "베이직펜",
+                        "url": "/myjs/products/279my"
+                    },
+                    {
+                        "name": "클립펜",
+                        "url": "#",
+                        "children": [
+                            {
+                                "name": "클립펜",
+                                "url": "/myjs/products/280my"
+                            },
+                            {
+                                "name": "투명클립펜",
+                                "url": "/myjs/products/281my"
+                            },
+                            {
+                                "name": "컴퓨터용 클립펜",
+                                "url": "/myjs/products/282my"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "피그라펜",
+                        "url": "/myjs/products/283my"
+                    },
+                    {
+                        "name": "틴케이스",
+                        "url": "/myjs/products/284my"
+                    },
+                    {
+                        "name": "용돈봉투SET",
+                        "url": "/myjs/products/285my"
+                    },
+                    {
+                        "name": "클립펜 틴케이스",
+                        "url": "/myjs/products/286my"
+                    },
+                    {
+                        "name": "샤오미볼펜",
+                        "url": "/myjs/products/287my"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "어패럴",
+        "url": "#",
+        "children": [
+            {
+                "name": "에코백",
+                "url": "/myjs/products/288my"
+            },
+            {
+                "name": "반팔T",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "프린트스타(17수)",
+                        "url": "/myjs/products/289my"
+                    }
+                ]
+            },
+            {
+                "name": "긴팔T",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "프린트스타(17수)",
+                        "url": "/myjs/products/290my"
+                    }
+                ]
+            },
+            {
+                "name": "맨투맨",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "프린트스타(쭈리)",
+                        "url": "/myjs/products/291my"
+                    }
+                ]
+            },
+            {
+                "name": "후드",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "프린트스타(쭈리)",
+                        "url": "/myjs/products/292my"
+                    }
+                ]
+            },
+            {
+                "name": "후드집업",
+                "url": "#",
+                "children": [
+                    {
+                        "name": "프린트스타(쭈리)",
+                        "url": "/myjs/products/293my"
+                    }
+                ]
+            }
         ]
     }
 ];
+
+/* ---------------- PC 메가메뉴 렌더링 (다단계 컬럼형) ---------------- */
+
+// 하위 트리(2차/3차 이상)를 재귀적으로 <ul> 리스트로 렌더링
+function renderMegaChildren(items) {
+    return `<ul class="mega-sub-list">` + items.map(it => {
+        if (it.children && it.children.length) {
+            return `<li class="mega-group">
+                <span class="mega-group-title">${it.name}</span>
+                ${renderMegaChildren(it.children)}
+            </li>`;
+        }
+        return `<li><a href="${it.url}">${it.name}</a></li>`;
+    }).join('') + `</ul>`;
+}
 
 // menuData → PC 메가메뉴(.mega-menu-list) 렌더링
 function renderMegaMenu() {
     const list = document.getElementById('megaMenuList');
     if (!list) return;
-    list.innerHTML = menuData.map(cat => `
-        <li class="menu-item">
+    list.innerHTML = menuData.map(cat => {
+        const cols = (cat.children || []).map(col => {
+            if (col.children && col.children.length) {
+                return `<div class="mega-col">
+                    <div class="mega-col-title">${col.name}</div>
+                    ${renderMegaChildren(col.children)}
+                </div>`;
+            }
+            return `<div class="mega-col">
+                <div class="mega-col-title mega-col-title-leaf"><a href="${col.url}">${col.name}</a></div>
+            </div>`;
+        }).join('');
+
+        return `<li class="menu-item">
             <a href="${cat.url}"${cat.url === '#' ? ' onclick="return false;"' : ''}>${cat.name}</a>
-            ${cat.children && cat.children.length ? `
-            <div class="sub-menu">
-                ${cat.children.map(child => `<a href="${child.url}">${child.name}</a>`).join('')}
-            </div>` : ''}
-        </li>
-    `).join('');
+            <div class="mega-panel"><div class="mega-panel-inner">${cols}</div></div>
+        </li>`;
+    }).join('');
+}
+
+/* ---------------- 모바일 좌측 슬라이드 메뉴 렌더링 (다단계 아코디언) ---------------- */
+
+// 하나의 노드를 재귀적으로 렌더링. leaf면 링크, 하위메뉴가 있으면 펼침/접힘 그룹
+function renderMobileNode(node, depth) {
+    const hasChildren = node.children && node.children.length;
+    const indent = 10 + depth * 12;
+
+    if (!hasChildren) {
+        return `<a class="mobile-leaf-link" href="${node.url}" style="padding:6px ${indent}px; color:#666;">${node.name}</a>`;
+    }
+
+    const titleClass = depth === 0 ? 'mobile-cat' : 'mobile-group-title';
+    const titleStyle = depth === 0
+        ? `padding:10px; padding-left:${indent}px;`
+        : `padding:6px 0; padding-left:${indent}px; font-size:13px;`;
+
+    return `<div>
+        <div class="${titleClass}" style="${titleStyle}" onclick="toggleSubMenu(this)">${node.name} ▾</div>
+        <div class="mobile-sub-menu">
+            ${node.children.map(child => renderMobileNode(child, depth + 1)).join('')}
+        </div>
+    </div>`;
 }
 
 // menuData → 모바일 좌측 슬라이드 메뉴(#mobileMenuList) 렌더링
 function renderMobileMenu() {
     const wrap = document.getElementById('mobileMenuList');
     if (!wrap) return;
-    wrap.innerHTML = menuData.map(cat => `
-        <div style="padding:10px;">
-            <div onclick="toggleSubMenu(this)" style="font-weight:bold; margin-bottom:10px; color:#333; cursor:pointer;">${cat.name} ▾</div>
-            <div class="mobile-sub-menu" style="padding-left:10px; display:none;">
-                ${(cat.children || []).map(child => `<a href="${child.url}" style="display:block; padding:5px 0; color:#666; text-decoration:none;">${child.name}</a>`).join('')}
-            </div>
-        </div>
-    `).join('');
+    wrap.innerHTML = menuData.map(cat => renderMobileNode(cat, 0)).join('');
 }
 
 renderMegaMenu();
@@ -190,11 +1761,27 @@ renderMobileMenu();
 
 (function() {
     // 검색 데이터도 menuData에서 자동으로 만들어집니다.
-    // 하위메뉴가 있으면 하위메뉴 항목들을, 없으면(링크가 있는 단일 메뉴면) 그 자체를 검색 대상으로 등록합니다.
-    const searchData = menuData.flatMap(cat => {
-        if (cat.children && cat.children.length) return cat.children;
-        return (cat.url && cat.url !== '#') ? [{ name: cat.name, url: cat.url }] : [];
-    });
+    // 트리를 재귀적으로 훑어서 실제 링크를 가진 leaf(최하위 상품) 전부를 검색 대상으로 등록합니다.
+    // 표시용 이름은 "상위메뉴 › 상품명" 형태의 경로로 만들어 동명 상품을 구분합니다.
+    function flattenSearch(items, path) {
+        let out = [];
+        items.forEach(it => {
+            const newPath = path.concat([it.name]);
+            if (it.children && it.children.length) {
+                out = out.concat(flattenSearch(it.children, newPath));
+            } else if (it.url && it.url !== '#') {
+                out.push({
+                    leaf: it.name,
+                    display: newPath.join(' › '),
+                    url: it.url
+                });
+            }
+        });
+        return out;
+    }
+
+    const searchData = menuData.flatMap(cat => flattenSearch(cat.children || [], []));
+
     const input = document.getElementById('searchInput');
     const suggBox = document.getElementById('suggestions');
     const searchContainer = document.querySelector('.search-container');
@@ -202,7 +1789,7 @@ renderMobileMenu();
     window.executeSearch = function() {
         const query = input.value.trim();
         if (!query) return;
-        const item = searchData.find(d => d.name === query);
+        const item = searchData.find(d => d.leaf === query || d.display === query);
         location.href = item ? item.url : "/search?q=" + encodeURIComponent(query);
     };
 
@@ -219,12 +1806,12 @@ renderMobileMenu();
             const val = input.value;
             suggBox.innerHTML = '';
             if (val.length < 1) { suggBox.style.display = 'none'; return; }
-            const filtered = searchData.filter(d => d.name.includes(val)).slice(0, 3);
+            const filtered = searchData.filter(d => d.leaf.includes(val) || d.display.includes(val)).slice(0, 8);
             if (filtered.length > 0) {
                 filtered.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'suggestion-item';
-                    div.innerText = item.name;
+                    div.innerHTML = `<span class="sg-leaf">${item.leaf}</span><br><span class="sg-path">${item.display}</span>`;
                     div.onclick = () => location.href = item.url;
                     suggBox.appendChild(div);
                 });
