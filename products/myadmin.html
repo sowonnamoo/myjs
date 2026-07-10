@@ -43,7 +43,7 @@
     <script type="module">
         // ... (이전과 동일한 JavaScript 로직)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -88,8 +88,26 @@
                     optionData.delivery = delivery;
                 }
 
-                await setDoc(productRef, { options: arrayUnion(optionData) }, { merge: true });
-                alert(name + " 저장 완료!");
+                // 기존 문서를 먼저 읽어와서, 같은 이름의 옵션이 이미 있으면
+                // 그 자리(원래 순서)에 새 데이터로 그대로 덮어씁니다(하위 내용 전체 교체).
+                // 이름이 새로운 경우엔 기존처럼 배열 맨 뒤에 추가됩니다.
+                const snap = await getDoc(productRef);
+                const existingOptions = (snap.exists() && Array.isArray(snap.data().options))
+                    ? snap.data().options
+                    : [];
+
+                const existingIndex = existingOptions.findIndex(opt => opt.name === name);
+                const isReplace = existingIndex !== -1;
+                const updatedOptions = [...existingOptions];
+
+                if (isReplace) {
+                    updatedOptions[existingIndex] = optionData; // 원래 위치 그대로 교체
+                } else {
+                    updatedOptions.push(optionData); // 새 옵션은 맨 뒤에 추가
+                }
+
+                await setDoc(productRef, { options: updatedOptions }, { merge: true });
+                alert(name + (isReplace ? " 기존 옵션을 교체 저장했습니다!" : " 저장 완료!"));
                 
                 document.getElementById('nameInput').value = '';
                 document.getElementById('priceInput').value = '';
