@@ -283,7 +283,16 @@ canvas.on('mouse:down', (e) => {
                 rotatingPointOffset: 30
             });
 
-            img.scaleToWidth(canvas.width);
+            // 캔버스 비율과 이미지 비율이 달라도(세로 이미지 + 가로 캔버스 등)
+            // 이미지가 늘어나더라도 캔버스 전체를 꽉 채우도록 가로/세로 배율을 각각 맞춥니다.
+            img.set({
+                scaleX: canvas.width / img.width,
+                scaleY: canvas.height / img.height,
+                left: 0,
+                top: 0,
+                originX: 'left',
+                originY: 'top'
+            });
             img.setCoords();
             designData[currentIdx][currentSide] = img;
             updateView();
