@@ -1,12 +1,88 @@
-        body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
+        html { margin: 0; padding: 0; background: #e2e2e2; }
+        body { display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; background: #e2e2e2; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
         #status-bar { font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        #tab-container { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        /* PC 모드: 캔버스 왼쪽에 고정된 세로 막대로 표시 (여러 디자인을 한눈에 보고 클릭하기 쉽도록) */
+        #tab-container { position: fixed; display: flex; flex-direction: column; gap: 10px; background:#fff; padding:12px; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,0.12); max-height:80vh; overflow-y:auto; z-index:60; }
+        #tab-list { display: flex; flex-direction: column; gap: 10px; }
         .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .design-name-input {
+            width: 74px;
+            padding: 3px 4px;
+            border: 1px dashed #bbb;
+            border-radius: 4px;
+            font-size: 10.5px;
+            text-align: center;
+            color: #555;
+            background: #fafafa;
+        }
+        .design-name-input:focus { outline: none; border-color: #3498db; background: #fff; color: #333; }
+        .design-name-input::placeholder { color: #aaa; }
+        .design-group-input {
+            width: 74px;
+            padding: 3px 4px;
+            border: 1px dashed #f39c12;
+            border-radius: 4px;
+            font-size: 10.5px;
+            text-align: center;
+            color: #b9670a;
+            background: #fff8ee;
+        }
+        .design-group-input:focus { outline: none; border-color: #e67e22; background: #fff; color: #333; }
+        .design-group-input::placeholder { color: #e0b27a; }
         .design-btn { width: 80px; padding: 8px 0; cursor: pointer; border: 1px solid #3498db; background: #fff; color: #3498db; font-weight: bold; font-size: 13px; border-radius: 4px; text-align: center; }
         .design-btn.active { background: #3498db; color: white; }
         .side-switch { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; width: 80px; }
         .side-btn { flex: 1; padding: 3px 0; cursor: pointer; font-size: 11px; background: #eee; border: none; font-weight: bold; color: #666; text-align: center; }
         .side-btn.active { background: #e67e22; color: white; }
+        .unify-design-btn{
+            width: 80px;
+            text-align: center;
+            padding: 8px 4px;
+            margin-bottom: 4px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            color: #333;
+            font-weight: bold;
+            font-size: 11.5px;
+            line-height: 1.3;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .unify-design-btn:hover{ background: #f2f2f2; }
+        .partial-unify-btn{
+            width: 80px;
+            text-align: center;
+            padding: 8px 4px;
+            margin-bottom: 4px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            color: #333;
+            font-weight: bold;
+            font-size: 11.5px;
+            line-height: 1.3;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .partial-unify-btn:hover{ background: #f2f2f2; }
+        .save-all-zip-btn{
+            width: 80px;
+            text-align: center;
+            padding: 8px 4px;
+            margin-top: 4px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            color: #333;
+            font-weight: bold;
+            font-size: 11.5px;
+            line-height: 1.3;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .save-all-zip-btn:hover{ background: #f2f2f2; }
+        .save-all-zip-btn:disabled{ opacity:.6; cursor:not-allowed; }
 
 /* 캔버스 하단: 작업 규격 + 디자인/앞뒤 탭을 모아두는 카드 */
 .bottom-info-panel{
@@ -58,6 +134,14 @@
 }
 .btn-primary{ background:#3498db; }
 .btn-muted{ background:#bbb; }
+.btn-strong{
+    background:#e8590c;
+    font-size:16px;
+    font-weight:900;
+    letter-spacing:.5px;
+    box-shadow:0 4px 12px rgba(232,89,12,0.4);
+}
+.btn-strong:hover{ background:#cc4e0a; }
 .hidden{ display:none !important; }
 .angle-input{ width:60px; padding:4px; border:1px solid #ddd; border-radius:5px; }
 
@@ -326,6 +410,7 @@
 .tool-btn:disabled{ opacity:.4; cursor:not-allowed; }
 .tool-btn:disabled:hover{ background:#fff; border-color:#ddd; color:#333; }
 .tool-btn.icon-only{ padding:7px 10px; }
+#lockBtn, #deleteBtn{ padding:7px 8px; min-width:0; }
 
 /* 프로젝트 불러오기 아이콘 버튼: 다른 버튼처럼 흰 배경 + 검은 아이콘 (여백만 줄여서 옆 버튼과 크기 맞춤) */
 .project-load-btn{
@@ -364,11 +449,16 @@ input.tool-color{
 .prop-row:last-child{ border-right:none; padding-right:0; margin-right:0; }
 .prop-row label{ font-weight:600; color:#555; white-space:nowrap; font-size:12px; }
 .prop-row input[type="range"]{ width:90px; }
+#letterSpacingInput{ width:64px; }
 .prop-row input[type="number"]{ width:52px; padding:4px; border:1px solid #ddd; border-radius:5px; }
 .prop-row select{ padding:5px 6px; border:1px solid #ddd; border-radius:5px; font-family:inherit; max-width:160px; }
 #fontFamilySelect{ max-width:190px; }
 .sub-panel{ display:none; }
 .sub-panel.visible{ display:flex; flex-wrap:wrap; row-gap:8px; align-items:center; padding-top:8px; border-top:1px dashed #eee; }
+
+/* 텍스트/도형 패널 안에 있는 모바일 전용 실행취소·다시실행 버튼 — 데스크톱에서는 숨김
+   (상단 툴바에 이미 실행취소/다시실행이 있으므로 넓은 화면에서는 중복 노출하지 않음) */
+.mobile-undo-redo-row{ display:none; }
 
 /* 필터 체크박스를 압축한 칩(chip) 버튼으로 표시 */
 .filter-chip{
@@ -402,6 +492,44 @@ input.tool-color{
 }
 .guide-warning-toast.visible{ opacity:1; }
 
+/* 도구 사용법 등을 잠깐 안내하는 일반 팁 토스트 (경고색이 아닌 차분한 색) */
+.tip-toast{
+    position:absolute;
+    top:12px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(44,62,80,0.95);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:600;
+    line-height:1.5;
+    box-shadow:0 6px 16px rgba(0,0,0,0.25);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+    z-index:51;
+    max-width:88%;
+    text-align:center;
+    white-space:pre-line;
+    font-family:'Malgun Gothic', sans-serif;
+}
+.tip-toast.visible{ opacity:1; }
+
+/* R키를 누르고 있거나 "안내선" 버튼을 켰을 때 나타나는 10px 간격 격자(그물무늬) 안내선 */
+.grid-guide-overlay{
+    position:absolute;
+    inset:0;
+    display:none;
+    pointer-events:none;
+    z-index:40;
+    background-image:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 10px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 10px);
+}
+.grid-guide-overlay.visible{ display:block; }
+
 /* 선택된 오브젝트 모서리에 붙는 떠다니는 삭제(휴지통) 아이콘 */
 .floating-delete-btn{
     position:fixed;
@@ -425,8 +553,19 @@ input.tool-color{
 }
 .floating-delete-btn.visible{ display:flex; }
 .floating-delete-btn:hover{ background:#c0392b; transform:translate(-50%, -50%) scale(1.1); }
+/* 한 번 눌렀을 때(확인 대기 상태): 한 번 더 눌러야 진짜 삭제되는 것을 눈에 띄게 알려줌 */
+.floating-delete-btn.confirm{
+    background:#fff;
+    color:#e74c3c;
+    border-color:#e74c3c;
+    animation:deleteConfirmPulse .6s ease-in-out infinite;
+}
+@keyframes deleteConfirmPulse{
+    0%, 100% { transform:translate(-50%, -50%) scale(1); }
+    50% { transform:translate(-50%, -50%) scale(1.18); }
+}
 
-/* 선택된 오브젝트 아래쪽 모서리에 붙는 떠다니는 자유 회전 아이콘 */
+/* 선택된 오브젝트 모서리에 붙는 떠다니는 자유 회전 아이콘 (삭제 아이콘 바로 오른쪽에 나란히 배치) */
 .floating-rotate-btn{
     position:fixed;
     display:none;
@@ -452,6 +591,136 @@ input.tool-color{
 .floating-rotate-btn:hover{ background:#2d84bf; transform:translate(-50%, -50%) scale(1.1); }
 .floating-rotate-btn.dragging{ cursor:grabbing; background:#2d84bf; }
 
+/* 선택된 오브젝트 옆(삭제·회전 아이콘 옆)에 붙는 떠다니는 7색 컬러 게이지바 —
+   막대를 누른 채 좌우로 드래그하면 그 위치의 색이 바로 선택한 오브젝트에 적용됨 */
+.floating-color-bar{
+    position:fixed;
+    display:none;
+    width:190px;
+    height:30px;
+    z-index:1000;
+    cursor:pointer;
+    touch-action:none;
+    transform:translateY(0);
+}
+.floating-color-bar.visible{ display:block; }
+.floating-color-track{
+    position:absolute;
+    inset:0;
+    border-radius:15px;
+    background:linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00a651, #0072ff, #4b0082, #9400d3, #ffffff, #888888, #000000);
+    border:2px solid #fff;
+    box-shadow:0 3px 8px rgba(0,0,0,0.3);
+}
+.floating-color-thumb{
+    position:absolute;
+    left:0%;
+    top:50%;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    background:#fff;
+    border:3px solid #333;
+    box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    transform:translate(-50%, -50%);
+    pointer-events:none;
+}
+
+/* 오브젝트(텍스트/이미지/도형)를 우클릭했을 때 뜨는 커스텀 메뉴 */
+.custom-context-menu{
+    position:fixed;
+    display:none;
+    flex-direction:column;
+    min-width:170px;
+    background:#fff;
+    border-radius:8px;
+    padding:6px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    z-index:1100;
+    font-family:'Malgun Gothic', sans-serif;
+}
+.custom-context-menu.visible{ display:flex; }
+.context-menu-item{
+    display:block;
+    width:100%;
+    text-align:left;
+    padding:9px 12px;
+    border:none;
+    background:none;
+    border-radius:5px;
+    font-size:13.5px;
+    color:#333;
+    cursor:pointer;
+    white-space:nowrap;
+}
+.context-menu-item:hover{ background:#f0f6fc; color:#3498db; }
+.context-menu-item:disabled{ color:#bbb; cursor:not-allowed; background:none; }
+.context-menu-divider{ height:1px; background:#eee; margin:5px 4px; }
+
+/* 사용자 정의 모양(포토샵 커스텀 셰이프) 선택 모달 */
+.custom-shape-modal{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.45);
+    z-index:1300;
+}
+.custom-shape-modal.visible{ display:flex; }
+.custom-shape-modal-inner{
+    background:#fff;
+    border-radius:12px;
+    width:min(640px, 92vw);
+    max-height:82vh;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 12px 40px rgba(0,0,0,0.3);
+}
+.custom-shape-modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 18px;
+    border-bottom:1px solid #eee;
+    font-weight:700;
+    font-size:15px;
+    color:#333;
+}
+.custom-shape-close-btn{
+    border:none;
+    background:#f2f2f2;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:14px;
+    color:#555;
+    flex-shrink:0;
+}
+.custom-shape-close-btn:hover{ background:#e6e6e6; }
+.custom-shape-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(52px, 1fr));
+    gap:8px;
+    padding:16px;
+    overflow-y:auto;
+}
+.custom-shape-item{
+    aspect-ratio:1/1;
+    border:1px solid #e2e2e2;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    background:#fafafa;
+    padding:6px;
+}
+.custom-shape-item:hover{ background:#eaf4fc; border-color:#3498db; }
+.custom-shape-item svg{ width:100%; height:100%; display:block; }
+
+
 /* 캔버스 위에서 손가락으로 그리거나 오브젝트를 드래그할 때
    브라우저가 그 제스처를 "페이지 스크롤"로 가로채지 않도록 처리 */
 #canvas-wrapper, #canvas-wrapper .canvas-container, #main-canvas{
@@ -464,15 +733,38 @@ input.tool-color{
 
     #status-bar{ font-size:12.5px; padding:6px 14px; text-align:center; }
 
-    /* 디자인/앞뒤 탭이 많아지면 줄바꿈으로 뭉개지는 대신 가로로 스크롤 */
+    /* 디자인/앞뒤 탭이 많아지면 줄바꿈으로 뭉개지는 대신 가로로 스크롤
+       (PC의 왼쪽 고정 세로 막대 대신, 모바일에서는 기존처럼 캔버스 아래에 배치) */
     #tab-container{
+        position:static;
+        flex-direction:row;
         flex-wrap:nowrap;
+        align-items:flex-start;
         justify-content:flex-start;
         overflow-x:auto;
+        overflow-y:visible;
+        max-height:none;
+        background:none;
+        padding:0;
+        box-shadow:none;
         -webkit-overflow-scrolling:touch;
         padding-bottom:4px;
     }
+    #tab-list{
+        flex-direction:row;
+        flex-wrap:nowrap;
+    }
     .design-group{ flex-shrink:0; }
+
+    /* 모바일에서는 화면이 좁으니 관리용 기능(통일하기/부분통일하기/이름변경/그룹지정/전체저장)을
+       숨기고, 디자인 선택 및 앞뒤 전환만 남겨서 단순하게 사용할 수 있도록 함 */
+    .unify-design-btn,
+    .partial-unify-btn,
+    .save-all-zip-btn,
+    .design-name-input,
+    .design-group-input{
+        display:none;
+    }
 
     /* 편집 툴바: 줄바꿈으로 여러 줄이 되어 뭉개지는 대신 한 줄 가로 스크롤 */
     .editor-toolbar{
@@ -500,7 +792,7 @@ input.tool-color{
     #opacityRow{ order:3; }
     #rotateRow{ order:4; }
     #lockDeleteRow{ order:5; }
-    #alignRow{ order:6; } /* 정렬 버튼은 맨 뒤로 보내서 텍스트 정렬 버튼과 이어지도록 */
+    #alignRow{ order:6; margin-left:16px; } /* 정렬 버튼은 맨 뒤로 보내서 텍스트 정렬 버튼과 이어지도록 / 삭제(휴지통) 버튼과 붙어보이지 않도록 여백 추가 */
 
     /* 텍스트 패널 안에서도 정렬(좌중우) 버튼을 맨 앞으로 보내, prop-flow 끝의 정렬 버튼과 바로 이어지게 함 */
     /* 정렬의 "우" 버튼과 바로 다음에 오는 "폰트" 항목이 붙어보이지 않도록 오른쪽에 여백을 줌 */
@@ -515,6 +807,16 @@ input.tool-color{
         margin-top:2px;
     }
 
+    /* 모바일에서 텍스트/도형 패널의 남는 빈 공간에 실행취소·다시실행 버튼을 채워 넣음
+       margin-left:auto로 각 패널의 오른쪽 끝까지 밀어서, 비어 보이던 여백을 활용함 */
+    .mobile-undo-redo-row{
+        display:flex;
+        margin-left:auto;
+        flex-shrink:0;
+        border-right:none;
+        padding-right:0;
+    }
+
     /* 터치로 누르기 편하도록 버튼 크기를 살짝 키움 */
     .tool-btn{ padding:9px 12px; font-size:13px; }
     .tool-btn.icon-only{ padding:9px 12px; min-width:38px; }
@@ -522,6 +824,8 @@ input.tool-color{
     input.tool-color{ width:34px; height:34px; }
     .floating-delete-btn{ width:36px; height:36px; font-size:17px; }
     .floating-rotate-btn{ width:36px; height:36px; font-size:17px; }
+    .floating-color-bar{ width:130px; height:22px; }
+    .floating-color-thumb{ width:18px; height:18px; }
 
     /* 하단 업로드/저장 버튼은 세로 폭 꽉 채워서 누르기 쉽게 */
     .controls{ width:100%; }
