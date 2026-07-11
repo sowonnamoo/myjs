@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>고해상도 멀티 디자인 에디터</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@300;400;700;900&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Black+Han+Sans&family=Gugi&family=Do+Hyeon&family=Jua&family=Gaegu&family=Gowun+Dodum&family=Gowun+Batang:wght@400;700&family=Song+Myung&family=Gothic+A1:wght@400;700;900&family=East+Sea+Dokdo&family=Poor+Story&family=Stylish&family=Sunflower:wght@500;700&family=Yeon+Sung&family=Hi+Melody&family=Gamja+Flower&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Poppins:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Oswald:wght@400;600&family=Lato:wght@400;700;900&family=Raleway:wght@400;700&family=Bebas+Neue&family=JetBrains+Mono:wght@300;700;800&family=Fira+Code:wght@300;700&display=swap" rel="stylesheet">
@@ -20,12 +21,25 @@
     <div class="editor-toolbar">
         <div class="toolbar-group">
             <button type="button" class="tool-btn active" id="moveToolBtn" title="이동 도구 (V) — 자유롭게 클릭·드래그로 선택/이동">↖</button>
-            <label class="tool-btn icon-only project-load-btn" for="project-input" title="프로젝트 불러오기 (저장해둔 작업 파일을 다시 불러와 이어서 수정)">
+            <label class="tool-btn icon-only project-load-btn" for="file-input" title="파일 업로드 (사진 이미지를 불러와 캔버스에 추가)">
                 <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <circle cx="8.3" cy="8.3" r="2.3" fill="#333"/>
                     <path d="M3 18.5L9.2 10.8L13 15.2L16 11.3L21 18.5H3Z" fill="#333"/>
                 </svg>
             </label>
+            <label class="tool-btn icon-only project-load-btn" for="project-input" title="프로젝트 불러오기 (저장해둔 작업 파일을 다시 불러와 이어서 수정)">
+                <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M3 7.5a1.2 1.2 0 0 1 1.2-1.2h4.6l1.8 2h9.2a1.2 1.2 0 0 1 1.2 1.2v9.2a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 18.7V7.5z" fill="none" stroke="#333" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+                </svg>
+            </label>
+            <input type="file" id="project-input" accept="application/json,.json" class="hidden">
+            <button type="button" class="tool-btn icon-only" id="export-project-btn" title="프로젝트 저장 (지금까지 작업한 내용을 파일로 내려받아 나중에 이어서 수정)">
+                <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M4 3h13l3 3v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="none" stroke="#333" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M7 3h9v6H7z" fill="none" stroke="#333" stroke-width="1.6" stroke-linejoin="round"/>
+                    <rect x="7" y="14" width="10" height="6" fill="none" stroke="#333" stroke-width="1.6"/>
+                </svg>
+            </button>
             <button type="button" class="tool-btn" id="addTextBtn">🅣 텍스트</button>
             <button type="button" class="tool-btn" id="addRectBtn">▭ 사각형</button>
             <button type="button" class="tool-btn" id="addCircleBtn">◯ 원</button>
@@ -42,17 +56,25 @@
         <div class="toolbar-group">
             <button type="button" class="tool-btn icon-only" id="undoBtn" disabled>↶ 실행취소</button>
             <button type="button" class="tool-btn icon-only" id="redoBtn" disabled>↷ 다시실행</button>
+            <button type="button" class="tool-btn icon-only danger" id="resetAllBtn" title="처음부터 다시 시작합니다 (새로고침)">⟲ 리셋</button>
         </div>
         <div class="toolbar-group">
             <button type="button" class="tool-btn icon-only" id="zoomOutBtn">－</button>
             <span class="zoom-label" id="zoomLabel">100%</span>
             <button type="button" class="tool-btn icon-only" id="zoomInBtn">＋</button>
             <button type="button" class="tool-btn" id="zoomResetBtn">100%로</button>
-            <span class="tool-label desktop-hint">(마우스 휠: 확대·축소 / Alt+드래그 또는 스페이스바+드래그: 화면 이동)</span>
+            <button type="button" class="tool-btn" id="zoomLockBtn" title="화면을 100%로 고정해서 확대/축소되지 않게 합니다. 다시 누르면 풀립니다.">🔓 화면고정</button>
+            <button type="button" class="tool-btn" id="gridGuideBtn" title="10px 간격 격자 안내선을 켜고 끕니다. R키를 누르고 있는 동안에도 잠깐 보여줍니다.">▦ 안내선</button>
+            <span class="tool-label desktop-hint">(마우스 휠: 확대·축소)</span>
         </div>
         <div class="toolbar-group">
             <span class="tool-label">캔버스 배경색</span>
             <input type="color" class="tool-color" id="canvasBgInput" value="#ffffff">
+            <button type="button" class="tool-btn icon-only" id="customShapeBtn" title="사용자 정의 모양 (다양한 아이콘/도형을 골라 캔버스에 바로 추가)">
+                <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M12 2.2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.9L12 17l-6.1 3.7 1.5-6.9-5.2-4.6 6.9-.7L12 2.2z" fill="none" stroke="#333" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+            </button>
         </div>
 
         <!-- 우측 끝 여백에 넣는 작은 로고 (실제 로고 이미지 파일을 주시면 바로 교체해 드립니다) -->
@@ -80,6 +102,7 @@
                 <button type="button" class="tool-btn icon-only" id="alignCenterHBtn" title="가로 중앙 정렬">가</button>
                 <button type="button" class="tool-btn icon-only" id="alignRightBtn" title="오른쪽 정렬">오</button>
                 <button type="button" class="tool-btn icon-only" id="alignCenterVBtn" title="세로 가운데 정렬 (위아래 여백을 동일하게)">정렬</button>
+                <input type="number" id="alignGapInput" min="0" max="500" value="10" title="정렬 시 오브젝트 사이 간격(px). 여러 개를 선택하고 '정렬'을 누르면 이 간격만큼씩 띄워서 나란히 배치합니다.">
             </div>
             <div class="prop-row" id="duplicateRow">
                 <button type="button" class="tool-btn icon-only" id="duplicateBtn" title="복제">⧉</button>
@@ -108,6 +131,14 @@
             <div class="prop-row hidden" id="strokeWidthRow">
                 <label>테두리두께</label>
                 <input type="number" id="strokeWidthInput" min="0" max="40" value="0">
+            </div>
+            <div class="prop-row hidden" id="shapeBlurRow">
+                <label>번짐(블러)</label>
+                <input type="range" id="shapeBlurInput" min="0" max="40" step="1" value="0">
+            </div>
+            <div class="prop-row mobile-undo-redo-row" id="shapeUndoRedoRow">
+                <button type="button" class="tool-btn icon-only" id="shapeUndoBtn" title="실행취소">↶</button>
+                <button type="button" class="tool-btn icon-only" id="shapeRedoBtn" title="다시실행">↷</button>
             </div>
         </div>
 
@@ -202,19 +233,28 @@
             <div class="prop-row">
                 <label>크기</label>
                 <input type="number" id="fontSizeInput" min="8" max="200" value="28">
-            </div>
-            <div class="prop-row">
                 <label>자간</label>
                 <input type="range" id="letterSpacingInput" min="-200" max="800" step="10" value="0">
             </div>
             <div class="prop-row">
                 <label>색상</label>
                 <input type="color" class="tool-color" id="textColorInput" value="#111111">
+                <label>테두리</label>
+                <input type="color" class="tool-color" id="textStrokeColorInput" value="#000000">
+                <input type="number" id="textStrokeWidthInput" min="0" max="20" value="0">
+            </div>
+            <div class="prop-row">
+                <label>번짐(블러)</label>
+                <input type="range" id="textBlurInput" min="0" max="40" step="1" value="0">
             </div>
             <div class="prop-row">
                 <button type="button" class="tool-btn icon-only" id="boldBtn" title="굵게"><b>B</b></button>
                 <button type="button" class="tool-btn icon-only" id="italicBtn" title="기울임"><i>I</i></button>
                 <button type="button" class="tool-btn icon-only" id="underlineBtn" title="밑줄"><u>U</u></button>
+            </div>
+            <div class="prop-row mobile-undo-redo-row" id="textUndoRedoRow">
+                <button type="button" class="tool-btn icon-only" id="textUndoBtn" title="실행취소">↶</button>
+                <button type="button" class="tool-btn icon-only" id="textRedoBtn" title="다시실행">↷</button>
             </div>
             <div class="prop-row" id="textAlignRow">
                 <button type="button" class="tool-btn icon-only" id="textAlignLeftBtn" title="왼쪽 정렬">좌</button>
@@ -224,6 +264,16 @@
         </div>
 
         <div class="sub-panel" id="imagePanel">
+            <div class="prop-row" id="eraseToolRow">
+                <button type="button" class="tool-btn" id="eraseToggleBtn" title="사진 위를 문질러서 그 부분을 투명하게 지웁니다 (배경/누끼 제거용)">✂️ 사진 누끼따기</button>
+                <label>굵기</label>
+                <input type="range" id="eraseWidthInput" min="5" max="150" value="30">
+            </div>
+            <div class="prop-row" id="magicWandToolRow">
+                <button type="button" class="tool-btn" id="magicWandToggleBtn" title="비슷한 색상 영역을 클릭 한 번으로 자동 선택해서 투명하게 만듭니다 (누끼 자동 선택)">🪄 자동선택(누끼)</button>
+                <label>허용오차</label>
+                <input type="range" id="magicWandToleranceInput" min="0" max="100" value="30">
+            </div>
             <div class="prop-row">
                 <label class="filter-chip"><input type="checkbox" id="filterGrayscale"> 흑백</label>
                 <label class="filter-chip"><input type="checkbox" id="filterSepia"> 세피아</label>
@@ -257,36 +307,24 @@
 
     <div id="canvas-wrapper">
         <canvas id="main-canvas"></canvas>
+        <div class="grid-guide-overlay" id="gridGuideOverlay"></div>
         <div class="guide-warning-toast" id="guideWarningToast">⚠ 글자는 붉은선에 가까이 배치하면 잘릴 수 있어요.</div>
+        <div class="tip-toast" id="tipToast"></div>
     </div>
 
    <div class="controls">
-
-    <!-- 왼쪽: 작업중인 내용을 파일로 저장했다가 나중에 다시 불러와 이어서 수정할 수 있는 버튼 -->
-    <div class="left-tools">
-
-        <button id="export-project-btn" type="button" class="btn btn-primary">
-            프로젝트 저장(이어하기용)
-        </button>
-
-        <label class="btn btn-muted" for="project-input">
-            프로젝트 불러오기
-        </label>
-        <input type="file" id="project-input" accept="application/json,.json" class="hidden">
-
-    </div>
 
     <!-- 오른쪽 기존 버튼 -->
     <div class="right-tools">
 
         <label class="btn btn-primary" for="file-input">
-            업로드/재업로드
+            파일 업로드
         </label>
 
         <input type="file" id="file-input" accept="image/*" class="hidden">
 
-        <button id="save-btn" class="btn btn-muted">
-            전체저장
+        <button id="save-btn" class="btn btn-strong">
+            시안보기/구입하기
         </button>
 
     </div>
@@ -296,7 +334,12 @@
 
 <div class="bottom-info-panel">
     <div id="status-bar">작업 규격: <span id="display-info"></span></div>
-    <div id="tab-container"></div>
+    <div id="tab-container">
+        <button type="button" id="unifyDesignBtn" class="unify-design-btn" title="디자인 1(앞/뒤)의 내용을 전체 디자인에 똑같이 복사합니다">🔗 디자인<br>통일하기</button>
+        <button type="button" id="partialUnifyBtn" class="partial-unify-btn" title="아래 각 디자인의 '그룹' 칸에 같은 값을 입력해서 묶은 뒤 누르면, 그룹 안에서 가장 앞 번호 디자인 내용으로 통일됩니다">🧩 부분<br>통일하기</button>
+        <div id="tab-list"></div>
+        <button type="button" id="saveAllZipBtn" class="save-all-zip-btn" title="디자인마다 각각 독립된 프로젝트 파일(json)로 저장해 압축(zip)합니다. 나중에 한두 건만 따로 불러와도 바로 열립니다.">📦 모든<br>디자인<br>저장하기</button>
+    </div>
 </div>
 
 <div class="shortcuts-panel">
@@ -304,8 +347,15 @@
     <div class="shortcuts-grid">
         <div class="shortcut-item"><span class="shortcut-key">V</span><span class="shortcut-desc">이동 도구</span></div>
         <div class="shortcut-item"><span class="shortcut-key">T</span><span class="shortcut-desc">텍스트 생성</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">M</span><span class="shortcut-desc">사각형 생성</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">O</span><span class="shortcut-desc">원 생성</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">[</span><span class="shortcut-desc">지우개 굵기 작게</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">]</span><span class="shortcut-desc">지우개 굵기 크게</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">R</span><span class="shortcut-desc">누르고 있는 동안 10px 격자 안내선 표시</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Space</span><span class="shortcut-desc">100%로 맞춤(확대/축소 초기화)</span></div>
         <div class="shortcut-item"><span class="shortcut-key">F1</span><span class="shortcut-desc">이미지 불러오기/재업로드</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">F2</span><span class="shortcut-desc">프로젝트 불러오기</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">F3</span><span class="shortcut-desc">프로젝트 저장하기</span></div>
         <div class="shortcut-item"><span class="shortcut-key">F5</span><span class="shortcut-desc">선택한 이미지/오브젝트 90도 회전</span></div>
         <div class="shortcut-item"><span class="shortcut-key">F6</span><span class="shortcut-desc">선택한 이미지/오브젝트 좌우 반전</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">&lt;</span><span class="shortcut-desc">글자 크기 작게</span></div>
@@ -322,9 +372,12 @@
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">Z</span><span class="shortcut-desc">다시실행</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">D</span><span class="shortcut-desc">복제</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">C</span><span class="shortcut-desc">복사</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">X</span><span class="shortcut-desc">잘라내기</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">V</span><span class="shortcut-desc">붙여넣기</span></div>
-        <div class="shortcut-item"><span class="shortcut-key">M</span><span class="shortcut-plus">+</span><span class="shortcut-key">드래그</span><span class="shortcut-desc">화면 이동(패닝)</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">V</span><span class="shortcut-desc">제자리(원본 위)에 겹쳐서 붙여넣기</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">Alt</span><span class="shortcut-plus">+</span><span class="shortcut-key">드래그</span><span class="shortcut-desc">선택한 오브젝트 위에서: 복제해서 드래그 / 빈 캔버스에서: 화면 이동(패닝)</span></div>
         <div class="shortcut-item"><span class="shortcut-key">마우스 휠</span><span class="shortcut-desc">확대/축소</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">우클릭</span><span class="shortcut-desc">레이어 이동, 실행취소가 편합니다.</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Esc</span><span class="shortcut-desc">선택 해제</span></div>
     </div>
 </div>
@@ -342,6 +395,30 @@
 
 <button type="button" id="floatingDeleteBtn" class="floating-delete-btn" title="삭제">🗑</button>
 <button type="button" id="floatingRotateBtn" class="floating-rotate-btn" title="자유 회전 (드래그)">↻</button>
+<div id="floatingColorBar" class="floating-color-bar" title="색상 바로 설정 (막대를 눌러서 좌우로 드래그)">
+    <div class="floating-color-track"></div>
+    <div class="floating-color-thumb" id="floatingColorThumb"></div>
+</div>
+
+<!-- 텍스트/이미지/도형을 마우스 오른쪽 버튼으로 클릭했을 때 뜨는 커스텀 메뉴
+     (브라우저 기본 메뉴의 "이미지를 다른 이름으로 저장", "검사" 대신 이걸 보여줌) -->
+<div id="customContextMenu" class="custom-context-menu">
+    <button type="button" class="context-menu-item" id="ctxLayerFrontBtn">맨 앞으로 이동</button>
+    <button type="button" class="context-menu-item" id="ctxLayerForwardBtn">앞으로 이동</button>
+    <button type="button" class="context-menu-item" id="ctxLayerBackwardBtn">뒤로 이동</button>
+    <button type="button" class="context-menu-item" id="ctxLayerBackBtn">맨 뒤로 이동</button>
+</div>
+
+<!-- 사용자 정의 모양(포토샵 커스텀 셰이프 도구) 선택 모달 -->
+<div id="customShapeModal" class="custom-shape-modal">
+    <div class="custom-shape-modal-inner">
+        <div class="custom-shape-modal-header">
+            <span>사용자 정의 모양 선택</span>
+            <button type="button" id="customShapeCloseBtn" class="custom-shape-close-btn">✕</button>
+        </div>
+        <div class="custom-shape-grid" id="customShapeGrid"></div>
+    </div>
+</div>
 
 <!-- 모바일 전용: 하단 고정 미리보기(확대) 버튼 -->
 <button type="button" id="mobilePreviewBtn" class="mobile-preview-btn">🔍 미리보기(확대)</button>
@@ -357,7 +434,7 @@
 
     
 <script>
-    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, outerGuideRect;
+    let orderData = {}, canvas, designData, designNames, designGroups, currentIdx, currentSide, guideRect, outerGuideRect;
 
     // 시안보기 페이지로 넘길 때 사용할 세션 스토리지 키
     // (같은 브라우저 탭 세션 동안만 유지되며, 새 탭/새 세션에서는 사라집니다)
@@ -371,7 +448,9 @@
     let isRestoring = false;
     const HISTORY_LIMIT = 30;
     let currentZoom = 1;
+    let isZoomLocked = false; // 화면고정: 켜져 있으면 100%에서 확대/축소가 되지 않음
     let isDrawMode = false;
+    let lastMouseDownTarget = null; // 우클릭(contextmenu) 시 어떤 오브젝트 위였는지 기억해두는 용도
 
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -391,6 +470,8 @@
         // designData[i][side] 는 이제 "그 디자인/면의 전체 캔버스 내용(오브젝트 배열+배경색)"을
         // 저장합니다. (이미지 하나만이 아니라 텍스트/도형/그림까지 전부 포함)
         designData = Array.from({length: count}, () => ({ front: null, back: null }));
+        designNames = Array.from({length: count}, () => '');
+        designGroups = Array.from({length: count}, () => '');
         currentIdx = 0; currentSide = 'front';
 
         const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
@@ -435,7 +516,7 @@
         // ---- 선택 변경 시 속성 패널 갱신 ----
         canvas.on('selection:created', () => { updatePropPanel(); updateDeleteIconPosition(); });
         canvas.on('selection:updated', () => { updatePropPanel(); updateDeleteIconPosition(); });
-        canvas.on('selection:cleared', () => { hideDeleteIcon(); hideRotateIcon(); });
+        canvas.on('selection:cleared', () => { hideDeleteIcon(); hideRotateIcon(); hideColorBar(); });
 
         // ---- 텍스트를 제외한 오브젝트(도형/이미지/손그림)는 더블클릭으로만 선택 (데스크톱) ----
         canvas.on('mouse:dblclick', (e) => {
@@ -486,7 +567,12 @@
         canvas.on('mouse:up', () => clearLongPress());
 
         // ---- 편집 기록에 남길 이벤트들 ----
-        canvas.on('object:added', (e) => { if (e.target && !e.target.isGuide) pushHistory(); });
+        canvas.on('object:added', (e) => {
+            if (e.target && !e.target.isGuide) {
+                if (!e.target.uid) e.target.uid = 'obj_' + Date.now().toString(36) + '_' + (Math.random().toString(36).slice(2, 8));
+                pushHistory();
+            }
+        });
         canvas.on('object:modified', (e) => { checkGuideProximity(e.target); pushHistory(); });
         canvas.on('object:removed', (e) => { if (e.target && !e.target.isGuide) pushHistory(); });
         canvas.on('path:created', (e) => {
@@ -500,8 +586,21 @@
         canvas.on('object:scaling', (e) => { checkGuideProximity(e.target); updateDeleteIconPosition(); });
         canvas.on('object:rotating', (e) => { checkGuideProximity(e.target); updateDeleteIconPosition(); });
 
+        // ---- 텍스트를 입력/삭제할 때마다, 줄바꿈되지 않고 오른쪽으로 이어지도록
+        //      글자 폭에 딱 맞게 텍스트박스 크기를 실시간으로 재조정 ----
+        canvas.on('text:changed', (e) => {
+            const obj = e.target;
+            fitTextboxWidth(obj);
+            checkGuideProximity(obj);
+            updateDeleteIconPosition();
+            canvas.requestRenderAll();
+        });
+
         // ---- 마우스 휠로 커서 위치를 기준으로 확대/축소 ----
         canvas.on('mouse:wheel', (opt) => {
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+            if (isZoomLocked) return; // 화면고정 중에는 휠을 돌려도 확대/축소되지 않음
             const delta = opt.e.deltaY;
             let zoom = canvas.getZoom() * (0.999 ** delta);
             zoom = Math.min(3, Math.max(0.3, zoom));
@@ -509,23 +608,47 @@
             currentZoom = zoom;
             document.getElementById('zoomLabel').textContent = Math.round(zoom * 100) + '%';
             updateDeleteIconPosition();
-            opt.e.preventDefault();
-            opt.e.stopPropagation();
         });
 
-        // ---- Alt 키 또는 M 키(포토샵 손 도구)를 누른 채 드래그하면 화면(뷰포트)을 이동(패닝) ----
+        // ---- Alt+드래그: 선택된 오브젝트(단일/여러 개 묶음 모두) 위에서 시작하면
+        //      포토샵처럼 그 자리에 복제해두고 실제로는 복제본이 드래그되게 함.
+        //      빈 캔버스 위에서 Alt+드래그하면 기존처럼 화면(뷰포트) 이동(패닝) ----
         canvas.on('mouse:down', (opt) => {
-            if (opt.e.altKey || isPanKeyDown) {
-                isPanning = true;
-                canvas.selection = false;
-                canvas.discardActiveObject();
-                canvas.requestRenderAll();
-                canvas.defaultCursor = 'grabbing';
-                canvas.hoverCursor = 'grabbing';
-                canvas.setCursor('grabbing');
-                panLastX = opt.e.clientX;
-                panLastY = opt.e.clientY;
+            if (!opt.e.altKey && !isPanKeyDown) return;
+
+            if (opt.e.altKey && opt.target && !opt.target.isGuide) {
+                const active = canvas.getActiveObject();
+                if (!active) return;
+                active.clone((cloned) => {
+                    cloned.set({ left: active.left, top: active.top, angle: active.angle || 0 });
+                    if (cloned.type === 'activeSelection') {
+                        cloned.canvas = canvas;
+                        cloned.forEachObject((o) => { applySelectionMode(o); canvas.add(o); });
+                        cloned.setCoords();
+                    } else {
+                        applySelectionMode(cloned);
+                        canvas.add(cloned);
+                    }
+                    canvas.setActiveObject(cloned);
+                    // 지금 진행 중인 드래그가 원본이 아닌 방금 만든 복제본을 움직이도록 대상 교체
+                    if (canvas._currentTransform) {
+                        canvas._currentTransform.target = cloned;
+                    }
+                    bringGuideToFront();
+                    canvas.requestRenderAll();
+                }, ['selectable', 'evented']);
+                return;
             }
+
+            isPanning = true;
+            canvas.selection = false;
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+            canvas.defaultCursor = 'grabbing';
+            canvas.hoverCursor = 'grabbing';
+            canvas.setCursor('grabbing');
+            panLastX = opt.e.clientX;
+            panLastY = opt.e.clientY;
         });
         canvas.on('mouse:move', (opt) => {
             if (!isPanning) return;
@@ -546,6 +669,25 @@
                 canvas.hoverCursor = isPanKeyDown ? 'grab' : 'move';
                 canvas.setCursor(canvas.defaultCursor);
             }
+        });
+
+        // ---- 텍스트/이미지/도형을 오른쪽 클릭하면 브라우저 기본 메뉴 대신 커스텀 메뉴 표시 ----
+        // (오른쪽 클릭 시에도 fabric의 mouse:down이 먼저 발생하며 target을 정확히 알려주므로,
+        //  그 값을 기억해뒀다가 바로 이어지는 contextmenu 이벤트에서 사용)
+        canvas.on('mouse:down', (opt) => {
+            lastMouseDownTarget = (opt.target && !opt.target.isGuide) ? opt.target : null;
+        });
+        canvas.upperCanvasEl.addEventListener('contextmenu', (e) => {
+            const target = lastMouseDownTarget;
+            if (!target) return; // 빈 캔버스 우클릭은 브라우저 기본 메뉴 그대로 둠
+            e.preventDefault();
+            const activeObjs = canvas.getActiveObjects ? canvas.getActiveObjects() : [];
+            if (!activeObjs.includes(target)) {
+                canvas.discardActiveObject();
+                canvas.setActiveObject(target);
+                canvas.requestRenderAll();
+            }
+            showContextMenu(e.clientX, e.clientY);
         });
 
         renderTabs();
@@ -580,12 +722,29 @@
 
     // ===================== 탭(디자인/앞뒤) 렌더링 & 전환 =====================
     function renderTabs() {
-        const tabContainer = document.getElementById('tab-container');
+        const tabContainer = document.getElementById('tab-list');
         tabContainer.innerHTML = '';
         for(let i = 0; i < count; i++) {
             const group = document.createElement('div'); group.className = 'design-group';
+
+            // 디자인 이름 변경란: 여기서 입력한 이름은 작업 중 화면 표시와, 저장 시 zip 안의
+            // 개별 파일명으로만 쓰이고, "디자인 N"이라는 내부 고유값 자체는 절대 바뀌지 않음
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'design-name-input';
+            nameInput.placeholder = `디자인 ${i + 1}`;
+            nameInput.value = designNames[i] || '';
+            nameInput.title = '이 디자인의 이름을 바꿀 수 있어요 (저장 시 파일명으로 사용됩니다)';
+            nameInput.addEventListener('click', (e) => e.stopPropagation());
+            nameInput.addEventListener('input', () => {
+                designNames[i] = nameInput.value;
+                dBtn.innerText = designNames[i] && designNames[i].trim() ? designNames[i] : `디자인 ${i + 1}`;
+            });
+            group.appendChild(nameInput);
+
             const dBtn = document.createElement('div'); dBtn.className = 'design-btn' + (i === currentIdx ? ' active' : '');
-            dBtn.innerText = `디자인 ${i+1}`; dBtn.onclick = () => { switchTo(i, currentSide); };
+            dBtn.innerText = (designNames[i] && designNames[i].trim()) ? designNames[i] : `디자인 ${i+1}`;
+            dBtn.onclick = () => { switchTo(i, currentSide); };
             group.appendChild(dBtn);
             if(isDouble) {
                 const switchDiv = document.createElement('div'); switchDiv.className = 'side-switch';
@@ -597,21 +756,54 @@
                 });
                 group.appendChild(switchDiv);
             }
+
+            // 부분통일하기용 그룹 지정란: 같은 값을 적어넣은 디자인끼리 하나로 묶여서,
+            // "부분통일하기" 버튼을 누르면 그 그룹 안에서 가장 앞 번호 디자인 내용으로 통일됨
+            const groupInput = document.createElement('input');
+            groupInput.type = 'text';
+            groupInput.className = 'design-group-input';
+            groupInput.placeholder = '그룹';
+            groupInput.value = designGroups[i] || '';
+            groupInput.title = '같은 값을 입력한 디자인끼리 묶입니다. "부분통일하기"를 누르면 그룹 안에서 가장 번호가 앞선 디자인 내용으로 통일됩니다.';
+            groupInput.addEventListener('click', (e) => e.stopPropagation());
+            groupInput.addEventListener('input', () => {
+                designGroups[i] = groupInput.value;
+            });
+            group.appendChild(groupInput);
+
             tabContainer.appendChild(group);
         }
+        updateTabContainerPosition();
     }
+
+    // PC 모드에서 디자인 탭 막대를 캔버스 왼쪽에 딱 붙여서 세로로 고정 배치
+    // (모바일에서는 CSS가 position:static으로 되돌려두므로 이 함수는 그냥 아무 효과 없음)
+    function updateTabContainerPosition(){
+        if (window.innerWidth <= 768) return; // 모바일은 기존처럼 캔버스 아래 가로 배치
+        const wrapper = document.getElementById('canvas-wrapper');
+        const tabContainer = document.getElementById('tab-container');
+        if (!wrapper || !tabContainer) return;
+        const rect = wrapper.getBoundingClientRect();
+        const gap = 16;
+        let left = rect.left - tabContainer.offsetWidth - gap;
+        if (left < 8) left = 8; // 화면이 좁아 왼쪽 여백이 부족하면 최소 여백만 두고 배치
+        tabContainer.style.left = left + 'px';
+        tabContainer.style.top = rect.top + 'px';
+    }
+    window.addEventListener('resize', updateTabContainerPosition);
+    window.addEventListener('scroll', updateTabContainerPosition, { passive: true });
 
     // 현재 캔버스(가이드 제외)를 순수 데이터로 추출
     function serializeCurrentCanvas(){
         const objs = canvas.getObjects().filter(o => !o.isGuide);
         return {
-            objects: objs.map(o => o.toObject(['selectable', 'evented'])),
+            objects: objs.map(o => o.toObject(['selectable', 'evented', 'uid'])),
             background: canvas.backgroundColor || '#ffffff'
         };
     }
 
     // 저장된 데이터를 캔버스에 다시 그려 넣음 (가이드는 항상 다시 맨 위에 추가)
-    function loadCanvasObjects(data, callback){
+    function loadCanvasObjects(data, callback, keepUids){
         isRestoring = true;
         const payload = {
             objects: (data && data.objects) || [],
@@ -622,10 +814,28 @@
             bringGuideToFront();
             const bgInput = document.getElementById('canvasBgInput');
             if (bgInput) bgInput.value = payload.background;
-            canvas.discardActiveObject();
-            hidePropPanel();
+
+            // keepUids가 주어졌다면(실행취소/다시실행), 이전에 선택돼 있던 오브젝트가
+            // 복원된 상태에도 여전히 존재하는지 찾아서 다시 선택 — 열려있던 메뉴 박스가 접히지 않도록 함
+            let restoredSelection = [];
+            if (keepUids && keepUids.length) {
+                restoredSelection = canvas.getObjects().filter(o => o.uid && keepUids.includes(o.uid));
+            }
+            if (restoredSelection.length === 1) {
+                canvas.setActiveObject(restoredSelection[0]);
+            } else if (restoredSelection.length > 1) {
+                canvas.setActiveObject(new fabric.ActiveSelection(restoredSelection, { canvas }));
+            } else {
+                canvas.discardActiveObject();
+                hidePropPanel();
+            }
+
             canvas.requestRenderAll();
             isRestoring = false;
+            if (restoredSelection.length > 0) {
+                updatePropPanel();
+                updateDeleteIconPosition();
+            }
             if (callback) callback();
         });
     }
@@ -650,10 +860,119 @@
         return !!(data && data.objects && data.objects.length > 0);
     }
 
+    // 디자인 통일하기: 디자인1(앞/뒤)의 내용을 그대로 복사해서 나머지 모든 디자인에 똑같이 적용
+    function unifyDesigns(){
+        if (count <= 1) {
+            alert('디자인이 1개뿐이라 통일할 필요가 없습니다.');
+            return;
+        }
+        const ok = confirm(
+            `디자인 1${isDouble ? '(앞/뒤)' : ''}을 기준으로 전체 ${count}개 디자인을 모두 똑같이 통일합니다.\n` +
+            `디자인 2 ~ ${count}에 있던 기존 내용은 모두 사라집니다.\n` +
+            `이 작업은 실행취소(Ctrl+Z)로 되돌릴 수 없으니, 계속하시겠습니까?`
+        );
+        if (!ok) return;
+
+        // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영 (디자인1을 보는 중이었다면 최신 내용까지 반영)
+        if (designData[currentIdx]) {
+            designData[currentIdx][currentSide] = serializeCurrentCanvas();
+        }
+
+        const sourceFront = designData[0] ? designData[0].front : null;
+        const sourceBack = designData[0] ? designData[0].back : null;
+
+        for (let i = 1; i < count; i++) {
+            designData[i] = {
+                front: sourceFront ? JSON.parse(JSON.stringify(sourceFront)) : null,
+                back: (isDouble && sourceBack) ? JSON.parse(JSON.stringify(sourceBack)) : null
+            };
+        }
+
+        // 지금 보고 있는 화면도 통일된 최신 내용으로 다시 불러옴
+        loadCanvasObjects(designData[currentIdx][currentSide], () => {
+            resetHistory();
+            renderTabs();
+        });
+    }
+    document.getElementById('unifyDesignBtn').addEventListener('click', unifyDesigns);
+
+    // 부분통일하기: designGroups에서 같은 값이 적힌 디자인들끼리 묶어서,
+    // 각 그룹 안에서 가장 번호가 앞선 디자인 내용으로 나머지를 통일함
+    function partialUnifyDesigns(){
+        if (count <= 1) {
+            alert('디자인이 1개뿐이라 통일할 필요가 없습니다.');
+            return;
+        }
+
+        // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영
+        if (designData[currentIdx]) {
+            designData[currentIdx][currentSide] = serializeCurrentCanvas();
+        }
+
+        // 그룹값(빈 값 제외)별로 디자인 번호를 모음
+        const groupMap = new Map();
+        for (let i = 0; i < count; i++) {
+            const key = (designGroups[i] || '').trim();
+            if (!key) continue; // 그룹을 지정하지 않은 디자인은 건너뜀
+            if (!groupMap.has(key)) groupMap.set(key, []);
+            groupMap.get(key).push(i);
+        }
+
+        // 실제로 2개 이상 묶인 그룹만 의미가 있음
+        const groups = Array.from(groupMap.entries()).filter(([, idxs]) => idxs.length > 1);
+        if (groups.length === 0) {
+            alert('묶인 그룹이 없습니다. 통일하고 싶은 디자인들의 "그룹" 칸에 같은 값을 입력한 뒤 다시 눌러주세요.');
+            return;
+        }
+
+        const summary = groups.map(([key, idxs]) =>
+            `- "${key}" 그룹: 디자인 ${idxs.map(i => i + 1).join(', ')} → 디자인 ${idxs[0] + 1} 내용으로 통일`
+        ).join('\n');
+        const ok = confirm(
+            `아래 그룹별로 부분통일을 진행합니다.\n\n${summary}\n\n` +
+            `각 그룹에서 가장 앞 번호 디자인을 기준으로 나머지 디자인 내용은 모두 사라집니다.\n` +
+            `이 작업은 실행취소(Ctrl+Z)로 되돌릴 수 없으니, 계속하시겠습니까?`
+        );
+        if (!ok) return;
+
+        groups.forEach(([, idxs]) => {
+            const sourceIdx = idxs[0];
+            const sourceFront = designData[sourceIdx] ? designData[sourceIdx].front : null;
+            const sourceBack = designData[sourceIdx] ? designData[sourceIdx].back : null;
+            for (let k = 1; k < idxs.length; k++) {
+                const targetIdx = idxs[k];
+                designData[targetIdx] = {
+                    front: sourceFront ? JSON.parse(JSON.stringify(sourceFront)) : null,
+                    back: (isDouble && sourceBack) ? JSON.parse(JSON.stringify(sourceBack)) : null
+                };
+            }
+        });
+
+        // 지금 보고 있는 화면도 통일된 최신 내용으로 다시 불러옴
+        loadCanvasObjects(designData[currentIdx][currentSide], () => {
+            resetHistory();
+            renderTabs();
+        });
+    }
+    document.getElementById('partialUnifyBtn').addEventListener('click', partialUnifyDesigns);
+
     // ===================== 가이드(붉은 박스 + 회색 여유선) 헬퍼 =====================
     function bringGuideToFront(){
         canvas.bringToFront(guideRect);
         canvas.bringToFront(outerGuideRect);
+    }
+
+    // ===================== 도구 사용법 등을 잠깐 보여주는 범용 팁 토스트 =====================
+    let tipToastTimeout = null;
+    function showTipToast(message, duration){
+        const toast = document.getElementById('tipToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('visible');
+        clearTimeout(tipToastTimeout);
+        tipToastTimeout = setTimeout(() => {
+            toast.classList.remove('visible');
+        }, duration || 3200);
     }
 
     // ===================== 붉은선(재단/안전선) 근접 경고 =====================
@@ -703,24 +1022,40 @@
         historyIndex = 0;
         updateUndoRedoButtons();
     }
+    // 현재 선택된(가이드 제외) 오브젝트들의 고유id 목록을 반환 — 실행취소/다시실행 후 재선택에 사용
+    function getActiveUids(){
+        const objs = canvas.getActiveObjects ? canvas.getActiveObjects() : (canvas.getActiveObject() ? [canvas.getActiveObject()] : []);
+        return objs.filter(o => o && !o.isGuide && o.uid).map(o => o.uid);
+    }
     function undo(){
         if (historyIndex <= 0) return;
+        const keepUids = getActiveUids();
         historyIndex--;
-        loadCanvasObjects(historyStack[historyIndex], updateUndoRedoButtons);
+        loadCanvasObjects(historyStack[historyIndex], updateUndoRedoButtons, keepUids);
     }
     function redo(){
         if (historyIndex >= historyStack.length - 1) return;
+        const keepUids = getActiveUids();
         historyIndex++;
-        loadCanvasObjects(historyStack[historyIndex], updateUndoRedoButtons);
+        loadCanvasObjects(historyStack[historyIndex], updateUndoRedoButtons, keepUids);
     }
     function updateUndoRedoButtons(){
-        const undoBtn = document.getElementById('undoBtn');
-        const redoBtn = document.getElementById('redoBtn');
-        if (undoBtn) undoBtn.disabled = historyIndex <= 0;
-        if (redoBtn) redoBtn.disabled = historyIndex >= historyStack.length - 1;
+        // 상단 툴바 버튼 + 모바일에서 텍스트/도형 패널 안에 추가된 실행취소·다시실행 버튼을 모두 동기화
+        const undoBtns = [document.getElementById('undoBtn'), document.getElementById('textUndoBtn'), document.getElementById('shapeUndoBtn')];
+        const redoBtns = [document.getElementById('redoBtn'), document.getElementById('textRedoBtn'), document.getElementById('shapeRedoBtn')];
+        undoBtns.forEach(btn => { if (btn) btn.disabled = historyIndex <= 0; });
+        redoBtns.forEach(btn => { if (btn) btn.disabled = historyIndex >= historyStack.length - 1; });
     }
     document.getElementById('undoBtn').addEventListener('click', undo);
     document.getElementById('redoBtn').addEventListener('click', redo);
+    document.getElementById('textUndoBtn').addEventListener('click', undo);
+    document.getElementById('textRedoBtn').addEventListener('click', redo);
+    document.getElementById('shapeUndoBtn').addEventListener('click', undo);
+    document.getElementById('shapeRedoBtn').addEventListener('click', redo);
+    document.getElementById('resetAllBtn').addEventListener('click', () => {
+        const ok = confirm('리셋됩니다. 지금까지 작업한 내용이 모두 사라집니다.\n계속하시겠습니까?');
+        if (ok) location.reload();
+    });
 
     // ===================== 삽입 도구: 텍스트 / 도형 / 그리기 =====================
     const moveToolBtn = document.getElementById('moveToolBtn');
@@ -732,6 +1067,7 @@
         hidePropPanel();
         hideDeleteIcon();
         hideRotateIcon();
+        hideColorBar();
     }
 
     // 오브젝트 종류에 따라 "몇 번 클릭해야 선택되는지"를 정해주는 공통 함수.
@@ -748,6 +1084,8 @@
     // 자유롭게 클릭·드래그로 선택/이동할 수 있는 기본 상태로 되돌립니다.
     function setMoveTool(){
         if (isDrawMode) toggleDrawMode();
+        if (isEraseMode) setEraseMode(false);
+        if (isMagicWandMode) setMagicWandMode(false);
         canvas.selection = true;
         canvas.skipTargetFind = false;
         canvas.forEachObject(o => applySelectionMode(o));
@@ -760,12 +1098,14 @@
     function addText(){
         setMoveTool();
         const cx = canvas.width / 2, cy = canvas.height / 2;
-        // 캔버스 폭에 비례해서 넉넉하게(너무 좁으면 스페이스바 칠 때마다 줄바꿈 되어버림)
-        const textWidth = Math.max(260, Math.min(canvas.width * 0.7, 500));
         const text = new fabric.Textbox('텍스트를 입력하세요', {
-            left: cx - textWidth / 2, top: cy - 20, width: textWidth,
-            fontSize: 28, fill: '#111111', fontFamily: 'Malgun Gothic', fontWeight: '400', textAlign: 'left'
+            left: cx, top: cy - 20, width: 100,
+            fontSize: 28, fill: '#111111', fontFamily: 'Malgun Gothic', fontWeight: '400', textAlign: 'left',
+            paintFirst: 'stroke' // 나중에 테두리를 넣더라도 안쪽이 아닌 바깥쪽으로 보이도록 기본값 설정
         });
+        fitTextboxWidth(text);
+        text.set({ left: cx - text.width / 2 });
+        text.setCoords();
         canvas.add(text);
         canvas.setActiveObject(text);
         bringGuideToFront();
@@ -801,6 +1141,592 @@
     document.getElementById('addTriangleBtn').addEventListener('click', () => addShape('triangle'));
     document.getElementById('addLineBtn').addEventListener('click', () => addShape('line'));
 
+    // ===================== 사용자 정의 모양(포토샵 커스텀 셰이프 도구) =====================
+    // 명함/문서 등에 바로 쓸 수 있는 실용적인 아이콘들(전화기, 팩스, 스마트폰, 컴퓨터, 경고,
+    // 지구본, 명함, 책 등)을 미리 만들어두고 클릭 한 번으로 캔버스에 추가할 수 있게 함.
+    // 대부분은 0~100 정규화 좌표의 다각형(점 목록)으로 표현하고, 지구본처럼 구멍이 필요한
+    // 아이콘만 SVG path(evenodd)로 표현함.
+
+    function roundedRectWH(x, y, w, h, r, cornerSamples){
+        cornerSamples = cornerSamples || 5;
+        const pts = [];
+        const corners = [
+            { cx: x + w - r, cy: y + r, start: -90 },
+            { cx: x + w - r, cy: y + h - r, start: 0 },
+            { cx: x + r, cy: y + h - r, start: 90 },
+            { cx: x + r, cy: y + r, start: 180 }
+        ];
+        corners.forEach(c => {
+            for (let i = 0; i <= cornerSamples; i++) {
+                const a = (c.start + (i / cornerSamples) * 90) * Math.PI / 180;
+                pts.push({ x: c.cx + r * Math.cos(a), y: c.cy + r * Math.sin(a) });
+            }
+        });
+        return pts;
+    }
+    function ngonPoints(sides, r, cx, cy, rotDeg){
+        r = r || 46; cx = cx == null ? 50 : cx; cy = cy == null ? 50 : cy; rotDeg = rotDeg == null ? -90 : rotDeg;
+        const pts = [];
+        for (let i = 0; i < sides; i++) {
+            const a = (rotDeg + i * 360 / sides) * Math.PI / 180;
+            pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+        }
+        return pts;
+    }
+    function starPoints(points, outerR, innerRatio, cx, cy, rotDeg){
+        outerR = outerR || 46; innerRatio = innerRatio == null ? 0.5 : innerRatio;
+        cx = cx == null ? 50 : cx; cy = cy == null ? 50 : cy; rotDeg = rotDeg == null ? -90 : rotDeg;
+        const innerR = outerR * innerRatio;
+        const step = 180 / points;
+        const pts = [];
+        for (let i = 0; i < points * 2; i++) {
+            const r = (i % 2 === 0) ? outerR : innerR;
+            const a = (rotDeg + i * step) * Math.PI / 180;
+            pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+        }
+        return pts;
+    }
+
+    // ---- 기기(전화기/팩스/스마트폰/컴퓨터 등) ----
+    function handsetPoints(n){
+        n = n || 20;
+        const outer = [], inner = [];
+        for (let i = 0; i <= n; i++) {
+            const a = (135 + i * 180 / n) * Math.PI / 180;
+            outer.push({ x: 50 + 42 * Math.cos(a), y: 50 + 42 * Math.sin(a) });
+        }
+        for (let i = 0; i <= n; i++) {
+            const a = (315 - i * 180 / n) * Math.PI / 180;
+            inner.push({ x: 50 + 21 * Math.cos(a), y: 50 + 21 * Math.sin(a) });
+        }
+        return outer.concat(inner);
+    }
+    function faxPoints(){
+        return [{x:30,y:2},{x:70,y:2},{x:70,y:20},{x:85,y:20},{x:85,y:75},{x:95,y:75},{x:95,y:90},
+                {x:5,y:90},{x:5,y:75},{x:15,y:75},{x:15,y:20},{x:30,y:20}];
+    }
+    function printerPoints(){
+        return [{x:38,y:0},{x:62,y:0},{x:62,y:15},{x:78,y:15},{x:78,y:55},{x:92,y:55},{x:92,y:85},
+                {x:8,y:85},{x:8,y:55},{x:22,y:55},{x:22,y:15},{x:38,y:15}];
+    }
+    function monitorPoints(){
+        return [{x:8,y:8},{x:92,y:8},{x:92,y:60},{x:60,y:60},{x:60,y:80},{x:76,y:80},{x:76,y:92},
+                {x:24,y:92},{x:24,y:80},{x:40,y:80},{x:40,y:60},{x:8,y:60}];
+    }
+    function laptopPoints(){
+        return [{x:20,y:4},{x:80,y:4},{x:86,y:60},{x:98,y:60},{x:98,y:72},{x:2,y:72},{x:2,y:60},{x:14,y:60}];
+    }
+
+    // ---- 안전/경고 ----
+    function warningTrianglePoints(){
+        return [{x:46,y:4},{x:46,y:58},{x:54,y:58},{x:54,y:4},{x:94,y:90},{x:6,y:90}];
+    }
+
+    // ---- 자연/글로벌 ----
+    function leafPoints(n){
+        n = n || 24;
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+            const t = i / n;
+            pts.push({ x: 50 + 44 * Math.sin(t * Math.PI), y: 4 + t * 88 });
+        }
+        for (let i = 0; i <= n; i++) {
+            const t = i / n;
+            pts.push({ x: 50 - 30 * Math.sin(t * Math.PI), y: 92 - t * 88 });
+        }
+        return pts;
+    }
+    function treePoints(){
+        return [{x:50,y:2},{x:82,y:46},{x:66,y:46},{x:90,y:80},{x:58,y:80},{x:58,y:98},{x:42,y:98},
+                {x:42,y:80},{x:10,y:80},{x:34,y:46},{x:18,y:46}];
+    }
+
+    // ---- 명함/문서/책 ----
+    function bookPoints(){
+        return [{x:8,y:6},{x:46,y:6},{x:50,y:12},{x:54,y:6},{x:92,y:6},{x:92,y:94},{x:54,y:94},
+                {x:50,y:88},{x:46,y:94},{x:8,y:94}];
+    }
+    function openBookPoints(){
+        return [{x:8,y:96},{x:8,y:22},{x:50,y:14},{x:92,y:22},{x:92,y:96},{x:50,y:88}];
+    }
+    function envelopePoints(){
+        return [{x:4,y:12},{x:50,y:52},{x:96,y:12},{x:96,y:90},{x:4,y:90}];
+    }
+    function folderPoints(){
+        return [{x:4,y:20},{x:36,y:20},{x:44,y:32},{x:96,y:32},{x:96,y:88},{x:4,y:88}];
+    }
+    function documentPoints(){
+        return [{x:16,y:2},{x:70,y:2},{x:84,y:16},{x:84,y:98},{x:16,y:98}];
+    }
+    function clipboardPoints(){
+        return [{x:12,y:14},{x:36,y:14},{x:36,y:2},{x:64,y:2},{x:64,y:14},{x:88,y:14},{x:88,y:98},{x:12,y:98}];
+    }
+    function pencilPoints(){
+        return [{x:6,y:94},{x:2,y:78},{x:70,y:10},{x:86,y:26},{x:18,y:94}];
+    }
+    function briefcasePoints(){
+        return [{x:36,y:14},{x:36,y:2},{x:64,y:2},{x:64,y:14},{x:96,y:14},{x:96,y:90},{x:4,y:90},{x:4,y:14}];
+    }
+    function tagPoints(){
+        return [{x:4,y:50},{x:44,y:6},{x:96,y:6},{x:96,y:58},{x:54,y:96}];
+    }
+
+    // ---- 자주 쓰는 UI/생활 아이콘 ----
+    function pinPoints(n){
+        n = n || 26;
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+            const a = Math.PI + (i / n) * Math.PI;
+            pts.push({ x: 50 + 40 * Math.cos(a), y: 40 + 40 * Math.sin(a) });
+        }
+        pts.push({ x: 50, y: 98 });
+        return pts;
+    }
+    function calendarPoints(){
+        return [{x:2,y:12},{x:20,y:12},{x:20,y:2},{x:32,y:2},{x:32,y:12},{x:68,y:12},{x:68,y:2},
+                {x:80,y:2},{x:80,y:12},{x:98,y:12},{x:98,y:98},{x:2,y:98}];
+    }
+    function batteryPoints(){
+        return [{x:2,y:26},{x:86,y:26},{x:86,y:14},{x:98,y:14},{x:98,y:62},{x:86,y:62},{x:86,y:50},{x:2,y:50}];
+    }
+    function giftBoxPoints(){
+        return [
+            {x:4,y:30},{x:44,y:30},{x:44,y:2},{x:56,y:2},{x:56,y:30},{x:96,y:30},
+            {x:96,y:96},{x:4,y:96}
+        ];
+    }
+    function shoppingBagPoints(){
+        return [{x:12,y:2},{x:28,y:2},{x:28,y:20},{x:16,y:20},{x:8,y:98},{x:92,y:98},{x:84,y:20},
+                {x:72,y:20},{x:72,y:2},{x:88,y:2},{x:88,y:20},{x:98,y:20},{x:98,y:100},{x:2,y:100},{x:2,y:20},{x:12,y:20}];
+    }
+    function truckPoints(){
+        return [{x:2,y:30},{x:60,y:30},{x:60,y:16},{x:82,y:16},{x:98,y:40},{x:98,y:74},{x:2,y:74}];
+    }
+    function coffeeCupPoints(){
+        return [{x:12,y:14},{x:76,y:14},{x:88,y:16},{x:92,y:36},{x:80,y:40},{x:76,y:20},
+                {x:72,y:92},{x:16,y:92}];
+    }
+    function flagPoints(){
+        return [{x:14,y:98},{x:14,y:2},{x:20,y:2},{x:20,y:8},{x:88,y:10},{x:70,y:34},{x:88,y:58},
+                {x:20,y:58},{x:20,y:98}];
+    }
+    function bellPoints(){
+        return [{x:50,y:2},{x:78,y:24},{x:82,y:70},{x:94,y:82},{x:6,y:82},{x:18,y:70},{x:22,y:24}];
+    }
+    function keyPoints(n){
+        n = n || 16;
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+            const a = (90 + (i / n) * 180) * Math.PI / 180;
+            pts.push({ x: 20 + 18 * Math.cos(a), y: 40 + 18 * Math.sin(a) });
+        }
+        pts.push({x:20,y:34},{x:94,y:34},{x:94,y:46},{x:84,y:46},{x:84,y:56},{x:72,y:56},{x:72,y:46},{x:20,y:46});
+        return pts;
+    }
+    function umbrellaPoints(bumps){
+        bumps = bumps || 6;
+        const pts = [];
+        const total = bumps * 2;
+        for (let i = 0; i <= total; i++) {
+            const t = i / total;
+            const baseAngle = Math.PI * (1 - t);
+            const wave = (i % 2 === 0) ? 0 : 6;
+            const r = 46 - wave;
+            pts.push({ x: 50 + r * Math.cos(baseAngle), y: 50 - r * Math.sin(baseAngle) });
+        }
+        pts.push({x:53,y:50},{x:53,y:92},{x:47,y:92},{x:47,y:50});
+        return pts;
+    }
+    function heartPoints(n){
+        n = n || 48;
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+            const t = (i / n) * Math.PI * 2;
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+            pts.push({ x: 50 + x * 2.5, y: 50 + y * 2.3 });
+        }
+        return pts;
+    }
+    function crossPoints(thickness){
+        thickness = thickness == null ? 0.34 : thickness;
+        const t = 50 * thickness;
+        return [
+            {x:50-t,y:2},{x:50+t,y:2},{x:50+t,y:50-t},{x:98,y:50-t},{x:98,y:50+t},
+            {x:50+t,y:50+t},{x:50+t,y:98},{x:50-t,y:98},{x:50-t,y:50+t},{x:2,y:50+t},
+            {x:2,y:50-t},{x:50-t,y:50-t}
+        ];
+    }
+    function checkmarkPoints(){
+        return [{x:2,y:55},{x:20,y:38},{x:40,y:62},{x:90,y:8},{x:98,y:18},{x:42,y:88}];
+    }
+    function xmarkPoints(){
+        const t = 12;
+        return [
+            {x:0,y:t},{x:50-t,y:50},{x:0,y:100-t},{x:t,y:100},{x:50,y:50+t},
+            {x:100-t,y:100},{x:100,y:100-t},{x:50+t,y:50},{x:100,y:t},{x:100-t,y:0},
+            {x:50,y:50-t},{x:t,y:0}
+        ];
+    }
+    function speechBubblePoints(){
+        return [{x:2,y:2},{x:98,y:2},{x:98,y:78},{x:30,y:78},{x:12,y:98},{x:26,y:76},{x:2,y:76}];
+    }
+    function cloudPoints(n){
+        n = n || 60;
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+            const t = (i / n) * Math.PI * 2;
+            const r = 34 + 9 * Math.sin(3.3 * t) + 5 * Math.sin(5.1 * t + 1);
+            pts.push({ x: 50 + r * Math.cos(t), y: 55 + r * 0.72 * Math.sin(t) });
+        }
+        return pts;
+    }
+    function housePoints(){ return [{x:50,y:2},{x:98,y:42},{x:98,y:98},{x:2,y:98},{x:2,y:42}]; }
+
+    // 지구본은 구멍(위도/경도 선)이 필요해서 SVG path(evenodd 채우기 규칙)로 만듦
+    function ellipsePathD(cx, cy, rx, ry){
+        return `M${cx + rx},${cy} A${rx},${ry} 0 1,0 ${cx - rx},${cy} A${rx},${ry} 0 1,0 ${cx + rx},${cy} Z`;
+    }
+    function globePathD(){
+        return ellipsePathD(50, 50, 44, 44) + ' ' +
+               ellipsePathD(50, 50, 44, 13) + ' ' +
+               ellipsePathD(50, 50, 44, 26) + ' ' +
+               ellipsePathD(50, 50, 13, 44);
+    }
+
+    // ---- 여러 개의 점 목록(서브패스)을 하나의 SVG path(구멍 표현 가능)로 합치는 범용 헬퍼 ----
+    function pointsToPathD(points){
+        return 'M' + points.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join('L') + 'Z';
+    }
+    function compoundPathD(subpaths){
+        return subpaths.map(pointsToPathD).join(' ');
+    }
+    function scalePointsAroundCenter(pts, scale, cx, cy){
+        cx = cx == null ? 50 : cx; cy = cy == null ? 50 : cy;
+        return pts.map(p => ({ x: cx + (p.x - cx) * scale, y: cy + (p.y - cy) * scale }));
+    }
+    // 부채꼴 모양의 얇은 띠(소리/신호 파동 표현용)
+    function waveArcPoints(rOuter, rInner, cx, cy, angleSpan, n){
+        n = n || 12; cy = cy == null ? 50 : cy;
+        const outer = [], inner = [];
+        for (let i = 0; i <= n; i++) {
+            const a = (-angleSpan / 2 + i * angleSpan / n) * Math.PI / 180;
+            outer.push({ x: cx + rOuter * Math.cos(a), y: cy + rOuter * Math.sin(a) });
+        }
+        for (let i = 0; i <= n; i++) {
+            const a = (angleSpan / 2 - i * angleSpan / n) * Math.PI / 180;
+            inner.push({ x: cx + rInner * Math.cos(a), y: cy + rInner * Math.sin(a) });
+        }
+        return outer.concat(inner);
+    }
+
+    // ---- 첨부 이미지와 비슷한 아이콘 4종 (봉투 / 전화기 뱃지 / 체크박스 / 스피커·알림음) ----
+    function envelopeOutlinePoints(){
+        // 사각형 몸통 + 위쪽 삼각형 봉투 접힘선을 하나의 윤곽으로 표현
+        return [{x:2,y:14},{x:50,y:56},{x:98,y:14},{x:98,y:90},{x:2,y:90}];
+    }
+    function phoneBadgePathD(){
+        const outer = roundedRectWH(4, 4, 92, 92, 16);
+        const hole = scalePointsAroundCenter(handsetPoints(), 0.6, 50, 50);
+        return compoundPathD([outer, hole]);
+    }
+    function checkboxPathD(){
+        const outerSq = roundedRectWH(4, 4, 92, 92, 10);
+        const innerSq = roundedRectWH(16, 16, 68, 68, 6);
+        const check = scalePointsAroundCenter(checkmarkPoints(), 0.58, 50, 50);
+        return compoundPathD([outerSq, innerSq, check]);
+    }
+    function speakerBodyPoints(){
+        return [{x:2,y:36},{x:26,y:36},{x:54,y:12},{x:54,y:88},{x:26,y:64},{x:2,y:64}];
+    }
+    function speakerPathD(){
+        return compoundPathD([
+            speakerBodyPoints(),
+            waveArcPoints(20, 14, 60, 50, 80),
+            waveArcPoints(36, 30, 60, 50, 92)
+        ]);
+    }
+
+    // ---- 실제 아이콘 목록 조립 (실용적인 것 위주, 반복되는 추상 도형은 최소화) ----
+    // ---- 이전에 있던 화살표/도형 생성기들 (다시 추가) ----
+    function rotatePoints(pts, deg, cx, cy){
+        cx = cx == null ? 50 : cx; cy = cy == null ? 50 : cy;
+        const rad = deg * Math.PI / 180;
+        return pts.map(p => ({
+            x: cx + (p.x - cx) * Math.cos(rad) - (p.y - cy) * Math.sin(rad),
+            y: cy + (p.x - cx) * Math.sin(rad) + (p.y - cy) * Math.cos(rad)
+        }));
+    }
+    function arrowPoints(dir){
+        const shapes = {
+            up:    [{x:50,y:2},{x:92,y:42},{x:68,y:42},{x:68,y:98},{x:32,y:98},{x:32,y:42},{x:8,y:42}],
+            down:  [{x:50,y:98},{x:92,y:58},{x:68,y:58},{x:68,y:2},{x:32,y:2},{x:32,y:58},{x:8,y:58}],
+            left:  [{x:2,y:50},{x:42,y:8},{x:42,y:32},{x:98,y:32},{x:98,y:68},{x:42,y:68},{x:42,y:92}],
+            right: [{x:98,y:50},{x:58,y:8},{x:58,y:32},{x:2,y:32},{x:2,y:68},{x:58,y:68},{x:58,y:92}]
+        };
+        return shapes[dir];
+    }
+    function chevronPoints(dir){
+        const shapes = {
+            up:    [{x:50,y:10},{x:95,y:55},{x:80,y:70},{x:50,y:40},{x:20,y:70},{x:5,y:55}],
+            down:  [{x:50,y:90},{x:95,y:45},{x:80,y:30},{x:50,y:60},{x:20,y:30},{x:5,y:45}],
+            left:  [{x:10,y:50},{x:55,y:5},{x:70,y:20},{x:40,y:50},{x:70,y:80},{x:55,y:95}],
+            right: [{x:90,y:50},{x:45,y:5},{x:30,y:20},{x:60,y:50},{x:30,y:80},{x:45,y:95}]
+        };
+        return shapes[dir];
+    }
+    function scallopPoints(bumps, outerR, waveDepth, samplesPerBump){
+        outerR = outerR || 46; waveDepth = waveDepth == null ? 0.12 : waveDepth; samplesPerBump = samplesPerBump || 6;
+        const pts = [];
+        const total = bumps * samplesPerBump;
+        for (let i = 0; i < total; i++) {
+            const t = i / total;
+            const a = t * Math.PI * 2 - Math.PI / 2;
+            const r = outerR * (1 - waveDepth + waveDepth * Math.cos(bumps * a));
+            pts.push({ x: 50 + r * Math.cos(a), y: 50 + r * Math.sin(a) });
+        }
+        return pts;
+    }
+    function teardropPoints(n){
+        n = n || 26;
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+            const a = (i / n) * Math.PI;
+            pts.push({ x: 50 + 40 * Math.cos(a), y: 60 + 40 * Math.sin(a) });
+        }
+        pts.push({ x: 50, y: 2 });
+        return pts;
+    }
+    function lightningPoints(){
+        return [{x:58,y:2},{x:20,y:56},{x:46,y:56},{x:38,y:98},{x:82,y:40},{x:54,y:40}];
+    }
+    function diamondPoints(){ return ngonPoints(4, 48, 50, 50, -90); }
+    function parallelogramPoints(dir){
+        return dir === 'right'
+            ? [{x:25,y:2},{x:98,y:2},{x:75,y:98},{x:2,y:98}]
+            : [{x:75,y:2},{x:98,y:98},{x:25,y:98},{x:2,y:2}];
+    }
+    function trapezoidPoints(dir){
+        return dir === 'up'
+            ? [{x:30,y:2},{x:70,y:2},{x:98,y:98},{x:2,y:98}]
+            : [{x:2,y:2},{x:98,y:2},{x:70,y:98},{x:30,y:98}];
+    }
+    function roundedRectPoints(rx, cornerSamples){
+        rx = rx == null ? 18 : rx; cornerSamples = cornerSamples || 6;
+        return roundedRectWH(0, 0, 100, 100, rx, cornerSamples);
+    }
+    function semicirclePoints(n){
+        n = n || 30;
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
+            const a = Math.PI - (i / n) * Math.PI;
+            pts.push({ x: 50 + 48 * Math.cos(a), y: 98 - 96 * Math.sin(a) });
+        }
+        return pts;
+    }
+    function quarterCirclePoints(n){
+        n = n || 24;
+        const pts = [{x:2,y:98},{x:2,y:2}];
+        for (let i = 0; i <= n; i++) {
+            const a = (i / n) * Math.PI / 2;
+            pts.push({ x: 2 + 96 * Math.sin(a), y: 98 - 96 * (1 - Math.cos(a)) });
+        }
+        return pts;
+    }
+    function pieSlicePoints(startDeg, endDeg, n){
+        n = n || 24;
+        const pts = [{ x: 50, y: 50 }];
+        for (let i = 0; i <= n; i++) {
+            const a = (startDeg + (endDeg - startDeg) * i / n) * Math.PI / 180;
+            pts.push({ x: 50 + 48 * Math.cos(a), y: 50 + 48 * Math.sin(a) });
+        }
+        return pts;
+    }
+    function crescentLensPoints(n){
+        n = n || 30;
+        const outer = [], inner = [];
+        for (let i = 0; i <= n; i++) {
+            const a = (-100 + i * 200 / n) * Math.PI / 180;
+            outer.push({ x: 50 + 44 * Math.cos(a), y: 50 + 44 * Math.sin(a) });
+        }
+        for (let i = 0; i <= n; i++) {
+            const a = (100 - i * 200 / n) * Math.PI / 180;
+            inner.push({ x: 50 + 30 * Math.cos(a), y: 50 + 30 * Math.sin(a) });
+        }
+        return outer.concat(inner);
+    }
+
+    const CUSTOM_SHAPES = [
+        { name: '전화기', points: handsetPoints() },
+        { name: '팩스', points: faxPoints() },
+        { name: '스마트폰', points: roundedRectWH(22, 4, 56, 92, 10) },
+        { name: '태블릿', points: roundedRectWH(10, 14, 80, 72, 8) },
+        { name: '컴퓨터(모니터)', points: monitorPoints() },
+        { name: '노트북', points: laptopPoints() },
+        { name: '프린터', points: printerPoints() },
+        { name: '경고', points: warningTrianglePoints() },
+        { name: '정지(팔각형)', points: ngonPoints(8) },
+        { name: '지구본', type: 'path', d: globePathD() },
+        { name: '나뭇잎', points: leafPoints() },
+        { name: '나무', points: treePoints() },
+        { name: '태양', points: starPoints(16, 46, 0.78) },
+        { name: '명함', points: roundedRectWH(4, 24, 92, 52, 8) },
+        { name: '책', points: bookPoints() },
+        { name: '펼친책', points: openBookPoints() },
+        { name: '봉투(이메일)', points: envelopePoints() },
+        { name: '봉투(윤곽형)', points: envelopeOutlinePoints() },
+        { name: '전화기(뱃지)', type: 'path', d: phoneBadgePathD() },
+        { name: '체크박스', type: 'path', d: checkboxPathD() },
+        { name: '스피커(알림음)', type: 'path', d: speakerPathD() },
+        { name: '폴더', points: folderPoints() },
+        { name: '문서', points: documentPoints() },
+        { name: '클립보드', points: clipboardPoints() },
+        { name: '연필', points: pencilPoints() },
+        { name: '서류가방', points: briefcasePoints() },
+        { name: '가격표', points: tagPoints() },
+        { name: '도장/뱃지', points: (function(){ return starPoints(24, 46, 0.86); })() },
+        { name: '위치핀', points: pinPoints() },
+        { name: '시계', points: starPoints(12, 46, 0.9) },
+        { name: '달력', points: calendarPoints() },
+        { name: '배터리', points: batteryPoints() },
+        { name: '선물상자', points: giftBoxPoints() },
+        { name: '쇼핑백', points: shoppingBagPoints() },
+        { name: '트럭(배송)', points: truckPoints() },
+        { name: '커피컵', points: coffeeCupPoints() },
+        { name: '깃발', points: flagPoints() },
+        { name: '나침반', points: starPoints(4, 46, 0.28) },
+        { name: '종(알림)', points: bellPoints() },
+        { name: '열쇠', points: keyPoints() },
+        { name: '우산', points: umbrellaPoints() },
+        { name: '집', points: housePoints() },
+        { name: '말풍선', points: speechBubblePoints() },
+        { name: '구름', points: cloudPoints() },
+        { name: '별', points: starPoints(5, 46, 0.5) },
+        { name: '하트', points: heartPoints() },
+        { name: '플러스(의료)', points: crossPoints() },
+        { name: '체크표시', points: checkmarkPoints() },
+        { name: 'X표시', points: xmarkPoints() },
+
+        // ---- 이전에 있던 화살표/도형들 (다시 추가) ----
+        { name: '화살표 up', points: arrowPoints('up') },
+        { name: '화살표 down', points: arrowPoints('down') },
+        { name: '화살표 left', points: arrowPoints('left') },
+        { name: '화살표 right', points: arrowPoints('right') },
+        { name: '대각선 화살표 45', points: rotatePoints(arrowPoints('up'), 45) },
+        { name: '대각선 화살표 135', points: rotatePoints(arrowPoints('up'), 135) },
+        { name: '대각선 화살표 225', points: rotatePoints(arrowPoints('up'), 225) },
+        { name: '대각선 화살표 315', points: rotatePoints(arrowPoints('up'), 315) },
+        { name: '양쪽화살표(가로)', points: [{x:2,y:50},{x:22,y:30},{x:22,y:42},{x:78,y:42},{x:78,y:30},{x:98,y:50},{x:78,y:70},{x:78,y:58},{x:22,y:58},{x:22,y:70}] },
+        { name: '양쪽화살표(세로)', points: [{x:50,y:2},{x:30,y:22},{x:42,y:22},{x:42,y:78},{x:30,y:78},{x:50,y:98},{x:70,y:78},{x:58,y:78},{x:58,y:22},{x:70,y:22}] },
+        { name: '쉐브론 up', points: chevronPoints('up') },
+        { name: '쉐브론 down', points: chevronPoints('down') },
+        { name: '쉐브론 left', points: chevronPoints('left') },
+        { name: '쉐브론 right', points: chevronPoints('right') },
+        { name: '마름모', points: diamondPoints() },
+        { name: '평행사변형(우)', points: parallelogramPoints('right') },
+        { name: '평행사변형(좌)', points: parallelogramPoints('left') },
+        { name: '사다리꼴(위)', points: trapezoidPoints('up') },
+        { name: '사다리꼴(아래)', points: trapezoidPoints('down') },
+        { name: '번개', points: lightningPoints() },
+        { name: '눈물방울', points: teardropPoints() },
+        { name: '둥근사각형(작게)', points: roundedRectPoints(10) },
+        { name: '둥근사각형(크게)', points: roundedRectPoints(28) },
+        { name: '반원', points: semicirclePoints() },
+        { name: '부채꼴(사분원)', points: quarterCirclePoints() },
+        { name: '파이(90도)', points: pieSlicePoints(-45, 45) },
+        { name: '파이(270도)', points: pieSlicePoints(45, 315) },
+        { name: '초승달(렌즈)', points: crescentLensPoints() }
+    ];
+
+
+    // ---- 갤러리 렌더링 & 모달 열고닫기 ----
+    const customShapeBtn = document.getElementById('customShapeBtn');
+    const customShapeModal = document.getElementById('customShapeModal');
+    const customShapeGrid = document.getElementById('customShapeGrid');
+    const customShapeCloseBtn = document.getElementById('customShapeCloseBtn');
+    let customShapeGridBuilt = false;
+
+    function shapeToSvgMarkup(shape){
+        if (shape.type === 'path') {
+            return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="${shape.d}" fill="#3498db" fill-rule="evenodd"/></svg>`;
+        }
+        const attr = shape.points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="${attr}" fill="#3498db"/></svg>`;
+    }
+
+    function buildCustomShapeGrid(){
+        if (customShapeGridBuilt) return;
+        customShapeGridBuilt = true;
+        const frag = document.createDocumentFragment();
+        CUSTOM_SHAPES.forEach((shape, idx) => {
+            const item = document.createElement('div');
+            item.className = 'custom-shape-item';
+            item.title = shape.name;
+            item.innerHTML = shapeToSvgMarkup(shape);
+            item.addEventListener('click', () => insertCustomShape(idx));
+            frag.appendChild(item);
+        });
+        customShapeGrid.appendChild(frag);
+    }
+
+    function insertCustomShape(idx){
+        const shape = CUSTOM_SHAPES[idx];
+        if (!shape) return;
+        setMoveTool();
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        const size = 120;
+
+        if (shape.type === 'path') {
+            // 0~100 좌표 기준으로 만든 path를 실제 크기(size)에 맞게 스케일
+            const scaleRatio = size / 100;
+            const obj = new fabric.Path(shape.d, {
+                left: cx - size / 2,
+                top: cy - size / 2,
+                fill: '#3498db',
+                fillRule: 'evenodd',
+                scaleX: scaleRatio,
+                scaleY: scaleRatio
+            });
+            applySelectionMode(obj);
+            canvas.add(obj);
+            canvas.setActiveObject(obj);
+            bringGuideToFront();
+            canvas.requestRenderAll();
+            hideCustomShapeModal();
+            return;
+        }
+
+        // 0~100 정규화 좌표를 실제 도형 크기(size)에 맞춰 스케일
+        const scaled = shape.points.map(p => ({ x: p.x * (size / 100), y: p.y * (size / 100) }));
+        const poly = new fabric.Polygon(scaled, {
+            left: cx - size / 2,
+            top: cy - size / 2,
+            fill: '#3498db'
+        });
+        applySelectionMode(poly);
+        canvas.add(poly);
+        canvas.setActiveObject(poly);
+        bringGuideToFront();
+        canvas.requestRenderAll();
+        hideCustomShapeModal();
+    }
+
+    function showCustomShapeModal(){
+        buildCustomShapeGrid();
+        customShapeModal.classList.add('visible');
+    }
+    function hideCustomShapeModal(){
+        customShapeModal.classList.remove('visible');
+    }
+    customShapeBtn.addEventListener('click', showCustomShapeModal);
+    customShapeCloseBtn.addEventListener('click', hideCustomShapeModal);
+    customShapeModal.addEventListener('mousedown', (e) => {
+        if (e.target === customShapeModal) hideCustomShapeModal(); // 어두운 배경 클릭 시 닫기
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && customShapeModal.classList.contains('visible')) hideCustomShapeModal();
+    });
+
     const drawBtn = document.getElementById('drawBtn');
     const brushControls = document.getElementById('brushControls');
     const brushColorInput = document.getElementById('brushColorInput');
@@ -830,6 +1756,7 @@
     // ===================== 줌 & 화면 이동(패닝) =====================
     const zoomLabel = document.getElementById('zoomLabel');
     function setZoom(z){
+        if (isZoomLocked) return; // 화면고정 중에는 +/- 버튼으로도 확대/축소되지 않음
         currentZoom = Math.min(3, Math.max(0.3, z));
         const center = { x: canvas.width / 2, y: canvas.height / 2 };
         canvas.zoomToPoint(center, currentZoom);
@@ -844,9 +1771,36 @@
     document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(currentZoom - 0.1));
     document.getElementById('zoomResetBtn').addEventListener('click', resetZoom);
 
+    const zoomLockBtn = document.getElementById('zoomLockBtn');
+    zoomLockBtn.addEventListener('click', () => {
+        isZoomLocked = !isZoomLocked;
+        if (isZoomLocked) {
+            resetZoom(); // 고정할 때는 항상 100%로 먼저 맞춰둠
+            zoomLockBtn.classList.add('active');
+            zoomLockBtn.innerHTML = '🔒 화면고정';
+        } else {
+            zoomLockBtn.classList.remove('active');
+            zoomLockBtn.innerHTML = '🔓 화면고정';
+        }
+    });
+
+    // ---- 안내선(10px 격자): 버튼으로 켜고 끄거나, R키를 누르고 있는 동안만 잠깐 보여줌 ----
+    const gridGuideBtn = document.getElementById('gridGuideBtn');
+    const gridGuideOverlay = document.getElementById('gridGuideOverlay');
+    let isGridGuideOn = false;   // 버튼으로 켠 상태(계속 유지됨)
+    let isGridKeyHeld = false;   // R키를 누르고 있는 동안만 true
+    function updateGridGuideOverlay(){
+        gridGuideOverlay.classList.toggle('visible', isGridGuideOn || isGridKeyHeld);
+    }
+    gridGuideBtn.addEventListener('click', () => {
+        isGridGuideOn = !isGridGuideOn;
+        gridGuideBtn.classList.toggle('active', isGridGuideOn);
+        updateGridGuideOverlay();
+    });
+
     let isPanning = false;
     let panLastX = 0, panLastY = 0;
-    let isPanKeyDown = false; // M 키를 누르고 있는 동안 = 포토샵 손 도구
+    let isPanKeyDown = false; // (더 이상 M 키로 켜지지 않음: M은 사각형 생성 단축키로 변경됨. Alt+드래그로 패닝)
 
     // ===================== 캔버스 배경색 =====================
     document.getElementById('canvasBgInput').addEventListener('input', (e) => {
@@ -863,6 +1817,7 @@
     const fillColorRow = document.getElementById('fillColorRow');
     const strokeColorRow = document.getElementById('strokeColorRow');
     const strokeWidthRow = document.getElementById('strokeWidthRow');
+    const shapeBlurRow = document.getElementById('shapeBlurRow');
 
     const opacityInput = document.getElementById('opacityInput');
     const lockBtn = document.getElementById('lockBtn');
@@ -871,6 +1826,9 @@
     const fontSizeInput = document.getElementById('fontSizeInput');
     const letterSpacingInput = document.getElementById('letterSpacingInput');
     const textColorInput = document.getElementById('textColorInput');
+    const textStrokeColorInput = document.getElementById('textStrokeColorInput');
+    const textStrokeWidthInput = document.getElementById('textStrokeWidthInput');
+    const textBlurInput = document.getElementById('textBlurInput');
     const boldBtn = document.getElementById('boldBtn');
     const italicBtn = document.getElementById('italicBtn');
     const underlineBtn = document.getElementById('underlineBtn');
@@ -878,6 +1836,7 @@
     const fillColorInput = document.getElementById('fillColorInput');
     const strokeColorInput = document.getElementById('strokeColorInput');
     const strokeWidthInput = document.getElementById('strokeWidthInput');
+    const shapeBlurInput = document.getElementById('shapeBlurInput');
 
     const filterGrayscale = document.getElementById('filterGrayscale');
     const filterSepia = document.getElementById('filterSepia');
@@ -889,6 +1848,8 @@
     const filterSharpen = document.getElementById('filterSharpen');
 
     function hidePropPanel(){
+        if (isEraseMode) setEraseMode(false, { reselect: false });
+        if (isMagicWandMode) setMagicWandMode(false, { reselect: false });
         propPanel.classList.remove('visible');
         textPanel.classList.remove('visible');
         imagePanel.classList.remove('visible');
@@ -897,6 +1858,7 @@
         fillColorRow.classList.add('hidden');
         strokeColorRow.classList.add('hidden');
         strokeWidthRow.classList.add('hidden');
+        shapeBlurRow.classList.add('hidden');
     }
 
     // ---- 속성 패널 높이를 항상 동일하게 고정 ----
@@ -913,6 +1875,7 @@
         const wasFillHidden = fillColorRow.classList.contains('hidden');
         const wasStrokeColorHidden = strokeColorRow.classList.contains('hidden');
         const wasStrokeWidthHidden = strokeWidthRow.classList.contains('hidden');
+        const wasShapeBlurHidden = shapeBlurRow.classList.contains('hidden');
 
         propPanel.style.minHeight = '0px';
         propPanel.style.visibility = 'hidden'; // 화면에 안 보이게(레이아웃은 그대로 유지) 측정
@@ -929,6 +1892,7 @@
         fillColorRow.classList.add('hidden');
         strokeColorRow.classList.add('hidden');
         strokeWidthRow.classList.add('hidden');
+        shapeBlurRow.classList.add('hidden');
         measure();
 
         // 채우기가 있는 도형(사각형/원/삼각형) 선택 상태
@@ -938,6 +1902,7 @@
         fillColorRow.classList.remove('hidden');
         strokeColorRow.classList.remove('hidden');
         strokeWidthRow.classList.remove('hidden');
+        shapeBlurRow.classList.remove('hidden');
         measure();
 
         // 선(테두리만 있는) 선택 상태
@@ -948,6 +1913,7 @@
         shapeColorPanel.classList.remove('visible');
         strokeColorRow.classList.add('hidden');
         strokeWidthRow.classList.add('hidden');
+        shapeBlurRow.classList.add('hidden');
         alignRow.classList.remove('hidden');
         imagePanel.classList.add('visible');
         measure();
@@ -960,6 +1926,7 @@
         fillColorRow.classList.toggle('hidden', wasFillHidden);
         strokeColorRow.classList.toggle('hidden', wasStrokeColorHidden);
         strokeWidthRow.classList.toggle('hidden', wasStrokeWidthHidden);
+        shapeBlurRow.classList.toggle('hidden', wasShapeBlurHidden);
         propPanel.classList.toggle('visible', wasVisible);
         propPanel.style.visibility = originalVisibility;
 
@@ -982,6 +1949,8 @@
     // ---- 선택된 오브젝트 모서리에 붙는 떠다니는 삭제(휴지통) 아이콘 ----
     const floatingDeleteBtn = document.getElementById('floatingDeleteBtn');
     const floatingRotateBtn = document.getElementById('floatingRotateBtn');
+    const floatingColorBar = document.getElementById('floatingColorBar');
+    const floatingColorThumb = document.getElementById('floatingColorThumb');
 
     // 오브젝트의 캔버스 내부 좌표를 실제 화면(페이지) 좌표로 변환 (줌/이동 반영)
     function getObjectScreenRect(obj){
@@ -1005,24 +1974,86 @@
     function updateDeleteIconPosition(){
         if (!canvas) return;
         const obj = canvas.getActiveObject();
-        if (!obj || obj.isGuide) { hideDeleteIcon(); hideRotateIcon(); return; }
+        if (!obj || obj.isGuide) { hideDeleteIcon(); hideRotateIcon(); hideColorBar(); return; }
         const rect = getObjectScreenRect(obj);
         floatingDeleteBtn.style.left = (rect.left + rect.width) + 'px';
         floatingDeleteBtn.style.top = rect.top + 'px';
         floatingDeleteBtn.classList.add('visible');
-        // 회전 아이콘도 휴지통과 똑같이, 오브젝트의 아래쪽 모서리(우측 하단)에 고정해서 붙임
-        floatingRotateBtn.style.left = (rect.left + rect.width) + 'px';
-        floatingRotateBtn.style.top = (rect.top + rect.height) + 'px';
+        // 회전 아이콘은 삭제(휴지통) 아이콘과 같은 높이에서, 그 오른쪽에 나란히 배치
+        const iconGap = floatingDeleteBtn.offsetWidth + 6;
+        floatingRotateBtn.style.left = (rect.left + rect.width + iconGap) + 'px';
+        floatingRotateBtn.style.top = rect.top + 'px';
         floatingRotateBtn.classList.add('visible');
+
+        // 색상 적용이 가능한 오브젝트(텍스트/채우기 도형/선)일 때만, 7색 게이지바를 표시
+        const canColor = getSelectedTextboxes().length > 0 || ['rect', 'circle', 'triangle', 'line', 'path'].includes(obj.type);
+        if (canColor) {
+            const isMobileViewport = window.innerWidth <= 768;
+            const barWidth = floatingColorBar.offsetWidth || (isMobileViewport ? 130 : 190);
+            const barHeight = floatingColorBar.offsetHeight || (isMobileViewport ? 22 : 30);
+            let barLeft, barTop;
+            if (isMobileViewport) {
+                // 모바일: 오른쪽에 나란히 붙이면 글씨를 가릴 수 있어서, 삭제/회전 아이콘 "위쪽"에 배치
+                // 삭제 아이콘과 너무 가까우면 실수로 삭제를 누를 수 있어 간격을 20px 더 띄움
+                barLeft = rect.left + rect.width;
+                barTop = rect.top - barHeight - 28;
+                if (barTop < 8) {
+                    // 오브젝트가 화면 맨 위쪽에 있어 위 공간이 없으면 대신 아래쪽에 배치
+                    barTop = rect.top + floatingDeleteBtn.offsetHeight + 28;
+                }
+            } else {
+                // PC: 삭제·회전 아이콘과 같은 줄, 그 오른쪽에 나란히 배치
+                const rotateGap = floatingRotateBtn.offsetWidth + 6;
+                barLeft = rect.left + rect.width + iconGap + rotateGap;
+                barTop = rect.top;
+            }
+            const maxLeft = window.innerWidth - barWidth - 8;
+            if (barLeft > maxLeft) barLeft = Math.max(8, maxLeft);
+            floatingColorBar.style.left = barLeft + 'px';
+            floatingColorBar.style.top = barTop + 'px';
+            floatingColorBar.classList.add('visible');
+            syncColorThumbFromObject(obj);
+        } else {
+            hideColorBar();
+        }
     }
     function hideDeleteIcon(){
         floatingDeleteBtn.classList.remove('visible');
+        resetDeleteConfirm();
     }
     function hideRotateIcon(){
         floatingRotateBtn.classList.remove('visible');
     }
+    function hideColorBar(){
+        floatingColorBar.classList.remove('visible');
+    }
+
+    // ---- 삭제(휴지통) 버튼: 실수로 삭제되지 않도록 두 번 연속 눌러야 실제로 삭제됨 ----
+    let deleteConfirmArmed = false;
+    let deleteConfirmObj = null;
+    let deleteConfirmTimeout = null;
+    function resetDeleteConfirm(){
+        deleteConfirmArmed = false;
+        deleteConfirmObj = null;
+        clearTimeout(deleteConfirmTimeout);
+        floatingDeleteBtn.classList.remove('confirm');
+        floatingDeleteBtn.title = '삭제';
+    }
     floatingDeleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        const obj = canvas.getActiveObject();
+        // 처음 누르는 경우이거나, 그 사이에 선택이 다른 오브젝트로 바뀐 경우: 삭제하지 않고 확인 상태로만 전환
+        if (!deleteConfirmArmed || deleteConfirmObj !== obj) {
+            deleteConfirmArmed = true;
+            deleteConfirmObj = obj;
+            floatingDeleteBtn.classList.add('confirm');
+            floatingDeleteBtn.title = '한 번 더 누르면 삭제됩니다';
+            clearTimeout(deleteConfirmTimeout);
+            deleteConfirmTimeout = setTimeout(resetDeleteConfirm, 2000); // 2초 안에 다시 누르지 않으면 확인 취소
+            return;
+        }
+        // 같은 오브젝트를 대상으로 두 번째로 누른 경우: 실제 삭제
+        resetDeleteConfirm();
         deleteActive();
     });
     window.addEventListener('scroll', updateDeleteIconPosition, { passive: true });
@@ -1103,6 +2134,132 @@
     floatingRotateBtn.addEventListener('touchend', () => { endRotateDrag(); });
     floatingRotateBtn.addEventListener('touchcancel', () => { endRotateDrag(); });
 
+    // ---- 삭제/회전 아이콘 옆에 붙는 7색 컬러 게이지바: 눌러서 좌우로 드래그하면 그 위치의 색이 바로 적용됨 ----
+    const QUICK_COLOR_STOPS = ['#ff0000', '#ff7f00', '#ffff00', '#00a651', '#0072ff', '#4b0082', '#9400d3', '#ffffff', '#888888', '#000000'];
+    function hexToRgb(hex){
+        const v = parseInt(hex.slice(1), 16);
+        return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+    }
+    function rgbToHex(r, g, b){
+        const c = [r, g, b].map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0'));
+        return '#' + c.join('');
+    }
+    // 0~1 사이 위치를 7개 색 구간에서 보간해 하나의 색으로 변환
+    function quickColorAtRatio(ratio){
+        ratio = Math.min(1, Math.max(0, ratio));
+        const segments = QUICK_COLOR_STOPS.length - 1;
+        const scaled = ratio * segments;
+        let idx = Math.floor(scaled);
+        if (idx >= segments) idx = segments - 1;
+        const localT = scaled - idx;
+        const c1 = hexToRgb(QUICK_COLOR_STOPS[idx]);
+        const c2 = hexToRgb(QUICK_COLOR_STOPS[idx + 1]);
+        return rgbToHex(
+            c1[0] + (c2[0] - c1[0]) * localT,
+            c1[1] + (c2[1] - c1[1]) * localT,
+            c1[2] + (c2[2] - c1[2]) * localT
+        );
+    }
+    // 현재 선택된 오브젝트 색과 가장 가까운 색 구간 위치로 슬라이더 손잡이를 옮겨둠 (완벽히 일치하지 않아도 대략적인 위치)
+    function syncColorThumbFromObject(obj){
+        const selectedTextboxes = getSelectedTextboxes();
+        let currentColor = null;
+        if (selectedTextboxes.length > 0) {
+            currentColor = typeof selectedTextboxes[0].fill === 'string' ? selectedTextboxes[0].fill : null;
+        } else if (obj.type === 'line') {
+            currentColor = obj.stroke || null;
+        } else if (['rect', 'circle', 'triangle', 'path'].includes(obj.type)) {
+            currentColor = (typeof obj.fill === 'string' && obj.fill) ? obj.fill : null;
+        }
+        let bestRatio = 0;
+        if (currentColor && /^#[0-9a-fA-F]{6}$/.test(currentColor)) {
+            const target = hexToRgb(currentColor);
+            let bestDist = Infinity;
+            const steps = 60;
+            for (let i = 0; i <= steps; i++) {
+                const r = i / steps;
+                const c = hexToRgb(quickColorAtRatio(r));
+                const d = (c[0] - target[0]) ** 2 + (c[1] - target[1]) ** 2 + (c[2] - target[2]) ** 2;
+                if (d < bestDist) { bestDist = d; bestRatio = r; }
+            }
+        }
+        floatingColorThumb.style.left = (bestRatio * 100) + '%';
+    }
+    // 실제로 선택된 오브젝트에 색을 적용 (텍스트=글자색 / 사각형·원·삼각형=채우기 / 선=테두리색)
+    function applyQuickColor(hex){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        const selectedTextboxes = getSelectedTextboxes();
+        if (selectedTextboxes.length > 0) {
+            selectedTextboxes.forEach(o => {
+                applyTextStyle(o, 'fill', hex);
+                syncGlowColorIfActive(o, hex);
+            });
+            textColorInput.value = hex;
+        } else if (obj.type === 'line') {
+            obj.set('stroke', hex);
+            syncGlowColorIfActive(obj, hex);
+            strokeColorInput.value = hex;
+        } else if (['rect', 'circle', 'triangle', 'path'].includes(obj.type)) {
+            obj.set('fill', hex);
+            syncGlowColorIfActive(obj, hex);
+            fillColorInput.value = hex;
+        } else {
+            return;
+        }
+        canvas.requestRenderAll();
+    }
+    let colorBarDragging = false;
+    function applyColorAtClientX(clientX){
+        const rect = floatingColorBar.getBoundingClientRect();
+        const ratio = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
+        const hex = quickColorAtRatio(ratio);
+        floatingColorThumb.style.left = (Math.min(1, Math.max(0, ratio)) * 100) + '%';
+        applyQuickColor(hex);
+    }
+    function startColorDrag(clientX){
+        colorBarDragging = true;
+        applyColorAtClientX(clientX);
+    }
+    function moveColorDrag(clientX){
+        if (!colorBarDragging) return;
+        applyColorAtClientX(clientX);
+    }
+    function endColorDrag(){
+        if (!colorBarDragging) return;
+        colorBarDragging = false;
+        pushHistory();
+    }
+    function handleColorMouseMove(e){ moveColorDrag(e.clientX); }
+    function handleColorMouseUp(e){
+        endColorDrag();
+        document.removeEventListener('mousemove', handleColorMouseMove);
+        document.removeEventListener('mouseup', handleColorMouseUp);
+    }
+    floatingColorBar.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        startColorDrag(e.clientX);
+        document.addEventListener('mousemove', handleColorMouseMove);
+        document.addEventListener('mouseup', handleColorMouseUp);
+    });
+    floatingColorBar.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const t = e.touches[0];
+        if (!t) return;
+        startColorDrag(t.clientX);
+    }, { passive: false });
+    floatingColorBar.addEventListener('touchmove', (e) => {
+        if (!colorBarDragging) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        if (!t) return;
+        moveColorDrag(t.clientX);
+    }, { passive: false });
+    floatingColorBar.addEventListener('touchend', () => { endColorDrag(); });
+    floatingColorBar.addEventListener('touchcancel', () => { endColorDrag(); });
+
     // ===================== 반응형 캔버스 크기 조정 (모바일 회전/리사이즈 대응) =====================
     // 화면 크기가 바뀌면(모바일 세로↔가로 회전 등) 캔버스 폭을 컨테이너에 맞게 다시 계산하고,
     // 현재 캔버스의 오브젝트뿐 아니라 아직 화면에 없는 다른 디자인/면의 저장된 좌표까지
@@ -1153,6 +2310,7 @@
         rescaleStoredDesigns(ratio);
         canvas.requestRenderAll();
         updateDeleteIconPosition();
+        updateTabContainerPosition();
     }
 
     let canvasResizeTimer;
@@ -1182,12 +2340,14 @@
 
         propPanel.classList.add('visible');
         opacityInput.value = obj.opacity != null ? obj.opacity : 1;
-        lockBtn.textContent = obj.lockMovementX ? '🔓 잠금해제' : '🔒 잠금';
+        // 아이콘만 남겨서 버튼 폭을 줄임 (안내 문구는 title 툴팁으로)
+        lockBtn.textContent = obj.lockMovementX ? '🔓' : '🔒';
+        lockBtn.title = obj.lockMovementX ? '잠금해제' : '잠금';
         angleInput.value = Math.round(((obj.angle || 0) % 360 + 360) % 360);
 
         const selectedTextboxes = getSelectedTextboxes();
         const isText = selectedTextboxes.length > 0;
-        const isFillShape = ['rect', 'circle', 'triangle'].includes(obj.type);
+        const isFillShape = ['rect', 'circle', 'triangle', 'path'].includes(obj.type);
         const isLine = obj.type === 'line';
         const isImage = obj.type === 'image';
 
@@ -1210,6 +2370,14 @@
             boldBtn.classList.toggle('active', currentWeightNum >= 700);
             italicBtn.classList.toggle('active', first.fontStyle === 'italic');
             underlineBtn.classList.toggle('active', !!first.underline);
+            textStrokeColorInput.value = first.stroke || '#000000';
+            textStrokeWidthInput.value = first.strokeWidth || 0;
+            // 예전 방식(안쪽 테두리)으로 저장된 기존 텍스트를 선택해도 바깥테두리로 보이도록 보정
+            if (first.strokeWidth > 0 && first.paintFirst !== 'stroke') {
+                selectedTextboxes.forEach(o => o.set('paintFirst', 'stroke'));
+                canvas.requestRenderAll();
+            }
+            textBlurInput.value = (first.shadow && first.shadow.blur) ? first.shadow.blur : 0;
         }
 
         // 도형(사각형/원/삼각형/선)을 선택했을 때는 정렬(좌/중/우/정렬) 버튼이 필요 없으므로 숨기고,
@@ -1220,10 +2388,12 @@
         fillColorRow.classList.toggle('hidden', !isFillShape);
         strokeColorRow.classList.toggle('hidden', !showShapeRow);
         strokeWidthRow.classList.toggle('hidden', !showShapeRow);
+        shapeBlurRow.classList.toggle('hidden', !showShapeRow);
         if (showShapeRow) {
             fillColorInput.value = (typeof obj.fill === 'string' && obj.fill) ? obj.fill : '#3498db';
             strokeColorInput.value = obj.stroke || '#111111';
             strokeWidthInput.value = obj.strokeWidth || 0;
+            shapeBlurInput.value = (obj.shadow && obj.shadow.blur) ? obj.shadow.blur : 0;
         }
 
         imagePanel.classList.toggle('visible', isImage);
@@ -1293,8 +2463,8 @@
         if (wasMultiple && axis === 'v' && pos === 'center') {
             // 세로 가운데 정렬을 여러 개 선택한 채로 누르면 캔버스 중앙으로 모으는 게 아니라,
             // 맨 위에 있는 것의 위치는 그대로 두고 나머지를 위에서 아래 순서로
-            // 간격이 정확히 10px씩 되도록 나란히 배치합니다.
-            const GAP = 10;
+            // 간격이 정확히 (입력한 픽셀 값)만큼씩 되도록 나란히 배치합니다.
+            const GAP = Math.max(0, parseInt(document.getElementById('alignGapInput').value, 10) || 0);
             const sorted = objs.slice().sort((a, b) => {
                 return a.getBoundingRect(true, true).top - b.getBoundingRect(true, true).top;
             });
@@ -1307,12 +2477,30 @@
                 nextTop = newRect.top + newRect.height + GAP;
             });
         } else {
+            // 여러 개를 선택한 채로 좌/중/우 정렬을 누르면, 캔버스 기준이 아니라
+            // 선택된 것들 중 가장 위(상단)에 있는 오브젝트의 왼쪽/가운데/오른쪽을 기준으로 나머지를 맞춤
+            let refRect = null;
+            if (wasMultiple && axis === 'h') {
+                const topmost = objs.slice().sort((a, b) => {
+                    return a.getBoundingRect(true, true).top - b.getBoundingRect(true, true).top;
+                })[0];
+                refRect = topmost.getBoundingRect(true, true);
+            }
             objs.forEach(obj => {
                 const rect = obj.getBoundingRect(true, true);
                 if (axis === 'h') {
-                    let targetLeft = 0;
-                    if (pos === 'center') targetLeft = (canvas.width - rect.width) / 2;
-                    else if (pos === 'end') targetLeft = canvas.width - rect.width;
+                    let targetLeft;
+                    if (refRect) {
+                        // 상단 텍스트(오브젝트) 기준 정렬
+                        if (pos === 'center') targetLeft = refRect.left + (refRect.width - rect.width) / 2;
+                        else if (pos === 'end') targetLeft = refRect.left + refRect.width - rect.width;
+                        else targetLeft = refRect.left;
+                    } else {
+                        // 하나만 선택했을 때는 기존처럼 캔버스 기준으로 정렬
+                        targetLeft = 0;
+                        if (pos === 'center') targetLeft = (canvas.width - rect.width) / 2;
+                        else if (pos === 'end') targetLeft = canvas.width - rect.width;
+                    }
                     obj.left += (targetLeft - rect.left);
                 } else {
                     let targetTop = 0;
@@ -1354,9 +2542,82 @@
     document.getElementById('layerBackwardBtn').addEventListener('click', () => layerAction('backward'));
     document.getElementById('layerBackBtn').addEventListener('click', () => layerAction('back'));
 
+    // ===================== 우클릭 커스텀 메뉴 (레이어 순서 + 실행취소/다시실행) =====================
+    // 텍스트/이미지/도형을 오른쪽 클릭하면 브라우저 기본 메뉴("이미지를 다른 이름으로 저장", "검사" 등)
+    // 대신 이 메뉴가 뜨도록 함
+    const customContextMenu = document.getElementById('customContextMenu');
+    const ctxLayerFrontBtn = document.getElementById('ctxLayerFrontBtn');
+    const ctxLayerForwardBtn = document.getElementById('ctxLayerForwardBtn');
+    const ctxLayerBackwardBtn = document.getElementById('ctxLayerBackwardBtn');
+    const ctxLayerBackBtn = document.getElementById('ctxLayerBackBtn');
+
+    // 메뉴 안에서의 mousedown이 문서 전체의 다른 리스너(캔버스 바깥 클릭 시 선택 해제 등)로
+    // 새어나가 클릭 직전에 선택이 풀려버리는 충돌을 원천적으로 막음
+    customContextMenu.addEventListener('mousedown', (e) => { e.stopPropagation(); });
+
+    function hideContextMenu(){
+        customContextMenu.classList.remove('visible');
+    }
+    function showContextMenu(x, y){
+        const hasTarget = !!(canvas && canvas.getActiveObject());
+        [ctxLayerFrontBtn, ctxLayerForwardBtn, ctxLayerBackwardBtn, ctxLayerBackBtn].forEach(btn => { btn.disabled = !hasTarget; });
+
+        customContextMenu.classList.add('visible');
+        // 화면 밖으로 넘어가지 않도록 위치 보정
+        const menuWidth = customContextMenu.offsetWidth || 180;
+        const menuHeight = customContextMenu.offsetHeight || 220;
+        let left = x, top = y;
+        if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+        if (top + menuHeight > window.innerHeight - 8) top = window.innerHeight - menuHeight - 8;
+        customContextMenu.style.left = Math.max(8, left) + 'px';
+        customContextMenu.style.top = Math.max(8, top) + 'px';
+    }
+
+    ctxLayerFrontBtn.addEventListener('click', () => { layerAction('front'); hideContextMenu(); });
+    ctxLayerForwardBtn.addEventListener('click', () => { layerAction('forward'); hideContextMenu(); });
+    ctxLayerBackwardBtn.addEventListener('click', () => { layerAction('backward'); hideContextMenu(); });
+    ctxLayerBackBtn.addEventListener('click', () => { layerAction('back'); hideContextMenu(); });
+
+    // 메뉴 바깥을 클릭하거나, 스크롤/창 크기 변경/Esc 시 메뉴 닫기
+    document.addEventListener('mousedown', (e) => {
+        if (!customContextMenu.classList.contains('visible')) return;
+        if (!e.target.closest('.custom-context-menu')) hideContextMenu();
+    });
+    window.addEventListener('scroll', hideContextMenu, true);
+    window.addEventListener('resize', hideContextMenu);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
+
     function duplicateActive(){
         const obj = canvas.getActiveObject();
         if (!obj) return;
+
+        // 여러 개를 함께 선택한 상태(ActiveSelection)라면, 선택된 오브젝트 전부를 각각 복제
+        if (obj.type === 'activeSelection' && obj.getObjects().length > 1) {
+            const originals = obj.getObjects().slice();
+            // discardActiveObject를 먼저 호출해야 각 오브젝트의 left/top이
+            // (선택그룹 기준 상대좌표가 아닌) 캔버스 절대좌표로 정상 복원됨
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+            const clones = [];
+            let remaining = originals.length;
+            originals.forEach((o) => {
+                o.clone((cloned) => {
+                    cloned.set({ left: (o.left || 0), top: (o.top || 0) + 20 });
+                    applySelectionMode(cloned);
+                    canvas.add(cloned);
+                    clones.push(cloned);
+                    remaining--;
+                    if (remaining === 0) {
+                        bringGuideToFront();
+                        canvas.setActiveObject(new fabric.ActiveSelection(clones, { canvas }));
+                        canvas.requestRenderAll();
+                        pushHistory();
+                    }
+                }, ['selectable', 'evented']);
+            });
+            return;
+        }
+
         obj.clone((cloned) => {
             canvas.discardActiveObject();
             // 대각선으로 어긋나지 않도록 왼쪽(left)은 원본과 동일하게 맞추고, 아래로만 살짝 내려서 배치
@@ -1384,22 +2645,52 @@
         }, ['selectable', 'evented']);
     }
 
+    // Ctrl+X: 선택한 오브젝트를 클립보드에 복사해두고 캔버스에서 바로 삭제 (잘라내기)
+    function cutActive(){
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        obj.clone((cloned) => {
+            // 클립보드에 먼저 확실히 담아둔 뒤에 삭제해야, 이미지처럼 복제가 비동기인
+            // 경우에도 삭제가 먼저 일어나 클립보드가 비는 일이 없음
+            clipboardObject = cloned;
+            deleteActive();
+        }, ['selectable', 'evented']);
+    }
+
     function pasteClipboard(){
+        performPaste(false);
+    }
+
+    // Ctrl+Shift+V: 복사한 오브젝트를 원본과 완전히 같은 위치(겹쳐서)에 바로 붙여넣기
+    function pasteClipboardInPlace(){
+        performPaste(true);
+    }
+
+    function performPaste(inPlace){
         if (!clipboardObject) return;
         clipboardObject.clone((cloned) => {
             canvas.discardActiveObject();
 
-            // 오른쪽 아래로 밀려나지 않고, 원본과 같은 왼쪽 위치를 유지한 채
-            // 바로 아래로 붙여넣어서 줄맞춤이 쉽도록 함
-            const gap = 10;
-            const sourceHeight = (typeof clipboardObject.getScaledHeight === 'function')
-                ? clipboardObject.getScaledHeight()
-                : (clipboardObject.height || 0) * (clipboardObject.scaleY || 1);
-            cloned.set({
-                left: clipboardObject.left,
-                top: (clipboardObject.top || 0) + sourceHeight + gap,
-                evented: true
-            });
+            if (inPlace) {
+                // 제자리 붙여넣기: 원본과 완전히 같은 위치에 그대로 겹쳐서 놓음
+                cloned.set({
+                    left: clipboardObject.left,
+                    top: clipboardObject.top,
+                    evented: true
+                });
+            } else {
+                // 오른쪽 아래로 밀려나지 않고, 원본과 같은 왼쪽 위치를 유지한 채
+                // 바로 아래로 붙여넣어서 줄맞춤이 쉽도록 함
+                const gap = 10;
+                const sourceHeight = (typeof clipboardObject.getScaledHeight === 'function')
+                    ? clipboardObject.getScaledHeight()
+                    : (clipboardObject.height || 0) * (clipboardObject.scaleY || 1);
+                cloned.set({
+                    left: clipboardObject.left,
+                    top: (clipboardObject.top || 0) + sourceHeight + gap,
+                    evented: true
+                });
+            }
 
             if (cloned.type === 'activeSelection') {
                 // 여러 개를 한 번에 복사한 경우: 그룹을 풀어서 각각 캔버스에 추가
@@ -1419,7 +2710,7 @@
             canvas.requestRenderAll();
             pushHistory();
 
-            // 연속으로 붙여넣기 하면 계속 바로 아래로 이어서 쌓이도록 기준 위치 갱신
+            // 연속으로 붙여넣기 하면 계속 이어서 붙을 수 있도록 기준 위치 갱신
             clipboardObject = cloned;
         }, ['selectable', 'evented']);
     }
@@ -1465,11 +2756,69 @@
         return Number.isNaN(n) ? 400 : n;
     }
 
+    // 현재 텍스트(여러 줄일 경우 가장 긴 줄 기준)의 실제 렌더링 폭을 측정해서,
+    // 텍스트박스 너비를 그 폭에 딱 맞게 유지 — 줄바꿈으로 강제로 아래에 써지는 것을 막고,
+    // 글자가 항상 오른쪽으로 이어지도록(우측 확장) 함
+    function fitTextboxWidth(obj){
+        if (!obj || obj.type !== 'textbox') return;
+        const ctx = fitTextboxWidth._ctx || (fitTextboxWidth._ctx = document.createElement('canvas').getContext('2d'));
+        const weight = obj.fontWeight || 400;
+        const style = obj.fontStyle || 'normal';
+        const size = obj.fontSize || 28;
+        const family = obj.fontFamily || 'Malgun Gothic';
+        ctx.font = `${style} ${weight} ${size}px "${family}"`;
+        const lines = String(obj.text || '').split('\n');
+        let maxWidth = 0;
+        lines.forEach(line => {
+            const content = line.length ? line : ' ';
+            let w = ctx.measureText(content).width;
+            // 자간(charSpacing, 1/1000 em 단위)도 대략 반영
+            if (obj.charSpacing) w += (obj.charSpacing / 1000) * size * content.length;
+            if (w > maxWidth) maxWidth = w;
+        });
+        const newWidth = Math.max(40, Math.ceil(maxWidth) + 14 + (obj.strokeWidth ? obj.strokeWidth * 2 : 0));
+        if (Math.abs((obj.width || 0) - newWidth) > 1) {
+            obj.set('width', newWidth);
+            obj.setCoords();
+        }
+    }
+
     function applyTextStyle(obj, key, value){
         if (!obj || obj.type !== 'textbox') return;
         if (obj.isEditing) obj.exitEditing();
         if (obj.styles && Object.keys(obj.styles).length) obj.styles = {};
         obj.set(key, value);
+        if (key !== 'fill') fitTextboxWidth(obj);
+    }
+
+    // ===================== 가우시안 블러(번짐) 효과 =====================
+    // 오브젝트와 같은 색의 그림자를 offset 0으로 줘서, 테두리가 뿌옇게 번지는 효과를 만듭니다.
+    // 오브젝트가 이동/색이 바뀌어도 그림자는 항상 같은 색으로 오브젝트에 딱 붙어서 함께 움직입니다.
+    // 블러 강도가 셀수록(blur 값이 클수록) 번지는 테두리도 함께 커집니다.
+    function getObjectMainColor(obj){
+        if (!obj) return '#111111';
+        if (obj.type === 'line') return obj.stroke || '#111111';
+        return (typeof obj.fill === 'string' && obj.fill) ? obj.fill : '#111111';
+    }
+    function setGlowBlur(obj, blurValue, color){
+        if (!obj) return;
+        const blur = parseInt(blurValue, 10) || 0;
+        if (blur <= 0) {
+            obj.set('shadow', null);
+            return;
+        }
+        obj.set('shadow', new fabric.Shadow({
+            color: color || getObjectMainColor(obj),
+            blur: blur,
+            offsetX: 0,
+            offsetY: 0
+        }));
+    }
+    // 현재 블러가 켜져 있는(shadow.blur > 0) 오브젝트라면, 색이 바뀔 때 번짐 색도 함께 맞춰줌
+    function syncGlowColorIfActive(obj, color){
+        if (obj && obj.shadow && obj.shadow.blur > 0) {
+            obj.shadow.color = color;
+        }
     }
 
     fontFamilySelect.addEventListener('change', () => {
@@ -1548,10 +2897,45 @@
     textColorInput.addEventListener('input', () => {
         const textboxes = getSelectedTextboxes();
         if (!textboxes.length) return;
-        textboxes.forEach(obj => applyTextStyle(obj, 'fill', textColorInput.value));
+        textboxes.forEach(obj => {
+            applyTextStyle(obj, 'fill', textColorInput.value);
+            syncGlowColorIfActive(obj, textColorInput.value); // 번짐 효과가 켜져 있으면 번짐 색도 같이 따라감
+        });
         canvas.requestRenderAll();
     });
     textColorInput.addEventListener('change', () => pushHistory());
+
+    textStrokeColorInput.addEventListener('input', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        textboxes.forEach(obj => {
+            applyTextStyle(obj, 'stroke', textStrokeColorInput.value);
+            obj.set('paintFirst', 'stroke'); // 테두리를 안쪽이 아닌 바깥쪽에만 보이게 함
+        });
+        canvas.requestRenderAll();
+    });
+    textStrokeColorInput.addEventListener('change', () => pushHistory());
+
+    textStrokeWidthInput.addEventListener('input', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const width = Math.max(0, parseInt(textStrokeWidthInput.value, 10) || 0);
+        textboxes.forEach(obj => {
+            applyTextStyle(obj, 'strokeWidth', width);
+            obj.set('paintFirst', 'stroke'); // 테두리를 안쪽이 아닌 바깥쪽에만 보이게 함
+        });
+        canvas.requestRenderAll();
+    });
+    textStrokeWidthInput.addEventListener('change', () => pushHistory());
+
+    textBlurInput.addEventListener('input', () => {
+        const textboxes = getSelectedTextboxes();
+        if (!textboxes.length) return;
+        const blurVal = parseInt(textBlurInput.value, 10) || 0;
+        textboxes.forEach(obj => setGlowBlur(obj, blurVal, getObjectMainColor(obj)));
+        canvas.requestRenderAll();
+    });
+    textBlurInput.addEventListener('change', () => pushHistory());
 
     boldBtn.addEventListener('click', () => {
         const textboxes = getSelectedTextboxes();
@@ -1609,6 +2993,7 @@
         const obj = canvas.getActiveObject();
         if (!obj) return;
         obj.set('fill', fillColorInput.value);
+        if (obj.type !== 'line') syncGlowColorIfActive(obj, fillColorInput.value); // 선(line)은 채우기색이 아니라 테두리색을 따름
         canvas.requestRenderAll();
     });
     fillColorInput.addEventListener('change', () => pushHistory());
@@ -1616,9 +3001,18 @@
         const obj = canvas.getActiveObject();
         if (!obj) return;
         obj.set('stroke', strokeColorInput.value);
+        if (obj.type === 'line') syncGlowColorIfActive(obj, strokeColorInput.value); // 선은 테두리색이 곧 번짐 색
         canvas.requestRenderAll();
     });
     strokeColorInput.addEventListener('change', () => pushHistory());
+    shapeBlurInput.addEventListener('input', () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+        const blurVal = parseInt(shapeBlurInput.value, 10) || 0;
+        setGlowBlur(obj, blurVal, getObjectMainColor(obj));
+        canvas.requestRenderAll();
+    });
+    shapeBlurInput.addEventListener('change', () => pushHistory());
     strokeWidthInput.addEventListener('input', () => {
         const obj = canvas.getActiveObject();
         if (!obj) return;
@@ -1698,6 +3092,245 @@
         pushHistory();
     });
 
+    // ===================== 지우개: 사진의 특정 부분을 문질러서 투명하게 만들기(간단 누끼 따기) =====================
+    // 포토샵의 지우개 도구처럼, 선택한 이미지 위를 마우스/손가락으로 문지르면
+    // 그 부분의 픽셀 알파값을 0으로 만들어(destination-out) 실제로 투명해지게 합니다.
+    const eraseToggleBtn = document.getElementById('eraseToggleBtn');
+    const eraseWidthInput = document.getElementById('eraseWidthInput');
+    let isEraseMode = false;
+    let eraseTargetImage = null;
+    let eraseDragging = false;
+    let eraseLastLocal = null;
+    let eraseStrokeChanged = false;
+
+    // 이미지의 원본 엘리먼트(img 태그)를 픽셀 조작이 가능한 <canvas>로 한 번만 바꿔서 반환.
+    // 이미 지우개로 만든 캔버스라면 그대로 재사용해서 이전에 지운 내용이 사라지지 않게 함.
+    function getEraseCanvasForImage(imgObj){
+        let el = imgObj.getElement();
+        if (el && el.tagName === 'CANVAS' && el.__isEraseCanvas) return el;
+        const w = imgObj.width, h = imgObj.height;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const cctx = c.getContext('2d');
+        cctx.drawImage(el, 0, 0, w, h);
+        c.__isEraseCanvas = true;
+        imgObj._element = c;
+        imgObj._originalElement = c; // 필터를 다시 적용해도 지운 부분이 되살아나지 않도록 원본도 함께 교체
+        return c;
+    }
+
+    // 캔버스(화면) 좌표를 이미지의 회전/확대·축소 이전 "원본 픽셀" 좌표로 변환
+    function screenPointToImagePixel(imgObj, pt){
+        const invMatrix = fabric.util.invertTransform(imgObj.calcTransformMatrix());
+        const local = fabric.util.transformPoint(pt, invMatrix);
+        return { x: local.x + imgObj.width / 2, y: local.y + imgObj.height / 2 };
+    }
+
+    function eraseDab(ctx, x, y, rx, ry){
+        if (rx <= 0 || ry <= 0) return;
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 이전 지점 → 현재 지점 사이를 촘촘히 이어서 찍어야, 빠르게 움직여도 중간이 끊기지 않음
+    function eraseStrokeTo(imgObj, ctx, fromPt, toPt, rx, ry){
+        const dx = toPt.x - fromPt.x, dy = toPt.y - fromPt.y;
+        const dist = Math.hypot(dx, dy);
+        const step = Math.max(1, Math.min(rx, ry) * 0.4);
+        const count = Math.max(1, Math.ceil(dist / step));
+        for (let i = 0; i <= count; i++) {
+            const t = i / count;
+            eraseDab(ctx, fromPt.x + dx * t, fromPt.y + dy * t, rx, ry);
+        }
+    }
+
+    // [ 키 / ] 키로 지우개 굵기를 조절할 때 사용 (단축키 핸들러에서 호출)
+    function changeEraseWidth(delta){
+        const min = parseInt(eraseWidthInput.min, 10) || 5;
+        const max = parseInt(eraseWidthInput.max, 10) || 150;
+        let v = (parseInt(eraseWidthInput.value, 10) || 30) + delta;
+        v = Math.max(min, Math.min(max, v));
+        eraseWidthInput.value = v;
+        showTipToast('지우개 굵기: ' + v, 900);
+    }
+
+    function setEraseMode(on, opts){
+        opts = opts || {};
+        isEraseMode = on;
+        eraseToggleBtn.classList.toggle('active', on);
+        if (on) {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') { isEraseMode = false; eraseToggleBtn.classList.remove('active'); return; }
+            if (typeof isMagicWandMode !== 'undefined' && isMagicWandMode) setMagicWandMode(false, { reselect: false });
+            eraseTargetImage = obj;
+            canvas.discardActiveObject();
+            canvas.selection = false;
+            canvas.skipTargetFind = true;
+            canvas.defaultCursor = 'crosshair';
+            canvas.hoverCursor = 'crosshair';
+            canvas.requestRenderAll();
+            showTipToast('굵기 조절해가며 배경을 투명하게 만들수 있습니다.\n단축키 하단 참고.', 3200);
+        } else {
+            canvas.selection = true;
+            canvas.skipTargetFind = false;
+            canvas.defaultCursor = 'default';
+            canvas.hoverCursor = 'move';
+            // reselect가 false면(패널을 닫는 흐름에서 호출된 경우) 다시 선택하지 않고 그냥 지우개만 끔
+            if (opts.reselect !== false && eraseTargetImage) {
+                canvas.setActiveObject(eraseTargetImage);
+                updatePropPanel();
+                updateDeleteIconPosition();
+            }
+            eraseTargetImage = null;
+            canvas.requestRenderAll();
+        }
+    }
+    eraseToggleBtn.addEventListener('click', () => setEraseMode(!isEraseMode));
+
+    // 지우개용 캔버스 이벤트는 반드시 canvas가 만들어진 뒤(DOMContentLoaded)에 등록해야
+    // "Cannot read properties of undefined (reading 'on')" 오류가 나지 않음
+    window.addEventListener('DOMContentLoaded', () => {
+        canvas.on('mouse:down', (opt) => {
+            if (!isEraseMode || !eraseTargetImage) return;
+            const c = getEraseCanvasForImage(eraseTargetImage);
+            const ctx = c.getContext('2d');
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            const radius = (parseInt(eraseWidthInput.value, 10) || 30) / 2;
+            const rx = radius / (eraseTargetImage.scaleX || 1);
+            const ry = radius / (eraseTargetImage.scaleY || 1);
+            const pt = screenPointToImagePixel(eraseTargetImage, canvas.getPointer(opt.e));
+            eraseDab(ctx, pt.x, pt.y, rx, ry);
+            ctx.restore();
+            eraseTargetImage.dirty = true;
+            eraseLastLocal = pt;
+            eraseDragging = true;
+            eraseStrokeChanged = true;
+            canvas.requestRenderAll();
+        });
+        canvas.on('mouse:move', (opt) => {
+            if (!isEraseMode || !eraseDragging || !eraseTargetImage) return;
+            const c = getEraseCanvasForImage(eraseTargetImage);
+            const ctx = c.getContext('2d');
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            const radius = (parseInt(eraseWidthInput.value, 10) || 30) / 2;
+            const rx = radius / (eraseTargetImage.scaleX || 1);
+            const ry = radius / (eraseTargetImage.scaleY || 1);
+            const pt = screenPointToImagePixel(eraseTargetImage, canvas.getPointer(opt.e));
+            eraseStrokeTo(eraseTargetImage, ctx, eraseLastLocal, pt, rx, ry);
+            ctx.restore();
+            eraseTargetImage.dirty = true;
+            eraseLastLocal = pt;
+            canvas.requestRenderAll();
+        });
+        canvas.on('mouse:up', () => {
+            if (!isEraseMode || !eraseDragging) return;
+            eraseDragging = false;
+            eraseLastLocal = null;
+            if (eraseStrokeChanged) { eraseStrokeChanged = false; pushHistory(); }
+        });
+    });
+
+    // ===================== 자동선택도구(매직완드): 비슷한 색 영역을 클릭 한 번으로 자동 선택해서 투명하게 =====================
+    // 포토샵 자동선택도구처럼, 클릭한 지점과 색이 비슷한 인접 픽셀들을 전부 찾아(flood fill)
+    // 한 번에 투명하게 만들어서 배경 제거(누끼)를 훨씬 쉽게 할 수 있게 함
+    const magicWandToggleBtn = document.getElementById('magicWandToggleBtn');
+    const magicWandToleranceInput = document.getElementById('magicWandToleranceInput');
+    let isMagicWandMode = false;
+    let magicWandTargetImage = null;
+
+    function setMagicWandMode(on, opts){
+        opts = opts || {};
+        isMagicWandMode = on;
+        magicWandToggleBtn.classList.toggle('active', on);
+        if (on) {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') { isMagicWandMode = false; magicWandToggleBtn.classList.remove('active'); return; }
+            if (isEraseMode) setEraseMode(false, { reselect: false }); // 지우개와 동시에 켜지지 않도록
+            magicWandTargetImage = obj;
+            canvas.discardActiveObject();
+            canvas.selection = false;
+            canvas.skipTargetFind = true;
+            canvas.defaultCursor = 'crosshair';
+            canvas.hoverCursor = 'crosshair';
+            canvas.requestRenderAll();
+            showTipToast('배경 등 비슷한 색 영역을 클릭하면 자동으로 투명해집니다.\n허용오차로 민감도를 조절하세요.', 3200);
+        } else {
+            canvas.selection = true;
+            canvas.skipTargetFind = false;
+            canvas.defaultCursor = 'default';
+            canvas.hoverCursor = 'move';
+            if (opts.reselect !== false && magicWandTargetImage) {
+                canvas.setActiveObject(magicWandTargetImage);
+                updatePropPanel();
+                updateDeleteIconPosition();
+            }
+            magicWandTargetImage = null;
+            canvas.requestRenderAll();
+        }
+    }
+    magicWandToggleBtn.addEventListener('click', () => setMagicWandMode(!isMagicWandMode));
+
+    // 시드 지점(startX, startY)과 색이 비슷한 인접 픽셀들을 flood fill로 찾아 전부 투명하게 만듦.
+    // tolerancePercent(0~100)가 클수록 더 넓은 범위의 색까지 같이 선택됨.
+    function magicWandRemove(imgObj, startX, startY, tolerancePercent){
+        const c = getEraseCanvasForImage(imgObj);
+        const ctx = c.getContext('2d');
+        const w = c.width, h = c.height;
+        startX = Math.floor(startX);
+        startY = Math.floor(startY);
+        if (startX < 0 || startY < 0 || startX >= w || startY >= h) return false;
+
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        const startPixel = startY * w + startX;
+        const startIdx = startPixel * 4;
+        if (data[startIdx + 3] === 0) return false; // 이미 투명한 곳을 클릭하면 아무 것도 하지 않음
+
+        const startR = data[startIdx], startG = data[startIdx + 1], startB = data[startIdx + 2];
+        const tol = (Math.max(0, Math.min(100, tolerancePercent)) / 100) * 441.7; // RGB 최대 거리(약 441.7) 기준으로 환산
+
+        const visited = new Uint8Array(w * h);
+        const stack = [startPixel];
+        visited[startPixel] = 1;
+        let changed = false;
+
+        while (stack.length) {
+            const p = stack.pop();
+            const x = p % w, y = (p - x) / w;
+            const idx = p * 4;
+            const dr = data[idx] - startR, dg = data[idx + 1] - startG, db = data[idx + 2] - startB;
+            if (Math.sqrt(dr * dr + dg * dg + db * db) > tol) continue; // 색 차이가 크면 여기서 확장 중단
+
+            data[idx + 3] = 0;
+            changed = true;
+
+            if (x + 1 < w && !visited[p + 1]) { visited[p + 1] = 1; stack.push(p + 1); }
+            if (x - 1 >= 0 && !visited[p - 1]) { visited[p - 1] = 1; stack.push(p - 1); }
+            if (y + 1 < h && !visited[p + w]) { visited[p + w] = 1; stack.push(p + w); }
+            if (y - 1 >= 0 && !visited[p - w]) { visited[p - w] = 1; stack.push(p - w); }
+        }
+
+        if (changed) ctx.putImageData(imgData, 0, 0);
+        imgObj.dirty = true;
+        return changed;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        canvas.on('mouse:down', (opt) => {
+            if (!isMagicWandMode || !magicWandTargetImage) return;
+            const pt = screenPointToImagePixel(magicWandTargetImage, canvas.getPointer(opt.e));
+            const tolerance = parseInt(magicWandToleranceInput.value, 10) || 30;
+            const changed = magicWandRemove(magicWandTargetImage, pt.x, pt.y, tolerance);
+            if (changed) {
+                canvas.requestRenderAll();
+                pushHistory();
+            }
+        });
+    });
+
     // ===================== 키보드 단축키 =====================
     let nudgeHistoryTimer = null;
     document.addEventListener('keydown', (e) => {
@@ -1721,6 +3354,10 @@
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !e.shiftKey && active) {
             e.preventDefault();
             copyActive();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && active) {
+            // Ctrl+X: 잘라내기 (복사 + 삭제)
+            e.preventDefault();
+            cutActive();
         } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c' && active && (active.type === 'textbox' || active.type === 'activeSelection')) {
             // Ctrl+Shift+C: 텍스트 상자 안의 글자를 가운데 정렬
             e.preventDefault();
@@ -1741,6 +3378,10 @@
             // Ctrl+[: 선택한 레이어를 한 단계 아래로 (포토샵 기본값)
             e.preventDefault();
             layerAction('backward');
+        } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+            // Ctrl+Shift+V: 복사한 오브젝트를 원본과 겹치도록 제자리에 바로 붙여넣기
+            e.preventDefault();
+            pasteClipboardInPlace();
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
             e.preventDefault();
             pasteClipboard();
@@ -1769,6 +3410,14 @@
             // F1: 이미지 불러오기/재업로드 (브라우저 기본 도움말 창이 뜨지 않도록 막음)
             e.preventDefault();
             document.getElementById('file-input').click();
+        } else if (e.key === 'F2') {
+            // F2: 프로젝트 불러오기 (저장해둔 작업 파일을 다시 불러와 이어서 수정)
+            e.preventDefault();
+            document.getElementById('project-input').click();
+        } else if (e.key === 'F3') {
+            // F3: 프로젝트 저장하기 (지금까지 작업한 내용을 파일로 내려받음, 브라우저 기본 검색 기능이 뜨지 않도록 막음)
+            e.preventDefault();
+            document.getElementById('export-project-btn').click();
         } else if (e.key === 'F5' && active) {
             // F5: 선택한 오브젝트를 90도 회전 (브라우저 새로고침이 되지 않도록 막음)
             e.preventDefault();
@@ -1797,29 +3446,37 @@
         } else if (e.key === 'Escape' && active) {
             e.preventDefault();
             closeSelectionPanel();
-        } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !isPanKeyDown) {
-            // 포토샵처럼 M 키를 누르고 있는 동안 손 도구(캔버스 드래그 이동)로 전환
+        } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
+            // M: 사각형 생성 (화면 이동은 Alt+드래그를 이용해주세요)
             e.preventDefault();
-            isPanKeyDown = true;
-            if (!isPanning) {
-                canvas.defaultCursor = 'grab';
-                canvas.hoverCursor = 'grab';
-                canvas.setCursor('grab');
-                canvas.requestRenderAll();
-            }
+            addShape('rect');
+        } else if (e.key.toLowerCase() === 'o' && !e.ctrlKey && !e.metaKey) {
+            // O: 원 생성
+            e.preventDefault();
+            addShape('circle');
+        } else if (e.key === '[' && !e.ctrlKey && !e.metaKey) {
+            // [: 지우개 굵기를 작게
+            e.preventDefault();
+            changeEraseWidth(-5);
+        } else if (e.key === ']' && !e.ctrlKey && !e.metaKey) {
+            // ]: 지우개 굵기를 크게
+            e.preventDefault();
+            changeEraseWidth(5);
+        } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.repeat) {
+            // R: 누르고 있는 동안만 10px 격자 안내선을 잠깐 보여줌
+            e.preventDefault();
+            isGridKeyHeld = true;
+            updateGridGuideOverlay();
         }
     });
 
     document.addEventListener('keyup', (e) => {
-        if (e.key.toLowerCase() !== 'm') return;
-        isPanKeyDown = false;
-        if (!isPanning && canvas) {
-            canvas.defaultCursor = 'default';
-            canvas.hoverCursor = 'move';
-            canvas.setCursor('default');
-            canvas.requestRenderAll();
+        if (e.key.toLowerCase() === 'r') {
+            isGridKeyHeld = false;
+            updateGridGuideOverlay();
         }
     });
+
 
     // ===================== 이미지 업로드 (오브젝트로 추가) =====================
     document.getElementById('file-input').addEventListener('change', (e) => {
@@ -1952,6 +3609,14 @@
         if (project.orderData) orderData = project.orderData;
 
         designData = project.designData;
+        // 만약 이 프로젝트 파일이 이름 메타데이터를 담고 있다면(디자인별 개별 저장 파일) 그대로 이어받고,
+        // 아니라면 새 건수에 맞게 빈 이름으로 초기화
+        if (project.designData.length === 1 && project.designName) {
+            designNames = [project.designName];
+        } else {
+            designNames = Array.from({ length: count }, () => '');
+        }
+        designGroups = Array.from({ length: count }, () => '');
         currentIdx = Math.min(Math.max(parseInt(project.currentIdx) || 0, 0), count - 1);
         currentSide = (project.currentSide === 'back' && isDouble) ? 'back' : 'front';
 
@@ -2109,6 +3774,12 @@
 
     document.getElementById('save-btn').addEventListener('click', async () => {
 
+        // 인쇄 여유(재단) 영역 안내 — 확인을 눌러야 다음 단계로 진행됨
+        const confirmed = confirm(
+            "붉은선 밖 회색박스까지 이미지를 꽉 채워주세요.\n\n확인을 누르면 계속 진행됩니다."
+        );
+        if (!confirmed) return;
+
         // 현재 보고있는 캔버스 내용을 먼저 데이터에 반영
         designData[currentIdx][currentSide] = serializeCurrentCanvas();
 
@@ -2190,6 +3861,179 @@
         }
     });
 
+    // 디자인 하나(index)만 담은, 그 자체로 완전히 불러올 수 있는 프로젝트 파일을 만듦
+    // (count는 항상 1로 저장 — 나중에 이 디자인 하나만 따로 불러와도 오류 없이 독립적으로 열리도록)
+    function buildSingleDesignProjectFile(idx){
+        if (idx === currentIdx && designData[currentIdx]) {
+            designData[currentIdx][currentSide] = serializeCurrentCanvas();
+        }
+        const entry = designData[idx] || { front: null, back: null };
+        return {
+            type: 'ecopro-project',
+            version: 1,
+            savedAt: new Date().toISOString(),
+            orderData,
+            count: 1,
+            isDouble,
+            orderRatioW: window.orderRatioW,
+            orderRatioH: window.orderRatioH,
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height,
+            currentIdx: 0,
+            currentSide: 'front',
+            // 참고용 메타데이터 — 실제 동작(불러오기 등)에는 영향을 주지 않음
+            originalDesignNumber: idx + 1,
+            designName: designNames[idx] || '',
+            designData: [{ front: entry.front, back: entry.back }]
+        };
+    }
+
+    // 처음에 쿼리(URL 파라미터)로 전달받은 주문 정보(orderData)를 바탕으로
+    // 주문서/견적서 이미지를 하나 만듦 (사이트 주소도 함께 표기)
+    function generateOrderSheetDataUrl(){
+        const width = 800;
+        const lineHeight = 42;
+        const entries = Object.entries(orderData);
+        const headerHeight = 140;
+        const footerHeight = 170;
+        const contentHeight = Math.max(entries.length, 1) * lineHeight;
+        const height = headerHeight + contentHeight + footerHeight;
+
+        const c = document.createElement('canvas');
+        c.width = width;
+        c.height = height;
+        const ctx = c.getContext('2d');
+
+        // 배경
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.textBaseline = 'top';
+
+        // 제목
+        ctx.fillStyle = '#111111';
+        ctx.font = 'bold 34px "Malgun Gothic", sans-serif';
+        ctx.fillText('주문서 / 견적서', 40, 36);
+
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(40, 96);
+        ctx.lineTo(width - 40, 96);
+        ctx.stroke();
+
+        // 전달받은 주문 정보 목록
+        let y = 130;
+        if (entries.length === 0) {
+            ctx.fillStyle = '#888888';
+            ctx.font = '20px "Malgun Gothic", sans-serif';
+            ctx.fillText('전달된 주문 정보가 없습니다.', 40, y);
+            y += lineHeight;
+        } else {
+            entries.forEach(([key, value]) => {
+                ctx.fillStyle = '#555555';
+                ctx.font = 'bold 20px "Malgun Gothic", sans-serif';
+                ctx.fillText(String(key), 40, y);
+                ctx.fillStyle = '#111111';
+                ctx.font = '20px "Malgun Gothic", sans-serif';
+                ctx.fillText(String(value), 230, y);
+                y += lineHeight;
+            });
+        }
+
+        y += 14;
+        ctx.strokeStyle = '#dddddd';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(40, y);
+        ctx.lineTo(width - 40, y);
+        ctx.stroke();
+        y += 30;
+
+        // 디자인 건수/양면 여부, 작성 일시
+        ctx.fillStyle = '#333333';
+        ctx.font = '19px "Malgun Gothic", sans-serif';
+        ctx.fillText('디자인 건수: ' + count + (isDouble ? ' (양면)' : ' (단면)'), 40, y);
+        y += 34;
+
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        ctx.fillText('작성 일시: ' + dateStr, 40, y);
+
+        // 하단 사이트 주소
+        ctx.fillStyle = '#3498db';
+        ctx.font = 'bold 22px "Malgun Gothic", sans-serif';
+        ctx.fillText('www.ecogr.net', 40, height - 50);
+
+        return c.toDataURL('image/jpeg', 0.95);
+    }
+
+    // ===================== 모든 디자인을 디자인별 개별 JSON으로 zip에 저장 =====================
+    document.getElementById('saveAllZipBtn').addEventListener('click', async () => {
+        if (typeof JSZip === 'undefined') {
+            alert('압축 기능을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침해서 다시 시도해주세요.');
+            return;
+        }
+
+        const zipBtn = document.getElementById('saveAllZipBtn');
+        const originalHtml = zipBtn.innerHTML;
+        zipBtn.disabled = true;
+        zipBtn.innerHTML = '저장 중...';
+
+        try {
+            // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영
+            if (designData[currentIdx]) {
+                designData[currentIdx][currentSide] = serializeCurrentCanvas();
+            }
+
+            // 파일명으로 쓸 수 없는 문자 제거
+            function sanitizeFileName(name){
+                return String(name || '').replace(/[\\/:*?"<>|]/g, '').trim();
+            }
+
+            // 디자인마다 완전히 독립된 프로젝트 파일로 각각 저장 — 나중에 한두 건만 따로
+            // 불러와서 재주문/수정해도 건수(count)가 안 맞아 생기는 오류 없이 바로 열림.
+            // 파일명은 사용자가 정한 이름을 쓰고(없으면 "디자인N"), 내부 식별자는 그대로 유지됨.
+            const zip = new JSZip();
+            const usedNames = new Set();
+            for (let i = 0; i < count; i++) {
+                const singleProject = buildSingleDesignProjectFile(i);
+                let fileName = sanitizeFileName(designNames[i]) || `디자인${i + 1}`;
+                if (usedNames.has(fileName)) {
+                    let n = 2;
+                    while (usedNames.has(`${fileName}(${n})`)) n++;
+                    fileName = `${fileName}(${n})`;
+                }
+                usedNames.add(fileName);
+                zip.file(`${fileName}.json`, JSON.stringify(singleProject));
+            }
+
+            // 주문서/견적서 이미지도 함께 담음
+            const orderSheetDataUrl = generateOrderSheetDataUrl();
+            zip.file('주문서_견적서.jpg', orderSheetDataUrl.split(',')[1], { base64: true });
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const zipName = `www.ecogr.net-designs-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = zipName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+        } catch (err) {
+            console.error(err);
+            alert('디자인을 저장하는 중 문제가 발생했습니다.');
+        } finally {
+            zipBtn.disabled = false;
+            zipBtn.innerHTML = originalHtml;
+        }
+    });
+
 
 
     window.onload = function() {
@@ -2222,7 +4066,10 @@ document.addEventListener('mousedown', (e) => {
         !e.target.closest('.right-tools') &&
         !e.target.closest('.editor-toolbar') &&
         !e.target.closest('.prop-panel') &&
-        !e.target.closest('.floating-delete-btn')
+        !e.target.closest('.floating-delete-btn') &&
+        !e.target.closest('.floating-rotate-btn') &&
+        !e.target.closest('.floating-color-bar') &&
+        !e.target.closest('.custom-context-menu')
     ) {
 
         if (canvas && canvas.getActiveObject()) {
