@@ -1,1 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>벡터 명함 디자인 툴</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+    body { 
+    font-family: sans-serif; 
+    padding: 10mm; 
+    margin: 0;
+    width: 100vw;   /* 화면 전체 너비 */
+    height: 100vh;  /* 화면 전체 높이 */
+    box-sizing: border-box;
+}
 
+canvas { 
+    border: 1px solid #ccc;
+    width: 100%;    /* 브라우저 너비에 맞춰 캔버스가 늘어남 */
+    height: auto;   /* 비율 유지하며 자동 조절 */
+    display: block;
+}
+    .controls { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+    <div class="controls">
+
+
+        <button onclick="duplicateGridAll()" style="background-color: #ff9800; color: white;">전체 격자 복제</button>
+        <input type="file" onchange="setBackgroundImage(this)" accept=".jpg, .jpeg, .png">
+        <button onclick="saveSVG()">SVG 저장하기</button>
+        <button onclick="deleteSelected()" style="background-color: #f44336; color: white;">삭제</button> 
+        <button onclick="sendToBack()">맨 뒤로</button>
+        <button onclick="bringToFront()">맨 앞으로</button>
+        <input type="text" id="textInput" placeholder="텍스트 입력">
+        <button onclick="alignLeft()">좌측정렬</button>
+        <button onclick="distributeVertically()">자간정렬</button>
+        <button onclick="addRectangle()">사각형 추가</button>
+        <button onclick="addCircle()">원 추가</button>
+        <button onclick="changeFontSize(1.1)">글자 크게 (+)</button>
+        <button onclick="changeFontSize(0.9)">글자 작게 (-)</button>
+        
+        <label for="colorPicker">색상: </label>
+        <input type="color" id="colorPicker" onchange="changeColor(this.value)">
+
+        <select id="weightSelect">
+            <option value="Thin">Thin</option>
+            <option value="ExtraLight">ExtraLight</option>
+            <option value="Light">Light</option>
+            <option value="Regular">Regular</option>
+            <option value="Medium">Medium</option>
+            <option value="SemiBold">SemiBold</option>
+            <option value="Bold">Bold</option>
+            <option value="ExtraBold">ExtraBold</option>
+            <option value="Black">Black</option>
+            
+        </select>
+        <button onclick="addText()">글자 추가(벡터 변환 요청)</button>
+    </div>
+    <canvas id="c" width="800" height="400"></canvas>
+
+    <script src="myapp.js"></script>
+</body>
+</html>
