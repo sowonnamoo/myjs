@@ -1986,10 +1986,10 @@
         floatingRotateBtn.classList.add('visible');
 
         // 색상 적용이 가능한 오브젝트(텍스트/채우기 도형/선)일 때만, 7색 게이지바를 표시
-        const canColor = getSelectedTextboxes().length > 0 || ['rect', 'circle', 'triangle', 'line', 'path'].includes(obj.type);
+        const canColor = getSelectedTextboxes().length > 0 || ['rect', 'circle', 'triangle', 'line', 'path', 'polygon'].includes(obj.type);
         if (canColor) {
             const isMobileViewport = window.innerWidth <= 768;
-            const barWidth = floatingColorBar.offsetWidth || (isMobileViewport ? 130 : 190);
+            const barWidth = floatingColorBar.offsetWidth || (isMobileViewport ? 87 : 127);
             const barHeight = floatingColorBar.offsetHeight || (isMobileViewport ? 22 : 30);
             let barLeft, barTop;
             if (isMobileViewport) {
@@ -2135,7 +2135,7 @@
     floatingRotateBtn.addEventListener('touchcancel', () => { endRotateDrag(); });
 
     // ---- 삭제/회전 아이콘 옆에 붙는 7색 컬러 게이지바: 눌러서 좌우로 드래그하면 그 위치의 색이 바로 적용됨 ----
-    const QUICK_COLOR_STOPS = ['#ff0000', '#ff7f00', '#ffff00', '#00a651', '#0072ff', '#4b0082', '#9400d3', '#ffffff', '#888888', '#000000'];
+    const QUICK_COLOR_STOPS = ['#ffffff', '#ff0000', '#ff7f00', '#ffff00', '#00a651', '#0072ff', '#4b0082', '#9400d3', '#888888', '#000000'];
     function hexToRgb(hex){
         const v = parseInt(hex.slice(1), 16);
         return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
@@ -2168,7 +2168,7 @@
             currentColor = typeof selectedTextboxes[0].fill === 'string' ? selectedTextboxes[0].fill : null;
         } else if (obj.type === 'line') {
             currentColor = obj.stroke || null;
-        } else if (['rect', 'circle', 'triangle', 'path'].includes(obj.type)) {
+        } else if (['rect', 'circle', 'triangle', 'path', 'polygon'].includes(obj.type)) {
             currentColor = (typeof obj.fill === 'string' && obj.fill) ? obj.fill : null;
         }
         let bestRatio = 0;
@@ -2200,7 +2200,7 @@
             obj.set('stroke', hex);
             syncGlowColorIfActive(obj, hex);
             strokeColorInput.value = hex;
-        } else if (['rect', 'circle', 'triangle', 'path'].includes(obj.type)) {
+        } else if (['rect', 'circle', 'triangle', 'path', 'polygon'].includes(obj.type)) {
             obj.set('fill', hex);
             syncGlowColorIfActive(obj, hex);
             fillColorInput.value = hex;
@@ -2347,7 +2347,7 @@
 
         const selectedTextboxes = getSelectedTextboxes();
         const isText = selectedTextboxes.length > 0;
-        const isFillShape = ['rect', 'circle', 'triangle', 'path'].includes(obj.type);
+        const isFillShape = ['rect', 'circle', 'triangle', 'path', 'polygon'].includes(obj.type);
         const isLine = obj.type === 'line';
         const isImage = obj.type === 'image';
 
@@ -3890,10 +3890,26 @@
 
     // 처음에 쿼리(URL 파라미터)로 전달받은 주문 정보(orderData)를 바탕으로
     // 주문서/견적서 이미지를 하나 만듦 (사이트 주소도 함께 표기)
+    // 주문서/견적서 이미지에 표시할 항목만 골라서 한글 라벨로 바꿔줌
+    // (원본 orderData 자체는 절대 바꾸지 않고, 이 이미지를 그릴 때 쓸 목록만 새로 만듦)
+    const ORDER_SHEET_FIELD_LABELS = {
+        count: '수량',
+        width: '가로',
+        height: '세로',
+        price: '가격',
+        weight: '무게',
+        weigth: '무게' // 혹시 파라미터명에 오타(weigth)가 있는 경우까지 함께 대응
+    };
+    function getOrderSheetEntries(){
+        return Object.keys(orderData)
+            .filter(key => Object.prototype.hasOwnProperty.call(ORDER_SHEET_FIELD_LABELS, key.toLowerCase()))
+            .map(key => [ORDER_SHEET_FIELD_LABELS[key.toLowerCase()], orderData[key]]);
+    }
+
     function generateOrderSheetDataUrl(){
         const width = 800;
         const lineHeight = 42;
-        const entries = Object.entries(orderData);
+        const entries = getOrderSheetEntries();
         const headerHeight = 140;
         const footerHeight = 170;
         const contentHeight = Math.max(entries.length, 1) * lineHeight;
