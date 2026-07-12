@@ -261,6 +261,11 @@
                 <button type="button" class="tool-btn icon-only" id="textAlignCenterBtn" title="가운데 정렬">중</button>
                 <button type="button" class="tool-btn icon-only" id="textAlignRightBtn" title="오른쪽 정렬">우</button>
             </div>
+            <div class="prop-row" id="circularTextRow">
+                <button type="button" class="tool-btn" id="circularTextBtn" title="선택한 텍스트를 원 둘레를 따라 동그랗게 배치합니다 (뱃지·도장 느낌)">🔤 동그랗게</button>
+                <label>반지름</label>
+                <input type="range" id="circularTextRadius" min="40" max="300" value="100">
+            </div>
         </div>
 
         <div class="sub-panel" id="imagePanel">
@@ -301,6 +306,16 @@
             </div>
             <div class="prop-row">
                 <button type="button" class="tool-btn" id="resetFiltersBtn">필터 초기화</button>
+            </div>
+            <div class="prop-row" id="eraseTextRow">
+                <button type="button" class="tool-btn" id="eraseTextBtn" title="사진 속 글씨(워터마크 등)를 자동으로 찾아서 주변 색으로 덮어 지웁니다">🧹 글씨 자동 지우기</button>
+                <label>민감도</label>
+                <input type="range" id="eraseTextThresh" min="100" max="250" value="200">
+            </div>
+            <div class="prop-row" id="edgeBlurRow">
+                <button type="button" class="tool-btn" id="edgeBlurBtn" title="사진 가장자리로 갈수록 점점 흐려지게 만듭니다 (중심은 선명하게 유지)">🌫️ 가장자리 블러</button>
+                <label>정도</label>
+                <input type="range" id="edgeBlurAmount" min="1" max="10" value="5">
             </div>
         </div>
     </div>
@@ -356,7 +371,7 @@
         <div class="shortcut-item"><span class="shortcut-key">F1</span><span class="shortcut-desc">이미지 불러오기/재업로드</span></div>
         <div class="shortcut-item"><span class="shortcut-key">F2</span><span class="shortcut-desc">프로젝트 불러오기</span></div>
         <div class="shortcut-item"><span class="shortcut-key">F3</span><span class="shortcut-desc">프로젝트 저장하기</span></div>
-        <div class="shortcut-item"><span class="shortcut-key">F5</span><span class="shortcut-desc">선택한 이미지/오브젝트 90도 회전</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">F5</span><span class="shortcut-desc">90도 회전 (선택 중일 때) / 밖 클릭 시(선택 없을 때)는 새로고침</span></div>
         <div class="shortcut-item"><span class="shortcut-key">F6</span><span class="shortcut-desc">선택한 이미지/오브젝트 좌우 반전</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">&lt;</span><span class="shortcut-desc">글자 크기 작게</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">&gt;</span><span class="shortcut-desc">글자 크기 크게</span></div>
@@ -377,9 +392,10 @@
         <div class="shortcut-item"><span class="shortcut-key">Ctrl</span><span class="shortcut-plus">+</span><span class="shortcut-key">Shift</span><span class="shortcut-plus">+</span><span class="shortcut-key">V</span><span class="shortcut-desc">제자리(원본 위)에 겹쳐서 붙여넣기</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Alt</span><span class="shortcut-plus">+</span><span class="shortcut-key">드래그</span><span class="shortcut-desc">선택한 오브젝트 위에서: 복제해서 드래그 / 빈 캔버스에서: 화면 이동(패닝)</span></div>
         <div class="shortcut-item"><span class="shortcut-key">마우스 휠</span><span class="shortcut-desc">확대/축소</span></div>
-        <div class="shortcut-item"><span class="shortcut-key">우클릭</span><span class="shortcut-desc">레이어 이동, 실행취소가 편합니다.</span></div>
+        <div class="shortcut-item"><span class="shortcut-key">우클릭</span><span class="shortcut-desc">레이어 이동</span></div>
         <div class="shortcut-item"><span class="shortcut-key">Esc</span><span class="shortcut-desc">선택 해제</span></div>
     </div>
+    <div class="shortcuts-note">💡 스포이드 도구 기능은 채우기 컬러창 안에 있습니다.</div>
 </div>
 
 <div class="mobile-usage-panel">
@@ -475,6 +491,48 @@
         currentIdx = 0; currentSide = 'front';
 
         const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
+        // 커스텀 필터(아래 UnsharpMask)는 WebGL용 셰이더가 없으므로, 모든 이미지 필터를
+        // 2D 캔버스 방식으로 안정적으로 처리하도록 고정한다 (WebGL 자동전환 방지).
+        fabric.filterBackend = new fabric.Canvas2dFilterBackend();
+
+        // ---- 선명도 게이지용 커스텀 필터: 언샵마스크(Unsharp Mask) ----
+        // 기존 Convolution 방식보다 훨씬 또렷하게 보이는 실제 사진보정 기법.
+        // boxBlurChannel은 아래(같은 DOMContentLoaded 스코프)에 정의돼 있고,
+        // 함수 선언은 호이스팅되므로 여기서 미리 참조해도 문제없다.
+        fabric.Image.filters.UnsharpMask = fabric.util.createClass(fabric.Image.filters.BaseFilter, {
+            type: 'UnsharpMask',
+            amount: 0,
+            mainParameter: 'amount',
+            applyTo2d: function(options){
+                const amount = this.amount;
+                if (!amount || amount <= 0) return;
+                const imageData = options.imageData;
+                const data = imageData.data;
+                const w = imageData.width, h = imageData.height;
+                const n = w * h;
+                const radius = Math.max(1, Math.round(Math.min(w, h) * 0.0035));
+
+                const r = new Float32Array(n), g = new Float32Array(n), b = new Float32Array(n);
+                for (let i = 0; i < n; i++){
+                    const o = i * 4;
+                    r[i] = data[o]; g[i] = data[o+1]; b[i] = data[o+2];
+                }
+                let br = boxBlurChannel(r, w, h, radius); br = boxBlurChannel(br, w, h, radius);
+                let bg = boxBlurChannel(g, w, h, radius); bg = boxBlurChannel(bg, w, h, radius);
+                let bb = boxBlurChannel(b, w, h, radius); bb = boxBlurChannel(bb, w, h, radius);
+
+                for (let i = 0; i < n; i++){
+                    const o = i * 4;
+                    data[o]   = Math.min(255, Math.max(0, r[i] + amount * (r[i] - br[i])));
+                    data[o+1] = Math.min(255, Math.max(0, g[i] + amount * (g[i] - bg[i])));
+                    data[o+2] = Math.min(255, Math.max(0, b[i] + amount * (b[i] - bb[i])));
+                }
+            },
+            toObject: function(){
+                return { type: this.type, amount: this.amount };
+            }
+        });
+
         canvas = new fabric.Canvas('main-canvas', {
             width: containerWidth,
             height: containerWidth * (ratioH / ratioW),
@@ -1133,6 +1191,7 @@
         canvas.setActiveObject(shape);
         bringGuideToFront();
         canvas.requestRenderAll();
+        showTipToast('더블클릭으로 선택·이동 가능합니다.');
     }
 
     document.getElementById('addTextBtn').addEventListener('click', addText);
@@ -1430,6 +1489,15 @@
         const hole = scalePointsAroundCenter(handsetPoints(), 0.6, 50, 50);
         return compoundPathD([outer, hole]);
     }
+    // 흔히 보는 "통화" 아이콘 (곡선 수화기 모양) — 기존 '전화기'(초승달 실루엣)보다
+    // 한눈에 전화로 알아보기 쉬운, 명함/전단지 등에서 흔히 쓰는 형태
+    function phoneCallPathD(){
+        return 'M27.58 44.96c6.0 11.79 15.67 21.42 27.46 27.46l9.17 -9.17c1.13 -1.13 2.79 -1.5 4.25 -1.0'
+             + 'c4.67 1.54 9.71 2.38 14.88 2.38c2.29 0.0 4.17 1.88 4.17 4.17V83.33c0.0 2.29 -1.88 4.17 -4.17 4.17'
+             + 'c-39.13 0.0 -70.83 -31.71 -70.83 -70.83c0.0 -2.29 1.88 -4.17 4.17 -4.17h14.58'
+             + 'c2.29 0.0 4.17 1.88 4.17 4.17c0.0 5.21 0.83 10.21 2.38 14.88c0.46 1.46 0.12 3.08 -1.04 4.25'
+             + 'l-9.17 9.17z';
+    }
     function checkboxPathD(){
         const outerSq = roundedRectWH(4, 4, 92, 92, 10);
         const innerSq = roundedRectWH(16, 16, 68, 68, 6);
@@ -1558,6 +1626,7 @@
 
     const CUSTOM_SHAPES = [
         { name: '전화기', points: handsetPoints() },
+        { name: '전화(통화 아이콘)', type: 'path', d: phoneCallPathD() },
         { name: '팩스', points: faxPoints() },
         { name: '스마트폰', points: roundedRectWH(22, 4, 56, 92, 10) },
         { name: '태블릿', points: roundedRectWH(10, 14, 80, 72, 8) },
@@ -1783,6 +1852,10 @@
             zoomLockBtn.innerHTML = '🔓 화면고정';
         }
     });
+    // 파일을 처음 열었을 때부터 화면고정이 기본으로 켜져 있도록 설정
+    isZoomLocked = true;
+    zoomLockBtn.classList.add('active');
+    zoomLockBtn.innerHTML = '🔒 화면고정';
 
     // ---- 안내선(10px 격자): 버튼으로 켜고 끄거나, R키를 누르고 있는 동안만 잠깐 보여줌 ----
     const gridGuideBtn = document.getElementById('gridGuideBtn');
@@ -2397,7 +2470,9 @@
         }
 
         imagePanel.classList.toggle('visible', isImage);
-        if (isImage) syncFilterPanelFromObject(obj);
+        if (isImage) {
+            syncFilterPanelFromObject(obj);
+        }
     }
 
     // ---- 공통(불투명도/회전/반전/정렬/레이어/복제/잠금/삭제) ----
@@ -2988,6 +3063,79 @@
         canvas.requestRenderAll(); pushHistory();
     });
 
+    // ===================== 텍스트를 원형(동그랗게)으로 배치 =====================
+    // fabric.js에는 곡선 텍스트 기능이 기본으로 없어서, 글자를 한 자씩 떼어내
+    // 원 둘레의 각 위치에 배치하고, 그 자리의 접선 방향으로 회전시켜서 만든다.
+    // (뱃지/도장/로고에서 흔히 보는 "원을 따라 도는 글자" 효과)
+    function buildCircularTextGroup(str, opts){
+        const chars = Array.from(str).filter(ch => ch !== '\n');
+        const n = chars.length;
+        if (n === 0) return null;
+        const radius = opts.radius;
+        const angleStep = (2 * Math.PI) / n;
+
+        const items = chars.map((ch, i) => {
+            // 12시 방향(위쪽)부터 시계방향으로 한 글자씩 배치
+            const angle = i * angleStep - Math.PI / 2;
+            const x = radius * Math.cos(angle);
+            const y = radius * Math.sin(angle);
+            return new fabric.Text(ch, {
+                fontFamily: opts.fontFamily,
+                fontSize: opts.fontSize,
+                fontWeight: opts.fontWeight,
+                fontStyle: opts.fontStyle,
+                fill: opts.fill,
+                stroke: opts.stroke,
+                strokeWidth: opts.strokeWidth,
+                paintFirst: 'stroke',
+                originX: 'center',
+                originY: 'center',
+                left: x,
+                top: y,
+                angle: (angle * 180 / Math.PI) + 90 // 글자 아래쪽이 원 중심을 향하도록 회전
+            });
+        });
+
+        return new fabric.Group(items, { originX: 'center', originY: 'center' });
+    }
+
+    const circularTextBtn = document.getElementById('circularTextBtn');
+    const circularTextRadius = document.getElementById('circularTextRadius');
+    if (circularTextBtn) {
+        circularTextBtn.addEventListener('click', () => {
+            const textboxes = getSelectedTextboxes();
+            if (textboxes.length !== 1) {
+                showTipToast('원형 텍스트로 만들 글자를 하나만 선택해주세요.');
+                return;
+            }
+            const tb = textboxes[0];
+            const content = tb.text || '';
+            if (!content.trim()) return;
+
+            const group = buildCircularTextGroup(content, {
+                fontFamily: tb.fontFamily || 'Malgun Gothic',
+                fontSize: tb.fontSize || 28,
+                fontWeight: tb.fontWeight || '400',
+                fontStyle: tb.fontStyle || 'normal',
+                fill: (typeof tb.fill === 'string' && tb.fill) ? tb.fill : '#111111',
+                stroke: tb.stroke || null,
+                strokeWidth: tb.strokeWidth || 0,
+                radius: parseInt(circularTextRadius.value, 10)
+            });
+            if (!group) return;
+
+            group.set({ left: tb.left, top: tb.top, originX: tb.originX || 'left', originY: tb.originY || 'top' });
+            applySelectionMode(group);
+            canvas.remove(tb);
+            canvas.add(group);
+            canvas.setActiveObject(group);
+            group.setCoords();
+            bringGuideToFront();
+            canvas.requestRenderAll();
+            pushHistory();
+        });
+    }
+
     // ---- 도형 전용 컨트롤 ----
     fillColorInput.addEventListener('input', () => {
         const obj = canvas.getActiveObject();
@@ -3022,6 +3170,267 @@
     strokeWidthInput.addEventListener('change', () => pushHistory());
 
     // ---- 이미지 필터 컨트롤 ----
+
+    // ===================== 사진 속 글씨 자동 지우기 (OpenCV 방식 로직을 JS로 이식) =====================
+    // 1) 밝기 임계값으로 "글씨로 추정되는 부분" 마스크를 만든다 (어두운/밝은 글자 자동 판별)
+    // 2) 마스크를 살짝 넓혀서 글씨 가장자리까지 포함한다
+    // 3) 마스크 부분을 주변 색으로 반복 확산시켜(diffusion) 자연스럽게 덮는다
+    function computeTextMask(imgData, threshold){
+        const { data, width: w, height: h } = imgData;
+        const n = w * h;
+        const gray = new Uint8ClampedArray(n);
+        for (let i = 0; i < n; i++){
+            const o = i * 4;
+            gray[i] = 0.299 * data[o] + 0.587 * data[o+1] + 0.114 * data[o+2];
+        }
+        const maskDark = new Uint8Array(n);
+        const maskLight = new Uint8Array(n);
+        let darkCount = 0;
+        for (let i = 0; i < n; i++){
+            if (gray[i] < threshold) { maskDark[i] = 1; darkCount++; }
+            else { maskLight[i] = 1; }
+        }
+        // 어두운 쪽 마스크가 이미지 절반 이상을 덮으면 극성이 반대(밝은 글자)라고 보고 전환
+        return (darkCount / n > 0.5) ? maskLight : maskDark;
+    }
+
+    function dilateTextMask(mask, w, h, radius){
+        if (radius <= 0) return mask;
+        const tmp = new Uint8Array(w * h);
+        const out = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++){
+            const rowOff = y * w;
+            let count = 0;
+            for (let x = -radius; x <= radius; x++){
+                if (x >= 0 && x < w && mask[rowOff + x]) count++;
+            }
+            for (let x = 0; x < w; x++){
+                tmp[rowOff + x] = count > 0 ? 1 : 0;
+                const addX = x + radius + 1, remX = x - radius;
+                if (addX < w && mask[rowOff + addX]) count++;
+                if (remX >= 0 && mask[rowOff + remX]) count--;
+            }
+        }
+        for (let x = 0; x < w; x++){
+            let count = 0;
+            for (let y = -radius; y <= radius; y++){
+                if (y >= 0 && y < h && tmp[y * w + x]) count++;
+            }
+            for (let y = 0; y < h; y++){
+                out[y * w + x] = count > 0 ? 1 : 0;
+                const addY = y + radius + 1, remY = y - radius;
+                if (addY < h && tmp[addY * w + x]) count++;
+                if (remY >= 0 && tmp[remY * w + x]) count--;
+            }
+        }
+        return out;
+    }
+
+    function coverMaskWithSurroundingColor(imgData, mask, w, h, iterations){
+        const data = imgData.data;
+        const n = w * h;
+        const fillIdx = [];
+        for (let i = 0; i < n; i++) if (mask[i]) fillIdx.push(i);
+        if (fillIdx.length === 0) return imgData;
+
+        let sumR=0,sumG=0,sumB=0,cnt=0;
+        for (let i = 0; i < n; i++){
+            if (!mask[i]) { const o=i*4; sumR+=data[o]; sumG+=data[o+1]; sumB+=data[o+2]; cnt++; }
+        }
+        const avgR = cnt ? sumR/cnt : 255, avgG = cnt ? sumG/cnt : 255, avgB = cnt ? sumB/cnt : 255;
+
+        let bufA = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++){
+            const o = i*4, o3 = i*3;
+            if (mask[i]) { bufA[o3]=avgR; bufA[o3+1]=avgG; bufA[o3+2]=avgB; }
+            else { bufA[o3]=data[o]; bufA[o3+1]=data[o+1]; bufA[o3+2]=data[o+2]; }
+        }
+        let bufB = new Float32Array(bufA);
+
+        for (let iter = 0; iter < iterations; iter++){
+            const src = (iter % 2 === 0) ? bufA : bufB;
+            const dst = (iter % 2 === 0) ? bufB : bufA;
+            for (let k = 0; k < fillIdx.length; k++){
+                const i = fillIdx[k];
+                const x = i % w, y = (i / w) | 0;
+                let r=0,g=0,b=0,cnt2=0;
+                if (x>0)   { const j=(i-1)*3; r+=src[j]; g+=src[j+1]; b+=src[j+2]; cnt2++; }
+                if (x<w-1) { const j=(i+1)*3; r+=src[j]; g+=src[j+1]; b+=src[j+2]; cnt2++; }
+                if (y>0)   { const j=(i-w)*3; r+=src[j]; g+=src[j+1]; b+=src[j+2]; cnt2++; }
+                if (y<h-1) { const j=(i+w)*3; r+=src[j]; g+=src[j+1]; b+=src[j+2]; cnt2++; }
+                const o3 = i*3;
+                dst[o3]=r/cnt2; dst[o3+1]=g/cnt2; dst[o3+2]=b/cnt2;
+            }
+        }
+        const final = (iterations % 2 === 0) ? bufA : bufB;
+        for (let k = 0; k < fillIdx.length; k++){
+            const i = fillIdx[k], o = i*4, o3 = i*3;
+            data[o] = final[o3]; data[o+1] = final[o3+1]; data[o+2] = final[o3+2];
+        }
+        return imgData;
+    }
+
+    const eraseTextBtn = document.getElementById('eraseTextBtn');
+    const eraseTextThresh = document.getElementById('eraseTextThresh');
+
+    function eraseTextFromImage(obj, threshold){
+        const src = obj._originalElement || obj._element;
+        if (!src) return;
+        const w = obj.width, h = obj.height;
+        if (!w || !h) return;
+
+        const work = document.createElement('canvas');
+        work.width = w; work.height = h;
+        const wctx = work.getContext('2d');
+        wctx.drawImage(src, 0, 0, w, h);
+        const imgData = wctx.getImageData(0, 0, w, h);
+
+        const rawMask = computeTextMask(imgData, threshold);
+        // 큰 이미지일수록 팽창 반경/반복 횟수를 화면 비율에 맞게 살짝 키운다
+        const radius = Math.max(3, Math.round(Math.min(w, h) * 0.01));
+        const dilated = dilateTextMask(rawMask, w, h, radius);
+        const iterations = Math.max(40, Math.min(120, radius * 8));
+        coverMaskWithSurroundingColor(imgData, dilated, w, h, iterations);
+        wctx.putImageData(imgData, 0, 0);
+
+        work.__isEraseCanvas = true;
+        obj._element = work;
+        obj._originalElement = work; // 필터를 다시 적용해도 지운 글씨가 되살아나지 않도록 원본도 교체
+        obj.applyFilters();
+        canvas.requestRenderAll();
+    }
+
+    if (eraseTextBtn) {
+        eraseTextBtn.addEventListener('click', () => {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') return;
+            const originalLabel = eraseTextBtn.textContent;
+            eraseTextBtn.disabled = true;
+            eraseTextBtn.textContent = '처리 중...';
+            setTimeout(() => {
+                try {
+                    eraseTextFromImage(obj, parseInt(eraseTextThresh.value, 10));
+                    pushHistory();
+                } finally {
+                    eraseTextBtn.disabled = false;
+                    eraseTextBtn.textContent = originalLabel;
+                }
+            }, 20);
+        });
+    }
+
+    // ===================== 사진 가장자리 블러 (비네트 스타일) =====================
+    // 중심부는 선명하게 그대로 두고, 가장자리로 갈수록 점점 흐려지게 만든다.
+    // (블러된 버전을 만든 뒤, 중심에서 멀어질수록 블러 비중이 커지는 방식으로 합성)
+    function applyEdgeBlur(obj, amount){
+        const src = obj._originalElement || obj._element;
+        if (!src) return;
+        const w = obj.width, h = obj.height;
+        if (!w || !h) return;
+
+        const work = document.createElement('canvas');
+        work.width = w; work.height = h;
+        const wctx = work.getContext('2d');
+        wctx.drawImage(src, 0, 0, w, h);
+        const imgData = wctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        const n = w * h;
+
+        const r = new Float32Array(n), g = new Float32Array(n), b = new Float32Array(n);
+        for (let i = 0; i < n; i++){
+            const o = i * 4;
+            r[i] = data[o]; g[i] = data[o+1]; b[i] = data[o+2];
+        }
+        const radius = Math.max(2, Math.round(Math.min(w, h) * (0.006 * amount)));
+        let br = boxBlurChannel(r, w, h, radius); br = boxBlurChannel(br, w, h, radius); br = boxBlurChannel(br, w, h, radius);
+        let bg = boxBlurChannel(g, w, h, radius); bg = boxBlurChannel(bg, w, h, radius); bg = boxBlurChannel(bg, w, h, radius);
+        let bb = boxBlurChannel(b, w, h, radius); bb = boxBlurChannel(bb, w, h, radius); bb = boxBlurChannel(bb, w, h, radius);
+
+        const cx = w / 2, cy = h / 2;
+        const innerRatio = 0.5;  // 이 비율(중심 기준) 안쪽까지는 완전히 선명하게 유지
+        const outerRatio = 1.0;  // 이 비율(모서리 기준)에서 완전히 블러 처리
+        for (let y = 0; y < h; y++){
+            for (let x = 0; x < w; x++){
+                const i = y * w + x;
+                const dx = (x - cx) / cx, dy = (y - cy) / cy;
+                const dist = Math.sqrt(dx * dx + dy * dy); // 0(중심) ~ 약 1.41(모서리)
+                let t = (dist - innerRatio) / (outerRatio - innerRatio);
+                t = Math.min(1, Math.max(0, t));
+                const o = i * 4;
+                data[o]   = r[i] + (br[i] - r[i]) * t;
+                data[o+1] = g[i] + (bg[i] - g[i]) * t;
+                data[o+2] = b[i] + (bb[i] - b[i]) * t;
+            }
+        }
+
+        wctx.putImageData(imgData, 0, 0);
+        work.__isEraseCanvas = true;
+        obj._element = work;
+        obj._originalElement = work;
+        obj.applyFilters();
+        canvas.requestRenderAll();
+    }
+
+    const edgeBlurBtn = document.getElementById('edgeBlurBtn');
+    const edgeBlurAmount = document.getElementById('edgeBlurAmount');
+    if (edgeBlurBtn) {
+        edgeBlurBtn.addEventListener('click', () => {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') return;
+            const originalLabel = edgeBlurBtn.textContent;
+            edgeBlurBtn.disabled = true;
+            edgeBlurBtn.textContent = '처리 중...';
+            setTimeout(() => {
+                try {
+                    applyEdgeBlur(obj, parseInt(edgeBlurAmount.value, 10));
+                    pushHistory();
+                } finally {
+                    edgeBlurBtn.disabled = false;
+                    edgeBlurBtn.textContent = originalLabel;
+                }
+            }, 20);
+        });
+    }
+
+    // ===================== 언샵마스크용 박스 블러 헬퍼 =====================
+    // 박스 블러를 여러 번 반복하면 가우시안 블러에 근사한다 (선명도 필터·가장자리 블러 공용).
+    function boxBlurChannel(src, w, h, radius){
+        // 가로 -> 세로 분리 가능한 박스 블러 (평균값을 슬라이딩 윈도우로 O(w*h) 계산)
+        const tmp = new Float32Array(w * h);
+        const out = new Float32Array(w * h);
+        const winSize = radius * 2 + 1;
+
+        for (let y = 0; y < h; y++){
+            const rowOff = y * w;
+            let sum = 0;
+            for (let x = -radius; x <= radius; x++){
+                const xx = Math.min(w - 1, Math.max(0, x));
+                sum += src[rowOff + xx];
+            }
+            for (let x = 0; x < w; x++){
+                tmp[rowOff + x] = sum / winSize;
+                const addX = Math.min(w - 1, x + radius + 1);
+                const remX = Math.max(0, x - radius);
+                sum += src[rowOff + addX] - src[rowOff + remX];
+            }
+        }
+        for (let x = 0; x < w; x++){
+            let sum = 0;
+            for (let y = -radius; y <= radius; y++){
+                const yy = Math.min(h - 1, Math.max(0, y));
+                sum += tmp[yy * w + x];
+            }
+            for (let y = 0; y < h; y++){
+                out[y * w + x] = sum / winSize;
+                const addY = Math.min(h - 1, y + radius + 1);
+                const remY = Math.max(0, y - radius);
+                sum += tmp[addY * w + x] - tmp[remY * w + x];
+            }
+        }
+        return out;
+    }
+
+
     function syncFilterPanelFromObject(obj){
         filterGrayscale.checked = false;
         filterSepia.checked = false;
@@ -3040,18 +3449,8 @@
             else if (t === 'Contrast') filterContrast.value = f.contrast;
             else if (t === 'Saturation') filterSaturation.value = f.saturation;
             else if (t === 'Blur') filterBlur.value = f.blur;
-            else if (t === 'Convolution' && f.matrix) {
-                // 샤픈 매트릭스는 identity + (sharpen-identity)*t 형태로 만들었으므로
-                // 가운데 값(matrix[4])에서 역으로 강도(t)를 계산합니다.
-                filterSharpen.value = Math.max(0, ((f.matrix[4] - 1) / 4)).toFixed(2);
-            }
+            else if (t === 'UnsharpMask') filterSharpen.value = f.amount;
         });
-    }
-
-    function computeSharpenMatrix(t){
-        const identity = [0,0,0, 0,1,0, 0,0,0];
-        const sharpen  = [0,-1,0, -1,5,-1, 0,-1,0];
-        return identity.map((v, i) => v + (sharpen[i] - v) * t);
     }
 
     function applyImageFilters(){
@@ -3070,7 +3469,7 @@
         const blur = parseFloat(filterBlur.value);
         if (blur > 0) filters.push(new fabric.Image.filters.Blur({ blur }));
         const sharpen = parseFloat(filterSharpen.value);
-        if (sharpen > 0) filters.push(new fabric.Image.filters.Convolution({ matrix: computeSharpenMatrix(sharpen), opaque: false }));
+        if (sharpen > 0) filters.push(new fabric.Image.filters.UnsharpMask({ amount: sharpen }));
         obj.filters = filters;
         obj.applyFilters();
         canvas.requestRenderAll();
@@ -3518,6 +3917,7 @@
                 canvas.setActiveObject(img);
                 bringGuideToFront();
                 canvas.requestRenderAll();
+                showTipToast('더블클릭으로 선택·이동 가능합니다.');
             });
         };
         reader.readAsDataURL(file);

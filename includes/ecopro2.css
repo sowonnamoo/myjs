@@ -949,6 +949,13 @@ input.tool-color{
 }
 .shortcut-plus{ color:#aaa; font-size:11px; }
 .shortcut-desc{ color:#666; }
+.shortcuts-note{
+    margin-top:12px;
+    padding-top:10px;
+    border-top:1px dashed #eee;
+    font-size:12px;
+    color:#3498db;
+}
 
 @media (max-width: 768px){
     .shortcuts-panel{ display:none; } /* PC용 단축키는 모바일에서 의미 없으므로 숨김 */
