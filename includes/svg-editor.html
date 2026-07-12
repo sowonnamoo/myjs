@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>SVG · 이미지 편집기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Nanum+Gothic:wght@400;700;800&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Dodum&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link rel="stylesheet" href="svg-editor.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ 상단 툴바 ============ -->
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button type="button" class="btn icon" id="tabToggleBtn" title="디자인 목록 열기/닫기">📑</button>
+    </div>
+
+    <div class="toolbar-group dropdown megamenu">
+      <button type="button" class="btn" id="fileMenuBtn">🖼 이미지 ▾</button>
+      <div class="dropdown-menu hidden" id="fileMenu">
+        <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기 (JPG·PNG)</label>
+        <label class="dropdown-item" for="svgInput">📄 SVG 불러오기</label>
+        <label class="dropdown-item" for="fontInput">Aa 폰트 불러오기</label>
+        <label class="dropdown-item" for="projectInput">📂 프로젝트 불러오기</label>
+        <button type="button" class="dropdown-item" id="saveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
+      </div>
+      <input type="file" id="imageInput" accept="image/jpeg,image/png,image/jpg">
+      <input type="file" id="svgInput" accept="image/svg+xml,.svg">
+      <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2">
+      <input type="file" id="projectInput" accept="application/json,.json">
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn active" id="selectToolBtn" title="선택 도구 (V)">↖ 선택</button>
+    </div>
+
+    <div class="toolbar-group dropdown megamenu">
+      <button type="button" class="btn" id="shapeMenuBtn">🅣 텍스트모양 ▾</button>
+      <div class="dropdown-menu hidden" id="shapeMenu">
+        <button type="button" class="dropdown-item" id="addTextBtn">🅣 텍스트</button>
+        <button type="button" class="dropdown-item" id="addRectBtn">▭ 사각형</button>
+        <button type="button" class="dropdown-item" id="addCircleBtn">◯ 원</button>
+        <button type="button" class="dropdown-item" id="addTriangleBtn">△ 삼각형</button>
+        <button type="button" class="dropdown-item" id="penToolBtn" title="펜 도구 — 클릭으로 점 추가, 드래그하면 곡선 핸들 생성 (더블클릭/Enter: 완료, 시작점 클릭: 닫힌 도형, Esc: 취소)">✒ 펜 도구</button>
+      </div>
+    </div>
+
+    <div class="toolbar-group dropdown megamenu">
+      <button type="button" class="btn" id="rotateMenuBtn">↻ 회전 ▾</button>
+      <div class="dropdown-menu hidden" id="rotateMenu">
+        <button type="button" class="dropdown-item" id="rotateCanvasRightBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전)">↻ 캔버스 90도 회전</button>
+        <button type="button" class="dropdown-item" id="rotateCanvasLeftBtn" title="캔버스 전체를 반시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전)">↺ 반대 90도 회전</button>
+      </div>
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn icon" id="undoBtn" title="실행 취소 (Ctrl+Z)" disabled>↶</button>
+      <button type="button" class="btn icon" id="redoBtn" title="다시 실행 (Ctrl+Y)" disabled>↷</button>
+      <button type="button" class="btn icon danger" id="deleteBtn" title="선택 삭제 (Delete)" disabled>🗑</button>
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn icon" id="zoomOutBtn">－</button>
+      <span class="zoom-label" id="zoomLabel">100%</span>
+      <button type="button" class="btn icon" id="zoomInBtn">＋</button>
+      <button type="button" class="btn" id="zoomResetBtn">100%</button>
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn icon" id="guideToggleBtn" title="붉은선(재단선) / 회색 여유선 표시 켜기·끄기">▦ 안내선</button>
+    </div>
+
+    <div class="toolbar-group dropdown megamenu">
+      <button type="button" class="btn primary" id="exportBtn">⬇ 내보내기</button>
+      <div class="dropdown-menu hidden" id="exportMenu">
+        <button type="button" class="dropdown-item" data-export="png">PNG로 저장 (현재 화면)</button>
+        <button type="button" class="dropdown-item" data-export="jpg">JPG로 저장 (현재 화면)</button>
+        <button type="button" class="dropdown-item" data-export="svg">SVG로 저장 (현재 화면)</button>
+      </div>
+    </div>
+
+    <div class="toolbar-group" style="border-right:none;">
+      <button type="button" class="btn icon" id="panelToggleBtn" title="속성 패널 열기/닫기">☰</button>
+    </div>
+
+    <div class="brand"><b>SVG</b>편집기</div>
+  </div>
+
+  <!-- ============ 작업 규격 상태바 ============ -->
+  <div class="status-bar">
+    <span>작업 규격: <b id="sizeLabel">-</b></span>
+    <span class="status-chip" id="sideChip">단면</span>
+    <span id="orderInfoLabel" style="color:#9aa4b2;"></span>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <!-- ============ 좌측: 디자인 / 앞뒤 탭 ============ -->
+    <div class="tab-sidebar" id="tabSidebar">
+      <h4>디자인 목록</h4>
+      <div id="tabList"></div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="empty-hint" id="emptyHint">위 <b>이미지</b> 또는 <b>SVG</b> 버튼으로 파일을 불러오세요<br>SVG를 불러오면 안의 글씨를 더블클릭해서 바로 수정할 수 있어요</div>
+      <div class="canvas-shell">
+        <canvas id="mainCanvas"></canvas>
+      </div>
+      <div class="guide-legend">
+        <span class="red"><i class="swatch"></i>붉은선 : 재단/안전선</span><br>
+        <span class="gray"><i class="swatch"></i>회색선 : 원본 캔버스 여백</span>
+      </div>
+    </div>
+
+    <!-- ============ 우측: 속성 패널 ============ -->
+    <div class="side-panel" id="sidePanel">
+
+      <div class="panel-section" id="noSelectionSection">
+        <div class="no-select-msg">오브젝트를 선택하면<br>여기서 속성을 편집할 수 있어요</div>
+      </div>
+
+      <div id="selectionSections" class="hidden">
+
+        <div class="panel-section" id="textSection">
+          <h4>텍스트</h4>
+          <div class="row">
+            <label>내용</label>
+            <input type="text" id="textContentInput" placeholder="더블클릭으로도 수정 가능">
+          </div>
+          <div class="row">
+            <label>글꼴</label>
+            <select id="fontFamilySelect">
+              <option value="Pretendard">Pretendard</option>
+              <option value="Noto Sans KR">Noto Sans KR</option>
+              <option value="Nanum Gothic">나눔고딕</option>
+              <option value="Black Han Sans">Black Han Sans</option>
+              <option value="Do Hyeon">Do Hyeon</option>
+              <option value="Jua">Jua</option>
+              <option value="Gowun Dodum">고운돋움</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Bebas Neue">Bebas Neue</option>
+              <option value="Arial">Arial</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>크기</label>
+            <input type="number" id="fontSizeInput" min="4" max="600">
+            <label style="width:44px;">색상</label>
+            <div class="cmyk-picker" id="textColorInput" title="CMYK 색상 선택"></div>
+          </div>
+          <div class="row">
+            <label>스타일</label>
+            <div class="seg">
+              <button type="button" id="boldBtn" style="font-weight:800;">B</button>
+              <button type="button" id="italicBtn" style="font-style:italic;">I</button>
+              <button type="button" id="underlineBtn" style="text-decoration:underline;">U</button>
+            </div>
+          </div>
+          <div class="row">
+            <label>정렬</label>
+            <div class="seg">
+              <button type="button" id="alignLeftBtn">왼쪽</button>
+              <button type="button" id="alignCenterBtn">가운데</button>
+              <button type="button" id="alignRightBtn">오른쪽</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section" id="shapeSection">
+          <h4>채우기 · 테두리</h4>
+          <div class="row">
+            <label>채우기</label>
+            <div class="cmyk-picker" id="fillColorInput" title="CMYK 색상 선택"></div>
+            <label style="width:44px;">테두리</label>
+            <div class="cmyk-picker" id="strokeColorInput" title="CMYK 색상 선택"></div>
+          </div>
+          <div class="row">
+            <label>테두리두께</label>
+            <input type="number" id="strokeWidthInput" min="0" max="60">
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h4>공통 속성</h4>
+          <div class="row">
+            <label>불투명도</label>
+            <input type="range" id="opacityInput" min="0" max="1" step="0.02">
+          </div>
+          <div class="row">
+            <label>회전</label>
+            <input type="number" id="angleInput" min="-360" max="360">
+          </div>
+          <div class="row grid2" style="margin-bottom:10px;">
+            <button type="button" class="small-btn" id="flipXBtn">↔ 좌우반전</button>
+            <button type="button" class="small-btn" id="flipYBtn">↕ 상하반전</button>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h4>레이어 순서</h4>
+          <div class="row grid2">
+            <button type="button" class="small-btn" id="layerFrontBtn">맨 앞으로</button>
+            <button type="button" class="small-btn" id="layerBackBtn">맨 뒤로</button>
+          </div>
+          <div class="row grid2" style="margin-top:8px;">
+            <button type="button" class="small-btn" id="layerForwardBtn">한 단계 앞</button>
+            <button type="button" class="small-btn" id="layerBackwardBtn">한 단계 뒤</button>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="row grid2">
+            <button type="button" class="small-btn" id="duplicateBtn">⧉ 복제</button>
+            <button type="button" class="small-btn" id="deleteSideBtn" style="color:#e74c3c;">🗑 삭제</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     1. URL 쿼리 파라미터 읽기
+     예) editor.html?count=3&width=90&height=50&type=양면인쇄
+     - count  : 디자인 건수 (없으면 1)
+     - width / height : 캔버스 가로세로 비율(mm 등, 붉은 재단선 기준)
+     - 값 중 어딘가에 "양면"이 포함되면 앞/뒤 양면 작업으로 처리
+  ============================================================ */
+  const urlParams = new URLSearchParams(window.location.search);
+  const orderData = {};
+  let hasDouble = false;
+  for (const [key, value] of urlParams.entries()) {
+    const decoded = decodeURIComponent(value);
+    orderData[key] = decoded;
+    if (decoded.includes('양면')) hasDouble = true;
+  }
+  const count = Math.max(1, parseInt(orderData.count, 10) || 1);
+  const isDouble = hasDouble;
+  let ratioW = parseInt(orderData.width, 10) || 16;
+  let ratioH = parseInt(orderData.height, 10) || 9;
+
+  /* ============================================================
+     2. 캔버스 초기화 (쿼리의 가로:세로 비율에 맞춰 크기 결정)
+  ============================================================ */
+  const canvasWrap = document.getElementById('canvasWrap');
+  const wrapRect = canvasWrap.getBoundingClientRect();
+  const maxW = Math.min(wrapRect.width - 60, 900);
+  let CANVAS_W = Math.max(320, Math.round(maxW));
+  let CANVAS_H = Math.max(200, Math.round(CANVAS_W * (ratioH / ratioW)));
+
+  const canvas = new fabric.Canvas('mainCanvas', {
+    width: CANVAS_W,
+    height: CANVAS_H,
+    backgroundColor: '#ffffff',
+    preserveObjectStacking: true
+  });
+
+  const emptyHint = document.getElementById('emptyHint');
+  function refreshEmptyHint(){
+    const real = canvas.getObjects().filter(o => !o.isGuide);
+    emptyHint.style.display = real.length ? 'none' : 'block';
+  }
+
+  /* ---------- 상태바 표시 ---------- */
+  document.getElementById('sizeLabel').textContent = `${ratioW} × ${ratioH} (붉은박스 기준)`;
+  const sideChip = document.getElementById('sideChip');
+  sideChip.textContent = isDouble ? '양면' : '단면';
+  sideChip.classList.toggle('double', isDouble);
+  const orderInfoLabel = document.getElementById('orderInfoLabel');
+  const passedKeys = Object.keys(orderData);
+  orderInfoLabel.textContent = passedKeys.length
+    ? '전달된 주문정보: ' + passedKeys.map(k => `${k}=${orderData[k]}`).join(' · ')
+    : '(전달된 쿼리 파라미터 없음 — 기본값으로 동작)';
+
+  /* ============================================================
+     3. 안내선(붉은 재단선 + 회색 여유선)
+     - 항상 canvas 맨 위에 떠 있고, 선택/저장 대상에서는 제외됨
+  ============================================================ */
+  let guideRect, outerGuideRect, guidesVisible = true;
+
+  function buildGuides(){
+    const padding = CANVAS_W * 0.02;
+    guideRect = new fabric.Rect({
+      left: padding, top: padding,
+      width: CANVAS_W - padding * 2, height: CANVAS_H - padding * 2,
+      fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
+      selectable: false, evented: false, visible: guidesVisible
+    });
+    guideRect.isGuide = true;
+
+    outerGuideRect = new fabric.Rect({
+      left: 0, top: 0,
+      width: CANVAS_W, height: CANVAS_H,
+      fill: 'transparent', stroke: '#999999', strokeWidth: 2,
+      selectable: false, evented: false, visible: guidesVisible
+    });
+    outerGuideRect.isGuide = true;
+
+    canvas.add(guideRect, outerGuideRect);
+  }
+  function bringGuideToFront(){
+    if (guideRect) canvas.bringToFront(guideRect);
+    if (outerGuideRect) canvas.bringToFront(outerGuideRect);
+  }
+  buildGuides();
+
+  document.getElementById('guideToggleBtn').addEventListener('click', () => {
+    guidesVisible = !guidesVisible;
+    guideRect.visible = guidesVisible;
+    outerGuideRect.visible = guidesVisible;
+    canvas.renderAll();
+  });
+
+  /* ============================================================
+     3b. 캔버스 전체 90도 회전
+     - 캔버스 크기(가로/세로)가 서로 바뀌고, 안의 모든 오브젝트(안내선 포함)가
+       캔버스에 붙어있는 것처럼 함께 회전합니다 (상대 위치·각도 그대로 유지).
+  ============================================================ */
+  function rotateCanvas90(dir){ // dir: 1 = 시계방향, -1 = 반시계방향
+    const oldW = CANVAS_W, oldH = CANVAS_H;
+
+    canvas.getObjects().forEach((obj) => {
+      const c = obj.getCenterPoint();
+      let nx, ny;
+      if (dir === 1) { nx = oldH - c.y; ny = c.x; }
+      else { nx = c.y; ny = oldW - c.x; }
+      obj.setPositionByOrigin(new fabric.Point(nx, ny), 'center', 'center');
+      if (!obj.isGuide) {
+        obj.set('angle', ((obj.angle || 0) + dir * 90 + 360) % 360);
+      }
+      obj.setCoords();
+    });
+
+    // 캔버스 논리 크기 및 규격 비율 교체 (가로 ↔ 세로)
+    CANVAS_W = oldH;
+    CANVAS_H = oldW;
+    const tmpRatio = ratioW; ratioW = ratioH; ratioH = tmpRatio;
+
+    // 안내선(붉은선/회색선)을 새 크기에 맞게 다시 생성
+    canvas.remove(guideRect, outerGuideRect);
+    buildGuides();
+
+    // 현재 줌 배율을 유지한 채 캔버스 엘리먼트 크기 갱신
+    setZoomLevel(zoom);
+
+    document.getElementById('sizeLabel').textContent = `${ratioW} × ${ratioH} (붉은박스 기준)`;
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    pushHistory();
+  }
+
+  document.getElementById('rotateCanvasLeftBtn').addEventListener('click', () => rotateCanvas90(-1));
+  document.getElementById('rotateCanvasRightBtn').addEventListener('click', () => rotateCanvas90(1));
+
+  /* ============================================================
+     3c. 메가메뉴(드롭다운) 공통 동작
+     - 트리거 버튼을 누르면 메뉴가 열리고, 다른 메뉴를 열거나 바깥을 클릭하면 닫힘
+     - 메뉴 안의 항목(버튼/라벨)을 클릭하면 해당 동작 후 자동으로 닫힘
+  ============================================================ */
+  const megaMenus = [
+    { trigger: document.getElementById('fileMenuBtn'), menu: document.getElementById('fileMenu') },
+    { trigger: document.getElementById('shapeMenuBtn'), menu: document.getElementById('shapeMenu') },
+    { trigger: document.getElementById('rotateMenuBtn'), menu: document.getElementById('rotateMenu') },
+    { trigger: document.getElementById('exportBtn'), menu: document.getElementById('exportMenu') }
+  ];
+
+  function closeAllMegaMenus(){
+    megaMenus.forEach(({ menu }) => menu.classList.add('hidden'));
+  }
+
+  megaMenus.forEach(({ trigger, menu }) => {
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = menu.classList.contains('hidden');
+      closeAllMegaMenus();
+      if (willOpen) menu.classList.remove('hidden');
+    });
+    // 메뉴 안의 항목을 클릭하면(파일첨부 라벨 포함) 동작이 실행된 뒤 메뉴를 닫음
+    menu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setTimeout(() => menu.classList.add('hidden'), 0);
+    });
+  });
+
+  document.addEventListener('click', () => closeAllMegaMenus());
+
+  /* ============================================================
+     4. 디자인(건수) / 앞뒤(면) 데이터 & 전환
+  ============================================================ */
+  const designData = Array.from({ length: count }, () => ({ front: null, back: null }));
+  const designNames = Array.from({ length: count }, () => '');
+  let currentIdx = 0;
+  let currentSide = 'front';
+
+  // 현재 캔버스 내용(안내선 제외)만 뽑아내기
+  function serializeCurrentCanvas(){
+    const objs = canvas.getObjects().filter(o => !o.isGuide);
+    return {
+      objects: objs.map(o => o.toObject(['selectable', 'evented'])),
+      background: canvas.backgroundColor || '#ffffff'
+    };
+  }
+
+  // 저장된 데이터를 캔버스에 로드 (안내선은 항상 다시 맨 위에 추가)
+  function loadCanvasObjects(data, callback){
+    restoring = true;
+    const payload = {
+      objects: (data && data.objects) || [],
+      background: (data && data.background) || '#ffffff'
+    };
+    canvas.loadFromJSON(payload, () => {
+      canvas.add(guideRect, outerGuideRect);
+      bringGuideToFront();
+      canvas.discardActiveObject();
+      canvas.renderAll();
+      restoring = false;
+      refreshEmptyHint();
+      updateSelectionPanel();
+      if (callback) callback();
+    });
+  }
+
+  function switchTo(idx, side){
+    if (designData[currentIdx]) {
+      designData[currentIdx][currentSide] = serializeCurrentCanvas();
+    }
+    currentIdx = idx;
+    currentSide = side;
+    loadCanvasObjects(designData[currentIdx][currentSide], () => {
+      resetHistory();
+      renderTabs();
+    });
+  }
+
+  function renderTabs(){
+    const tabList = document.getElementById('tabList');
+    tabList.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+      const group = document.createElement('div');
+      group.className = 'design-group';
+
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'design-name-input';
+      nameInput.placeholder = `디자인 ${i + 1}`;
+      nameInput.value = designNames[i] || '';
+      nameInput.addEventListener('click', (e) => e.stopPropagation());
+      nameInput.addEventListener('input', () => {
+        designNames[i] = nameInput.value;
+        dBtn.textContent = designNames[i].trim() ? designNames[i] : `디자인 ${i + 1}`;
+      });
+      group.appendChild(nameInput);
+
+      const dBtn = document.createElement('div');
+      dBtn.className = 'design-btn' + (i === currentIdx ? ' active' : '');
+      dBtn.textContent = designNames[i].trim() ? designNames[i] : `디자인 ${i + 1}`;
+      dBtn.addEventListener('click', () => switchTo(i, currentSide));
+      group.appendChild(dBtn);
+
+      if (isDouble) {
+        const sw = document.createElement('div');
+        sw.className = 'side-switch';
+        ['front', 'back'].forEach(s => {
+          const sBtn = document.createElement('button');
+          sBtn.type = 'button';
+          sBtn.className = 'side-btn' + (currentIdx === i && currentSide === s ? ' active' : '');
+          sBtn.textContent = s === 'front' ? '앞' : '뒤';
+          sBtn.addEventListener('click', (e) => { e.stopPropagation(); switchTo(i, s); });
+          sw.appendChild(sBtn);
+        });
+        group.appendChild(sw);
+      }
+
+      tabList.appendChild(group);
+    }
+  }
+  renderTabs();
+
+  document.getElementById('tabToggleBtn').addEventListener('click', () => {
+    document.getElementById('tabSidebar').classList.toggle('open');
+  });
+
+  /* ============================================================
+     5. 실행취소 / 다시실행 (디자인·면 전환 시 초기화됨)
+  ============================================================ */
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  let undoStack = [];
+  let redoStack = [];
+  let restoring = false;
+  let saveTimer = null;
+
+  function snapshot(){
+    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide']));
+  }
+  function pushHistory(){
+    if (restoring) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      undoStack.push(snapshot());
+      if (undoStack.length > 60) undoStack.shift();
+      redoStack = [];
+      updateHistoryButtons();
+    }, 120);
+  }
+  function updateHistoryButtons(){
+    undoBtn.disabled = undoStack.length <= 1;
+    redoBtn.disabled = redoStack.length === 0;
+  }
+  function resetHistory(){
+    undoStack = [snapshot()];
+    redoStack = [];
+    updateHistoryButtons();
+  }
+  function restoreFrom(json){
+    restoring = true;
+    canvas.loadFromJSON(json, () => {
+      canvas.renderAll();
+      restoring = false;
+      refreshEmptyHint();
+      updateSelectionPanel();
+    });
+  }
+  undoBtn.addEventListener('click', () => {
+    if (undoStack.length <= 1) return;
+    redoStack.push(undoStack.pop());
+    restoreFrom(undoStack[undoStack.length - 1]);
+    updateHistoryButtons();
+  });
+  redoBtn.addEventListener('click', () => {
+    if (!redoStack.length) return;
+    const json = redoStack.pop();
+    undoStack.push(json);
+    restoreFrom(json);
+    updateHistoryButtons();
+  });
+
+  canvas.on('object:added', pushHistory);
+  canvas.on('object:modified', pushHistory);
+  canvas.on('object:removed', () => { pushHistory(); refreshEmptyHint(); });
+  resetHistory();
+
+  /* ============================================================
+     6. 이미지(JPG/PNG) 불러오기
+  ============================================================ */
+  document.getElementById('imageInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      fabric.Image.fromURL(ev.target.result, function(img){
+        const maxDim = Math.min(CANVAS_W, CANVAS_H) * 0.8;
+        const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        img.set({
+          left: CANVAS_W / 2,
+          top: CANVAS_H / 2,
+          originX: 'center',
+          originY: 'center',
+          scaleX: scale,
+          scaleY: scale
+        });
+        canvas.add(img);
+        bringGuideToFront();
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        refreshEmptyHint();
+      }, { crossOrigin: 'anonymous' });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  /* ============================================================
+     7. SVG 불러오기 — 개별 도형/텍스트를 그대로 편집 가능하게 배치
+  ============================================================ */
+  document.getElementById('svgInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const svgText = ev.target.result;
+      fabric.loadSVGFromString(svgText, function(objects, options){
+        objects = objects.filter(Boolean);
+        if (!objects.length) return;
+
+        const tempGroup = fabric.util.groupSVGElements(objects, options);
+        const maxDim = Math.min(CANVAS_W, CANVAS_H) * 0.85;
+        const scale = Math.min(maxDim / tempGroup.width, maxDim / tempGroup.height, 1);
+        tempGroup.set({
+          left: CANVAS_W / 2,
+          top: CANVAS_H / 2,
+          originX: 'center',
+          originY: 'center',
+          scaleX: scale,
+          scaleY: scale
+        });
+        tempGroup.setCoords();
+
+        const items = tempGroup.getObjects().slice();
+        tempGroup._restoreObjectsState();
+
+        items.forEach(function(obj){
+          let finalObj = obj;
+          if (obj.type === 'text') {
+            const props = obj.toObject([
+              'left','top','width','height','scaleX','scaleY','angle','skewX','skewY',
+              'fontFamily','fontSize','fontWeight','fontStyle','fill','stroke','strokeWidth',
+              'textAlign','underline','linethrough','charSpacing','lineHeight','opacity',
+              'flipX','flipY','originX','originY'
+            ]);
+            finalObj = new fabric.IText(obj.text, props);
+          }
+          finalObj.set({ selectable: true, evented: true });
+          canvas.add(finalObj);
+        });
+
+        bringGuideToFront();
+        canvas.renderAll();
+        refreshEmptyHint();
+      });
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  /* ============================================================
+     7b. 폰트 파일 불러오기 (임시 적용)
+     - 업로드한 폰트는 FontFace API로 이 브라우저 탭에서만 등록되어
+       글꼴 목록에 추가되고, 텍스트에 바로 적용해 볼 수 있습니다.
+     - 이 폰트 파일 자체는 저장/내보내기 결과물에 절대 포함되지 않고,
+       해당 폰트를 쓴 텍스트는 저장 시 자동으로 "이미지"로 바뀌어
+       폰트가 없는 다른 환경에서도 모양이 그대로 유지됩니다.
+  ============================================================ */
+  const customFontNames = new Set(); // 이 세션에서 등록된 커스텀 폰트 이름들
+
+  document.getElementById('fontInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async function(ev){
+      const buffer = ev.target.result;
+      const baseName = file.name.replace(/\.[^.]+$/, '');
+      const safeName = baseName.replace(/[^a-zA-Z0-9가-힣_-]/g, '') || 'font';
+      const fontName = 'custom-' + safeName + '-' + Date.now().toString(36).slice(-4);
+      try {
+        const face = new FontFace(fontName, buffer);
+        await face.load();
+        document.fonts.add(face);
+        customFontNames.add(fontName);
+        const opt = document.createElement('option');
+        opt.value = fontName;
+        opt.textContent = '🔤 ' + baseName + ' (업로드한 폰트)';
+        fontFamilySelect.appendChild(opt);
+        canvas.renderAll();
+        alert(`"${baseName}" 폰트를 불러왔습니다.\n글꼴 목록 맨 아래에서 선택해 사용할 수 있어요.\n\n※ 이 폰트는 지금 이 화면에서만 임시로 적용되며, 저장/내보내기 시 해당 텍스트는 자동으로 이미지로 바뀌어 저장됩니다.`);
+      } catch (err) {
+        alert('폰트 파일을 불러오지 못했습니다. ttf/otf/woff 파일인지 확인해주세요.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  });
+
+  function isCustomFontName(name){
+    return !!name && customFontNames.has(name);
+  }
+
+  // 텍스트 오브젝트(라이브 인스턴스)를 그 자리 그대로의 픽셀 이미지 JSON으로 변환
+  function rasterizeTextObjectToImageJSON(obj){
+    const MULT = 3; // 저장용 이미지 해상도 배율
+    const br = obj.getBoundingRect(true, true);
+    const dataUrl = obj.toDataURL({ format: 'png', multiplier: MULT });
+    return {
+      type: 'image',
+      src: dataUrl,
+      left: br.left,
+      top: br.top,
+      width: Math.max(1, Math.round(br.width * MULT)),
+      height: Math.max(1, Math.round(br.height * MULT)),
+      scaleX: 1 / MULT,
+      scaleY: 1 / MULT,
+      angle: 0,
+      opacity: obj.opacity != null ? obj.opacity : 1,
+      selectable: true,
+      evented: true
+    };
+  }
+
+  /* ============================================================
+     8. 도구: 선택 / 텍스트추가 / 사각형 / 원
+  ============================================================ */
+  document.getElementById('selectToolBtn').addEventListener('click', () => {
+    if (penActive) setPenMode(false);
+    canvas.isDrawingMode = false;
+    canvas.selection = true;
+    canvas.forEachObject(o => { if (!o.isGuide) o.selectable = true; });
+  });
+
+  document.getElementById('addTextBtn').addEventListener('click', () => {
+    if (penActive) setPenMode(false);
+    const t = new fabric.IText('텍스트를 입력하세요', {
+      left: CANVAS_W / 2, top: CANVAS_H / 2,
+      originX: 'center', originY: 'center',
+      fontFamily: 'Pretendard', fontSize: 40, fill: '#222222'
+    });
+    canvas.add(t); bringGuideToFront(); canvas.setActiveObject(t); canvas.renderAll();
+  });
+
+  document.getElementById('addRectBtn').addEventListener('click', () => {
+    if (penActive) setPenMode(false);
+    const r = new fabric.Rect({
+      left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+      width: 180, height: 120, fill: '#3498db', stroke: '', strokeWidth: 0
+    });
+    canvas.add(r); bringGuideToFront(); canvas.setActiveObject(r); canvas.renderAll();
+  });
+
+  document.getElementById('addCircleBtn').addEventListener('click', () => {
+    if (penActive) setPenMode(false);
+    const c = new fabric.Circle({
+      left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+      radius: 80, fill: '#e67e22', stroke: '', strokeWidth: 0
+    });
+    canvas.add(c); bringGuideToFront(); canvas.setActiveObject(c); canvas.renderAll();
+  });
+
+  document.getElementById('addTriangleBtn').addEventListener('click', () => {
+    if (penActive) setPenMode(false);
+    const t = new fabric.Triangle({
+      left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+      width: 160, height: 140, fill: '#9b59b6', stroke: '', strokeWidth: 0
+    });
+    canvas.add(t); bringGuideToFront(); canvas.setActiveObject(t); canvas.renderAll();
+  });
+
+  /* ============================================================
+     8b. 펜 도구 (일러스트레이터 방식)
+     - 클릭: 직선 앵커점 추가
+     - 클릭한 채로 드래그: 그 점에 곡선 핸들 생성 (좌우 대칭)
+     - 더블클릭 / Enter: 지금까지 그린 경로를 완성 (열린 패스)
+     - 시작점 근처를 다시 클릭: 경로를 닫아서 완성 (닫힌 도형)
+     - Esc: 그리던 중인 경로 취소 (한번 더 누르면 펜 도구 자체 종료)
+  ============================================================ */
+  const penToolBtn = document.getElementById('penToolBtn');
+  let penActive = false;
+  let penPoints = [];      // { x, y, hx, hy } — hx/hy: 이 점에서 바깥쪽으로 드래그한 곡선 핸들 오프셋
+  let penDragging = false;
+  let penPreviewObjects = [];
+  const PEN_CLOSE_TOLERANCE = 10; // 시작점 닫기 판정 (화면 픽셀 기준)
+
+  function setPenMode(active){
+    penActive = active;
+    penToolBtn.classList.toggle('active', active);
+    document.getElementById('selectToolBtn').classList.toggle('active', !active);
+    canvas.selection = !active;
+    canvas.skipTargetFind = active;
+    canvas.discardActiveObject();
+    canvas.defaultCursor = active ? 'crosshair' : 'default';
+    canvas.hoverCursor = active ? 'crosshair' : 'move';
+    if (!active) {
+      penPoints = [];
+      penDragging = false;
+      clearPenPreview();
+    }
+    canvas.renderAll();
+  }
+
+  penToolBtn.addEventListener('click', () => {
+    if (penActive) {
+      finishPenPath(false);
+      setPenMode(false);
+    } else {
+      setPenMode(true);
+    }
+  });
+
+  function clearPenPreview(){
+    penPreviewObjects.forEach(o => canvas.remove(o));
+    penPreviewObjects = [];
+  }
+
+  function buildPenPathD(points, mousePt, closed){
+    if (!points.length) return '';
+    let d = `M ${points[0].x} ${points[0].y} `;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i], p1 = points[i + 1];
+      const c1x = p0.x + p0.hx, c1y = p0.y + p0.hy;
+      const c2x = p1.x - p1.hx, c2y = p1.y - p1.hy;
+      d += `C ${c1x} ${c1y} ${c2x} ${c2y} ${p1.x} ${p1.y} `;
+    }
+    if (mousePt) {
+      const last = points[points.length - 1];
+      const c1x = last.x + last.hx, c1y = last.y + last.hy;
+      d += `C ${c1x} ${c1y} ${mousePt.x} ${mousePt.y} ${mousePt.x} ${mousePt.y} `;
+    } else if (closed && points.length > 1) {
+      const last = points[points.length - 1], first = points[0];
+      const c1x = last.x + last.hx, c1y = last.y + last.hy;
+      const c2x = first.x - first.hx, c2y = first.y - first.hy;
+      d += `C ${c1x} ${c1y} ${c2x} ${c2y} ${first.x} ${first.y} `;
+    }
+    if (closed) d += 'Z';
+    return d;
+  }
+
+  function renderPenPreview(mousePt){
+    clearPenPreview();
+    if (!penPoints.length) { canvas.renderAll(); return; }
+
+    const d = buildPenPathD(penPoints, mousePt, false);
+    const previewPath = new fabric.Path(d, {
+      fill: '', stroke: '#3498db', strokeWidth: 1.5 / zoom,
+      strokeDashArray: [5 / zoom, 4 / zoom],
+      selectable: false, evented: false, objectCaching: false
+    });
+    previewPath.isGuide = true;
+    canvas.add(previewPath);
+    penPreviewObjects.push(previewPath);
+
+    penPoints.forEach((p) => {
+      const dot = new fabric.Circle({
+        left: p.x, top: p.y, originX: 'center', originY: 'center',
+        radius: 4 / zoom, fill: '#ffffff', stroke: '#3498db', strokeWidth: 1.5 / zoom,
+        selectable: false, evented: false
+      });
+      dot.isGuide = true;
+      canvas.add(dot);
+      penPreviewObjects.push(dot);
+
+      if (p.hx || p.hy) {
+        const line = new fabric.Line([p.x - p.hx, p.y - p.hy, p.x + p.hx, p.y + p.hy], {
+          stroke: '#3498db', strokeWidth: 1 / zoom, selectable: false, evented: false
+        });
+        line.isGuide = true;
+        canvas.add(line);
+        penPreviewObjects.push(line);
+
+        [[p.x + p.hx, p.y + p.hy], [p.x - p.hx, p.y - p.hy]].forEach(([hx, hy]) => {
+          const hd = new fabric.Rect({
+            left: hx, top: hy, originX: 'center', originY: 'center',
+            width: 5 / zoom, height: 5 / zoom, fill: '#3498db',
+            selectable: false, evented: false
+          });
+          hd.isGuide = true;
+          canvas.add(hd);
+          penPreviewObjects.push(hd);
+        });
+      }
+    });
+
+    canvas.renderAll();
+  }
+
+  function finishPenPath(closed){
+    if (penPoints.length < 2) {
+      penPoints = [];
+      penDragging = false;
+      clearPenPreview();
+      canvas.renderAll();
+      return;
+    }
+    const d = buildPenPathD(penPoints, null, closed);
+    clearPenPreview();
+
+    const path = new fabric.Path(d, {
+      fill: closed ? 'rgba(52,152,219,0.15)' : 'transparent',
+      stroke: '#222222',
+      strokeWidth: 3,
+      strokeLineCap: 'round',
+      strokeLineJoin: 'round',
+      selectable: true,
+      evented: true,
+      objectCaching: false
+    });
+    canvas.add(path);
+    bringGuideToFront();
+    canvas.setActiveObject(path);
+    canvas.renderAll();
+
+    penPoints = [];
+    penDragging = false;
+  }
+
+  canvas.on('mouse:down', (opt) => {
+    if (!penActive) return;
+    const p = canvas.getPointer(opt.e);
+
+    if (penPoints.length >= 2) {
+      const first = penPoints[0];
+      const screenDist = Math.hypot(p.x - first.x, p.y - first.y) * zoom;
+      if (screenDist <= PEN_CLOSE_TOLERANCE) {
+        finishPenPath(true);
+        return;
+      }
+    }
+
+    penPoints.push({ x: p.x, y: p.y, hx: 0, hy: 0 });
+    penDragging = true;
+    renderPenPreview(p);
+  });
+
+  canvas.on('mouse:move', (opt) => {
+    if (!penActive || !penPoints.length) return;
+    const p = canvas.getPointer(opt.e);
+    if (penDragging) {
+      const anchor = penPoints[penPoints.length - 1];
+      anchor.hx = p.x - anchor.x;
+      anchor.hy = p.y - anchor.y;
+    }
+    renderPenPreview(p);
+  });
+
+  canvas.on('mouse:up', () => {
+    if (!penActive) return;
+    penDragging = false;
+  });
+
+  canvas.on('mouse:dblclick', () => {
+    if (!penActive) return;
+    finishPenPath(false);
+  });
+
+  /* ============================================================
+     9. 삭제 / 복제
+  ============================================================ */
+  const deleteBtn = document.getElementById('deleteBtn');
+  const deleteSideBtn = document.getElementById('deleteSideBtn');
+  function deleteSelected(){
+    const objs = canvas.getActiveObjects().filter(o => !o.isGuide);
+    if (!objs.length) return;
+    objs.forEach(o => canvas.remove(o));
+    canvas.discardActiveObject();
+    canvas.renderAll();
+  }
+  deleteBtn.addEventListener('click', deleteSelected);
+  deleteSideBtn.addEventListener('click', deleteSelected);
+
+  document.getElementById('duplicateBtn').addEventListener('click', () => {
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.isGuide) return;
+    obj.clone(clone => {
+      clone.set({ left: obj.left + 20, top: obj.top + 20 });
+      canvas.add(clone); bringGuideToFront();
+      canvas.setActiveObject(clone);
+      canvas.renderAll();
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    const active = canvas.getActiveObject();
+    if (active && active.isEditing) return;
+
+    if (penActive) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (penPoints.length) {
+          penPoints = []; penDragging = false; clearPenPreview(); canvas.renderAll();
+        } else {
+          setPenMode(false);
+        }
+        return;
+      }
+      if (e.key === 'Enter') { e.preventDefault(); finishPenPath(false); return; }
+    }
+
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoBtn.click(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoBtn.click(); }
+  });
+
+  /* ============================================================
+     10. 줌
+  ============================================================ */
+  let zoom = 1;
+  const zoomLabel = document.getElementById('zoomLabel');
+  function setZoomLevel(z){
+    zoom = Math.min(Math.max(z, 0.2), 3);
+    canvas.setZoom(zoom);
+    canvas.setWidth(CANVAS_W * zoom);
+    canvas.setHeight(CANVAS_H * zoom);
+    zoomLabel.textContent = Math.round(zoom * 100) + '%';
+  }
+  document.getElementById('zoomInBtn').addEventListener('click', () => setZoomLevel(zoom + 0.1));
+  document.getElementById('zoomOutBtn').addEventListener('click', () => setZoomLevel(zoom - 0.1));
+  document.getElementById('zoomResetBtn').addEventListener('click', () => setZoomLevel(1));
+  setZoomLevel(1);
+
+  canvasWrap.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setZoomLevel(zoom + (e.deltaY < 0 ? 0.08 : -0.08));
+  }, { passive: false });
+
+  /* ============================================================
+     11. 레이어 순서 / 뒤집기
+  ============================================================ */
+  document.getElementById('layerFrontBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { canvas.bringToFront(o); bringGuideToFront(); canvas.renderAll(); } });
+  document.getElementById('layerBackBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { canvas.sendToBack(o); canvas.renderAll(); } });
+  document.getElementById('layerForwardBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { canvas.bringForward(o); bringGuideToFront(); canvas.renderAll(); } });
+  document.getElementById('layerBackwardBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { canvas.sendBackwards(o); canvas.renderAll(); } });
+
+  document.getElementById('flipXBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { o.set('flipX', !o.flipX); canvas.renderAll(); pushHistory(); } });
+  document.getElementById('flipYBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { o.set('flipY', !o.flipY); canvas.renderAll(); pushHistory(); } });
+
+  /* ============================================================
+     12. 내보내기 (PNG / JPG / SVG) — 안내선은 항상 제외
+  ============================================================ */
+  const exportBtn = document.getElementById('exportBtn');
+  const exportMenu = document.getElementById('exportMenu');
+
+  function download(url, filename){
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // 현재 캔버스를 복제한 뒤, 업로드한(임시) 폰트를 쓴 텍스트만 골라 이미지로 바꿔치기함
+  // (SVG로 내보낼 때 사용 — 결과 SVG가 그 폰트 파일 없이도 어디서나 똑같이 보이도록)
+  function buildFontFlattenedClone(){
+    return new Promise((resolve) => {
+      canvas.clone((cloned) => {
+        const targets = cloned.getObjects().filter(o => !o.isGuide && isTextObject(o) && isCustomFontName(o.fontFamily));
+        if (!targets.length) { resolve(cloned); return; }
+        let remaining = targets.length;
+        targets.forEach((obj) => {
+          const imgJSON = rasterizeTextObjectToImageJSON(obj);
+          cloned.remove(obj);
+          fabric.Image.fromURL(imgJSON.src, (img) => {
+            img.set({
+              left: imgJSON.left, top: imgJSON.top,
+              scaleX: imgJSON.scaleX, scaleY: imgJSON.scaleY,
+              opacity: imgJSON.opacity, selectable: true, evented: true
+            });
+            cloned.add(img);
+            remaining--;
+            if (remaining === 0) resolve(cloned);
+          });
+        });
+      });
+    });
+  }
+
+  exportMenu.addEventListener('click', async (e) => {
+    const type = e.target.getAttribute('data-export');
+    if (!type) return;
+    canvas.discardActiveObject();
+    const wasVisible = guidesVisible;
+    guideRect.visible = false; outerGuideRect.visible = false;
+    canvas.renderAll();
+    const multiplier = 1 / zoom;
+
+    if (type === 'png') {
+      download(canvas.toDataURL({ format: 'png', multiplier }), 'design.png');
+    } else if (type === 'jpg') {
+      download(canvas.toDataURL({ format: 'jpeg', quality: 0.95, multiplier }), 'design.jpg');
+    } else if (type === 'svg') {
+      exportBtn.disabled = true;
+      const flattened = await buildFontFlattenedClone();
+      const blob = new Blob([flattened.toSVG()], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      download(url, 'design.svg');
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      flattened.dispose();
+      exportBtn.disabled = false;
+    }
+    guideRect.visible = wasVisible; outerGuideRect.visible = wasVisible;
+    canvas.renderAll();
+  });
+
+  /* ============================================================
+     13. 프로젝트 저장 / 불러오기
+     — 쿼리로 전달받은 orderData, 건수(count), 단면/양면 여부,
+       디자인별 앞/뒤 내용을 모두 하나의 JSON에 담아 그대로 전달합니다.
+  ============================================================ */
+  // 저장 전용 데이터(JSON) 한 면을 검사해서, 업로드한(임시) 폰트를 쓴 텍스트가 있으면
+  // 이미지로 바꿔치기한 새 데이터를 돌려줌 (원본 designData는 건드리지 않음 — 계속 편집 가능하도록)
+  function flattenSideDataForSave(data){
+    return new Promise((resolve) => {
+      if (!data || !data.objects || !data.objects.length) { resolve(data); return; }
+      const hasCustom = data.objects.some(o => isTextObject(o) && isCustomFontName(o.fontFamily));
+      if (!hasCustom) { resolve(data); return; }
+
+      fabric.util.enlivenObjects(data.objects, (enlivened) => {
+        const results = new Array(enlivened.length);
+        let remaining = enlivened.length;
+        if (remaining === 0) { resolve({ objects: [], background: data.background }); return; }
+        enlivened.forEach((obj, idx) => {
+          if (isTextObject(obj) && isCustomFontName(obj.fontFamily)) {
+            results[idx] = rasterizeTextObjectToImageJSON(obj);
+          } else {
+            results[idx] = obj.toObject(['selectable', 'evented']);
+          }
+          remaining--;
+          if (remaining === 0) resolve({ objects: results, background: data.background });
+        });
+      });
+    });
+  }
+
+  document.getElementById('saveProjectBtn').addEventListener('click', async () => {
+    const saveBtn = document.getElementById('saveProjectBtn');
+    designData[currentIdx][currentSide] = serializeCurrentCanvas();
+
+    const hasAnyCustomFont = customFontNames.size > 0;
+    saveBtn.disabled = true;
+    const originalLabel = saveBtn.textContent;
+    if (hasAnyCustomFont) saveBtn.textContent = '이미지로 변환 중...';
+
+    // 업로드한 폰트를 쓴 디자인이 있다면, 저장용으로만 텍스트를 이미지로 바꿔서 내보냄
+    const exportDesignData = [];
+    for (let i = 0; i < designData.length; i++) {
+      const front = await flattenSideDataForSave(designData[i].front);
+      const back = await flattenSideDataForSave(designData[i].back);
+      exportDesignData.push({ front, back });
+    }
+
+    const project = {
+      type: 'svg-editor-project',
+      version: 1,
+      savedAt: new Date().toISOString(),
+      orderData,          // 쿼리로 전달받은 모든 파라미터를 그대로 보존
+      count,
+      isDouble,
+      ratioW, ratioH,
+      canvasWidth: CANVAS_W,
+      canvasHeight: CANVAS_H,
+      designNames,
+      designData: exportDesignData
+    };
+    const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    download(url, `design-project-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    saveBtn.disabled = false;
+    saveBtn.textContent = originalLabel;
+  });
+
+  document.getElementById('projectInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      try {
+        const project = JSON.parse(ev.target.result);
+        if (project.designData) {
+          for (let i = 0; i < Math.min(count, project.designData.length); i++) {
+            designData[i] = project.designData[i];
+            if (project.designNames && project.designNames[i] != null) {
+              designNames[i] = project.designNames[i];
+            }
+          }
+        }
+        currentIdx = 0; currentSide = 'front';
+        loadCanvasObjects(designData[currentIdx][currentSide], () => {
+          resetHistory();
+          renderTabs();
+        });
+      } catch (err) {
+        alert('프로젝트 파일을 여는 중 문제가 발생했습니다. 파일 형식을 확인해주세요.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  /* ============================================================
+     14. 속성 패널 — 선택 오브젝트에 따라 표시 전환
+  ============================================================ */
+  const noSelectionSection = document.getElementById('noSelectionSection');
+  const selectionSections = document.getElementById('selectionSections');
+  const textSection = document.getElementById('textSection');
+  const shapeSection = document.getElementById('shapeSection');
+
+  const textContentInput = document.getElementById('textContentInput');
+  const fontFamilySelect = document.getElementById('fontFamilySelect');
+  const fontSizeInput = document.getElementById('fontSizeInput');
+  const textColorInput = document.getElementById('textColorInput');
+  const boldBtn = document.getElementById('boldBtn');
+  const italicBtn = document.getElementById('italicBtn');
+  const underlineBtn = document.getElementById('underlineBtn');
+  const alignLeftBtn = document.getElementById('alignLeftBtn');
+  const alignCenterBtn = document.getElementById('alignCenterBtn');
+  const alignRightBtn = document.getElementById('alignRightBtn');
+
+  const fillColorInput = document.getElementById('fillColorInput');
+  const strokeColorInput = document.getElementById('strokeColorInput');
+  const strokeWidthInput = document.getElementById('strokeWidthInput');
+
+  const opacityInput = document.getElementById('opacityInput');
+  const angleInput = document.getElementById('angleInput');
+
+  /* ============================================================
+     14b. CMYK 색상 선택기
+     - 화면(모니터)과 캔버스는 물리적으로 RGB로만 그려지기 때문에,
+       "완전한 CMYK 렌더링"은 브라우저에서 불가능합니다.
+     - 대신 색을 고를 때 RGB 슬라이더가 아니라 인쇄 기준인
+       C/M/Y/K(%) 슬라이더로 지정하도록 하고, 화면 표시용으로만
+       RGB로 자동 변환합니다 (모든 색상 입력을 이 방식으로 통일).
+  ============================================================ */
+  function cmykToRgb(c, m, y, k){
+    return {
+      r: Math.round(255 * (1 - c) * (1 - k)),
+      g: Math.round(255 * (1 - m) * (1 - k)),
+      b: Math.round(255 * (1 - y) * (1 - k))
+    };
+  }
+  function rgbToCmyk(r, g, b){
+    r /= 255; g /= 255; b /= 255;
+    const k = 1 - Math.max(r, g, b);
+    if (k >= 1) return { c: 0, m: 0, y: 0, k: 1 };
+    return {
+      c: (1 - r - k) / (1 - k),
+      m: (1 - g - k) / (1 - k),
+      y: (1 - b - k) / (1 - k),
+      k
+    };
+  }
+  function hexToRgb(hex){
+    let h = (hex || '#000000').replace('#', '');
+    if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+    const num = parseInt(h, 16) || 0;
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+  function rgbToHex(r, g, b){
+    return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  }
+  function hsvToRgb(h, s, v){
+    h = ((h % 360) + 360) % 360 / 60;
+    const i = Math.floor(h);
+    const f = h - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    let r, g, b;
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      default: r = v; g = p; b = q; break;
+    }
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+  }
+  function rgbToHsv(r, g, b){
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const v = max, d = max - min;
+    const s = max === 0 ? 0 : d / max;
+    let h = 0;
+    if (d !== 0) {
+      switch (max) {
+        case r: h = ((g - b) / d) % 6; break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4; break;
+      }
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return { h, s, v };
+  }
+
+  function initCmykPicker(el){
+    let currentHex = '#000000';
+    let hue = 0, sat = 0, val = 0; // 시각적 선택 영역(SV 사각형 + 색상 띠)용 내부 상태
+
+    const swatch = document.createElement('div');
+    swatch.className = 'cmyk-swatch';
+    el.appendChild(swatch);
+
+    const popover = document.createElement('div');
+    popover.className = 'cmyk-popover hidden';
+    popover.innerHTML =
+      `<canvas class="cmyk-sv" width="186" height="100"></canvas>` +
+      `<canvas class="cmyk-hue" width="186" height="14"></canvas>` +
+      [['c', 'C'], ['m', 'M'], ['y', 'Y'], ['k', 'K']].map(([ch, label]) =>
+        `<div class="cmyk-row"><label>${label}</label><input type="range" min="0" max="100" value="${ch === 'k' ? 100 : 0}" data-ch="${ch}"><span data-out="${ch}">${ch === 'k' ? 100 : 0}</span></div>`
+      ).join('') +
+      `<div class="cmyk-hexline">
+         <span class="cmyk-hex-swatch"></span>
+         <input type="text" class="cmyk-hex-input" maxlength="7" spellcheck="false">
+       </div>
+       <div class="cmyk-values-line"></div>`;
+    el.appendChild(popover);
+
+    const svCanvas = popover.querySelector('.cmyk-sv');
+    const hueCanvas = popover.querySelector('.cmyk-hue');
+    const svCtx = svCanvas.getContext('2d');
+    const hueCtx = hueCanvas.getContext('2d');
+    const SV_W = svCanvas.width, SV_H = svCanvas.height;
+    const HUE_W = hueCanvas.width, HUE_H = hueCanvas.height;
+
+    const sliders = {
+      c: popover.querySelector('[data-ch="c"]'),
+      m: popover.querySelector('[data-ch="m"]'),
+      y: popover.querySelector('[data-ch="y"]'),
+      k: popover.querySelector('[data-ch="k"]')
+    };
+    const outs = {
+      c: popover.querySelector('[data-out="c"]'),
+      m: popover.querySelector('[data-out="m"]'),
+      y: popover.querySelector('[data-out="y"]'),
+      k: popover.querySelector('[data-out="k"]')
+    };
+    const hexSwatch = popover.querySelector('.cmyk-hex-swatch');
+    const hexInput = popover.querySelector('.cmyk-hex-input');
+    const valuesLine = popover.querySelector('.cmyk-values-line');
+
+    function drawHueStrip(){
+      const grad = hueCtx.createLinearGradient(0, 0, HUE_W, 0);
+      for (let i = 0; i <= 6; i++) grad.addColorStop(i / 6, `hsl(${i * 60},100%,50%)`);
+      hueCtx.fillStyle = grad;
+      hueCtx.fillRect(0, 0, HUE_W, HUE_H);
+      // 현재 색상(hue) 위치 표시
+      const x = (hue / 360) * HUE_W;
+      hueCtx.strokeStyle = '#fff';
+      hueCtx.lineWidth = 2;
+      hueCtx.strokeRect(Math.max(0, Math.min(HUE_W - 3, x - 1.5)), 0, 3, HUE_H);
+      hueCtx.strokeStyle = 'rgba(0,0,0,.3)';
+      hueCtx.lineWidth = 1;
+      hueCtx.strokeRect(Math.max(0, Math.min(HUE_W - 3, x - 1.5)) + 0.5, 0.5, 2, HUE_H - 1);
+    }
+
+    // 색상 선택이 금지된 삼각형 영역 (SV 사각형 우측 상단 모서리를 흰색으로 막음)
+    // — 색상띠(hue)가 "이 지점" 구간에 있을 때만 나타나고, 벗어나면 사라져서 다시 선택 가능해집니다.
+    const BLOCK_TRI_W_FRAC = 0.35; // 오른쪽 끝에서부터 차지하는 폭 비율
+    const BLOCK_TRI_H_FRAC = 0.5;  // 위쪽 끝에서부터 차지하는 높이 비율
+    const HUE_TRIGGER_MIN = 75;    // "이 지점" 구간 시작 (색상띠, 0~360)
+    const HUE_TRIGGER_MAX = 203;   // "이 지점" 구간 끝 (우측으로 3.2배 확장: 폭 40°→128°)
+    function isHueInTriggerZone(){
+      return hue >= HUE_TRIGGER_MIN && hue <= HUE_TRIGGER_MAX;
+    }
+    function isInBlockedTriangle(x, y){
+      if (!isHueInTriggerZone()) return false;
+      const triW = SV_W * BLOCK_TRI_W_FRAC;
+      const triH = SV_H * BLOCK_TRI_H_FRAC;
+      if (y < 0 || y > triH) return false;
+      const boundaryX = (SV_W - triW) + (y / triH) * triW;
+      return x >= boundaryX;
+    }
+
+    function drawSvSquare(){
+      svCtx.fillStyle = `hsl(${hue},100%,50%)`;
+      svCtx.fillRect(0, 0, SV_W, SV_H);
+      const whiteGrad = svCtx.createLinearGradient(0, 0, SV_W, 0);
+      whiteGrad.addColorStop(0, 'rgba(255,255,255,1)');
+      whiteGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      svCtx.fillStyle = whiteGrad;
+      svCtx.fillRect(0, 0, SV_W, SV_H);
+      const blackGrad = svCtx.createLinearGradient(0, 0, 0, SV_H);
+      blackGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      blackGrad.addColorStop(1, 'rgba(0,0,0,1)');
+      svCtx.fillStyle = blackGrad;
+      svCtx.fillRect(0, 0, SV_W, SV_H);
+
+      // 선택 금지 삼각형: 색상띠가 "이 지점" 구간일 때만 흰색으로 덮어서 표시
+      if (isHueInTriggerZone()) {
+        const triW = SV_W * BLOCK_TRI_W_FRAC, triH = SV_H * BLOCK_TRI_H_FRAC;
+        svCtx.beginPath();
+        svCtx.moveTo(SV_W - triW, 0);
+        svCtx.lineTo(SV_W, 0);
+        svCtx.lineTo(SV_W, triH);
+        svCtx.closePath();
+        svCtx.fillStyle = '#ffffff';
+        svCtx.fill();
+        svCtx.strokeStyle = 'rgba(0,0,0,.15)';
+        svCtx.lineWidth = 1;
+        svCtx.stroke();
+      }
+
+      // 현재 채도/명도 위치에 원형 커서 표시
+      const cx = sat * SV_W, cy = (1 - val) * SV_H;
+      svCtx.beginPath();
+      svCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+      svCtx.strokeStyle = '#fff';
+      svCtx.lineWidth = 2;
+      svCtx.stroke();
+      svCtx.beginPath();
+      svCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+      svCtx.strokeStyle = 'rgba(0,0,0,.35)';
+      svCtx.lineWidth = 1;
+      svCtx.stroke();
+    }
+
+    // 피커 위치가 (색상띠 이동 등으로) 가려진 삼각형 안에 들어가면,
+    // 그 삼각형의 대각선(빗변) 가운데 지점으로 자동으로 옮겨서
+    // 가려져서 안 보이는 색이 그대로 선택된 채로 남아있지 않게 함
+    function clampSvOutOfBlockedZone(){
+      if (!isHueInTriggerZone()) return false;
+      const x = sat * SV_W, y = (1 - val) * SV_H;
+      if (!isInBlockedTriangle(x, y)) return false;
+      const triW = SV_W * BLOCK_TRI_W_FRAC, triH = SV_H * BLOCK_TRI_H_FRAC;
+      const midX = SV_W - triW / 2, midY = triH / 2; // 빗변(대각선)의 중앙 지점
+      sat = midX / SV_W;
+      val = 1 - midY / SV_H;
+      return true;
+    }
+
+    // CMYK 슬라이더 값을 기준으로 화면(스와치/hex/hue·sv 좌표)을 갱신
+    function refreshFromCmyk(dispatch){
+      const c = sliders.c.value / 100, m = sliders.m.value / 100, y = sliders.y.value / 100, k = sliders.k.value / 100;
+      const { r, g, b } = cmykToRgb(c, m, y, k);
+      const hsv = rgbToHsv(r, g, b);
+      hue = hsv.h; sat = hsv.s; val = hsv.v;
+      // 가려진 구역으로 들어가는 값이면 refreshFromHsv 안에서 자동으로 보정됨
+      refreshFromHsv(dispatch);
+    }
+
+    // hue/sat/val(시각적 선택 영역) 기준으로 CMYK 슬라이더와 화면을 갱신
+    function refreshFromHsv(dispatch){
+      clampSvOutOfBlockedZone();
+      const { r, g, b } = hsvToRgb(hue, sat, val);
+      currentHex = rgbToHex(r, g, b);
+      const cmyk = rgbToCmyk(r, g, b);
+      sliders.c.value = Math.round(cmyk.c * 100);
+      sliders.m.value = Math.round(cmyk.m * 100);
+      sliders.y.value = Math.round(cmyk.y * 100);
+      sliders.k.value = Math.round(cmyk.k * 100);
+
+      swatch.style.background = currentHex;
+      hexSwatch.style.background = currentHex;
+      hexInput.value = currentHex.toUpperCase();
+      valuesLine.textContent = `C${sliders.c.value} M${sliders.m.value} Y${sliders.y.value} K${sliders.k.value}`;
+      Object.keys(outs).forEach(ch => { outs[ch].textContent = sliders[ch].value; });
+      drawHueStrip();
+      drawSvSquare();
+      if (dispatch) el.dispatchEvent(new Event('input'));
+    }
+
+    Object.values(sliders).forEach(s => s.addEventListener('input', () => refreshFromCmyk(true)));
+
+    // ---- SV 사각형 클릭/드래그로 채도·명도 선택 ----
+    let draggingSv = false;
+    function pickSv(clientX, clientY){
+      const r = svCanvas.getBoundingClientRect();
+      const x = Math.max(0, Math.min(SV_W, clientX - r.left));
+      const y = Math.max(0, Math.min(SV_H, clientY - r.top));
+      if (isInBlockedTriangle(x, y)) return; // 이 영역은 선택할 수 없음
+      sat = x / SV_W;
+      val = 1 - y / SV_H;
+      refreshFromHsv(true);
+    }
+    svCanvas.addEventListener('mousedown', (e) => { draggingSv = true; pickSv(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', (e) => { if (draggingSv) pickSv(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => { draggingSv = false; });
+    svCanvas.addEventListener('mousemove', (e) => {
+      const r = svCanvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      svCanvas.style.cursor = isInBlockedTriangle(x, y) ? 'not-allowed' : 'crosshair';
+    });
+
+    // ---- 색상 띠 클릭/드래그로 색상(hue) 선택 ----
+    let draggingHue = false;
+    function pickHue(clientX){
+      const r = hueCanvas.getBoundingClientRect();
+      const x = Math.max(0, Math.min(HUE_W, clientX - r.left));
+      hue = (x / HUE_W) * 360;
+      refreshFromHsv(true);
+    }
+    hueCanvas.addEventListener('mousedown', (e) => { draggingHue = true; pickHue(e.clientX); });
+    window.addEventListener('mousemove', (e) => { if (draggingHue) pickHue(e.clientX); });
+    window.addEventListener('mouseup', () => { draggingHue = false; });
+
+    // ---- Hex 직접 입력 ----
+    hexInput.addEventListener('change', () => {
+      let v = hexInput.value.trim();
+      if (!/^#?[0-9a-fA-F]{6}$/.test(v) && !/^#?[0-9a-fA-F]{3}$/.test(v)) { hexInput.value = currentHex.toUpperCase(); return; }
+      if (v.charAt(0) !== '#') v = '#' + v;
+      const { r, g, b } = hexToRgb(v);
+      const hsv = rgbToHsv(r, g, b);
+      hue = hsv.h; sat = hsv.s; val = hsv.v;
+      refreshFromHsv(true);
+    });
+    hexInput.addEventListener('click', (e) => e.stopPropagation());
+    hexInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') hexInput.blur(); });
+
+    swatch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.cmyk-popover').forEach(p => { if (p !== popover) p.classList.add('hidden'); });
+      const willOpen = popover.classList.contains('hidden');
+      if (willOpen) {
+        const r = swatch.getBoundingClientRect();
+        let left = r.left;
+        if (left + 216 > window.innerWidth - 8) left = window.innerWidth - 224;
+        popover.style.left = Math.max(8, left) + 'px';
+        popover.style.top = (r.bottom + 6) + 'px';
+        drawHueStrip();
+        drawSvSquare();
+      }
+      popover.classList.toggle('hidden');
+    });
+    popover.addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => popover.classList.add('hidden'));
+
+    Object.defineProperty(el, 'value', {
+      get(){ return currentHex; },
+      set(hex){
+        const { r, g, b } = hexToRgb(hex);
+        const { c, m, y, k } = rgbToCmyk(r, g, b);
+        sliders.c.value = Math.round(c * 100);
+        sliders.m.value = Math.round(m * 100);
+        sliders.y.value = Math.round(y * 100);
+        sliders.k.value = Math.round(k * 100);
+        refreshFromCmyk(false);
+      }
+    });
+
+    el.value = '#000000';
+  }
+
+  initCmykPicker(textColorInput);
+  initCmykPicker(fillColorInput);
+  initCmykPicker(strokeColorInput);
+
+  let panelUpdating = false;
+
+  function isTextObject(o){
+    return o && (o.type === 'i-text' || o.type === 'text' || o.type === 'textbox');
+  }
+
+  function updateSelectionPanel(){
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.isGuide) {
+      noSelectionSection.classList.remove('hidden');
+      selectionSections.classList.add('hidden');
+      deleteBtn.disabled = true;
+      return;
+    }
+    panelUpdating = true;
+    noSelectionSection.classList.add('hidden');
+    selectionSections.classList.remove('hidden');
+    deleteBtn.disabled = false;
+
+    const textLike = isTextObject(obj);
+    textSection.classList.toggle('hidden', !textLike);
+    shapeSection.classList.toggle('hidden', textLike);
+
+    if (textLike) {
+      textContentInput.value = obj.text || '';
+      fontFamilySelect.value = obj.fontFamily || 'Pretendard';
+      fontSizeInput.value = Math.round(obj.fontSize || 40);
+      textColorInput.value = toHex(obj.fill) || '#222222';
+      boldBtn.classList.toggle('on', obj.fontWeight === 'bold' || obj.fontWeight >= 700);
+      italicBtn.classList.toggle('on', obj.fontStyle === 'italic');
+      underlineBtn.classList.toggle('on', !!obj.underline);
+      [alignLeftBtn, alignCenterBtn, alignRightBtn].forEach(b => b.classList.remove('on'));
+      if (obj.textAlign === 'center') alignCenterBtn.classList.add('on');
+      else if (obj.textAlign === 'right') alignRightBtn.classList.add('on');
+      else alignLeftBtn.classList.add('on');
+    } else {
+      fillColorInput.value = toHex(obj.fill) || '#3498db';
+      strokeColorInput.value = toHex(obj.stroke) || '#000000';
+      strokeWidthInput.value = obj.strokeWidth || 0;
+    }
+
+    opacityInput.value = obj.opacity != null ? obj.opacity : 1;
+    angleInput.value = Math.round(obj.angle || 0);
+    panelUpdating = false;
+  }
+
+  function toHex(c){
+    if (!c || typeof c !== 'string') return null;
+    if (c.charAt(0) === '#') return c.length === 7 ? c : null;
+    const m = c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return null;
+    return '#' + [1,2,3].map(i => parseInt(m[i],10).toString(16).padStart(2,'0')).join('');
+  }
+
+  canvas.on('selection:created', updateSelectionPanel);
+  canvas.on('selection:updated', updateSelectionPanel);
+  canvas.on('selection:cleared', updateSelectionPanel);
+  canvas.on('object:scaling', updateSelectionPanel);
+  canvas.on('object:rotating', updateSelectionPanel);
+  canvas.on('text:changed', updateSelectionPanel);
+
+  function withActive(fn){
+    if (panelUpdating) return;
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.isGuide) return;
+    fn(obj);
+    canvas.renderAll();
+  }
+
+  textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));
+  fontFamilySelect.addEventListener('change', () => withActive(o => o.set('fontFamily', fontFamilySelect.value)));
+  fontSizeInput.addEventListener('input', () => withActive(o => o.set('fontSize', parseInt(fontSizeInput.value, 10) || 1)));
+  textColorInput.addEventListener('input', () => withActive(o => o.set('fill', textColorInput.value)));
+
+  boldBtn.addEventListener('click', () => withActive(o => { o.set('fontWeight', (o.fontWeight === 'bold' || o.fontWeight >= 700) ? 'normal' : 'bold'); updateSelectionPanel(); }));
+  italicBtn.addEventListener('click', () => withActive(o => { o.set('fontStyle', o.fontStyle === 'italic' ? 'normal' : 'italic'); updateSelectionPanel(); }));
+  underlineBtn.addEventListener('click', () => withActive(o => { o.set('underline', !o.underline); updateSelectionPanel(); }));
+
+  alignLeftBtn.addEventListener('click', () => withActive(o => { o.set('textAlign', 'left'); updateSelectionPanel(); }));
+  alignCenterBtn.addEventListener('click', () => withActive(o => { o.set('textAlign', 'center'); updateSelectionPanel(); }));
+  alignRightBtn.addEventListener('click', () => withActive(o => { o.set('textAlign', 'right'); updateSelectionPanel(); }));
+
+  fillColorInput.addEventListener('input', () => withActive(o => o.set('fill', fillColorInput.value)));
+  strokeColorInput.addEventListener('input', () => withActive(o => o.set('stroke', strokeColorInput.value)));
+  strokeWidthInput.addEventListener('input', () => withActive(o => o.set('strokeWidth', parseInt(strokeWidthInput.value, 10) || 0)));
+
+  opacityInput.addEventListener('input', () => withActive(o => o.set('opacity', parseFloat(opacityInput.value))));
+  angleInput.addEventListener('input', () => withActive(o => { o.set('angle', parseFloat(angleInput.value) || 0); o.setCoords(); }));
+
+  /* ============================================================
+     15. 모바일: 패널 토글
+  ============================================================ */
+  document.getElementById('panelToggleBtn').addEventListener('click', () => {
+    document.getElementById('sidePanel').classList.toggle('open');
+  });
+
+  /* ============================================================
+     16. 캔버스 바깥(패널/툴바 제외) 클릭 시 선택 해제
+  ============================================================ */
+  document.addEventListener('mousedown', (e) => {
+    const shell = document.querySelector('.canvas-shell');
+    if (
+      shell && !shell.contains(e.target) &&
+      !e.target.closest('.toolbar') &&
+      !e.target.closest('.side-panel') &&
+      !e.target.closest('.tab-sidebar') &&
+      !e.target.closest('.status-bar')
+    ) {
+      if (canvas.getActiveObject()) {
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+      }
+    }
+  });
+
+  refreshEmptyHint();
+  updateSelectionPanel();
+
+})();
+</script>
+</body>
+</html>
