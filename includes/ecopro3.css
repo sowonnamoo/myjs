@@ -136,6 +136,120 @@ button,input,select{font-family:inherit;}
 .guide-legend .red .swatch{border-color:#ff0000;}
 .guide-legend .gray .swatch{border-color:#999999;}
 
+/* ---------- 이미지 자르기(크롭) 모드 툴바 ---------- */
+.crop-toolbar{
+  position:absolute;top:16px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:30;
+}
+.crop-toolbar-hint{font-size:12px;color:#5b6472;white-space:nowrap;padding-left:2px;}
+
+/* ---------- 커스텀 우클릭(컨텍스트) 메뉴 ---------- */
+.ctx-menu{
+  position:fixed;z-index:200;min-width:170px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px;
+}
+.ctx-menu button{
+  display:block;width:100%;text-align:left;background:none;border:none;padding:9px 12px;
+  border-radius:6px;font-size:13px;cursor:pointer;color:var(--ink);box-sizing:border-box;
+}
+.ctx-menu button:hover{background:#f2f6fa;}
+.ctx-menu button.danger{color:var(--danger);}
+.ctx-menu button.danger:hover{background:#fdeeec;}
+.ctx-menu .ctx-divider{height:1px;background:var(--line);margin:5px 4px;}
+
+/* ---------- P버튼 → 필터(그림자/배경 ...) 메뉴 + 상세조절 아코디언 ---------- */
+.qa-popover{
+  position:fixed;z-index:70;width:200px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,.18);padding:32px 12px 14px;
+  display:flex;flex-direction:column;gap:12px;cursor:move;
+}
+.qa-popover select{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;
+  font-size:13.5px;color:var(--ink);background:#fff;cursor:pointer;
+}
+.qa-popover select:focus{outline:none;border-color:var(--accent);}
+.qa-filter-detail{display:flex;flex-direction:column;gap:10px;}
+.qa-filter-detail.hidden{display:none;}
+.qa-btn{
+  border:1px solid var(--line);background:#fafbfc;color:var(--ink);
+  border-radius:7px;padding:6px 4px;font-size:11.5px;font-weight:600;cursor:pointer;text-align:center;
+}
+.qa-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.qa-btn:hover{background:#f2f6fa;border-color:#c9d2dc;}
+
+/* ---------- 텍스트 선택 시 뜨는 T버튼 → 글꼴/투명도 플로팅 패널 ---------- */
+.font-popover{
+  position:fixed;z-index:70;width:210px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,.18);padding:34px 14px 14px;
+  display:flex;flex-direction:column;gap:16px;cursor:move;
+}
+.font-popover-close{
+  position:absolute;top:8px;right:8px;width:22px;height:22px;
+  border:none;border-radius:50%;background:#f2f4f7;color:#5b6472;
+  font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  padding:0;
+}
+.font-popover-close:hover{background:#e6e9ee;color:var(--ink);}
+.font-popover select{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;
+  font-size:14px;color:var(--ink);background:#fff;cursor:pointer;
+}
+.font-popover select:focus{outline:none;border-color:var(--accent);}
+
+.opacity-gauge{
+  -webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:999px;margin:6px 0 2px;
+  background:linear-gradient(to right, var(--accent) 0%, var(--accent) var(--fill,100%), #e3e6ea var(--fill,100%), #e3e6ea 100%);
+  outline:none;cursor:pointer;
+}
+.opacity-gauge::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+  background:#fff;border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;
+}
+.opacity-gauge::-moz-range-thumb{
+  width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--accent);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.opacity-gauge::-moz-range-progress{background:var(--accent);height:8px;border-radius:999px;}
+.opacity-gauge::-moz-range-track{background:#e3e6ea;height:8px;border-radius:999px;}
+.opacity-gauge:disabled{opacity:.4;cursor:not-allowed;}
+.opacity-gauge:disabled::-webkit-slider-thumb{cursor:not-allowed;}
+
+/* ---------- 글꼴 패널: 더보기(크기/스타일/정렬) 펼침 영역 ---------- */
+.font-popover-more-btn{
+  width:100%;border:1px solid var(--line);background:#fafbfc;color:#5b6472;
+  border-radius:8px;padding:8px 0;font-size:12.5px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.font-popover-more-btn:hover{background:#f2f6fa;color:var(--ink);}
+.font-popover-more{
+  display:flex;flex-direction:column;gap:10px;padding-top:2px;
+}
+.font-popover-more.hidden{display:none !important;}
+.font-popover-more .row{margin-bottom:0;}
+.font-popover-more .row label{width:34px;font-size:12px;}
+.font-popover-more .seg button{padding:7px 0;font-size:12px;}
+
+/* ---------- 글꼴 패널 상단 줄: 무지개 색상 게이지 + 작은 CMYK 상세 스와치 ---------- */
+.font-popover-top-row{display:flex;align-items:center;gap:10px;}
+.color-gauge{
+  -webkit-appearance:none;appearance:none;flex:1;width:auto;height:10px;border-radius:999px;
+  background:linear-gradient(to right,
+    #ffffff 0%, #ff0000 3%, #ffff00 7%, #ffffff 9%,
+    #ff0000 12%, #ff9900 24%, #ffee00 36%, #33cc33 48%, #00cccc 60%, #3366ff 72%, #9933ff 84%,
+    #888888 92%, #000000 100%);
+  outline:none;cursor:pointer;display:block;
+}
+.color-gauge::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;
+  background:#fff;border:none;box-shadow:0 0 0 1.5px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.3);cursor:pointer;
+}
+.color-gauge::-moz-range-thumb{
+  width:15px;height:15px;border-radius:50%;background:#fff;border:none;cursor:pointer;box-shadow:0 0 0 1.5px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.3);
+}
+.color-gauge::-moz-range-track{background:transparent;height:10px;}
+
 /* ---------- 우측 속성 패널 ---------- */
 .side-panel{
   width:280px;background:var(--panel);border-left:1px solid var(--line);
@@ -154,6 +268,8 @@ button,input,select{font-family:inherit;}
 
 /* ---------- CMYK 색상 선택기 (RGB 대신 CMYK 값으로 색을 지정) ---------- */
 .cmyk-picker{position:relative;width:36px;height:30px;flex-shrink:0;}
+.cmyk-picker.mini{width:22px;height:22px;}
+.cmyk-picker.mini .cmyk-swatch{width:22px;height:22px;border-radius:6px;}
 .cmyk-swatch{
   width:36px;height:30px;border:1px solid var(--line);border-radius:6px;cursor:pointer;
   background:#000;box-sizing:border-box;background-image:
@@ -162,7 +278,7 @@ button,input,select{font-family:inherit;}
   background-size:8px 8px;background-position:0 0,0 4px,4px -4px,-4px 0;
 }
 .cmyk-popover{
-  position:fixed;z-index:60;width:210px;
+  position:fixed;z-index:80;width:210px;
   background:#fff;border:1px solid var(--line);border-radius:10px;
   box-shadow:0 10px 28px rgba(0,0,0,.18);padding:12px;
 }
