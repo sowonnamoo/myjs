@@ -261,9 +261,9 @@ button,input,select{font-family:inherit;}
 .row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .row label{font-size:12.5px;color:#5b6472;width:64px;flex-shrink:0;}
 .row input[type=text],.row select,.row input[type=number]{
-  flex:1;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;color:var(--ink);background:#fff;
+  flex:1;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;color:var(--ink);background:#fff;min-width:0;
 }
-.row input[type=range]{flex:1;}
+.row input[type=range]{flex:1;min-width:0;}
 .row input[type=color]{width:36px;height:30px;border:1px solid var(--line);border-radius:6px;padding:2px;background:#fff;cursor:pointer;}
 
 /* ---------- CMYK 색상 선택기 (RGB 대신 CMYK 값으로 색을 지정) ---------- */
