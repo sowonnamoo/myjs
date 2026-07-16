@@ -48,6 +48,7 @@
         <button type="button" class="dropdown-item" id="addCircleBtn">◯ 원</button>
         <button type="button" class="dropdown-item" id="addTriangleBtn">△ 삼각형</button>
         <button type="button" class="dropdown-item" id="penToolBtn" title="펜 도구 — 클릭으로 점 추가, 드래그하면 곡선 핸들 생성 (더블클릭/Enter: 완료, 시작점 클릭: 닫힌 도형, Esc: 취소)">✒ 펜 도구</button>
+        <button type="button" class="dropdown-item" id="addTableBtn" title="스페이스로 칸, 엔터로 줄을 구분해 입력하면 표가 만들어져요">▦ 표 만들기</button>
       </div>
     </div>
 
@@ -112,6 +113,10 @@
       <div class="empty-hint" id="emptyHint">위 <b>이미지</b> 또는 <b>SVG</b> 버튼으로 파일을 불러오세요<br>SVG를 불러오면 안의 글씨를 더블클릭해서 바로 수정할 수 있어요</div>
       <div class="canvas-shell">
         <canvas id="mainCanvas"></canvas>
+        <div class="crop-toolbar hidden" id="tableEditToolbar">
+          <span class="crop-toolbar-hint">표 편집 중 — 셀 우클릭(모바일은 꾹 누르기)으로 정렬·글수정·합치기</span>
+          <button type="button" class="btn primary" id="tableEditDoneBtn">✓ 표 편집 완료</button>
+        </div>
       </div>
       <div class="guide-legend">
         <span class="red"><i class="swatch"></i>붉은선 : 재단/안전선</span><br>
@@ -121,6 +126,12 @@
         <span class="crop-toolbar-hint">모서리를 드래그해서 자를 영역을 조절하세요</span>
         <button type="button" class="btn primary" id="applyCropBtn">✓ 자르기 적용</button>
         <button type="button" class="btn" id="cancelCropBtn">✕ 취소</button>
+      </div>
+      <div class="crop-toolbar hidden" id="tableInputToolbar">
+        <span class="crop-toolbar-hint">스페이스로 칸, 엔터로 줄을 나눠 입력하세요</span>
+        <textarea id="tableInputArea" rows="8" style="width:420px;font-size:13px;padding:8px;" placeholder="예)&#10;스티커 100 500&#10;배너 2 30000"></textarea>
+        <button type="button" class="btn primary" id="applyTableBtn">✓ 표 만들기</button>
+        <button type="button" class="btn" id="cancelTableBtn">✕ 취소</button>
       </div>
     </div>
 
@@ -246,6 +257,12 @@
 
 <div class="qa-popover hidden" id="qaPopover">
   <button type="button" class="font-popover-close" id="qaPopoverCloseBtn" title="닫기">✕</button>
+  <button type="button" class="qa-btn" id="qaDiceBtn" title="랜덤으로 필터 1~4개 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <div class="row hidden" id="qaRollNav" style="align-items:center;gap:6px;">
+    <button type="button" class="qa-btn" id="qaRollPrevBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">◀</button>
+    <span id="qaRollCounter" style="flex:1;text-align:center;font-size:12px;color:#8a93a3;">1/3</span>
+    <button type="button" class="qa-btn" id="qaRollNextBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">▶</button>
+  </div>
   <select id="qaFilterSelect">
     <option value="" disabled selected>필터 선택...</option>
     <option value="shadow">그림자</option>
@@ -274,6 +291,7 @@
     <option value="perspective">원근법 효과</option>
     <option value="curve">곡선 효과</option>
     <option value="wave">물결 효과</option>
+    <option value="tired">지침(흐물흐물) 효과</option>
     <option value="spiral">나선(달팽이) 효과</option>
     <option value="magazine">잡지 오려붙인 효과</option>
     <option value="puzzle">퍼즐 효과</option>
@@ -293,6 +311,17 @@
     <option value="bg">배경</option>
     <option value="bubble">말풍선 배경</option>
   </select>
+
+  <div class="row" id="qaCommonFilterList" style="flex-wrap:wrap;gap:4px;margin-top:6px;">
+    <button type="button" class="qa-btn" data-filter="shadow" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">그림자</button>
+    <button type="button" class="qa-btn" data-filter="glow" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">외부광선</button>
+    <button type="button" class="qa-btn" data-filter="gradient" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">그라디언트</button>
+    <button type="button" class="qa-btn" data-filter="emboss" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">엠보스</button>
+    <button type="button" class="qa-btn" data-filter="outline" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">테두리</button>
+    <button type="button" class="qa-btn" data-filter="bg" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">배경</button>
+    <button type="button" class="qa-btn" data-filter="translate" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">번역</button>
+    <button type="button" class="qa-btn" data-filter="typo" style="flex:0 0 auto;width:auto;padding:5px 8px;font-size:11.5px;">맞춤법 검사</button>
+  </div>
 
   <div class="qa-filter-detail hidden" id="qaDetailShadow">
     <div class="row">
@@ -727,6 +756,21 @@
     </div>
   </div>
 
+  <div class="qa-filter-detail hidden" id="qaDetailTired">
+    <div class="row">
+      <label>처짐 정도</label>
+      <input type="range" id="qaTiredDroop" min="0" max="100" step="1" title="뒤로 갈수록 글자가 축 처지고 기울어지는 정도">
+    </div>
+    <div class="row">
+      <label>흐트러짐</label>
+      <input type="range" id="qaTiredWobble" min="0" max="100" step="1" title="힘 빠진 손으로 쓴 듯 글자마다 흔들리고 옅어지는 정도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaTiredShuffleBtn" style="flex:1;">🎲 다시 늘어지기</button>
+      <button type="button" class="qa-btn" id="qaTiredOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
   <div class="qa-filter-detail hidden" id="qaDetailSpiral">
     <div class="row">
       <label>벌어지는 정도</label>
@@ -1014,7 +1058,10 @@
     <option value="Bebas Neue">Bebas Neue</option>
     <option value="Arial">Arial</option>
   </select>
-  <input type="range" id="floatingOpacityInput" class="opacity-gauge" min="0" max="1" step="0.02" title="투명도">
+  <div class="row" style="gap:8px;">
+    <input type="number" id="floatingFontSizeInput" min="4" max="600" step="1" title="글자 크기" style="width:52px;flex:0 0 52px;">
+    <input type="range" id="floatingOpacityInput" class="opacity-gauge" min="0" max="1" step="0.02" title="투명도" style="flex:1;margin:0;">
+  </div>
 
   <button type="button" class="font-popover-more-btn" id="fontPopoverMoreBtn" aria-expanded="false">더보기 ▾</button>
   <div class="font-popover-more hidden" id="fontPopoverMore">
@@ -1048,5 +1095,9 @@
 </div>
 
 <script src="ecopro3.js" defer></script>
+<script src="ecopro3table.js" defer></script>
+<script src="ecopro3c.js" defer></script>
+<script src="ecopro3text.js" defer></script>
+<script src="ecopro3l.js" defer></script>
 </body>
 </html>
