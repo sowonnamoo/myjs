@@ -7,7 +7,19 @@
   EP.registerFilter = EP.registerFilter || function(def){ EP.filterRegistry.push(def); };
   EP.qaTargets = [];
   var canvas = EP.canvas, pushHistory = EP.pushHistory, isTextObject = EP.isTextObject,
-      toHex = EP.toHex, textBoxesFromTarget = EP.textBoxesFromTarget;
+      isShapeObject = EP.isShapeObject, toHex = EP.toHex, textBoxesFromTarget = EP.textBoxesFromTarget;
+  // 그림자/외부광선/그라디언트/엠보스/테두리/배경 6개는 "공통 효과"라 텍스트뿐 아니라
+  // 도형(사각형/원/삼각형 및 표의 셀 박스)에도 그대로 적용됨.
+  function isTextOrShape(o){ return isTextObject(o) || isShapeObject(o); }
+  // 표(표 그룹 전체, 개별 셀, 편집모드 중 셀 다중선택)는 P버튼 필터 기능 대상에서 완전히 제외함.
+  function isTableRelatedTarget(o){
+    if (!o) return false;
+    if (o.isTableGroup || o.isTableCell || o.isTableCellText) return true;
+    if ((o.type === 'activeSelection' || o.type === 'group') && typeof o.getObjects === 'function') {
+      return o.getObjects().some(function(c){ return c && (c.isTableCell || c.isTableCellText); });
+    }
+    return false;
+  }
 
   /* ============================================================
      2c-2. T버튼 좌측 "P" 버튼 컨트롤 → 필터(그림자/외곽선/배경) 메뉴
@@ -17,6 +29,7 @@
   ============================================================ */
   (function setupFilterControl(){
     function renderPButton(ctx, left, top, styleOverride, fabricObject){
+      if (isTableRelatedTarget(fabricObject)) return;
       if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
         const objs = fabricObject.getObjects().filter(o => !o.isGuide);
         if (objs.length < 2) return;
@@ -45,7 +58,7 @@
       render: renderPButton,
       mouseUpHandler: function(eventData, transformData){
         const target = transformData && transformData.target;
-        if (target) openQaPopover(target);
+        if (target && !isTableRelatedTarget(target)) openQaPopover(target);
         return true;
       }
     });
@@ -53,6 +66,11 @@
     fabric.IText.prototype.controls = Object.assign({}, fabric.IText.prototype.controls, { qa: pControl });
     fabric.ActiveSelection.prototype.controls = Object.assign({}, fabric.ActiveSelection.prototype.controls, { qa: pControl });
     fabric.Group.prototype.controls = Object.assign({}, fabric.Group.prototype.controls, { qa: pControl });
+    // 도형(사각형/원/삼각형/펜도구 패스)도 단독으로 P 버튼을 눌러 모양필터(그림자/그라디언트 등)를 열 수 있게 함
+    fabric.Rect.prototype.controls = Object.assign({}, fabric.Rect.prototype.controls, { qa: pControl });
+    fabric.Circle.prototype.controls = Object.assign({}, fabric.Circle.prototype.controls, { qa: pControl });
+    fabric.Triangle.prototype.controls = Object.assign({}, fabric.Triangle.prototype.controls, { qa: pControl });
+    fabric.Path.prototype.controls = Object.assign({}, fabric.Path.prototype.controls, { qa: pControl });
   })();
 
   const qaPopover = document.getElementById('qaPopover');
@@ -161,22 +179,13 @@
   }
   qaFilterSelect.addEventListener('change', () => setActiveFilterMenu(qaFilterSelect.value));
 
-  // ---- P 팝업 상단 "공통필터" 빠른 접근 버튼 (그림자/외부광선/그라디언트/엠보스/테두리/배경/번역/맞춤법) ----
-  document.querySelectorAll('#qaCommonFilterList [data-filter]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.filter;
-      qaFilterSelect.value = key;
-      setActiveFilterMenu(key);
-    });
-  });
-
 
   // ---- 그림자 ---- (EP.qaTargets 중 텍스트에만 동일하게 적용: 단일 선택이면 그 하나, 다중선택이면 텍스트 전부)
   const qaShadowBlur = document.getElementById('qaShadowBlur');
   const qaShadowDist = document.getElementById('qaShadowDist');
   const qaShadowColor = document.getElementById('qaShadowColor');
   function applyQaShadow(){
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     const blur = parseFloat(qaShadowBlur.value) || 0;
     const dist = parseFloat(qaShadowDist.value) || 0;
@@ -205,7 +214,7 @@
   const qaGlowBlur = document.getElementById('qaGlowBlur');
   const qaGlowColor = document.getElementById('qaGlowColor');
   function applyQaGlow(){
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     const blur = parseFloat(qaGlowBlur.value) || 0;
     if (blur <= 0) {
@@ -244,7 +253,7 @@
     });
   }
   function applyQaGradient(){
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     const angle = parseFloat(qaGradAngle.value) || 0;
     boxes.forEach(t => t.set('fill', makeTextGradient(t, angle, qaGradColor1.value, qaGradColor2.value)));
@@ -257,7 +266,7 @@
   qaGradColor2.addEventListener('input', () => EP.pushHistory());
   qaGradAngle.addEventListener('change', () => EP.pushHistory());
   document.getElementById('qaGradOffBtn').addEventListener('click', () => {
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     boxes.forEach(t => t.set('fill', qaGradColor1.value || '#222222'));
     EP.canvas.requestRenderAll();
@@ -271,7 +280,7 @@
   const qaEmbossHighlight = document.getElementById('qaEmbossHighlight');
   const qaEmbossShadow = document.getElementById('qaEmbossShadow');
   function applyQaEmboss(){
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     const depth = parseFloat(qaEmbossDepth.value) || 0;
     if (depth <= 0) {
@@ -281,14 +290,21 @@
       const rad = angle * Math.PI / 180;
       const dx = Math.cos(rad) * depth, dy = Math.sin(rad) * depth;
       boxes.forEach(t => {
-        t.set({
-          shadow: new fabric.Shadow({ color: qaEmbossShadow.value || '#000000', blur: depth * 0.6, offsetX: dx, offsetY: dy }),
-          // stroke는 항상 글씨 "바깥쪽"으로만 자라야 하므로: stroke를 먼저 그리고 fill을 그 위에 덮어서
-          // 안쪽 절반은 fill에 가려지게 함(paintFirst:'stroke') → 실제 두께는 원하는 값의 2배로 잡음
-          paintFirst: 'stroke',
-          stroke: qaEmbossHighlight.value || '#ffffff',
-          strokeWidth: Math.max(0.5, depth * 0.15) * 2
-        });
+        const shadow = new fabric.Shadow({ color: qaEmbossShadow.value || '#000000', blur: depth * 0.6, offsetX: dx, offsetY: dy });
+        if (isShapeObject(t)) {
+          // 표 셀처럼 도형끼리 딱 붙어있으면 하이라이트 테두리가 바깥쪽으로 자라면서 옆 칸과
+          // 겹쳐 어긋나 보이므로, 도형은 strokeWidth를 그대로(2배 안 함) 중앙정렬로 적용함.
+          t.set({ shadow: shadow, paintFirst: 'fill', stroke: qaEmbossHighlight.value || '#ffffff', strokeWidth: Math.max(0.5, depth * 0.15) });
+        } else {
+          t.set({
+            shadow: shadow,
+            // stroke는 항상 글씨 "바깥쪽"으로만 자라야 하므로: stroke를 먼저 그리고 fill을 그 위에 덮어서
+            // 안쪽 절반은 fill에 가려지게 함(paintFirst:'stroke') → 실제 두께는 원하는 값의 2배로 잡음
+            paintFirst: 'stroke',
+            stroke: qaEmbossHighlight.value || '#ffffff',
+            strokeWidth: Math.max(0.5, depth * 0.15) * 2
+          });
+        }
       });
     }
     EP.canvas.requestRenderAll();
@@ -306,24 +322,30 @@
 
 
   // ---- 테두리 ----
-  // 필터의 모든 테두리는 글씨 "바깥쪽"으로만 두꺼워져야 함(안쪽 침범 금지):
-  // stroke를 먼저 그리고 fill을 그 위에 덮어(paintFirst:'stroke') 안쪽 절반을 가리는 방식.
-  // 그래서 원하는 두께만큼 바깥으로 자라게 하려면 실제 strokeWidth는 항상 2배로 설정함.
+  // 필터의 테두리는 원래 글씨 "바깥쪽"으로만 두꺼워지도록 만든 것(stroke를 먼저 그리고 fill을
+  // 그 위에 덮어 안쪽 절반을 가리는 방식, paintFirst:'stroke' + strokeWidth 2배)인데,
+  // 표 셀처럼 도형끼리 서로 딱 붙어있는 경우엔 이 방식대로 하면 옆 칸 쪽으로 두께가 침범해서
+  // 칸 경계에서 테두리가 겹치고 어긋나 보임. 그래서 도형(isShapeObject)은 평범하게 중앙정렬된
+  // 테두리(strokeWidth 그대로, paintFirst 기본값)로 적용하고, 텍스트만 기존 "바깥쪽 성장" 방식을 유지함.
   const qaOutlineWidth = document.getElementById('qaOutlineWidth');
   const qaOutlineColor = document.getElementById('qaOutlineColor');
   function applyQaOutline(){
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     const w = parseFloat(qaOutlineWidth.value) || 0;
     if (w <= 0) {
       boxes.forEach(t => t.set({ stroke: null, strokeWidth: 0, paintFirst: 'fill' }));
     } else {
       boxes.forEach(t => {
-        t.set({
-          paintFirst: 'stroke',
-          stroke: qaOutlineColor.value || '#000000',
-          strokeWidth: w * 2
-        });
+        if (isShapeObject(t)) {
+          t.set({ paintFirst: 'fill', stroke: qaOutlineColor.value || '#000000', strokeWidth: w });
+        } else {
+          t.set({
+            paintFirst: 'stroke',
+            stroke: qaOutlineColor.value || '#000000',
+            strokeWidth: w * 2
+          });
+        }
       });
     }
     EP.canvas.requestRenderAll();
@@ -406,25 +428,32 @@
   });
 
 
-  // ---- 배경 ----
+  // ---- 배경 ---- (텍스트는 글자 뒤 배경색, 도형은 채우기색 자체를 바꿈)
   const qaBgColor = document.getElementById('qaBgColor');
   function applyQaBg(){
-    const boxes = EP.qaTargets.filter(EP.isTextObject);
-    if (!boxes.length) return;
-    boxes.forEach(t => t.set('textBackgroundColor', qaBgColor.value || ''));
+    const targets = EP.qaTargets.filter(isTextOrShape);
+    if (!targets.length) return;
+    targets.forEach(t => {
+      if (isTextObject(t)) t.set('textBackgroundColor', qaBgColor.value || '');
+      else t.set('fill', qaBgColor.value || '#ffffff');
+    });
     EP.canvas.requestRenderAll();
   }
   qaBgColor.addEventListener('input', () => { applyQaBg(); EP.pushHistory(); });
   document.getElementById('qaBgOffBtn').addEventListener('click', () => {
-    if (!EP.qaTargets.length) return;
-    EP.qaTargets.forEach(t => t.set('textBackgroundColor', ''));
+    const targets = EP.qaTargets.filter(isTextOrShape);
+    if (!targets.length) return;
+    targets.forEach(t => {
+      if (isTextObject(t)) t.set('textBackgroundColor', '');
+      else t.set('fill', '#ffffff');
+    });
     EP.canvas.requestRenderAll(); EP.pushHistory();
   });
 
 
 
-  function openQaPopover(target, opts){
-    var boxes = EP.textBoxesFromTarget(target);
+  function openQaPopover(target, opts, boxesOverride){
+    var boxes = boxesOverride || EP.qaTargetsFromTarget(target);
     if (!boxes.length) return;
     var wasHidden = qaPopover.classList.contains('hidden');
     EP.qaTargets = boxes;
@@ -466,7 +495,8 @@
   function syncQaPopoverToSelection(){
     if (qaPopover.classList.contains('hidden')) return; // 팝업이 닫혀 있으면 그대로 둠
     const active = EP.canvas.getActiveObject();
-    const boxes = EP.textBoxesFromTarget(active);
+    if (isTableRelatedTarget(active)) return; // 표는 필터 대상이 아니므로 팝업을 그대로 유지
+    const boxes = EP.qaTargetsFromTarget(active);
     if (!boxes.length) return; // 텍스트가 아닌 걸 선택했을 땐 팝업을 그대로 유지
     const sameTarget = boxes.length === EP.qaTargets.length && boxes.every((o, i) => o === EP.qaTargets[i]);
     if (sameTarget) return;
@@ -522,7 +552,11 @@
         qaOutlineColor.value = EP.toHex(anchor.stroke) || '#000000';
   }
   function populate_bg(anchor){
-        qaBgColor.value = EP.toHex(anchor.textBackgroundColor) || '#cccccc';
+        if (isTextObject(anchor)) {
+          qaBgColor.value = EP.toHex(anchor.textBackgroundColor) || '#cccccc';
+        } else {
+          qaBgColor.value = EP.toHex(anchor.fill) || '#cccccc';
+        }
   }
 
   // ---- 공통필터 6개는 "다시 그리기" 버튼이 아직 없어서, 주사위용으로 최소한의
@@ -565,34 +599,36 @@
   }
 
   // ---- 필터 레지스트리 등록 ----
+  // 그림자~배경 6개는 도형(shape)에도 적용 가능한 "공통 효과"라 appliesTo에 shape를 함께 넣음.
+  // (번역/맞춤법검사는 텍스트 전용이라 그대로 text만 유지)
   EP.registerFilter({
     id: 'shadow', label: '그림자', commonEffect: true,
-    appliesTo: ['text'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
     apply: applyQaShadow, randomize: randomizeShadow, populate: populate_shadow
   });
   EP.registerFilter({
     id: 'glow', label: '외부광선', commonEffect: true,
-    appliesTo: ['text'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
     apply: applyQaGlow, randomize: randomizeGlow, populate: populate_glow
   });
   EP.registerFilter({
     id: 'gradient', label: '그라디언트', commonEffect: true,
-    appliesTo: ['text'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
     apply: applyQaGradient, randomize: randomizeGradient, populate: populate_gradient
   });
   EP.registerFilter({
     id: 'emboss', label: '경사와 엠보스', commonEffect: true,
-    appliesTo: ['text'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
     apply: applyQaEmboss, randomize: randomizeEmboss, populate: populate_emboss
   });
   EP.registerFilter({
     id: 'outline', label: '테두리', commonEffect: true,
-    appliesTo: ['text'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
     apply: applyQaOutline, randomize: randomizeOutline, populate: populate_outline
   });
   EP.registerFilter({
     id: 'bg', label: '배경', commonEffect: true,
-    appliesTo: ['text'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
     apply: applyQaBg, randomize: randomizeBg, populate: populate_bg
   });
   EP.registerFilter({ id: 'translate', label: '번역', commonEffect: true,

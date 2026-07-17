@@ -332,6 +332,17 @@
     return (!target.isGuide && isTextObject(target)) ? [target] : [];
   }
 
+  // P(필터)/주사위 전용: textBoxesFromTarget과 달리 단일 도형(사각형/원/삼각형/패스)도 대상에 포함시킴.
+  // T(폰트) 팝업 쪽 로직에 영향 주지 않도록 별도 함수로 분리해둠.
+  function qaTargetsFromTarget(target){
+    if (!target) return [];
+    if (target.type === 'activeSelection' || target.type === 'group') {
+      return target.getObjects().filter(o => !o.isGuide);
+    }
+    if (target.isGuide) return [];
+    return (isTextObject(target) || isShapeObject(target)) ? [target] : [];
+  }
+
   function openFontPopover(target, opts){
     const boxes = textBoxesFromTarget(target);
     if (!boxes.length) return;
@@ -1007,7 +1018,7 @@
       hasRotatingPoint: false, lockRotation: true,
       selectable: true, evented: true, hasBorders: false
     });
-    rect.setControlsVisibility({ mtr: false });
+    rect.setControlsVisibility({ mtr: false, qa: false }); // qa: 자르기 중인 임시 사각형이라 모양필터 P버튼은 숨김
 
     const bounds = { left: br.left, top: br.top, width: br.width, height: br.height };
     rect.on('moving', () => clampCropRect(rect, bounds));
@@ -2310,6 +2321,14 @@
     return o && (o.type === 'i-text' || o.type === 'text' || o.type === 'textbox');
   }
 
+  // 모양필터(공통 효과를 도형에도 적용) 대상 판별: 표의 셀 박스(isTableCell)도 결국 fabric.Rect라
+  // type만으로 자연히 포함됨. 텍스트/가이드선/텍스트가 아닌 것만 골라내는 용도.
+  function isShapeObject(o){
+    if (!o || o.isGuide || isTextObject(o)) return false;
+    return o.type === 'rect' || o.type === 'circle' || o.type === 'triangle' ||
+           o.type === 'ellipse' || o.type === 'polygon' || o.type === 'path';
+  }
+
   function updateSelectionPanel(){
     const obj = canvas.getActiveObject();
     sidePanelEl.classList.remove('hidden');
@@ -2455,11 +2474,15 @@
   window.EP = window.EP || {};
   EP.canvas = canvas;
   EP.pushHistory = pushHistory;
+  EP.refreshEmptyHint = refreshEmptyHint;
+  EP.bringGuideToFront = bringGuideToFront;
   EP.isTextObject = isTextObject;
+  EP.isShapeObject = isShapeObject;
+  EP.textBoxesFromTarget = textBoxesFromTarget;
+  EP.qaTargetsFromTarget = qaTargetsFromTarget;
   EP.toHex = toHex;
   EP.rgbToHex = rgbToHex;
   EP.hsvToRgb = hsvToRgb;
-  EP.textBoxesFromTarget = textBoxesFromTarget;
   EP.makeDraggablePopover = makeDraggablePopover;
   EP.initCmykPicker = initCmykPicker;
   EP.customFontNames = customFontNames;

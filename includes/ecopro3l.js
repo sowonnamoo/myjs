@@ -33,6 +33,14 @@
     return a;
   }
 
+  // 표(표 그룹 전체든 편집모드 중 셀 선택이든) 안의 텍스트에는, 텍스트 전용(비공통) 필터 중
+  // 이 13개만 후보로 허용함 — 나머지(원형글자/세로쓰기/이중테두리/글리치 외 다수)는 표 셀 안에서
+  // 삐져나가거나 안 어울려서 제외. 공통필터(그림자/외부광선/그라디언트/엠보스/테두리/배경)는 이 제한과 무관하게 그대로 허용됨.
+  var TABLE_TEXT_FILTER_WHITELIST = [
+    'puzzle', 'sakura', 'grass', 'footprint', 'rain', 'glitch', 'leafvine',
+    'randomTypo', 'snow', 'magazine', 'bigbang', 'shy', 'popart'
+  ];
+
   // 그룹(예: 'layout')당 최대 1개만 뽑히도록 하면서 목록에서 count개 채워 담기
   function drawFrom(list, count, chosen, usedGroups, usedIds){
     var shuffled = shuffleArr(list);
@@ -47,23 +55,38 @@
     }
   }
 
-  // 텍스트 선택 시: 텍스트 전용 1~3개 + 공통 1~2개 (겹치면 자연히 1개로 줄어듦)
-  function pickCombo(targetType){
+  // types: ['text'] | ['shape'] | ['text','shape'] — 표처럼 텍스트와 도형(셀 박스)이 섞여있으면
+  // 텍스트 전용 필터 + 공통(텍스트/도형 겸용) 필터를 함께 후보 풀에 넣어서 뽑음
+  // isTable: true면 텍스트 전용 필터는 TABLE_TEXT_FILTER_WHITELIST에 있는 것만 후보로 남김.
+  function pickCombo(types, isTable){
     var pool = EP.filterRegistry.filter(function(f){
-      return f.includeInRandom !== false && typeof f.randomize === 'function' &&
-             f.appliesTo && f.appliesTo.indexOf(targetType) !== -1;
+      if (f.includeInRandom === false || typeof f.randomize !== 'function' || !f.appliesTo) return false;
+      if (isTable && !f.commonEffect && TABLE_TEXT_FILTER_WHITELIST.indexOf(f.id) === -1) return false;
+      return f.appliesTo.some(function(t){ return types.indexOf(t) !== -1; });
     });
     var specificPool = pool.filter(function(f){ return !f.commonEffect; });
     var commonPool = pool.filter(function(f){ return f.commonEffect; });
 
-    var specificCount = 1 + Math.floor(Math.random() * 3); // 1~3
-    var commonCount = Math.floor(Math.random() * 2);       // 0~1
+    // 도형만 있고(표 셀 박스 등) 텍스트 전용 필터가 뽑힐 게 없으면(specificPool 비어있음)
+    // 공통 필터 쪽에서 좀 더 넉넉히 뽑아 밋밋해지지 않게 함
+    var specificCount = specificPool.length ? 1 + Math.floor(Math.random() * 3) : 0; // 1~3
+    var commonCount = specificPool.length ? Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 2); // 0~2 또는 1~2
 
     var chosen = [], usedGroups = {}, usedIds = {};
     drawFrom(specificPool, specificCount, chosen, usedGroups, usedIds);
     drawFrom(commonPool, commonCount, chosen, usedGroups, usedIds);
 
     if (!chosen.length && pool.length) chosen.push(pool[Math.floor(Math.random() * pool.length)]);
+
+    // 표 대상이면 테두리(outline) 필터는 뽑기 결과와 상관없이 항상 포함시킴(칸 구분이 잘 보이도록)
+    if (isTable) {
+      var outlineDef = pool.filter(function(f){ return f.id === 'outline'; })[0];
+      if (outlineDef && !usedIds.outline) {
+        chosen.push(outlineDef);
+        usedIds.outline = true;
+      }
+    }
+
     return chosen;
   }
 
@@ -97,22 +120,33 @@
   }
 
   function rollDice(target){
-    if (!target || !EP.textBoxesFromTarget) return;
-    var boxes = EP.textBoxesFromTarget(target);
+    if (!target || !EP.qaTargetsFromTarget) return;
+    var boxes = EP.qaTargetsFromTarget(target);
     if (!boxes.length) return;
     EP.qaTargets = boxes;
 
     // 1) 재클릭 시 완전 초기화(요청사항): 등록된 모든 필터를 끔
     resetAllFilters();
 
-    // 2) 새로운 1~4개 조합을 뽑아서 각자의 randomize()로 게이지까지 랜덤 적용
-    var combo = pickCombo('text');
+    // 2) 선택 안에 텍스트/도형이 각각 있는지 확인 (표는 셀 텍스트+셀 박스가 함께 들어있음)
+    //    -> 텍스트가 있으면 text 필터 풀도, 도형(표 셀 박스 포함)이 있으면 shape 필터 풀도 함께 사용
+    var types = [];
+    if (boxes.some(EP.isTextObject)) types.push('text');
+    if (boxes.some(EP.isShapeObject)) types.push('shape');
+    if (!types.length) return;
+
+    // 3) 새로운 1~4개 조합을 뽑아서 각자의 randomize()로 게이지까지 랜덤 적용
+    //    (공통 필터는 같은 def.randomize() 하나로 텍스트/도형 대상 모두에게 동시에 적용됨)
+    //    표(표 그룹 전체든, 편집모드 중 셀 여러 개 선택이든)면 layout 그룹 필터는
+    //    셀 밖으로 삐져나갈 수 있어 후보에서 제외됨
+    var isTable = boxes.some(function(o){ return o && (o.isTableCell || o.isTableCellText); });
+    var combo = pickCombo(types, isTable);
     combo.forEach(function(def){ try { def.randomize(); } catch (e) { console.error('randomize error:', def.id, e); } });
 
     if (EP.canvas) EP.canvas.requestRenderAll();
     if (EP.pushHistory) EP.pushHistory();
 
-    // 3) 패널에 순환 표시 준비 (◀ 이전 · 숫자 · 다음 ▶)
+    // 4) 패널에 순환 표시 준비 (◀ 이전 · 숫자 · 다음 ▶)
     rollState.ids = combo.map(function(f){ return f.id; });
     rollState.index = 0;
     showCurrentRollFilter();
