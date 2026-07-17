@@ -25,6 +25,7 @@
   var mapInputToolbarHint = document.getElementById('mapInputToolbarHint');
   var mapAddressInput = document.getElementById('mapAddressInput');
   var applyMapBtn = document.getElementById('applyMapBtn');
+  var randomMapBtn = document.getElementById('randomMapBtn');
   var cancelMapBtn = document.getElementById('cancelMapBtn');
 
   if (!addMapBtn || !mapInputToolbar) return; // html이 안 맞으면 조용히 비활성화
@@ -55,6 +56,7 @@
   function setBusy(isBusy, label){
     busy = isBusy;
     applyMapBtn.disabled = isBusy;
+    if (randomMapBtn) randomMapBtn.disabled = isBusy;
     applyMapBtn.textContent = isBusy ? (label || '🗺 불러오는 중...') : APPLY_BTN_DEFAULT_LABEL;
   }
 
@@ -132,6 +134,61 @@
       console.warn('VWorld 지오코딩 실패(차단/장애 등), Geoapify로 대체 시도:', err);
       return geocodeViaGeoapify(address);
     });
+  }
+
+  // ---------- 지도 필터(색상/두께/글자/마커를 통째로 바꾸는 프리셋) ----------
+  // "랜덤 지도 만들기"를 누르면 이 목록에서 하나를 무작위로 골라 적용함.
+  // 새 필터를 추가하고 싶으면 MAP_FILTERS 배열에 { id, name, build() } 객체만 추가하면 됨.
+  function clamp255(v){ return Math.max(0, Math.min(255, Math.round(v))); }
+  function rgbToHexLocal(r, g, b){
+    return '#' + [r, g, b].map(function(v){ var h = v.toString(16); return h.length < 2 ? '0' + h : h; }).join('');
+  }
+  function hexToRgbLocal(hex){
+    var h = String(hex).replace('#', '');
+    if (h.length === 3) h = h.split('').map(function(c){ return c + c; }).join('');
+    var num = parseInt(h, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+  // 인쇄 잉크 기준(CMYK, 0~1)을 화면 RGB 색으로 근사 변환
+  function cmykToHex(c, m, y, k){
+    var r = clamp255(255 * (1 - c) * (1 - k));
+    var g = clamp255(255 * (1 - m) * (1 - k));
+    var b = clamp255(255 * (1 - y) * (1 - k));
+    return rgbToHexLocal(r, g, b);
+  }
+  function lightenHex(hex, amt){
+    var c = hexToRgbLocal(hex);
+    return rgbToHexLocal(c.r + (255 - c.r) * amt, c.g + (255 - c.g) * amt, c.b + (255 - c.b) * amt);
+  }
+  function darkenHex(hex, amt){
+    var c = hexToRgbLocal(hex);
+    return rgbToHexLocal(c.r * (1 - amt), c.g * (1 - amt), c.b * (1 - amt));
+  }
+
+  var MAP_FILTERS = [
+    {
+      id: 'grayInk',
+      name: '무채색 잉크 (K70·C12)',
+      build: function(){
+        var major = cmykToHex(0.12, 0, 0, 0.70);           // K70 C12 계열 진한 회색
+        var minor = lightenHex(major, 0.20 + Math.random() * 0.10); // 큰 길보다 20~30% 더 연하게
+        return {
+          majorColor: major,
+          majorCasing: darkenHex(major, 0.18),
+          minorColor: minor,
+          minorCasing: darkenHex(minor, 0.18),
+          widthMultiplier: 1 + (0.01 + Math.random() * 0.09), // 길 두께 1~10% 더 크게
+          textColor: '#000000',
+          fontMultiplier: 1 + ((Math.random() * 20 - 10) / 100), // 글자 크기 ±10%
+          markerType: 'building',
+          markerColor: '#e0483a'
+        };
+      }
+    }
+  ];
+  function pickRandomMapFilterConfig(){
+    var f = MAP_FILTERS[Math.floor(Math.random() * MAP_FILTERS.length)];
+    return f.build();
   }
 
   // ---------- 2) Overpass(OSM) 벡터 데이터 → SVG (도로·건물 새로 그리기 + 이름 라벨) ----------
@@ -264,21 +321,54 @@
 
   var MAJOR_ROADS = { motorway:1, trunk:1, primary:1, secondary:1, tertiary:1, motorway_link:1, trunk_link:1, primary_link:1, secondary_link:1, tertiary_link:1 };
   var PATH_ROADS = { footway:1, path:1, cycleway:1, pedestrian:1, steps:1, track:1 };
-  function roadStyle(highwayType){
-    // 큰 길 3배, 작은 길 3배 두껍게(예전 10/7 → 30/21)
-    if (MAJOR_ROADS[highwayType]) return { stroke: '#f4b942', width: 30, dash: null, casing: '#c98f1d', major: true };
-    if (PATH_ROADS[highwayType]) return { stroke: '#cfd6dc', width: 4, dash: '10 7', casing: null, major: false };
-    return { stroke: '#ffffff', width: 21, dash: null, casing: '#c9cfd6', major: false }; // 주거/기타 도로
+  function roadStyle(highwayType, styleConfig){
+    var mult = (styleConfig && styleConfig.widthMultiplier) || 1;
+    // 큰 길 3배, 작은 길 3배 두껍게(예전 10/7 → 30/21) — 필터가 있으면 색과 배수를 그걸로 덮어씀
+    if (MAJOR_ROADS[highwayType]) {
+      var majorStroke = (styleConfig && styleConfig.majorColor) || '#f4b942';
+      var majorCasing = (styleConfig && styleConfig.majorCasing) || '#c98f1d';
+      var majorWidth = 30 * mult;
+      return { stroke: majorStroke, width: majorWidth, dash: null, casing: majorCasing, casingWidth: majorWidth + 9 * mult, major: true };
+    }
+    if (PATH_ROADS[highwayType]) {
+      var pathWidth = 4 * mult;
+      return { stroke: '#cfd6dc', width: pathWidth, dash: '10 7', casing: null, casingWidth: 0, major: false };
+    }
+    var minorStroke = (styleConfig && styleConfig.minorColor) || '#ffffff';
+    var minorCasing = (styleConfig && styleConfig.minorCasing) || '#c9cfd6';
+    var minorWidth = 21 * mult;
+    return { stroke: minorStroke, width: minorWidth, dash: null, casing: minorCasing, casingWidth: minorWidth + 9 * mult, major: false }; // 주거/기타 도로
+  }
+
+  // 건물 모양 마커 — "랜덤 지도 만들기" 필터에서 위치 마커로 사용. 뾰족한 핀 대신 작은 빌딩
+  // 실루엣(창문 몇 개 + 문)으로, 바닥 중앙이 정확한 위치 지점에 오도록 함(핀의 뾰족한 끝과 같은 기준)
+  function buildBuildingMarkerSvg(cx, cy, color){
+    var s = 5.9;
+    var tx = cx - 12 * s, ty = cy - 22 * s;
+    return '<g transform="translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')" data-name="marker-building">'
+      + '<rect x="3" y="6" width="18" height="16" rx="1.2" fill="' + color + '" stroke="#ffffff" stroke-width="0.6"/>'
+      + '<rect x="6" y="9" width="3" height="3" fill="#ffffff" opacity="0.85"/>'
+      + '<rect x="10.5" y="9" width="3" height="3" fill="#ffffff" opacity="0.85"/>'
+      + '<rect x="15" y="9" width="3" height="3" fill="#ffffff" opacity="0.85"/>'
+      + '<rect x="6" y="13.5" width="3" height="3" fill="#ffffff" opacity="0.85"/>'
+      + '<rect x="15" y="13.5" width="3" height="3" fill="#ffffff" opacity="0.85"/>'
+      + '<rect x="9.7" y="16.5" width="4.6" height="5.5" fill="#ffffff" opacity="0.9"/>'
+      + '</g>';
   }
 
   // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립.
   // 레이어 순서(아래→위): 배경 → 물/공원 → 건물(사각형) → 작은 길 → 큰 길 → 글자 라벨 → 위치 마커
-  function buildVectorMapSvg(elements, centerLat, centerLon){
+  // styleConfig가 있으면(랜덤 지도 만들기) 색상/두께/글자/마커를 그 값으로 덮어씀
+  function buildVectorMapSvg(elements, centerLat, centerLon, styleConfig){
     var metersPerDegLat = 111320;
     var metersPerDegLon = 111320 * Math.cos(centerLat * Math.PI / 180);
     var landuseParts = [], buildingParts = [], minorRoadParts = [], majorRoadParts = [], labelParts = [];
     var usedRoadNames = {}; // 같은 도로 이름이 여러 조각(way)으로 나뉘어 있어도 라벨은 한 번만
     var hasAny = false;
+
+    var fontMult = (styleConfig && styleConfig.fontMultiplier) || 1;
+    var roadLabelColor = (styleConfig && styleConfig.textColor) || '#5a4632';
+    var buildingLabelColor = (styleConfig && styleConfig.textColor) || '#3a3a3a';
 
     elements.forEach(function(el){
       if (!el || el.type !== 'way' || !el.geometry || el.geometry.length < 2) return;
@@ -296,18 +386,19 @@
         hasAny = true;
         if (tags.name) {
           var c = [(minX + maxX) / 2, (minY + maxY) / 2];
+          var bFontSize = (26 * fontMult).toFixed(1), bHalo = (6 * fontMult).toFixed(1);
           labelParts.push(
-            '<text x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="26" font-weight="600" fill="#3a3a3a" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="6" stroke-linejoin="round">' + escapeXml(tags.name) + '</text>'
+            '<text x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="' + bFontSize + '" font-weight="600" fill="' + buildingLabelColor + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="' + bHalo + '" stroke-linejoin="round">' + escapeXml(tags.name) + '</text>'
           );
         }
       } else if (tags.highway) {
-        var st = roadStyle(tags.highway);
+        var st = roadStyle(tags.highway, styleConfig);
         var runs = clipPolylineToFrame(pts, 0, 0, SVG_W, SVG_H);
         if (!runs.length) return;
         var bucket = st.major ? majorRoadParts : minorRoadParts;
         runs.forEach(function(run){
           var d = pathD(run, false);
-          if (st.casing) bucket.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + (st.width + 9) + '" stroke-linecap="round" stroke-linejoin="round" data-name="road-casing"/>');
+          if (st.casing) bucket.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + st.casingWidth + '" stroke-linecap="round" stroke-linejoin="round" data-name="road-casing"/>');
           bucket.push('<path d="' + d + '" fill="none" stroke="' + st.stroke + '" stroke-width="' + st.width + '" stroke-linecap="round" stroke-linejoin="round"' + (st.dash ? (' stroke-dasharray="' + st.dash + '"') : '') + ' data-name="road"/>');
         });
         hasAny = true;
@@ -319,8 +410,9 @@
             usedRoadNames[tags.name] = true;
             var lp = roadLabelPlacement(longest);
             var transform = lp.angle ? (' transform="rotate(' + lp.angle.toFixed(1) + ',' + lp.pos[0].toFixed(1) + ',' + lp.pos[1].toFixed(1) + ')"') : '';
+            var rFontSize = (34 * fontMult).toFixed(1), rHalo = (9 * fontMult).toFixed(1);
             labelParts.push(
-              '<text x="' + lp.pos[0].toFixed(1) + '" y="' + lp.pos[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="34" font-weight="700" fill="#5a4632" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="9" stroke-linejoin="round"' + transform + '>' + escapeXml(tags.name) + '</text>'
+              '<text x="' + lp.pos[0].toFixed(1) + '" y="' + lp.pos[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="' + rFontSize + '" font-weight="700" fill="' + roadLabelColor + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="' + rHalo + '" stroke-linejoin="round"' + transform + '>' + escapeXml(tags.name) + '</text>'
             );
           }
         }
@@ -336,8 +428,19 @@
     if (!hasAny) return null;
 
     var cx = SVG_W / 2, cy = SVG_H / 2;
-    var marker = '<circle cx="' + cx + '" cy="' + cy + '" r="48" fill="#ff3b30" stroke="#ffffff" stroke-width="10.5" data-name="marker"/>'
-      + '<circle cx="' + cx + '" cy="' + cy + '" r="13.5" fill="#ffffff" data-name="marker-dot"/>';
+    var marker;
+    if (styleConfig && styleConfig.markerType === 'building') {
+      marker = buildBuildingMarkerSvg(cx, cy, styleConfig.markerColor || '#e0483a');
+    } else {
+      // 뒤집힌 물방울(핀) 모양 마커(기본) — 24x24 기준 좌표로 만든 뒤, 뾰족한 끝(정확한 위치
+      // 지점)이 (cx,cy)에 딱 맞도록 옮기고 키움
+      var pinScale = 5.9; // 핀 전체 높이가 대략 130px 정도 되도록
+      var pinTx = cx - 12 * pinScale;
+      var pinTy = cy - 22 * pinScale;
+      marker = '<g transform="translate(' + pinTx.toFixed(1) + ',' + pinTy.toFixed(1) + ') scale(' + pinScale.toFixed(3) + ')" data-name="marker">'
+        + '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="#ff3b30" stroke="#ffffff" stroke-width="0.6" fill-rule="evenodd" data-name="marker-pin"/>'
+        + '</g>';
+    }
 
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="' + SVG_W + '" height="' + SVG_H + '">'
       + '<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="#f4f6f8" data-name="bg"/>'
@@ -350,10 +453,10 @@
       + '</svg>';
   }
 
-  function tryInsertVectorMap(lat, lon, address, onSuccess, onFallback){
+  function tryInsertVectorMap(lat, lon, address, styleConfig, onSuccess, onFallback){
     var query = buildOverpassQuery(bboxFromCenter(lat, lon));
     fetchOverpass(query, 12000).then(function(data){
-      var svg = buildVectorMapSvg((data && data.elements) || [], lat, lon);
+      var svg = buildVectorMapSvg((data && data.elements) || [], lat, lon, styleConfig);
       if (!svg) { onFallback('이 주변엔 OSM 건물·도로 데이터가 부족해서'); return; }
       if (!EP.importSvgIntoCanvas) { onFallback('벡터 지도 삽입 기능을 찾을 수 없어서'); return; }
       EP.importSvgIntoCanvas(svg, {
@@ -376,7 +479,7 @@
       + '&format=png'
       + '&center=lonlat:' + lon + ',' + lat
       + '&zoom=16.5'
-      + '&marker=lonlat:' + lon + ',' + lat + ';type:circle;color:%23ff3b30;size:50;strokecolor:%23ffffff'
+      + '&marker=lonlat:' + lon + ',' + lat + ';type:awesome;color:%23ff3b30;size:70'
       + '&apiKey=' + encodeURIComponent(GEOAPIFY_API_KEY);
   }
 
@@ -442,7 +545,7 @@
     }, { crossOrigin: 'anonymous' });
   }
 
-  function geocodeAndBuild(address){
+  function geocodeAndBuild(address, styleConfig){
     geocodeAddress(address).then(function(hit){
       if (!hit) {
         setBusy(false);
@@ -450,7 +553,7 @@
         return;
       }
       setBusy(true, '🗺 길·건물 새로 그리는 중...');
-      tryInsertVectorMap(hit.lat, hit.lon, address, function(){
+      tryInsertVectorMap(hit.lat, hit.lon, address, styleConfig, function(){
         setBusy(false);
         mapInputToolbarHint.textContent = '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
       }, function(reasonPrefix){
@@ -472,4 +575,14 @@
     setBusy(true, '🗺 주소 찾는 중...');
     geocodeAndBuild(address);
   });
+
+  if (randomMapBtn) {
+    randomMapBtn.addEventListener('click', function(){
+      if (busy) return;
+      var address = (mapAddressInput.value || '').trim();
+      if (!address) { mapAddressInput.focus(); return; }
+      setBusy(true, '🎲 주소 찾는 중...');
+      geocodeAndBuild(address, pickRandomMapFilterConfig());
+    });
+  }
 })();
