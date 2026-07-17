@@ -203,7 +203,49 @@
     return [sx / points.length, sy / points.length];
   }
 
-  // 라벨을 도로 중간 지점에, 그 구간 방향을 따라 살짝 기울여 붙임(가독성 위해 -60~60도 안에서만)
+  // 도로는 실제로 쿼리한 반경보다 훨씬 멀리까지 뻗어있는 경우가 많음(예: 지나가는 큰 도로가
+  // 화면 밖 먼 곳까지 이어짐). SVG는 viewBox 밖도 그냥 다 그려버려서 그대로 두면 길이 액자
+  // 밖으로 뚫고 나가 보임 — 그래서 프레임(0,0)-(SVG_W,SVG_H) 경계에서 실제로 선을 잘라냄
+  // (Cohen–Sutherland 직선 클리핑). 잘린 결과가 여러 조각으로 끊길 수 있어 배열의 배열로 반환.
+  function outCode(x, y, xmin, ymin, xmax, ymax){
+    var code = 0;
+    if (x < xmin) code |= 1; else if (x > xmax) code |= 2;
+    if (y < ymin) code |= 4; else if (y > ymax) code |= 8;
+    return code;
+  }
+  function clipSegment(x0, y0, x1, y1, xmin, ymin, xmax, ymax){
+    var oc0 = outCode(x0, y0, xmin, ymin, xmax, ymax);
+    var oc1 = outCode(x1, y1, xmin, ymin, xmax, ymax);
+    while (true) {
+      if (!(oc0 | oc1)) return [x0, y0, x1, y1];
+      if (oc0 & oc1) return null;
+      var out = oc0 || oc1;
+      var x, y;
+      if (out & 8) { x = x0 + (x1 - x0) * (ymax - y0) / (y1 - y0); y = ymax; }
+      else if (out & 4) { x = x0 + (x1 - x0) * (ymin - y0) / (y1 - y0); y = ymin; }
+      else if (out & 2) { y = y0 + (y1 - y0) * (xmax - x0) / (x1 - x0); x = xmax; }
+      else { y = y0 + (y1 - y0) * (xmin - x0) / (x1 - x0); x = xmin; }
+      if (out === oc0) { x0 = x; y0 = y; oc0 = outCode(x0, y0, xmin, ymin, xmax, ymax); }
+      else { x1 = x; y1 = y; oc1 = outCode(x1, y1, xmin, ymin, xmax, ymax); }
+    }
+  }
+  function clipPolylineToFrame(points, xmin, ymin, xmax, ymax){
+    var runs = [], current = [];
+    function endRun(){ if (current.length >= 2) runs.push(current); current = []; }
+    for (var i = 0; i < points.length - 1; i++) {
+      var seg = clipSegment(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1], xmin, ymin, xmax, ymax);
+      if (!seg) { endRun(); continue; }
+      var a = [seg[0], seg[1]], b = [seg[2], seg[3]];
+      if (!current.length) { current.push(a, b); continue; }
+      var last = current[current.length - 1];
+      if (Math.abs(last[0] - a[0]) < 0.01 && Math.abs(last[1] - a[1]) < 0.01) current.push(b);
+      else { endRun(); current.push(a, b); }
+    }
+    endRun();
+    return runs;
+  }
+
+  // 라벨을 도로 중간 지점에, 그 구간 방향을 따라 살짝 기울여 붙임
   function roadLabelPlacement(points){
     var idx = Math.floor(points.length / 2);
     if (idx < 1) idx = 1;
@@ -223,17 +265,18 @@
   var MAJOR_ROADS = { motorway:1, trunk:1, primary:1, secondary:1, tertiary:1, motorway_link:1, trunk_link:1, primary_link:1, secondary_link:1, tertiary_link:1 };
   var PATH_ROADS = { footway:1, path:1, cycleway:1, pedestrian:1, steps:1, track:1 };
   function roadStyle(highwayType){
-    // 예전보다 전체적으로 굵게(길이 너무 얇아 보이던 문제 해결)
-    if (MAJOR_ROADS[highwayType]) return { stroke: '#f4b942', width: 10, dash: null, casing: '#c98f1d' };
-    if (PATH_ROADS[highwayType]) return { stroke: '#cfd6dc', width: 3, dash: '7 5', casing: null };
-    return { stroke: '#ffffff', width: 7, dash: null, casing: '#c9cfd6' }; // 주거/기타 도로 기본값
+    // 큰 길 3배, 작은 길 3배 두껍게(예전 10/7 → 30/21)
+    if (MAJOR_ROADS[highwayType]) return { stroke: '#f4b942', width: 30, dash: null, casing: '#c98f1d', major: true };
+    if (PATH_ROADS[highwayType]) return { stroke: '#cfd6dc', width: 4, dash: '10 7', casing: null, major: false };
+    return { stroke: '#ffffff', width: 21, dash: null, casing: '#c9cfd6', major: false }; // 주거/기타 도로
   }
 
-  // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립
+  // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립.
+  // 레이어 순서(아래→위): 배경 → 물/공원 → 건물(사각형) → 작은 길 → 큰 길 → 글자 라벨 → 위치 마커
   function buildVectorMapSvg(elements, centerLat, centerLon){
     var metersPerDegLat = 111320;
     var metersPerDegLon = 111320 * Math.cos(centerLat * Math.PI / 180);
-    var landuseParts = [], roadParts = [], buildingParts = [], roadLabelParts = [], buildingLabelParts = [];
+    var landuseParts = [], buildingParts = [], minorRoadParts = [], majorRoadParts = [], labelParts = [];
     var usedRoadNames = {}; // 같은 도로 이름이 여러 조각(way)으로 나뉘어 있어도 라벨은 한 번만
     var hasAny = false;
 
@@ -243,28 +286,43 @@
       var tags = el.tags || {};
 
       if (tags.building) {
-        buildingParts.push('<path d="' + pathD(pts, true) + '" fill="#e3e8ec" stroke="#aab5bf" stroke-width="1.4" data-name="building"/>');
+        // 요청대로 실제 윤곽 대신 깔끔한 사각형(바운딩 박스)으로 표시, 프레임 밖으로 못 나가게 clamp
+        var minX = Math.max(0, Math.min.apply(null, pts.map(function(p){ return p[0]; })));
+        var maxX = Math.min(SVG_W, Math.max.apply(null, pts.map(function(p){ return p[0]; })));
+        var minY = Math.max(0, Math.min.apply(null, pts.map(function(p){ return p[1]; })));
+        var maxY = Math.min(SVG_H, Math.max.apply(null, pts.map(function(p){ return p[1]; })));
+        if (maxX - minX < 1 || maxY - minY < 1) return;
+        buildingParts.push('<rect x="' + minX.toFixed(1) + '" y="' + minY.toFixed(1) + '" width="' + (maxX - minX).toFixed(1) + '" height="' + (maxY - minY).toFixed(1) + '" fill="#e3e8ec" stroke="#aab5bf" stroke-width="1.4" data-name="building"/>');
         hasAny = true;
         if (tags.name) {
-          var c = centroid(pts);
-          buildingLabelParts.push(
-            '<text x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="13" font-weight="600" fill="#3a3a3a" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">' + escapeXml(tags.name) + '</text>'
+          var c = [(minX + maxX) / 2, (minY + maxY) / 2];
+          labelParts.push(
+            '<text x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="26" font-weight="600" fill="#3a3a3a" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="6" stroke-linejoin="round">' + escapeXml(tags.name) + '</text>'
           );
         }
       } else if (tags.highway) {
         var st = roadStyle(tags.highway);
-        var d = pathD(pts, false);
-        if (st.casing) roadParts.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + (st.width + 3) + '" stroke-linecap="round" stroke-linejoin="round" data-name="road-casing"/>');
-        roadParts.push('<path d="' + d + '" fill="none" stroke="' + st.stroke + '" stroke-width="' + st.width + '" stroke-linecap="round" stroke-linejoin="round"' + (st.dash ? (' stroke-dasharray="' + st.dash + '"') : '') + ' data-name="road"/>');
+        var runs = clipPolylineToFrame(pts, 0, 0, SVG_W, SVG_H);
+        if (!runs.length) return;
+        var bucket = st.major ? majorRoadParts : minorRoadParts;
+        runs.forEach(function(run){
+          var d = pathD(run, false);
+          if (st.casing) bucket.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + (st.width + 9) + '" stroke-linecap="round" stroke-linejoin="round" data-name="road-casing"/>');
+          bucket.push('<path d="' + d + '" fill="none" stroke="' + st.stroke + '" stroke-width="' + st.width + '" stroke-linecap="round" stroke-linejoin="round"' + (st.dash ? (' stroke-dasharray="' + st.dash + '"') : '') + ' data-name="road"/>');
+        });
         hasAny = true;
 
-        if (tags.name && !usedRoadNames[tags.name] && pathPixelLength(pts) > 70) {
-          usedRoadNames[tags.name] = true;
-          var lp = roadLabelPlacement(pts);
-          var transform = lp.angle ? (' transform="rotate(' + lp.angle.toFixed(1) + ',' + lp.pos[0].toFixed(1) + ',' + lp.pos[1].toFixed(1) + ')"') : '';
-          roadLabelParts.push(
-            '<text x="' + lp.pos[0].toFixed(1) + '" y="' + lp.pos[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="17" font-weight="700" fill="#5a4632" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="4.5" stroke-linejoin="round"' + transform + '>' + escapeXml(tags.name) + '</text>'
-          );
+        if (tags.name && !usedRoadNames[tags.name]) {
+          // 라벨은 잘린 조각들 중 가장 긴 구간을 골라 붙임
+          var longest = runs.reduce(function(best, r){ return pathPixelLength(r) > pathPixelLength(best) ? r : best; }, runs[0]);
+          if (pathPixelLength(longest) > 70) {
+            usedRoadNames[tags.name] = true;
+            var lp = roadLabelPlacement(longest);
+            var transform = lp.angle ? (' transform="rotate(' + lp.angle.toFixed(1) + ',' + lp.pos[0].toFixed(1) + ',' + lp.pos[1].toFixed(1) + ')"') : '';
+            labelParts.push(
+              '<text x="' + lp.pos[0].toFixed(1) + '" y="' + lp.pos[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="34" font-weight="700" fill="#5a4632" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="9" stroke-linejoin="round"' + transform + '>' + escapeXml(tags.name) + '</text>'
+            );
+          }
         }
       } else if (tags.natural === 'water') {
         landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#a9d3e5" stroke="none" data-name="water"/>');
@@ -278,16 +336,16 @@
     if (!hasAny) return null;
 
     var cx = SVG_W / 2, cy = SVG_H / 2;
-    var marker = '<circle cx="' + cx + '" cy="' + cy + '" r="16" fill="#ff3b30" stroke="#ffffff" stroke-width="3.5" data-name="marker"/>'
-      + '<circle cx="' + cx + '" cy="' + cy + '" r="4.5" fill="#ffffff" data-name="marker-dot"/>';
+    var marker = '<circle cx="' + cx + '" cy="' + cy + '" r="48" fill="#ff3b30" stroke="#ffffff" stroke-width="10.5" data-name="marker"/>'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="13.5" fill="#ffffff" data-name="marker-dot"/>';
 
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="' + SVG_W + '" height="' + SVG_H + '">'
       + '<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="#f4f6f8" data-name="bg"/>'
       + landuseParts.join('')
-      + roadParts.join('')
       + buildingParts.join('')
-      + buildingLabelParts.join('')
-      + roadLabelParts.join('')
+      + minorRoadParts.join('')
+      + majorRoadParts.join('')
+      + labelParts.join('')
       + marker
       + '</svg>';
   }
