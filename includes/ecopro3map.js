@@ -56,7 +56,17 @@
 
   function ensureKakaoLoaded(onReady, onError){
     if (typeof kakao === 'undefined' || !kakao.maps) {
-      onError('카카오맵 스크립트를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.');
+      // window.__kakaoScriptFailed는 sdk.js <script> 태그의 onerror에서 세팅됨(html 참고).
+      // 이게 true면 스크립트 요청 자체가 실패한 것 — 거의 항상 카카오 개발자 콘솔 설정 문제:
+      //  1) 앱키(JavaScript 키)가 틀렸거나
+      //  2) 그 앱의 "플랫폼 > Web" 에 지금 이 사이트 도메인이 정확히 등록 안 됐거나
+      //     (예: https://sowonnamoo.github.io — 끝에 / 없이, 프로토콜 포함)
+      //  3) "제품 설정 > 지도(Maps)"가 비활성화 상태인 경우
+      if (window.__kakaoScriptFailed) {
+        onError('카카오맵 스크립트 요청이 실패했어요. 카카오 개발자 콘솔(developers.kakao.com)에서 ①앱키가 JavaScript 키가 맞는지 ②"플랫폼 > Web"에 https://sowonnamoo.github.io 도메인이 정확히 등록돼 있는지(끝에 슬래시 없이) ③"제품 설정 > 지도(Maps)"가 켜져 있는지 확인해주세요. 브라우저 개발자도구(F12) > Network 탭에서 dapi.map.kakao.com 요청 상태코드를 보면 더 정확히 알 수 있어요.');
+        return;
+      }
+      onError('카카오맵 스크립트를 아직 불러오지 못했어요. 페이지를 새로고침한 뒤 다시 시도해주세요. 계속되면 인터넷 연결이나 광고차단 확장프로그램을 확인해주세요.');
       return;
     }
     if (kakaoReady) { onReady(); return; }
@@ -64,7 +74,7 @@
       kakao.maps.load(function(){ kakaoReady = true; onReady(); });
     } catch (e) {
       console.error('kakao.maps.load 오류:', e);
-      onError('카카오맵 초기화 중 오류가 발생했어요.');
+      onError('카카오맵 초기화 중 오류가 발생했어요. 콘솔(F12)의 에러 메시지를 확인해주세요.');
     }
   }
 

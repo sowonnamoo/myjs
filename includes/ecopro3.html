@@ -8,7 +8,7 @@
 <!-- 카카오맵: 지도 만들기 기능에서 사용 (주소→좌표 변환 + 정적 지도 이미지 생성).
      autoload=false로 두고 실제 필요한 시점(ecopro3map.js)에 kakao.maps.load()로 로드해서
      지도 기능을 안 쓰는 경우엔 초기 로딩에 영향 안 주게 함. -->
-<script src="https://dapi.map.kakao.com/v2/maps/sdk.js?appkey=e4f0ede312276ee8e67a9fdad7d5c724&libraries=services&autoload=false"></script>
+<script id="kakaoMapSdk" src="https://dapi.map.kakao.com/v2/maps/sdk.js?appkey=e4f0ede312276ee8e67a9fdad7d5c724&libraries=services&autoload=false" onerror="window.__kakaoScriptFailed=true;console.error('카카오맵 SDK 스크립트 요청 자체가 실패했습니다 — 보통 앱키 오타이거나, 카카오 개발자 콘솔의 Web 플랫폼 도메인 등록 문제입니다.');"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Nanum+Gothic:wght@400;700;800&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Dodum&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
