@@ -184,6 +184,20 @@
           markerColor: '#e0483a'
         };
       }
+    },
+    {
+      id: 'iso3dBuildings',
+      name: '입체 건물 (3D)',
+      build: function(){
+        var tiltDir = Math.random() < 0.5 ? 'left' : 'right'; // 왼쪽/오른쪽 중 랜덤으로 살짝 눕혀서 돌출
+        var palette = ['#d9a066', '#e0a458', '#d98c6b', '#c9a06a', '#e3b04b'];
+        return {
+          buildings3D: true,
+          tiltDirection: tiltDir,
+          buildingColor: palette[Math.floor(Math.random() * palette.length)]
+          // 길·글자·마커는 지정 안 해서 기본값 그대로(건물만 입체로 바뀜)
+        };
+      }
     }
   ];
   function pickRandomMapFilterConfig(){
@@ -359,6 +373,29 @@
   // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립.
   // 레이어 순서(아래→위): 배경 → 물/공원 → 건물(사각형) → 작은 길 → 큰 길 → 글자 라벨 → 위치 마커
   // styleConfig가 있으면(랜덤 지도 만들기) 색상/두께/글자/마커를 그 값으로 덮어씀
+  // 입체(3D 느낌) 건물 — 지붕(top)면 + 오른쪽/아래쪽 벽면 2개를 살짝 밀어서(돌출) 그려
+  // 블록처럼 보이게 함. tiltDir로 어느 쪽으로 기울여 돌출시킬지(왼쪽/오른쪽) 정함.
+  function build3DBuildingParts(minX, minY, maxX, maxY, tiltDir, baseColor){
+    var topColor = lightenHex(baseColor, 0.30);
+    var rightColor = darkenHex(baseColor, 0.18);
+    var bottomColor = darkenHex(baseColor, 0.36);
+    var w = maxX - minX, h = maxY - minY;
+    var extrude = Math.max(10, Math.min(26, Math.min(w, h) * 0.35));
+    var dx = (tiltDir === 'left') ? -extrude : extrude;
+    var dy = extrude * 0.72;
+
+    var topPoly = [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]];
+    var rightPoly = [[maxX, minY], [maxX + dx, minY + dy], [maxX + dx, maxY + dy], [maxX, maxY]];
+    var bottomPoly = [[minX, maxY], [minX + dx, maxY + dy], [maxX + dx, maxY + dy], [maxX, maxY]];
+
+    // 그리는 순서: 뒤쪽 벽 → 옆쪽 벽 → 지붕(맨 위, 이음새를 자연스럽게 덮음)
+    return [
+      '<path d="' + pathD(bottomPoly, true) + '" fill="' + bottomColor + '" stroke="' + darkenHex(bottomColor, 0.15) + '" stroke-width="1" data-name="building-side"/>',
+      '<path d="' + pathD(rightPoly, true) + '" fill="' + rightColor + '" stroke="' + darkenHex(rightColor, 0.15) + '" stroke-width="1" data-name="building-side"/>',
+      '<path d="' + pathD(topPoly, true) + '" fill="' + topColor + '" stroke="' + darkenHex(topColor, 0.15) + '" stroke-width="1" data-name="building-top"/>'
+    ];
+  }
+
   function buildVectorMapSvg(elements, centerLat, centerLon, styleConfig){
     var metersPerDegLat = 111320;
     var metersPerDegLon = 111320 * Math.cos(centerLat * Math.PI / 180);
@@ -382,7 +419,12 @@
         var minY = Math.max(0, Math.min.apply(null, pts.map(function(p){ return p[1]; })));
         var maxY = Math.min(SVG_H, Math.max.apply(null, pts.map(function(p){ return p[1]; })));
         if (maxX - minX < 1 || maxY - minY < 1) return;
-        buildingParts.push('<rect x="' + minX.toFixed(1) + '" y="' + minY.toFixed(1) + '" width="' + (maxX - minX).toFixed(1) + '" height="' + (maxY - minY).toFixed(1) + '" fill="#e3e8ec" stroke="#aab5bf" stroke-width="1.4" data-name="building"/>');
+        if (styleConfig && styleConfig.buildings3D) {
+          build3DBuildingParts(minX, minY, maxX, maxY, styleConfig.tiltDirection || 'right', styleConfig.buildingColor || '#d9a066')
+            .forEach(function(p){ buildingParts.push(p); });
+        } else {
+          buildingParts.push('<rect x="' + minX.toFixed(1) + '" y="' + minY.toFixed(1) + '" width="' + (maxX - minX).toFixed(1) + '" height="' + (maxY - minY).toFixed(1) + '" fill="#e3e8ec" stroke="#aab5bf" stroke-width="1.4" data-name="building"/>');
+        }
         hasAny = true;
         if (tags.name) {
           var c = [(minX + maxX) / 2, (minY + maxY) / 2];
@@ -442,15 +484,19 @@
         + '</g>';
     }
 
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="' + SVG_W + '" height="' + SVG_H + '">'
-      + '<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="#f4f6f8" data-name="bg"/>'
-      + landuseParts.join('')
-      + buildingParts.join('')
-      + minorRoadParts.join('')
-      + majorRoadParts.join('')
-      + labelParts.join('')
-      + marker
-      + '</svg>';
+    return {
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="' + SVG_W + '" height="' + SVG_H + '">'
+        + '<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="#f4f6f8" data-name="bg"/>'
+        + landuseParts.join('')
+        + buildingParts.join('')
+        + minorRoadParts.join('')
+        + majorRoadParts.join('')
+        + labelParts.join('')
+        + marker
+        + '</svg>',
+      landuseCount: landuseParts.length,
+      buildingCount: buildingParts.length
+    };
   }
 
   // 같은 주소로 스타일만 바꿔 다시 만들 때(특히 "랜덤 지도 만들기" 반복 클릭) VWorld·Overpass를
@@ -554,6 +600,29 @@
     }, { crossOrigin: 'anonymous' });
   }
 
+  // 3D 건물 필터일 때, 방금 삽입된 건물면(지붕+옆면) 오브젝트들을 하나의 그룹으로 묶음 —
+  // 한 번에 선택해서 색을 바꾸거나 통째로 복사/붙여넣기 하기 쉽게 하기 위함.
+  // addedObjs는 SVG에 쓴 순서 그대로 들어오므로(배경rect, 물/공원, 건물, 작은길, 큰길, 글자, 마커),
+  // landuseCount/buildingCount로 건물 부분만 정확히 잘라낼 수 있음.
+  function groupBuildingObjects(addedObjs, landuseCount, buildingCount){
+    var canvas = EP.canvas;
+    if (!canvas || !addedObjs || !addedObjs.length || buildingCount < 2) return;
+    var startIdx = 1 + landuseCount; // +1은 맨 처음 배경 사각형
+    var buildingObjs = addedObjs.slice(startIdx, startIdx + buildingCount).filter(Boolean);
+    if (buildingObjs.length < 2) return;
+    try {
+      canvas.remove.apply(canvas, buildingObjs);
+      var group = new fabric.Group(buildingObjs);
+      group.set({ selectable: true, evented: true });
+      canvas.add(group);
+      if (EP.bringGuideToFront) EP.bringGuideToFront();
+      canvas.setActiveObject(group);
+      canvas.requestRenderAll();
+    } catch (e) {
+      console.error('건물 그룹 묶기 실패:', e);
+    }
+  }
+
   function geocodeAndBuild(address, styleConfig){
     fetchLocationData(address).then(function(loc){
       if (!loc) {
@@ -569,14 +638,19 @@
       }
 
       if (loc.elements && loc.elements.length && EP.importSvgIntoCanvas) {
-        var svg = buildVectorMapSvg(loc.elements, loc.lat, loc.lon, styleConfig);
-        if (svg) {
-          EP.importSvgIntoCanvas(svg, {
+        var built = buildVectorMapSvg(loc.elements, loc.lat, loc.lon, styleConfig);
+        if (built) {
+          EP.importSvgIntoCanvas(built.svg, {
             viewportCenter: true,
             onEmpty: function(){ fallbackToRaster('벡터 지도를 그리지 못해서'); },
-            onDone: function(){
+            onDone: function(addedObjs){
+              if (styleConfig && styleConfig.buildings3D) {
+                groupBuildingObjects(addedObjs, built.landuseCount, built.buildingCount);
+              }
               setBusy(false);
-              mapInputToolbarHint.textContent = '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
+              mapInputToolbarHint.textContent = (styleConfig && styleConfig.buildings3D)
+                ? '지도가 추가됐어요. 입체 건물들은 하나로 묶여 있어서 클릭 한 번으로 색을 바꾸거나 통째로 복사할 수 있어요.'
+                : '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
             }
           });
           return;
