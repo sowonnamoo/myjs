@@ -142,25 +142,25 @@
   // ---------- 2) Geoapify 고해상도 사진식 지도 이미지 ----------
   function buildStaticMapUrl(lat, lon){
     var w = 900, h = 650;
-    // 기본 osm-bright 색상 대신, 카페/가게 전단지에 어울리는 파스텔톤으로 커스터마이징
-    // (배경은 크림색, 공원은 민트, 물은 하늘색, 도로는 코랄/화이트 톤 + 잡다한 장소 라벨은 숨김)
+    // osm-bright 스타일에서 실제로 동작이 확인된 레이어 이름만 사용(추측성 레이어명은 다 뺌 —
+    // 지원 안 하는 레이어명이나 존재하지 않는 마커 아이콘(Font Awesome)이 하나라도 섞이면
+    // Geoapify가 지도 자체를 아예 못 만들어서 통째로 실패하는 걸 겪었기 때문에, 여기선
+    // 안전이 확인된 것만 사용함.
     var styleCustomization = [
       'background:%23fdf3ea',
-      'landcover_grass:%23d7ecd0',
-      'water-pattern:%23bfe3ef',
-      'highway-primary-casing:%23e08a76',
-      'highway-primary:%23f6bcae',
-      'highway-secondary-tertiary-casing:%23dba99f',
-      'highway-secondary-tertiary:%23f2d2ca',
       'highway-minor-casing:%23ddd2c4',
       'highway-minor:%23fffaf3',
-      'place-other:none',
-      'poi-level-1:none',
-      'poi-level-2:none',
-      'poi-level-3:none'
+      'highway-secondary-tertiary-casing:%23dba99f',
+      'highway-secondary-tertiary:%23f2d2ca',
+      'highway-primary-casing:%23e08a76',
+      'highway-primary:%23f6bcae',
+      'poi-level-3:none',
+      'place-other:none'
     ].join('|');
+    // 폰트 아이콘(Font Awesome 등) 의존 없는 단순 원형 마커 — 아이콘 이름 오타/미존재로
+    // 지도 생성 자체가 실패하는 걸 방지하기 위해 가장 안전한 형태로 둠
     var marker = 'lonlat:' + lon + ',' + lat
-      + ';type:material;color:%23ff6f61;size:64;icon:home;icontype:awesome;contentcolor:%23ffffff;whitecircle:no;shadow:no';
+      + ';type:circle;color:%23ff6f61;size:56;strokecolor:%23ffffff;shadow:no';
     return 'https://maps.geoapify.com/v1/staticmap'
       + '?style=osm-bright'
       + '&width=' + w + '&height=' + h
@@ -173,9 +173,23 @@
       + '&apiKey=' + encodeURIComponent(GEOAPIFY_API_KEY);
   }
 
+  // 커스텀 스타일/마커에 문제가 생겨 위 URL이 실패할 경우를 대비한 최소 구성(색 커스터마이징
+  // 없이 기본 osm-bright + 가장 단순한 원형 마커만) — 실패 확률을 최대한 낮춘 최후의 보루
+  function buildPlainStaticMapUrl(lat, lon){
+    return 'https://maps.geoapify.com/v1/staticmap'
+      + '?style=osm-bright'
+      + '&width=900&height=650'
+      + '&format=png'
+      + '&center=lonlat:' + lon + ',' + lat
+      + '&zoom=16.5'
+      + '&marker=lonlat:' + lon + ',' + lat + ';type:circle;color:%23ff3b30;size:48'
+      + '&apiKey=' + encodeURIComponent(GEOAPIFY_API_KEY);
+  }
+
   // fabric.Image로 캔버스에 삽입 — 표 만들기(ecopro3table.js buildTable)와 같은 방식으로
   // 지금 보이는 화면(zoom·pan 반영) 한가운데에 들어오도록 뷰포트 기준 좌표를 계산함.
-  function insertMapImageToCanvas(url, label){
+  // onFail이 있으면(꾸민 지도용 URL을 먼저 시도할 때) 실패해도 alert 없이 그쪽으로 넘김.
+  function insertMapImageToCanvas(url, label, onFail){
     var canvas = EP.canvas;
     if (!canvas) { setBusy(false); alert('캔버스를 찾을 수 없어요.'); return; }
 
@@ -183,9 +197,10 @@
     var timeoutId = setTimeout(function(){
       if (finished) return;
       finished = true;
+      if (onFail) { onFail(); return; }
       setBusy(false);
       alert('지도 이미지를 불러오는 데 시간이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
-    }, 15000);
+    }, 12000);
 
     fabric.Image.fromURL(url, function(img){
       if (finished) return;
@@ -193,6 +208,7 @@
       clearTimeout(timeoutId);
 
       if (!img || !img.width || !img.height) {
+        if (onFail) { onFail(); return; }
         setBusy(false);
         alert('지도 이미지를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
         return;
@@ -234,8 +250,14 @@
         return;
       }
       setBusy(true, '🗺 지도 불러오는 중...');
-      var mapUrl = buildStaticMapUrl(hit.lat, hit.lon);
-      insertMapImageToCanvas(mapUrl, address);
+      var styledUrl = buildStaticMapUrl(hit.lat, hit.lon);
+      insertMapImageToCanvas(styledUrl, address, function(){
+        // 꾸민 버전이 실패하면 조용히 기본(무보정) 버전으로 한 번 더 시도
+        console.warn('꾸민 스타일 지도 실패, 기본 스타일로 재시도');
+        setBusy(true, '🗺 기본 스타일로 다시 시도 중...');
+        var plainUrl = buildPlainStaticMapUrl(hit.lat, hit.lon);
+        insertMapImageToCanvas(plainUrl, address);
+      });
     }).catch(function(err){
       console.error('지오코딩 오류:', err);
       setBusy(false);
