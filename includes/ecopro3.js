@@ -1179,52 +1179,71 @@
 
   /* ============================================================
      7. SVG 불러오기 — 개별 도형/텍스트를 그대로 편집 가능하게 배치
+     importSvgIntoCanvas()로 빼둬서, 파일로 불러올 때뿐 아니라 다른 기능(예: ecopro3map.js의
+     "지도 만들기"가 생성한 SVG 문자열)에서도 똑같은 방식으로 낱개 편집 가능한 오브젝트로
+     캔버스에 넣을 수 있게 함.
   ============================================================ */
+  function importSvgIntoCanvas(svgText, opts){
+    fabric.loadSVGFromString(svgText, function(objects, options){
+      objects = objects.filter(Boolean);
+      if (!objects.length) { if (opts && opts.onEmpty) opts.onEmpty(); return; }
+
+      const tempGroup = fabric.util.groupSVGElements(objects, options);
+
+      // 기본은 캔버스 정중앙(파일로 불러올 때와 동일), viewportCenter:true를 넘기면
+      // 표/이미지 삽입처럼 지금 보이는 화면(zoom·pan 반영) 한가운데에 넣음
+      let targetLeft = CANVAS_W / 2, targetTop = CANVAS_H / 2;
+      if (opts && opts.viewportCenter) {
+        const zoom = canvas.getZoom() || 1;
+        const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+        targetLeft = (canvas.getWidth() / 2 - vpt[4]) / zoom;
+        targetTop = (canvas.getHeight() / 2 - vpt[5]) / zoom;
+      }
+      const maxDimBase = (opts && opts.maxDim) ? opts.maxDim : Math.min(CANVAS_W, CANVAS_H) * 0.85;
+      const scale = Math.min(maxDimBase / tempGroup.width, maxDimBase / tempGroup.height, 1);
+      tempGroup.set({
+        left: targetLeft,
+        top: targetTop,
+        originX: 'center',
+        originY: 'center',
+        scaleX: scale,
+        scaleY: scale
+      });
+      tempGroup.setCoords();
+
+      const items = tempGroup.getObjects().slice();
+      tempGroup._restoreObjectsState();
+
+      const addedObjs = [];
+      items.forEach(function(obj){
+        let finalObj = obj;
+        if (obj.type === 'text') {
+          const props = obj.toObject([
+            'left','top','width','height','scaleX','scaleY','angle','skewX','skewY',
+            'fontFamily','fontSize','fontWeight','fontStyle','fill','stroke','strokeWidth',
+            'textAlign','underline','linethrough','charSpacing','lineHeight','opacity',
+            'flipX','flipY','originX','originY'
+          ]);
+          finalObj = new fabric.IText(obj.text, props);
+        }
+        finalObj.set({ selectable: true, evented: true });
+        canvas.add(finalObj);
+        addedObjs.push(finalObj);
+      });
+
+      bringGuideToFront();
+      canvas.renderAll();
+      refreshEmptyHint();
+      if (opts && opts.onDone) opts.onDone(addedObjs);
+    });
+  }
+
   document.getElementById('svgInput').addEventListener('change', function(e){
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(ev){
-      const svgText = ev.target.result;
-      fabric.loadSVGFromString(svgText, function(objects, options){
-        objects = objects.filter(Boolean);
-        if (!objects.length) return;
-
-        const tempGroup = fabric.util.groupSVGElements(objects, options);
-        const maxDim = Math.min(CANVAS_W, CANVAS_H) * 0.85;
-        const scale = Math.min(maxDim / tempGroup.width, maxDim / tempGroup.height, 1);
-        tempGroup.set({
-          left: CANVAS_W / 2,
-          top: CANVAS_H / 2,
-          originX: 'center',
-          originY: 'center',
-          scaleX: scale,
-          scaleY: scale
-        });
-        tempGroup.setCoords();
-
-        const items = tempGroup.getObjects().slice();
-        tempGroup._restoreObjectsState();
-
-        items.forEach(function(obj){
-          let finalObj = obj;
-          if (obj.type === 'text') {
-            const props = obj.toObject([
-              'left','top','width','height','scaleX','scaleY','angle','skewX','skewY',
-              'fontFamily','fontSize','fontWeight','fontStyle','fill','stroke','strokeWidth',
-              'textAlign','underline','linethrough','charSpacing','lineHeight','opacity',
-              'flipX','flipY','originX','originY'
-            ]);
-            finalObj = new fabric.IText(obj.text, props);
-          }
-          finalObj.set({ selectable: true, evented: true });
-          canvas.add(finalObj);
-        });
-
-        bringGuideToFront();
-        canvas.renderAll();
-        refreshEmptyHint();
-      });
+      importSvgIntoCanvas(ev.target.result);
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -2548,6 +2567,7 @@
   EP.pushHistory = pushHistory;
   EP.refreshEmptyHint = refreshEmptyHint;
   EP.bringGuideToFront = bringGuideToFront;
+  EP.importSvgIntoCanvas = importSvgIntoCanvas;
   EP.isTextObject = isTextObject;
   EP.isShapeObject = isShapeObject;
   EP.textBoxesFromTarget = textBoxesFromTarget;

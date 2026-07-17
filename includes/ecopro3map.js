@@ -1,25 +1,22 @@
-/* ecopro3map.js — 지도 만들기 (VWorld 지오코딩 + Geoapify 정적 지도 이미지)
+/* ecopro3map.js — 지도 만들기 (VWorld 지오코딩 + 벡터(SVG) 지도, 실패 시 Geoapify 사진식 지도로 대체)
    "텍스트모양" 메뉴의 "표 만들기" 아래에 있는 "지도 만들기" 버튼을 누르면 여는 주소 입력창.
-
-   주소 → 좌표 변환은 국토교통부 브이월드(VWorld) API를 씀:
-   - 대한민국 공식 도로명주소 DB 기반이라 Geoapify(OSM 기반)보다 한국 주소 정확도가 훨씬 높음.
-   - 광고 인프라와 무관한 정부 도메인이라 카카오 때 겪었던 광고차단 차단 문제도 없음.
-   - 무료 하루 3만 건.
-
-   실제 지도 "그림"(이미지)은 Geoapify Static Maps API를 그대로 씀:
-   - CORS를 지원해서 캔버스에 넣은 뒤 PNG/JPG 내보내기까지 문제없이 동작함.
-   - scaleFactor를 올려 고해상도로 받아서 인쇄용으로도 선명하게 나오도록 함.
-   - style=osm-bright — 색감 있고 깔끔한, 인쇄물에 무난하게 예쁜 스타일.
-
-   삽입된 지도는 일반 이미지 오브젝트라서, 오른쪽 "이미지" 패널의 밝기·대비·채도·흑백
-   보정 기능으로 인쇄 전에 색 보정도 할 수 있음(ecopro3.js 쪽 기능).
 
    동작 순서:
      1) VWorld Geocoder로 주소 → 좌표 변환 (도로명 주소로 먼저 시도, 안 되면 지번 주소로 재시도)
-     2) Geoapify Static Maps API로 그 좌표의 고해상도 지도 이미지 URL 생성
-     3) fabric.Image로 캔버스 중앙(지금 보이는 화면 기준)에 삽입
+        — 대한민국 공식 도로명주소 DB 기반이라 정확도가 높음.
+     2) OpenStreetMap의 Overpass API로 그 주변(반경 약 260m)의 실제 건물·도로·수역·공원
+        벡터(윤곽선) 데이터를 가져와서 SVG로 직접 그림 → 건물 하나하나가 독립된 도형
+        오브젝트로 캔버스에 들어와서, "SVG 불러오기"로 넣은 것처럼 개별 선택해서
+        색을 바꾸거나(예: 우리 건물만 강조색으로) 삭제/이동할 수 있음.
+     3) 이 지역에 OSM 건물/도로 데이터가 거의 없거나(한국은 지역에 따라 OSM 데이터가
+        부실한 곳이 있음) Overpass 서버가 응답하지 않으면, 자동으로 Geoapify의
+        고해상도 사진식(래스터) 정적 지도로 대체함(이전 방식, 인쇄 해상도로 생성).
 
-   로딩 순서: ecopro3.js(코어) 다음, ecopro3l.js(주사위) 전이면 어디든 무방. */
+   삽입된 지도(벡터/래스터 어느 쪽이든)는 오른쪽 "이미지" 패널의 밝기·대비·채도·흑백
+   보정 기능도 그대로 쓸 수 있음(래스터일 때는 이미지 필터로, 벡터일 때는 개별 도형의
+   채우기색 변경으로 보정/수정).
+
+   로딩 순서: ecopro3.js(코어, importSvgIntoCanvas가 여기 있음) 다음, ecopro3l.js(주사위) 전이면 어디든 무방. */
 (function(){
   "use strict";
   var EP = window.EP = window.EP || {};
@@ -66,7 +63,7 @@
     applyMapBtn.textContent = isBusy ? (label || '🗺 불러오는 중...') : APPLY_BTN_DEFAULT_LABEL;
   }
 
-  // ---------- VWorld 지오코딩 ----------
+  // ---------- 1) VWorld 지오코딩 ----------
   function vworldGeocode(address, type){
     var url = 'https://api.vworld.kr/req/address'
       + '?service=address&request=getcoord&version=2.0&crs=epsg:4326'
@@ -76,7 +73,6 @@
       + '&key=' + encodeURIComponent(VWORLD_KEY);
     return fetch(url).then(function(res){ return res.json(); });
   }
-
   function extractVworldResult(data){
     var resp = data && data.response;
     if (resp && resp.status === 'OK' && resp.result && resp.result.point) {
@@ -84,9 +80,7 @@
     }
     return null;
   }
-
-  // 도로명주소로 먼저 찾고, 못 찾으면 지번주소로 한 번 더 시도(사용자가 어떤 형태로 입력했는지
-  // 모르기 때문에 둘 다 순서대로 시도함)
+  // 도로명주소로 먼저 찾고, 못 찾으면 지번주소로 한 번 더 시도
   function geocodeAddress(address){
     return vworldGeocode(address, 'road').then(function(data){
       var hit = extractVworldResult(data);
@@ -97,13 +91,137 @@
     });
   }
 
-  // ---------- Geoapify 정적 지도 이미지 ----------
+  // ---------- 2) Overpass(OSM) 벡터 데이터 → SVG ----------
+  var SVG_W = 900, SVG_H = 650;
+  var RADIUS_M = 260;               // 중심에서 이만큼(m) 반경의 데이터를 가져옴
+  var PXPM = (Math.min(SVG_W, SVG_H) / 2 - 40) / RADIUS_M; // 미터당 픽셀
+
+  function bboxFromCenter(lat, lon){
+    var dLat = RADIUS_M / 111320;
+    var dLon = RADIUS_M / (111320 * Math.cos(lat * Math.PI / 180));
+    return { south: lat - dLat, west: lon - dLon, north: lat + dLat, east: lon + dLon };
+  }
+
+  function buildOverpassQuery(bbox){
+    var b = bbox.south + ',' + bbox.west + ',' + bbox.north + ',' + bbox.east;
+    return '[out:json][timeout:20];('
+      + 'way["building"](' + b + ');'
+      + 'way["highway"](' + b + ');'
+      + 'way["natural"="water"](' + b + ');'
+      + 'way["leisure"="park"](' + b + ');'
+      + 'way["landuse"="grass"](' + b + ');'
+      + ');out geom;';
+  }
+
+  function fetchOverpass(query, timeoutMs){
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function(){ controller.abort(); }, timeoutMs) : null;
+    return fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query),
+      signal: controller ? controller.signal : undefined
+    }).then(function(res){
+      if (timer) clearTimeout(timer);
+      if (!res.ok) throw new Error('overpass http ' + res.status);
+      return res.json();
+    }).catch(function(err){
+      if (timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  function project(lat, lon, centerLat, centerLon, metersPerDegLat, metersPerDegLon){
+    var xM = (lon - centerLon) * metersPerDegLon;
+    var yM = (lat - centerLat) * metersPerDegLat;
+    var x = SVG_W / 2 + xM * PXPM;
+    var y = SVG_H / 2 - yM * PXPM; // lat 위쪽(+)이 SVG에서는 y가 작아지는 방향이라 부호 반전
+    return [x, y];
+  }
+
+  function pathD(points, closed){
+    var d = points.map(function(p, i){ return (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+    if (closed) d += ' Z';
+    return d;
+  }
+
+  var MAJOR_ROADS = { motorway:1, trunk:1, primary:1, secondary:1, tertiary:1, motorway_link:1, trunk_link:1, primary_link:1, secondary_link:1, tertiary_link:1 };
+  var PATH_ROADS = { footway:1, path:1, cycleway:1, pedestrian:1, steps:1, track:1 };
+  function roadStyle(highwayType){
+    if (MAJOR_ROADS[highwayType]) return { stroke: '#f4b942', width: 6, dash: null, casing: '#c98f1d' };
+    if (PATH_ROADS[highwayType]) return { stroke: '#cfd6dc', width: 2, dash: '5 4', casing: null };
+    return { stroke: '#ffffff', width: 4, dash: null, casing: '#c9cfd6' }; // 주거/기타 도로 기본값
+  }
+
+  // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립
+  function buildVectorMapSvg(elements, centerLat, centerLon){
+    var metersPerDegLat = 111320;
+    var metersPerDegLon = 111320 * Math.cos(centerLat * Math.PI / 180);
+    var landuseParts = [], roadParts = [], buildingParts = [];
+    var hasAny = false;
+
+    elements.forEach(function(el){
+      if (!el || el.type !== 'way' || !el.geometry || el.geometry.length < 2) return;
+      var pts = el.geometry.map(function(g){ return project(g.lat, g.lon, centerLat, centerLon, metersPerDegLat, metersPerDegLon); });
+      var tags = el.tags || {};
+
+      if (tags.building) {
+        buildingParts.push('<path d="' + pathD(pts, true) + '" fill="#e3e8ec" stroke="#b7c1ca" stroke-width="1" data-name="building"/>');
+        hasAny = true;
+      } else if (tags.highway) {
+        var st = roadStyle(tags.highway);
+        var d = pathD(pts, false);
+        if (st.casing) roadParts.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + (st.width + 2.4) + '" stroke-linecap="round" stroke-linejoin="round" data-name="road-casing"/>');
+        roadParts.push('<path d="' + d + '" fill="none" stroke="' + st.stroke + '" stroke-width="' + st.width + '" stroke-linecap="round" stroke-linejoin="round"' + (st.dash ? (' stroke-dasharray="' + st.dash + '"') : '') + ' data-name="road"/>');
+        hasAny = true;
+      } else if (tags.natural === 'water') {
+        landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#a9d3e5" stroke="none" data-name="water"/>');
+        hasAny = true;
+      } else if (tags.leisure === 'park' || tags.landuse === 'grass') {
+        landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#cfe8c9" stroke="none" data-name="park"/>');
+        hasAny = true;
+      }
+    });
+
+    if (!hasAny) return null;
+
+    var cx = SVG_W / 2, cy = SVG_H / 2;
+    var marker = '<circle cx="' + cx + '" cy="' + cy + '" r="15" fill="#ff3b30" stroke="#ffffff" stroke-width="3" data-name="marker"/>'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="#ffffff" data-name="marker-dot"/>';
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="' + SVG_W + '" height="' + SVG_H + '">'
+      + '<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="#f4f6f8" data-name="bg"/>'
+      + landuseParts.join('')
+      + roadParts.join('')
+      + buildingParts.join('')
+      + marker
+      + '</svg>';
+  }
+
+  function tryInsertVectorMap(lat, lon, address, onSuccess, onFallback){
+    var query = buildOverpassQuery(bboxFromCenter(lat, lon));
+    fetchOverpass(query, 12000).then(function(data){
+      var svg = buildVectorMapSvg((data && data.elements) || [], lat, lon);
+      if (!svg) { onFallback('이 주변엔 OSM 건물·도로 데이터가 부족해서'); return; }
+      if (!EP.importSvgIntoCanvas) { onFallback('벡터 지도 삽입 기능을 찾을 수 없어서'); return; }
+      EP.importSvgIntoCanvas(svg, {
+        viewportCenter: true,
+        onEmpty: function(){ onFallback('벡터 지도를 그리지 못해서'); },
+        onDone: function(){ onSuccess(); }
+      });
+    }).catch(function(err){
+      console.error('Overpass 오류:', err);
+      onFallback('실시간 벡터 지도 서버 응답이 없어서');
+    });
+  }
+
+  // ---------- 3) 대체용 Geoapify 고해상도 사진식 지도(래스터) ----------
   function buildStaticMapUrl(lat, lon){
     var w = 900, h = 650;
     return 'https://maps.geoapify.com/v1/staticmap'
       + '?style=osm-bright'
       + '&width=' + w + '&height=' + h
-      + '&scaleFactor=3'          // 인쇄용 고해상도
+      + '&scaleFactor=3'
       + '&format=png'
       + '&center=lonlat:' + lon + ',' + lat
       + '&zoom=16.5'
@@ -111,9 +229,7 @@
       + '&apiKey=' + encodeURIComponent(GEOAPIFY_API_KEY);
   }
 
-  // fabric.Image로 캔버스에 삽입 — 표 만들기(ecopro3table.js buildTable)와 같은 방식으로
-  // 지금 보이는 화면(zoom·pan 반영) 한가운데에 들어오도록 뷰포트 기준 좌표를 계산함.
-  function insertMapImageToCanvas(url, label){
+  function insertRasterMapToCanvas(url, label, reasonPrefix){
     var canvas = EP.canvas;
     if (!canvas) { setBusy(false); alert('캔버스를 찾을 수 없어요.'); return; }
 
@@ -126,7 +242,7 @@
     }, 15000);
 
     fabric.Image.fromURL(url, function(img){
-      if (finished) return; // 이미 타임아웃으로 처리된 뒤 늦게 도착한 경우 무시
+      if (finished) return;
       finished = true;
       clearTimeout(timeoutId);
 
@@ -160,8 +276,9 @@
       if (EP.pushHistory) EP.pushHistory();
 
       setBusy(false);
-      mapInputToolbarHint.textContent = '지도가 추가됐어요. 오른쪽 "이미지" 패널에서 밝기·대비·채도 보정도 할 수 있어요.';
-    }, { crossOrigin: 'anonymous' }); // Geoapify는 CORS를 지원해서 내보내기(PNG/JPG)까지 문제없이 동작함
+      mapInputToolbarHint.textContent = (reasonPrefix ? (reasonPrefix + ' 사진식 지도로 대신 넣었어요. ') : '')
+        + '오른쪽 "이미지" 패널에서 밝기·대비·채도 보정도 할 수 있어요.';
+    }, { crossOrigin: 'anonymous' });
   }
 
   function geocodeAndBuild(address){
@@ -171,8 +288,17 @@
         alert('주소를 찾을 수 없어요. 도로명 주소(예: "테헤란로 152") 또는 지번 주소로 다시 시도해보세요.');
         return;
       }
-      var mapUrl = buildStaticMapUrl(hit.lat, hit.lon);
-      insertMapImageToCanvas(mapUrl, address);
+      setBusy(true, '🗺 건물·도로 그리는 중...');
+      tryInsertVectorMap(hit.lat, hit.lon, address, function(){
+        // 성공(벡터)
+        setBusy(false);
+        mapInputToolbarHint.textContent = '지도가 추가됐어요. 건물 하나하나가 낱개 도형이라 클릭해서 색을 바꾸거나 지울 수 있어요.';
+      }, function(reasonPrefix){
+        // 실패 → 래스터로 대체
+        setBusy(true, '🗺 대체 지도 불러오는 중...');
+        var mapUrl = buildStaticMapUrl(hit.lat, hit.lon);
+        insertRasterMapToCanvas(mapUrl, address, reasonPrefix);
+      });
     }).catch(function(err){
       console.error('VWorld geocode 오류:', err);
       setBusy(false);
