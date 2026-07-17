@@ -966,6 +966,41 @@
 
   function isImageObject(o){ return !!o && o.type === 'image'; }
 
+  /* ---------- 이미지 보정(밝기·대비·채도·흑백) ----------
+     fabric.Image.filters의 Brightness/Contrast/Saturation/Grayscale를 그때그때
+     obj.filters 배열을 통째로 다시 구성해서 적용함(중첩 누적 대신 항상 최신 슬라이더
+     값 기준으로 새로 만듦 — 순서 꼬임/중복 적용 방지). 지도 이미지를 포함해 모든
+     이미지 오브젝트에 공통으로 사용됨. */
+  function getImageFilterValue(obj, filterType, propName){
+    if (!obj || !obj.filters) return 0;
+    for (let i = 0; i < obj.filters.length; i++) {
+      const f = obj.filters[i];
+      if (f && f.type === filterType) return f[propName] || 0;
+    }
+    return 0;
+  }
+  function hasGrayscaleFilter(obj){
+    return !!(obj && obj.filters && obj.filters.some(f => f && f.type === 'Grayscale'));
+  }
+  function applyImageAdjustments(obj, opts){
+    if (!isImageObject(obj)) return;
+    const cur = {
+      brightness: getImageFilterValue(obj, 'Brightness', 'brightness'),
+      contrast: getImageFilterValue(obj, 'Contrast', 'contrast'),
+      saturation: getImageFilterValue(obj, 'Saturation', 'saturation'),
+      grayscale: hasGrayscaleFilter(obj)
+    };
+    const next = Object.assign(cur, opts);
+    const filters = [];
+    if (next.grayscale) filters.push(new fabric.Image.filters.Grayscale());
+    if (next.brightness) filters.push(new fabric.Image.filters.Brightness({ brightness: next.brightness }));
+    if (next.contrast) filters.push(new fabric.Image.filters.Contrast({ contrast: next.contrast }));
+    if (next.saturation) filters.push(new fabric.Image.filters.Saturation({ saturation: next.saturation }));
+    obj.filters = filters;
+    obj.applyFilters();
+    canvas.requestRenderAll();
+  }
+
   function setOthersInteractive(exceptObj, on){
     canvas.getObjects().forEach((o) => {
       if (o === exceptObj || o.isGuide) return;
@@ -1986,6 +2021,11 @@
 
   const opacityInput = document.getElementById('opacityInput');
   const angleInput = document.getElementById('angleInput');
+  const imgBrightnessInput = document.getElementById('imgBrightnessInput');
+  const imgContrastInput = document.getElementById('imgContrastInput');
+  const imgSaturationInput = document.getElementById('imgSaturationInput');
+  const imgGrayscaleBtn = document.getElementById('imgGrayscaleBtn');
+  const imgAdjustResetBtn = document.getElementById('imgAdjustResetBtn');
 
   /* ============================================================
      14b. CMYK 색상 선택기
@@ -2367,6 +2407,13 @@
       strokeWidthInput.value = obj.strokeWidth || 0;
     }
 
+    if (imageLike) {
+      imgBrightnessInput.value = Math.round(getImageFilterValue(obj, 'Brightness', 'brightness') * 100);
+      imgContrastInput.value = Math.round(getImageFilterValue(obj, 'Contrast', 'contrast') * 100);
+      imgSaturationInput.value = Math.round(getImageFilterValue(obj, 'Saturation', 'saturation') * 100);
+      imgGrayscaleBtn.classList.toggle('on', hasGrayscaleFilter(obj));
+    }
+
     opacityInput.value = obj.opacity != null ? obj.opacity : 1;
     angleInput.value = Math.round(obj.angle || 0);
     panelUpdating = false;
@@ -2434,6 +2481,31 @@
     }
   }));
   angleInput.addEventListener('input', () => withActive(o => { o.set('angle', parseFloat(angleInput.value) || 0); o.setCoords(); }));
+
+  imgBrightnessInput.addEventListener('input', () => withActive(o => applyImageAdjustments(o, { brightness: (parseInt(imgBrightnessInput.value, 10) || 0) / 100 })));
+  imgBrightnessInput.addEventListener('change', () => pushHistory());
+  imgContrastInput.addEventListener('input', () => withActive(o => applyImageAdjustments(o, { contrast: (parseInt(imgContrastInput.value, 10) || 0) / 100 })));
+  imgContrastInput.addEventListener('change', () => pushHistory());
+  imgSaturationInput.addEventListener('input', () => withActive(o => applyImageAdjustments(o, { saturation: (parseInt(imgSaturationInput.value, 10) || 0) / 100 })));
+  imgSaturationInput.addEventListener('change', () => pushHistory());
+  imgGrayscaleBtn.addEventListener('click', () => withActive(o => {
+    if (!isImageObject(o)) return;
+    const turningOn = !hasGrayscaleFilter(o);
+    applyImageAdjustments(o, { grayscale: turningOn });
+    imgGrayscaleBtn.classList.toggle('on', turningOn);
+    pushHistory();
+  }));
+  imgAdjustResetBtn.addEventListener('click', () => withActive(o => {
+    if (!isImageObject(o)) return;
+    o.filters = [];
+    o.applyFilters();
+    canvas.requestRenderAll();
+    imgBrightnessInput.value = 0;
+    imgContrastInput.value = 0;
+    imgSaturationInput.value = 0;
+    imgGrayscaleBtn.classList.remove('on');
+    pushHistory();
+  }));
 
   /* ============================================================
      15. 모바일: 패널 토글

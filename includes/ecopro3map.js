@@ -1,18 +1,31 @@
-/* ecopro3map.js — 지도 만들기
+/* ecopro3map.js — 지도 만들기 (VWorld 지오코딩 + Geoapify 정적 지도 이미지)
    "텍스트모양" 메뉴의 "표 만들기" 아래에 있는 "지도 만들기" 버튼을 누르면 여는 주소 입력창.
-   주소를 입력하고 적용하면:
-     1) 카카오맵 Geocoder로 주소 → 좌표 변환 (실패하면 키워드/장소검색으로 한 번 더 시도)
-     2) kakao.maps.StaticMap으로 그 좌표의 정적 지도 이미지를 화면 밖 숨김 영역에 렌더링
-     3) 완성된 <img>의 src를 fabric.Image로 캔버스 중앙에 삽입 (표/이미지 불러오기와 같은 방식)
-   주의: 카카오 정적 지도 이미지 서버는 CORS 허용 헤더를 보내주지 않는 경우가 많아서,
-   화면에 보이고 이동·크기조절하는 데는 문제가 없지만 PNG/JPG 내보내기(canvas.toDataURL 방식)는
-   이 지도 때문에 실패할 수 있음(Tainted canvas). SVG 내보내기는 <image href="URL">만 참조하는
-   방식이라 이 문제와 무관하게 정상 동작함. 그래서 지도를 넣은 뒤에는 안내 문구로 SVG 내보내기를
-   권장함.
+
+   주소 → 좌표 변환은 국토교통부 브이월드(VWorld) API를 씀:
+   - 대한민국 공식 도로명주소 DB 기반이라 Geoapify(OSM 기반)보다 한국 주소 정확도가 훨씬 높음.
+   - 광고 인프라와 무관한 정부 도메인이라 카카오 때 겪었던 광고차단 차단 문제도 없음.
+   - 무료 하루 3만 건.
+
+   실제 지도 "그림"(이미지)은 Geoapify Static Maps API를 그대로 씀:
+   - CORS를 지원해서 캔버스에 넣은 뒤 PNG/JPG 내보내기까지 문제없이 동작함.
+   - scaleFactor를 올려 고해상도로 받아서 인쇄용으로도 선명하게 나오도록 함.
+   - style=osm-bright — 색감 있고 깔끔한, 인쇄물에 무난하게 예쁜 스타일.
+
+   삽입된 지도는 일반 이미지 오브젝트라서, 오른쪽 "이미지" 패널의 밝기·대비·채도·흑백
+   보정 기능으로 인쇄 전에 색 보정도 할 수 있음(ecopro3.js 쪽 기능).
+
+   동작 순서:
+     1) VWorld Geocoder로 주소 → 좌표 변환 (도로명 주소로 먼저 시도, 안 되면 지번 주소로 재시도)
+     2) Geoapify Static Maps API로 그 좌표의 고해상도 지도 이미지 URL 생성
+     3) fabric.Image로 캔버스 중앙(지금 보이는 화면 기준)에 삽입
+
    로딩 순서: ecopro3.js(코어) 다음, ecopro3l.js(주사위) 전이면 어디든 무방. */
 (function(){
   "use strict";
   var EP = window.EP = window.EP || {};
+
+  var VWORLD_KEY = '2799E8C4-4E56-36A9-891A-A00B7E5BA60C';
+  var GEOAPIFY_API_KEY = '48d65d25e76341bcbed4197e3745fc56';
 
   var shapeMenu = document.getElementById('shapeMenu');
   var addMapBtn = document.getElementById('addMapBtn');
@@ -26,7 +39,6 @@
 
   var DEFAULT_HINT = mapInputToolbarHint.textContent;
   var APPLY_BTN_DEFAULT_LABEL = applyMapBtn.textContent;
-  var kakaoReady = false;
   var busy = false; // 중복 클릭(연속 요청) 방지
 
   function openMapInputToolbar(){
@@ -54,50 +66,73 @@
     applyMapBtn.textContent = isBusy ? (label || '🗺 불러오는 중...') : APPLY_BTN_DEFAULT_LABEL;
   }
 
-  function ensureKakaoLoaded(onReady, onError){
-    if (typeof kakao === 'undefined' || !kakao.maps) {
-      // window.__kakaoScriptFailed는 sdk.js <script> 태그의 onerror에서 세팅됨(html 참고).
-      // 이게 true면 스크립트 요청 자체가 실패한 것 — 거의 항상 카카오 개발자 콘솔 설정 문제:
-      //  1) 앱키(JavaScript 키)가 틀렸거나
-      //  2) 그 앱의 "플랫폼 > Web" 에 지금 이 사이트 도메인이 정확히 등록 안 됐거나
-      //     (예: https://sowonnamoo.github.io — 끝에 / 없이, 프로토콜 포함)
-      //  3) "제품 설정 > 지도(Maps)"가 비활성화 상태인 경우
-      if (window.__kakaoScriptFailed) {
-        onError('카카오맵 스크립트 요청이 실패했어요. 카카오 개발자 콘솔(developers.kakao.com)에서 ①앱키가 JavaScript 키가 맞는지 ②"플랫폼 > Web"에 https://sowonnamoo.github.io 도메인이 정확히 등록돼 있는지(끝에 슬래시 없이) ③"제품 설정 > 지도(Maps)"가 켜져 있는지 확인해주세요. 브라우저 개발자도구(F12) > Network 탭에서 dapi.map.kakao.com 요청 상태코드를 보면 더 정확히 알 수 있어요.');
-        return;
-      }
-      onError('카카오맵 스크립트를 아직 불러오지 못했어요. 페이지를 새로고침한 뒤 다시 시도해주세요. 계속되면 인터넷 연결이나 광고차단 확장프로그램을 확인해주세요.');
-      return;
+  // ---------- VWorld 지오코딩 ----------
+  function vworldGeocode(address, type){
+    var url = 'https://api.vworld.kr/req/address'
+      + '?service=address&request=getcoord&version=2.0&crs=epsg:4326'
+      + '&address=' + encodeURIComponent(address)
+      + '&refine=true&simple=false&format=json'
+      + '&type=' + type
+      + '&key=' + encodeURIComponent(VWORLD_KEY);
+    return fetch(url).then(function(res){ return res.json(); });
+  }
+
+  function extractVworldResult(data){
+    var resp = data && data.response;
+    if (resp && resp.status === 'OK' && resp.result && resp.result.point) {
+      return { lat: parseFloat(resp.result.point.y), lon: parseFloat(resp.result.point.x) };
     }
-    if (kakaoReady) { onReady(); return; }
-    try {
-      kakao.maps.load(function(){ kakaoReady = true; onReady(); });
-    } catch (e) {
-      console.error('kakao.maps.load 오류:', e);
-      onError('카카오맵 초기화 중 오류가 발생했어요. 콘솔(F12)의 에러 메시지를 확인해주세요.');
-    }
+    return null;
   }
 
-  function cleanupContainer(container){
-    if (container && container.parentNode) container.parentNode.removeChild(container);
+  // 도로명주소로 먼저 찾고, 못 찾으면 지번주소로 한 번 더 시도(사용자가 어떤 형태로 입력했는지
+  // 모르기 때문에 둘 다 순서대로 시도함)
+  function geocodeAddress(address){
+    return vworldGeocode(address, 'road').then(function(data){
+      var hit = extractVworldResult(data);
+      if (hit) return hit;
+      return vworldGeocode(address, 'parcel').then(function(data2){
+        return extractVworldResult(data2);
+      });
+    });
   }
 
-  function failAndCleanup(container, msg){
-    cleanupContainer(container);
-    setBusy(false);
-    alert(msg || '지도 이미지를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
+  // ---------- Geoapify 정적 지도 이미지 ----------
+  function buildStaticMapUrl(lat, lon){
+    var w = 900, h = 650;
+    return 'https://maps.geoapify.com/v1/staticmap'
+      + '?style=osm-bright'
+      + '&width=' + w + '&height=' + h
+      + '&scaleFactor=3'          // 인쇄용 고해상도
+      + '&format=png'
+      + '&center=lonlat:' + lon + ',' + lat
+      + '&zoom=16.5'
+      + '&marker=lonlat:' + lon + ',' + lat + ';type:awesome;color:%23ff3b30;size:55'
+      + '&apiKey=' + encodeURIComponent(GEOAPIFY_API_KEY);
   }
 
-  // fabric.Image로 캔버스에 삽입 — 이미지 불러오기(6. 이미지 불러오기)와 같은 중앙 배치 방식,
-  // 다만 화면 확대/이동(zoom·pan) 중이어도 지금 보이는 화면 한가운데 들어오도록
-  // 표 만들기(ecopro3table.js buildTable)와 같은 뷰포트 기준 좌표 계산을 사용함.
-  function insertMapImageToCanvas(url, address, container){
+  // fabric.Image로 캔버스에 삽입 — 표 만들기(ecopro3table.js buildTable)와 같은 방식으로
+  // 지금 보이는 화면(zoom·pan 반영) 한가운데에 들어오도록 뷰포트 기준 좌표를 계산함.
+  function insertMapImageToCanvas(url, label){
     var canvas = EP.canvas;
-    if (!canvas) { failAndCleanup(container); return; }
+    if (!canvas) { setBusy(false); alert('캔버스를 찾을 수 없어요.'); return; }
+
+    var finished = false;
+    var timeoutId = setTimeout(function(){
+      if (finished) return;
+      finished = true;
+      setBusy(false);
+      alert('지도 이미지를 불러오는 데 시간이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
+    }, 15000);
 
     fabric.Image.fromURL(url, function(img){
+      if (finished) return; // 이미 타임아웃으로 처리된 뒤 늦게 도착한 경우 무시
+      finished = true;
+      clearTimeout(timeoutId);
+
       if (!img || !img.width || !img.height) {
-        failAndCleanup(container, '지도 이미지를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
+        setBusy(false);
+        alert('지도 이미지를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
         return;
       }
       var zoom = canvas.getZoom() || 1;
@@ -115,7 +150,7 @@
         scaleX: scale, scaleY: scale
       });
       img.isMapImage = true;
-      img.mapAddress = address;
+      img.mapAddress = label;
 
       canvas.add(img);
       if (EP.bringGuideToFront) EP.bringGuideToFront();
@@ -124,74 +159,24 @@
       if (EP.refreshEmptyHint) EP.refreshEmptyHint();
       if (EP.pushHistory) EP.pushHistory();
 
-      cleanupContainer(container);
       setBusy(false);
-      mapInputToolbarHint.textContent = '지도가 추가됐어요. 카카오 지도 특성상 PNG·JPG 내보내기는 오류가 날 수 있어요 — SVG 내보내기를 이용해주세요.';
-    }, { /* crossOrigin 지정 안 함: 카카오 정적 지도 서버가 CORS 헤더를 안 주면
-            crossOrigin:'anonymous'일 때 아예 로드 자체가 실패하기 때문에,
-            여기선 화면 표시가 되도록 일반 로드로 넣음(대신 위 PNG/JPG 안내 필요) */ });
-  }
-
-  // kakao.maps.StaticMap은 지정한 div 안에 비동기로 <img>를 채워 넣는 방식이라,
-  // 완성될 때까지 짧게 폴링(최대 약 4.5초)하면서 기다림.
-  function waitForStaticMapImage(container, onReady, onFail){
-    var tries = 0, maxTries = 30;
-    (function poll(){
-      var imgEl = container.querySelector('img');
-      if (imgEl && imgEl.src) {
-        if (imgEl.complete && imgEl.naturalWidth > 0) { onReady(imgEl.src); return; }
-        imgEl.addEventListener('load', function(){ onReady(imgEl.src); }, { once: true });
-        imgEl.addEventListener('error', function(){ onFail(); }, { once: true });
-        return;
-      }
-      tries++;
-      if (tries >= maxTries) { onFail(); return; }
-      setTimeout(poll, 150);
-    })();
-  }
-
-  function buildStaticMapImage(lat, lng, address){
-    var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:640px;height:400px;';
-    document.body.appendChild(container);
-    try {
-      var staticMap = new kakao.maps.StaticMap(container, {
-        center: new kakao.maps.LatLng(lat, lng),
-        level: 3
-      });
-      // 위치가 잘 보이도록 정중앙에 마커도 함께 표시
-      if (staticMap.addMarker) {
-        staticMap.addMarker({ position: new kakao.maps.LatLng(lat, lng) });
-      }
-    } catch (e) {
-      console.error('StaticMap 생성 오류:', e);
-      failAndCleanup(container, '지도를 생성하지 못했어요.');
-      return;
-    }
-    waitForStaticMapImage(container, function(url){
-      insertMapImageToCanvas(url, address, container);
-    }, function(){
-      failAndCleanup(container, '지도 이미지를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
-    });
+      mapInputToolbarHint.textContent = '지도가 추가됐어요. 오른쪽 "이미지" 패널에서 밝기·대비·채도 보정도 할 수 있어요.';
+    }, { crossOrigin: 'anonymous' }); // Geoapify는 CORS를 지원해서 내보내기(PNG/JPG)까지 문제없이 동작함
   }
 
   function geocodeAndBuild(address){
-    var geocoder = new kakao.maps.services.Geocoder();
-    geocoder.addressSearch(address, function(result, status){
-      if (status === kakao.maps.services.Status.OK && result && result[0]) {
-        buildStaticMapImage(parseFloat(result[0].y), parseFloat(result[0].x), address);
+    geocodeAddress(address).then(function(hit){
+      if (!hit) {
+        setBusy(false);
+        alert('주소를 찾을 수 없어요. 도로명 주소(예: "테헤란로 152") 또는 지번 주소로 다시 시도해보세요.');
         return;
       }
-      // 정식 주소로 못 찾으면 건물명/장소명 키워드 검색으로 한 번 더 시도
-      var places = new kakao.maps.services.Places();
-      places.keywordSearch(address, function(data, status2){
-        if (status2 === kakao.maps.services.Status.OK && data && data[0]) {
-          buildStaticMapImage(parseFloat(data[0].y), parseFloat(data[0].x), address);
-        } else {
-          setBusy(false);
-          alert('주소를 찾을 수 없어요. 다른 주소나 건물명으로 다시 시도해보세요.');
-        }
-      });
+      var mapUrl = buildStaticMapUrl(hit.lat, hit.lon);
+      insertMapImageToCanvas(mapUrl, address);
+    }).catch(function(err){
+      console.error('VWorld geocode 오류:', err);
+      setBusy(false);
+      alert('주소 검색 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
     });
   }
 
@@ -200,11 +185,6 @@
     var address = (mapAddressInput.value || '').trim();
     if (!address) { mapAddressInput.focus(); return; }
     setBusy(true, '🗺 주소 찾는 중...');
-    ensureKakaoLoaded(function(){
-      geocodeAndBuild(address);
-    }, function(msg){
-      setBusy(false);
-      alert(msg);
-    });
+    geocodeAndBuild(address);
   });
 })();
