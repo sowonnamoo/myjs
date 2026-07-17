@@ -453,20 +453,29 @@
       + '</svg>';
   }
 
-  function tryInsertVectorMap(lat, lon, address, styleConfig, onSuccess, onFallback){
-    var query = buildOverpassQuery(bboxFromCenter(lat, lon));
-    fetchOverpass(query, 12000).then(function(data){
-      var svg = buildVectorMapSvg((data && data.elements) || [], lat, lon, styleConfig);
-      if (!svg) { onFallback('이 주변엔 OSM 건물·도로 데이터가 부족해서'); return; }
-      if (!EP.importSvgIntoCanvas) { onFallback('벡터 지도 삽입 기능을 찾을 수 없어서'); return; }
-      EP.importSvgIntoCanvas(svg, {
-        viewportCenter: true,
-        onEmpty: function(){ onFallback('벡터 지도를 그리지 못해서'); },
-        onDone: function(){ onSuccess(); }
+  // 같은 주소로 스타일만 바꿔 다시 만들 때(특히 "랜덤 지도 만들기" 반복 클릭) VWorld·Overpass를
+  // 매번 다시 부르지 않도록, 마지막으로 성공한 좌표+원본 벡터 데이터를 주소별로 기억해둠.
+  // 주소가 바뀌면 자동으로 새로 가져오고, 같은 주소면 그 자리에서 바로 스타일만 다시 그림.
+  var locationCache = null; // { address, lat, lon, elements }
+
+  function fetchLocationData(address){
+    var normalized = address.trim();
+    if (locationCache && locationCache.address === normalized) {
+      return Promise.resolve({ lat: locationCache.lat, lon: locationCache.lon, elements: locationCache.elements, fromCache: true });
+    }
+    return geocodeAddress(normalized).then(function(hit){
+      if (!hit) return null;
+      var query = buildOverpassQuery(bboxFromCenter(hit.lat, hit.lon));
+      return fetchOverpass(query, 12000).then(function(data){
+        var elements = (data && data.elements) || [];
+        locationCache = { address: normalized, lat: hit.lat, lon: hit.lon, elements: elements };
+        return { lat: hit.lat, lon: hit.lon, elements: elements, fromCache: false };
+      }).catch(function(err){
+        console.error('Overpass 오류:', err);
+        // Overpass만 실패한 경우 — 좌표는 살아있지만 벡터 데이터가 없으니 캐시는 남기지 않고
+        // (다음에 다시 시도할 수 있게) 래스터 대체용으로만 좌표를 넘김
+        return { lat: hit.lat, lon: hit.lon, elements: null, fromCache: false, overpassFailed: true };
       });
-    }).catch(function(err){
-      console.error('Overpass 오류:', err);
-      onFallback('실시간 벡터 지도 서버 응답이 없어서');
     });
   }
 
@@ -546,21 +555,34 @@
   }
 
   function geocodeAndBuild(address, styleConfig){
-    geocodeAddress(address).then(function(hit){
-      if (!hit) {
+    fetchLocationData(address).then(function(loc){
+      if (!loc) {
         setBusy(false);
         alert('주소를 찾을 수 없어요. 도로명 주소(예: "테헤란로 152") 또는 지번 주소로 다시 시도해보세요.');
         return;
       }
-      setBusy(true, '🗺 길·건물 새로 그리는 중...');
-      tryInsertVectorMap(hit.lat, hit.lon, address, styleConfig, function(){
-        setBusy(false);
-        mapInputToolbarHint.textContent = '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
-      }, function(reasonPrefix){
+      setBusy(true, loc.fromCache ? '🗺 새 스타일로 다시 그리는 중...' : '🗺 길·건물 새로 그리는 중...');
+
+      function fallbackToRaster(reasonPrefix){
         setBusy(true, '🗺 대체 지도 불러오는 중...');
-        var mapUrl = buildStaticMapUrl(hit.lat, hit.lon);
-        insertRasterMapToCanvas(mapUrl, address, reasonPrefix);
-      });
+        insertRasterMapToCanvas(buildStaticMapUrl(loc.lat, loc.lon), address, reasonPrefix);
+      }
+
+      if (loc.elements && loc.elements.length && EP.importSvgIntoCanvas) {
+        var svg = buildVectorMapSvg(loc.elements, loc.lat, loc.lon, styleConfig);
+        if (svg) {
+          EP.importSvgIntoCanvas(svg, {
+            viewportCenter: true,
+            onEmpty: function(){ fallbackToRaster('벡터 지도를 그리지 못해서'); },
+            onDone: function(){
+              setBusy(false);
+              mapInputToolbarHint.textContent = '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
+            }
+          });
+          return;
+        }
+      }
+      fallbackToRaster(loc.overpassFailed ? '실시간 벡터 지도 서버 응답이 없어서' : '이 주변엔 OSM 건물·도로 데이터가 부족해서');
     }).catch(function(err){
       console.error('지오코딩 오류:', err);
       setBusy(false);
