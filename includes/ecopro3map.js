@@ -186,16 +186,16 @@
       }
     },
     {
-      id: 'iso3dBuildings',
-      name: '입체 건물 (3D)',
+      id: 'tiltedIso',
+      name: '기울어진 3D 아이소메트릭',
       build: function(){
-        var tiltDir = Math.random() < 0.5 ? 'left' : 'right'; // 왼쪽/오른쪽 중 랜덤으로 살짝 눕혀서 돌출
-        var palette = ['#d9a066', '#e0a458', '#d98c6b', '#c9a06a', '#e3b04b'];
+        var tiltDir = Math.random() < 0.5 ? 'left' : 'right';
+        var deg = (6 + Math.random() * 8) * (tiltDir === 'left' ? -1 : 1); // 길 전체를 6~14도 눕힘
+        var palette = ['#e0483a', '#d9432f', '#c8402f', '#e2543f'];
         return {
-          buildings3D: true,
-          tiltDirection: tiltDir,
-          buildingColor: palette[Math.floor(Math.random() * palette.length)]
-          // 길·글자·마커는 지정 안 해서 기본값 그대로(건물만 입체로 바뀜)
+          mapSkewDeg: deg,             // 길·건물·글자 전체를 비스듬히 눕혀서 기운 느낌을 줌
+          markerType: 'isoBuilding',   // 위치 마커를 입체 빌딩 아이콘으로
+          markerColor: palette[Math.floor(Math.random() * palette.length)]
         };
       }
     }
@@ -370,31 +370,35 @@
       + '</g>';
   }
 
+  // 입체(아이소메트릭) 빌딩 아이콘 마커 — 지붕(밝은 회백색) + 정면(밝은 톤) + 측면(어두운 톤)
+  // 3면이 다 보이는 작은 타워 모양, 층을 나누는 흰 줄무늬까지 넣어서 실제 3D 렌더링처럼 보이게 함.
+  // 바닥 중앙(정면-측면이 만나는 가운데 지점)이 정확한 위치 지점(cx,cy)에 오도록 배치함.
+  function buildIsoBuildingMarkerSvg(cx, cy, color){
+    var s = 4.3; // 전체 높이가 대략 150~160px 정도 되도록
+    var tx = cx - 10 * s, ty = cy - 40 * s;
+    var frontColor = color;
+    var sideColor = darkenHex(color, 0.30);
+    var roofColor = lightenHex(color, 0.72);
+    // 로컬 좌표: 정면 사각형(0,10)-(20,10)-(20,40)-(0,40), 측면은 (10,-6)만큼 뒤로 밀어 돌출
+    var front = [[0, 10], [20, 10], [20, 40], [0, 40]];
+    var side = [[20, 10], [30, 4], [30, 34], [20, 40]];
+    var roof = [[0, 10], [20, 10], [30, 4], [10, 4]];
+    var stripeLevels = [18, 26, 34];
+    var stripes = stripeLevels.map(function(yf){
+      var yBack = yf - 6; // 측면 쪽으로 갈수록 6만큼 위로(원근감)
+      return '<line x1="0" y1="' + yf + '" x2="30" y2="' + yBack + '" stroke="#ffffff" stroke-width="0.5" opacity="0.55"/>';
+    }).join('');
+    return '<g transform="translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')" data-name="marker-iso-building">'
+      + '<path d="' + pathD(side, true) + '" fill="' + sideColor + '" stroke="' + darkenHex(sideColor, 0.15) + '" stroke-width="0.5" data-name="marker-side"/>'
+      + '<path d="' + pathD(front, true) + '" fill="' + frontColor + '" stroke="' + darkenHex(frontColor, 0.15) + '" stroke-width="0.5" data-name="marker-front"/>'
+      + stripes
+      + '<path d="' + pathD(roof, true) + '" fill="' + roofColor + '" stroke="' + darkenHex(roofColor, 0.15) + '" stroke-width="0.5" data-name="marker-roof"/>'
+      + '</g>';
+  }
+
   // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립.
   // 레이어 순서(아래→위): 배경 → 물/공원 → 건물(사각형) → 작은 길 → 큰 길 → 글자 라벨 → 위치 마커
   // styleConfig가 있으면(랜덤 지도 만들기) 색상/두께/글자/마커를 그 값으로 덮어씀
-  // 입체(3D 느낌) 건물 — 지붕(top)면 + 오른쪽/아래쪽 벽면 2개를 살짝 밀어서(돌출) 그려
-  // 블록처럼 보이게 함. tiltDir로 어느 쪽으로 기울여 돌출시킬지(왼쪽/오른쪽) 정함.
-  function build3DBuildingParts(minX, minY, maxX, maxY, tiltDir, baseColor){
-    var topColor = lightenHex(baseColor, 0.30);
-    var rightColor = darkenHex(baseColor, 0.18);
-    var bottomColor = darkenHex(baseColor, 0.36);
-    var w = maxX - minX, h = maxY - minY;
-    var extrude = Math.max(10, Math.min(26, Math.min(w, h) * 0.35));
-    var dx = (tiltDir === 'left') ? -extrude : extrude;
-    var dy = extrude * 0.72;
-
-    var topPoly = [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]];
-    var rightPoly = [[maxX, minY], [maxX + dx, minY + dy], [maxX + dx, maxY + dy], [maxX, maxY]];
-    var bottomPoly = [[minX, maxY], [minX + dx, maxY + dy], [maxX + dx, maxY + dy], [maxX, maxY]];
-
-    // 그리는 순서: 뒤쪽 벽 → 옆쪽 벽 → 지붕(맨 위, 이음새를 자연스럽게 덮음)
-    return [
-      '<path d="' + pathD(bottomPoly, true) + '" fill="' + bottomColor + '" stroke="' + darkenHex(bottomColor, 0.15) + '" stroke-width="1" data-name="building-side"/>',
-      '<path d="' + pathD(rightPoly, true) + '" fill="' + rightColor + '" stroke="' + darkenHex(rightColor, 0.15) + '" stroke-width="1" data-name="building-side"/>',
-      '<path d="' + pathD(topPoly, true) + '" fill="' + topColor + '" stroke="' + darkenHex(topColor, 0.15) + '" stroke-width="1" data-name="building-top"/>'
-    ];
-  }
 
   function buildVectorMapSvg(elements, centerLat, centerLon, styleConfig){
     var metersPerDegLat = 111320;
@@ -403,9 +407,22 @@
     var usedRoadNames = {}; // 같은 도로 이름이 여러 조각(way)으로 나뉘어 있어도 라벨은 한 번만
     var hasAny = false;
 
+    var cx = SVG_W / 2, cy = SVG_H / 2;
     var fontMult = (styleConfig && styleConfig.fontMultiplier) || 1;
     var roadLabelColor = (styleConfig && styleConfig.textColor) || '#5a4632';
     var buildingLabelColor = (styleConfig && styleConfig.textColor) || '#3a3a3a';
+
+    // 길·건물·글자 각각에(마커는 제외) 개별적으로 붙이는 "기울임" transform. 화면 세로 중심(cy)을
+    // 기준으로 기울여서 마커가 놓이는 정중앙 지점은 그대로 유지되고, 참고 이미지처럼 길이 좌우로
+    // 비스듬히 눕는 느낌을 줌. 전체를 하나의 <g>로 묶지 않고 요소마다 따로 붙이는 이유는, 하나로
+    // 묶어버리면 그 안의 길·건물이 낱개로 선택 안 되는 그룹이 돼버리기 때문(편집 가능해야 함).
+    var skewT = (styleConfig && styleConfig.mapSkewDeg)
+      ? ('translate(0,' + cy + ') skewX(' + styleConfig.mapSkewDeg + ') translate(0,' + (-cy) + ')')
+      : '';
+    function withSkew(extra){
+      var t = skewT + (extra ? (skewT ? ' ' : '') + extra : '');
+      return t ? (' transform="' + t + '"') : '';
+    }
 
     elements.forEach(function(el){
       if (!el || el.type !== 'way' || !el.geometry || el.geometry.length < 2) return;
@@ -419,18 +436,13 @@
         var minY = Math.max(0, Math.min.apply(null, pts.map(function(p){ return p[1]; })));
         var maxY = Math.min(SVG_H, Math.max.apply(null, pts.map(function(p){ return p[1]; })));
         if (maxX - minX < 1 || maxY - minY < 1) return;
-        if (styleConfig && styleConfig.buildings3D) {
-          build3DBuildingParts(minX, minY, maxX, maxY, styleConfig.tiltDirection || 'right', styleConfig.buildingColor || '#d9a066')
-            .forEach(function(p){ buildingParts.push(p); });
-        } else {
-          buildingParts.push('<rect x="' + minX.toFixed(1) + '" y="' + minY.toFixed(1) + '" width="' + (maxX - minX).toFixed(1) + '" height="' + (maxY - minY).toFixed(1) + '" fill="#e3e8ec" stroke="#aab5bf" stroke-width="1.4" data-name="building"/>');
-        }
+        buildingParts.push('<rect x="' + minX.toFixed(1) + '" y="' + minY.toFixed(1) + '" width="' + (maxX - minX).toFixed(1) + '" height="' + (maxY - minY).toFixed(1) + '" fill="#e3e8ec" stroke="#aab5bf" stroke-width="1.4"' + withSkew() + ' data-name="building"/>');
         hasAny = true;
         if (tags.name) {
           var c = [(minX + maxX) / 2, (minY + maxY) / 2];
           var bFontSize = (26 * fontMult).toFixed(1), bHalo = (6 * fontMult).toFixed(1);
           labelParts.push(
-            '<text x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="' + bFontSize + '" font-weight="600" fill="' + buildingLabelColor + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="' + bHalo + '" stroke-linejoin="round">' + escapeXml(tags.name) + '</text>'
+            '<text x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="' + bFontSize + '" font-weight="600" fill="' + buildingLabelColor + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="' + bHalo + '" stroke-linejoin="round"' + withSkew() + '>' + escapeXml(tags.name) + '</text>'
           );
         }
       } else if (tags.highway) {
@@ -440,8 +452,8 @@
         var bucket = st.major ? majorRoadParts : minorRoadParts;
         runs.forEach(function(run){
           var d = pathD(run, false);
-          if (st.casing) bucket.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + st.casingWidth + '" stroke-linecap="round" stroke-linejoin="round" data-name="road-casing"/>');
-          bucket.push('<path d="' + d + '" fill="none" stroke="' + st.stroke + '" stroke-width="' + st.width + '" stroke-linecap="round" stroke-linejoin="round"' + (st.dash ? (' stroke-dasharray="' + st.dash + '"') : '') + ' data-name="road"/>');
+          if (st.casing) bucket.push('<path d="' + d + '" fill="none" stroke="' + st.casing + '" stroke-width="' + st.casingWidth + '" stroke-linecap="round" stroke-linejoin="round"' + withSkew() + ' data-name="road-casing"/>');
+          bucket.push('<path d="' + d + '" fill="none" stroke="' + st.stroke + '" stroke-width="' + st.width + '" stroke-linecap="round" stroke-linejoin="round"' + (st.dash ? (' stroke-dasharray="' + st.dash + '"') : '') + withSkew() + ' data-name="road"/>');
         });
         hasAny = true;
 
@@ -451,31 +463,33 @@
           if (pathPixelLength(longest) > 70) {
             usedRoadNames[tags.name] = true;
             var lp = roadLabelPlacement(longest);
-            var transform = lp.angle ? (' transform="rotate(' + lp.angle.toFixed(1) + ',' + lp.pos[0].toFixed(1) + ',' + lp.pos[1].toFixed(1) + ')"') : '';
+            var rotatePart = lp.angle ? ('rotate(' + lp.angle.toFixed(1) + ',' + lp.pos[0].toFixed(1) + ',' + lp.pos[1].toFixed(1) + ')') : '';
             var rFontSize = (34 * fontMult).toFixed(1), rHalo = (9 * fontMult).toFixed(1);
             labelParts.push(
-              '<text x="' + lp.pos[0].toFixed(1) + '" y="' + lp.pos[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="' + rFontSize + '" font-weight="700" fill="' + roadLabelColor + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="' + rHalo + '" stroke-linejoin="round"' + transform + '>' + escapeXml(tags.name) + '</text>'
+              '<text x="' + lp.pos[0].toFixed(1) + '" y="' + lp.pos[1].toFixed(1) + '" font-family="Pretendard, sans-serif" font-size="' + rFontSize + '" font-weight="700" fill="' + roadLabelColor + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#ffffff" stroke-width="' + rHalo + '" stroke-linejoin="round"' + withSkew(rotatePart) + '>' + escapeXml(tags.name) + '</text>'
             );
           }
         }
       } else if (tags.natural === 'water') {
-        landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#a9d3e5" stroke="none" data-name="water"/>');
+        landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#a9d3e5" stroke="none"' + withSkew() + ' data-name="water"/>');
         hasAny = true;
       } else if (tags.leisure === 'park' || tags.landuse === 'grass') {
-        landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#cfe8c9" stroke="none" data-name="park"/>');
+        landuseParts.push('<path d="' + pathD(pts, true) + '" fill="#cfe8c9" stroke="none"' + withSkew() + ' data-name="park"/>');
         hasAny = true;
       }
     });
 
     if (!hasAny) return null;
 
-    var cx = SVG_W / 2, cy = SVG_H / 2;
     var marker;
-    if (styleConfig && styleConfig.markerType === 'building') {
+    if (styleConfig && styleConfig.markerType === 'isoBuilding') {
+      marker = buildIsoBuildingMarkerSvg(cx, cy, styleConfig.markerColor || '#e0483a');
+    } else if (styleConfig && styleConfig.markerType === 'building') {
       marker = buildBuildingMarkerSvg(cx, cy, styleConfig.markerColor || '#e0483a');
     } else {
       // 뒤집힌 물방울(핀) 모양 마커(기본) — 24x24 기준 좌표로 만든 뒤, 뾰족한 끝(정확한 위치
-      // 지점)이 (cx,cy)에 딱 맞도록 옮기고 키움
+      // 지점)이 (cx,cy)에 딱 맞도록 옮기고 키움. 마커는 기울임(skew)의 영향을 받지 않고
+      // 항상 똑바로 서 있음(참고 이미지처럼 길만 눕고 건물 아이콘은 똑바로 서 있는 모습).
       var pinScale = 5.9; // 핀 전체 높이가 대략 130px 정도 되도록
       var pinTx = cx - 12 * pinScale;
       var pinTy = cy - 22 * pinScale;
@@ -600,29 +614,6 @@
     }, { crossOrigin: 'anonymous' });
   }
 
-  // 3D 건물 필터일 때, 방금 삽입된 건물면(지붕+옆면) 오브젝트들을 하나의 그룹으로 묶음 —
-  // 한 번에 선택해서 색을 바꾸거나 통째로 복사/붙여넣기 하기 쉽게 하기 위함.
-  // addedObjs는 SVG에 쓴 순서 그대로 들어오므로(배경rect, 물/공원, 건물, 작은길, 큰길, 글자, 마커),
-  // landuseCount/buildingCount로 건물 부분만 정확히 잘라낼 수 있음.
-  function groupBuildingObjects(addedObjs, landuseCount, buildingCount){
-    var canvas = EP.canvas;
-    if (!canvas || !addedObjs || !addedObjs.length || buildingCount < 2) return;
-    var startIdx = 1 + landuseCount; // +1은 맨 처음 배경 사각형
-    var buildingObjs = addedObjs.slice(startIdx, startIdx + buildingCount).filter(Boolean);
-    if (buildingObjs.length < 2) return;
-    try {
-      canvas.remove.apply(canvas, buildingObjs);
-      var group = new fabric.Group(buildingObjs);
-      group.set({ selectable: true, evented: true });
-      canvas.add(group);
-      if (EP.bringGuideToFront) EP.bringGuideToFront();
-      canvas.setActiveObject(group);
-      canvas.requestRenderAll();
-    } catch (e) {
-      console.error('건물 그룹 묶기 실패:', e);
-    }
-  }
-
   function geocodeAndBuild(address, styleConfig){
     fetchLocationData(address).then(function(loc){
       if (!loc) {
@@ -643,14 +634,9 @@
           EP.importSvgIntoCanvas(built.svg, {
             viewportCenter: true,
             onEmpty: function(){ fallbackToRaster('벡터 지도를 그리지 못해서'); },
-            onDone: function(addedObjs){
-              if (styleConfig && styleConfig.buildings3D) {
-                groupBuildingObjects(addedObjs, built.landuseCount, built.buildingCount);
-              }
+            onDone: function(){
               setBusy(false);
-              mapInputToolbarHint.textContent = (styleConfig && styleConfig.buildings3D)
-                ? '지도가 추가됐어요. 입체 건물들은 하나로 묶여 있어서 클릭 한 번으로 색을 바꾸거나 통째로 복사할 수 있어요.'
-                : '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
+              mapInputToolbarHint.textContent = '지도가 추가됐어요. 도로·건물·글자가 모두 낱개 도형이라 클릭해서 색·크기를 바꾸거나 지울 수 있어요.';
             }
           });
           return;
