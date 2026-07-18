@@ -10,7 +10,7 @@
     .control-box { border: 1px solid #ccc; padding: 20px; max-width: 560px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background:#fff; border-radius:6px; }
     .control-box h3 { margin: 0 0 4px 0; }
     .hint { font-size: 12px; color:#888; margin: -6px 0 4px 0; }
-    input, select { padding: 8px; width: 100%; box-sizing: border-box; font-size:14px; }
+    input, select, textarea { padding: 8px; width: 100%; box-sizing: border-box; font-size:14px; font-family: inherit; }
     label.checkline { display:flex; align-items:center; gap:6px; font-size:14px; }
     button { padding: 10px; background: #2b7bc3; color: white; border: none; cursor: pointer; width: 100%; border-radius:4px; font-size:14px; }
     button.secondary { background:#888; }
@@ -65,6 +65,11 @@
         <div class="hint">같은 그룹 안에 이름이 같은 품목이 있으면 그대로 교체 저장됩니다.</div>
         <select id="itemGroupSelect"></select>
         <input type="text" id="itemNameInput" placeholder="품목명 (예: 명함양면 / 금박 / 즉시인쇄)">
+        <div class="row-flex">
+            <input type="number" id="itemWidthInput" placeholder="가로 mm (규격 등록, 예: 90)">
+            <input type="number" id="itemHeightInput" placeholder="세로 mm (규격 등록, 예: 50)">
+        </div>
+        <div class="hint">가로·세로를 입력하면 계산기 "규격사이즈" 목록(options02)에 자동으로 등록/반영됩니다.</div>
         <input type="number" id="itemPriceInput" placeholder="가격(원가) (예: 15000)">
         <input type="number" id="itemWeightInput" placeholder="종이 무게 g/㎡ (선택, 예: 90)">
         <input type="number" id="itemDeliveryInput" placeholder="배송일 (선택, 예: 1)">
@@ -99,9 +104,29 @@
         <button id="saveCustomBtn">비규격 설정 저장</button>
     </div>
 
-    <!-- 5. 저장 확인 -->
+    <!-- 5. 규격 사이즈 목록 (options02) -->
+    <div class="control-box">
+        <h3>⑤ 규격 사이즈 목록 (options02)</h3>
+        <div class="hint">계산기 화면의 "규격사이즈" 드롭다운에 그대로 나오는 목록입니다. 비규격에서 여기 등록된 사이즈와 똑같은 값을 입력하면 규격 가격과 동일하게 계산됩니다.</div>
+        <div id="sizeRowsContainer"></div>
+        <button id="addSizeRowBtn" class="secondary" type="button">행 추가</button>
+        <button id="saveSizeListBtn">규격 사이즈 목록 저장</button>
+    </div>
+
+    <!-- 6. 상세페이지 하단 내용 (detailContent) -->
+    <div class="control-box">
+        <h3>⑥ 상세페이지 하단 내용 (펼치기 영역)</h3>
+        <div class="hint">계산기 페이지의 "상품 상세정보 펼쳐보기" 버튼을 눌렀을 때 나오는 글/사진입니다.</div>
+        <textarea id="detailTextInput" rows="6" placeholder="상세페이지 하단에 들어갈 설명 글을 입력하세요. 줄바꿈은 그대로 반영됩니다."></textarea>
+        <div class="hint">사진 URL (jpg/png 등) - 순서대로 위에서 아래로 표시됩니다.</div>
+        <div id="detailImageRowsContainer"></div>
+        <button id="addDetailImageRowBtn" class="secondary" type="button">사진 URL 행 추가</button>
+        <button id="saveDetailContentBtn">상세페이지 내용 저장</button>
+    </div>
+
+    <!-- 7. 저장 확인 -->
     <div class="control-box" id="verifyBox">
-        <h3>⑤ 저장 확인 (Firestore 실제 내용)</h3>
+        <h3>⑦ 저장 확인 (Firestore 실제 내용)</h3>
         <button id="refreshBtn" class="secondary" type="button">Firestore에서 새로고침</button>
         <div id="verifyList">불러오는 중...</div>
         <details class="rawjson">
@@ -265,10 +290,20 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput"]
             .forEach(id => $(id).value = "");
         $("hasSubOptions").checked = false;
         $("subOptionsContainer").innerHTML = "";
+    }
+
+    // 가로/세로를 입력하면 규격 사이즈 목록(options02)에 자동으로 추가합니다. (이미 있으면 중복 추가 안 함)
+    function ensureStandardSize(width, height) {
+        if (width === undefined || height === undefined || isNaN(width) || isNaN(height)) return;
+        let o = findSpecial("options02");
+        if (!o) { o = { id: "options02", title: "규격 사이즈 목록", sizes: [] }; productData.options.push(o); }
+        if (!Array.isArray(o.sizes)) o.sizes = [];
+        const exists = o.sizes.some(s => parseFloat(s.width) === width && parseFloat(s.height) === height);
+        if (!exists) o.sizes.push({ width, height });
     }
 
     // ---- ② 품목 저장 ----
@@ -282,6 +317,14 @@
         if (!name) { alert("품목명을 입력하세요."); return; }
 
         const item = { name };
+        const widthRaw = $("itemWidthInput").value, heightRaw = $("itemHeightInput").value;
+        let width, height;
+        if (widthRaw !== "" && heightRaw !== "") {
+            width = parseFloat(widthRaw);
+            height = parseFloat(heightRaw);
+            item.width = width;
+            item.height = height;
+        }
         const price = $("itemPriceInput").value; if (price !== "") item.price = parseFloat(price);
         const weight = $("itemWeightInput").value; if (weight !== "") item.weight = parseFloat(weight);
         const delivery = $("itemDeliveryInput").value; if (delivery !== "") item.delivery = parseFloat(delivery);
@@ -297,6 +340,8 @@
         const idx = g.values.findIndex(v => v.name === name);
         const isReplace = idx !== -1;
         if (isReplace) g.values[idx] = item; else g.values.push(item);
+
+        if (width !== undefined) ensureStandardSize(width, height);
 
         await saveProduct(`"${name}" ${isReplace ? "교체 저장" : "신규 저장"} 완료`);
         clearItemForm();
@@ -368,7 +413,86 @@
         await saveProduct("비규격 설정이 저장되었습니다.");
     });
 
-    // ---- ⑤ 저장 확인 목록 ----
+    // ---- ⑤ 규격 사이즈 목록 (options02) ----
+    function addSizeRow(width = "", height = "") {
+        const row = document.createElement("div");
+        row.className = "row-flex";
+        row.innerHTML = `
+            <input type="number" class="size-width" placeholder="가로 mm (예: 90)" value="${width}">
+            <input type="number" class="size-height" placeholder="세로 mm (예: 50)" value="${height}">
+            <button type="button" class="small danger remove-size">삭제</button>
+        `;
+        row.querySelector(".remove-size").addEventListener("click", () => row.remove());
+        $("sizeRowsContainer").appendChild(row);
+    }
+    $("addSizeRowBtn").addEventListener("click", () => addSizeRow());
+
+    function fillOptions02Form() {
+        $("sizeRowsContainer").innerHTML = "";
+        const o = findSpecial("options02");
+        if (o && Array.isArray(o.sizes) && o.sizes.length > 0) {
+            o.sizes.forEach(s => addSizeRow(s.width, s.height));
+        } else {
+            addSizeRow();
+        }
+    }
+
+    $("saveSizeListBtn").addEventListener("click", async () => {
+        const rows = $("sizeRowsContainer").querySelectorAll(".row-flex");
+        const sizes = [];
+        rows.forEach(r => {
+            const width = r.querySelector(".size-width").value;
+            const height = r.querySelector(".size-height").value;
+            if (width !== "" && height !== "") {
+                sizes.push({ width: parseFloat(width), height: parseFloat(height) });
+            }
+        });
+        let o = findSpecial("options02");
+        if (!o) { o = { id: "options02", title: "규격 사이즈 목록" }; productData.options.push(o); }
+        o.sizes = sizes;
+        await saveProduct("규격 사이즈 목록이 저장되었습니다.");
+    });
+
+    // ---- ⑥ 상세페이지 하단 내용 (detailContent) ----
+    function addDetailImageRow(url = "") {
+        const row = document.createElement("div");
+        row.className = "row-flex";
+        row.innerHTML = `
+            <input type="text" class="detail-image-url" placeholder="사진 URL (예: https://.../상세1.jpg)" value="${url}">
+            <button type="button" class="small danger remove-detail-image">삭제</button>
+        `;
+        row.querySelector(".remove-detail-image").addEventListener("click", () => row.remove());
+        $("detailImageRowsContainer").appendChild(row);
+    }
+    $("addDetailImageRowBtn").addEventListener("click", () => addDetailImageRow());
+
+    function fillDetailContentForm() {
+        const o = findSpecial("detailContent");
+        $("detailTextInput").value = o && o.text ? o.text : "";
+        $("detailImageRowsContainer").innerHTML = "";
+        if (o && Array.isArray(o.images) && o.images.length > 0) {
+            o.images.forEach(url => addDetailImageRow(url));
+        } else {
+            addDetailImageRow();
+        }
+    }
+
+    $("saveDetailContentBtn").addEventListener("click", async () => {
+        const text = $("detailTextInput").value;
+        const images = [];
+        $("detailImageRowsContainer").querySelectorAll(".detail-image-url").forEach(input => {
+            const url = input.value.trim();
+            if (url) images.push(url);
+        });
+
+        let o = findSpecial("detailContent");
+        if (!o) { o = { id: "detailContent", title: "상세페이지 하단 내용" }; productData.options.push(o); }
+        o.text = text;
+        o.images = images;
+        await saveProduct("상세페이지 하단 내용이 저장되었습니다.");
+    });
+
+    // ---- ⑦ 저장 확인 목록 ----
     function highlightBox(el) {
         if (!el) return;
         el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -391,6 +515,8 @@
 
         $("itemGroupSelect").value = groupId;
         $("itemNameInput").value = item.name || "";
+        $("itemWidthInput").value = item.width ?? "";
+        $("itemHeightInput").value = item.height ?? "";
         $("itemPriceInput").value = item.price ?? "";
         $("itemWeightInput").value = item.weight ?? "";
         $("itemDeliveryInput").value = item.delivery ?? "";
@@ -419,6 +545,14 @@
         highlightBox($("saveCustomBtn").closest(".control-box"));
     }
 
+    function editSizeList() {
+        highlightBox($("saveSizeListBtn").closest(".control-box"));
+    }
+
+    function editDetailContent() {
+        highlightBox($("saveDetailContentBtn").closest(".control-box"));
+    }
+
     function renderVerifyList() {
         const box = $("verifyList");
         box.innerHTML = "";
@@ -432,6 +566,7 @@
             card.className = "group-card";
             let itemsHtml = (g.values || []).map(v => {
                 const meta = [];
+                if (v.width !== undefined && v.height !== undefined) meta.push(`사이즈 ${v.width}×${v.height}mm`);
                 if (v.price !== undefined) meta.push(`가격 ${v.price}`);
                 if (v.weight !== undefined) meta.push(`무게 ${v.weight}`);
                 if (v.delivery !== undefined) meta.push(`배송 ${v.delivery}일`);
@@ -482,6 +617,35 @@
         }
         box.appendChild(card01);
 
+        // options02 표시
+        const o02 = findSpecial("options02");
+        const card02 = document.createElement("div");
+        card02.className = "group-card";
+        if (o02 && Array.isArray(o02.sizes) && o02.sizes.length) {
+            card02.innerHTML = `<h4>options02 — 규격 사이즈 목록 <button type="button" class="small edit-sizelist">수정</button></h4>` +
+                o02.sizes.map(s => `<div class="item-row"><div>${s.width} × ${s.height} mm</div></div>`).join("");
+        } else {
+            card02.innerHTML = `<h4>options02 — 규격 사이즈 목록 <button type="button" class="small edit-sizelist">수정</button></h4><div class="hint">저장된 값 없음</div>`;
+        }
+        box.appendChild(card02);
+
+        // detailContent 표시
+        const oDetail = findSpecial("detailContent");
+        const cardDetail = document.createElement("div");
+        cardDetail.className = "group-card";
+        if (oDetail && ((oDetail.text && oDetail.text.trim()) || (Array.isArray(oDetail.images) && oDetail.images.length))) {
+            const textPreview = oDetail.text
+                ? `<div class="item-row"><div>글자수</div><div>${oDetail.text.length}자</div></div>`
+                : `<div class="item-row"><div>글</div><div>없음</div></div>`;
+            const imagesHtml = (oDetail.images || []).length
+                ? (oDetail.images || []).map((url, i) => `<div class="item-row"><div>사진 ${i + 1}</div><div style="word-break:break-all;">${url}</div></div>`).join("")
+                : `<div class="item-row"><div>사진</div><div>없음</div></div>`;
+            cardDetail.innerHTML = `<h4>detailContent — 상세페이지 하단 내용 <button type="button" class="small edit-detailcontent">수정</button></h4>${textPreview}${imagesHtml}`;
+        } else {
+            cardDetail.innerHTML = `<h4>detailContent — 상세페이지 하단 내용 <button type="button" class="small edit-detailcontent">수정</button></h4><div class="hint">저장된 값 없음</div>`;
+        }
+        box.appendChild(cardDetail);
+
         box.querySelectorAll(".edit-group").forEach(btn => {
             btn.addEventListener("click", () => editGroup(btn.dataset.group));
         });
@@ -490,6 +654,8 @@
         });
         box.querySelectorAll(".edit-qty").forEach(btn => btn.addEventListener("click", editQty));
         box.querySelectorAll(".edit-custom").forEach(btn => btn.addEventListener("click", editCustom));
+        box.querySelectorAll(".edit-sizelist").forEach(btn => btn.addEventListener("click", editSizeList));
+        box.querySelectorAll(".edit-detailcontent").forEach(btn => btn.addEventListener("click", editDetailContent));
 
         box.querySelectorAll(".del-item").forEach(btn => {
             btn.addEventListener("click", async () => {
@@ -514,6 +680,8 @@
         refreshGroupSelects();
         fillOptions00Form();
         fillOptions01Form();
+        fillOptions02Form();
+        fillDetailContentForm();
         renderVerifyList();
     }
 

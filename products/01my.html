@@ -26,7 +26,7 @@
     button { padding: 6px 15px; cursor: pointer; border: 1px solid #ccc; background: #eee; font-size: 13px; }
     button.active { background: #66a8a8; color: white; border-color: #66a8a8; }
 
-    /* 후가공 추가하기/삭제 버튼: 기존 대비 10% 축소, 항상 한 줄 유지 */
+    /* 후가공 추가하기/삭제 버튼: 기존 대비 10% 축소, 항상 한 줄 유지, 폭 고정(정렬용) */
     .finishing-btn {
         padding: 5.4px 13.5px;
         font-size: 11.7px;
@@ -34,11 +34,51 @@
         background: #eee;
         flex-shrink: 0;
         white-space: nowrap;
+        width: 74px;
+        box-sizing: border-box;
+        text-align: center;
     }
     #addFinishingBtn { background: #ddd; }
     .total-price { text-align: right; font-size: 1.3em; font-weight: bold; margin-top: 10px; }
     .order-btn { background: #2b7bc3; color: white; padding: 15px; text-align: center; border: none; cursor: pointer; margin-top: 15px; font-size: 16px; }
     input:disabled { background-color: #eee; cursor: not-allowed; border: 1px solid #ccc; }
+
+    /* 상세페이지 펼치기 버튼 & 콘텐츠 */
+    #detailExpandBtn {
+        padding: 14px 50px;
+        font-size: 15px;
+        background: #fff;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    #detailExpandBtn:hover { background: #f5f5f5; }
+    #detailExpandContent {
+        display: none;
+        width: 100%;
+        margin-top: 20px;
+    }
+    #detailExpandInner {
+        max-width: 1195px;
+        margin: 0 auto;
+        text-align: center;
+        padding: 0 10px;
+        box-sizing: border-box;
+    }
+    #detailExpandInner img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+    #detailExpandInner p {
+        font-size: 15px;
+        line-height: 1.7;
+        color: #333;
+        text-align: left;
+        max-width: 900px;
+        margin: 20px auto;
+    }
 
 /* 모바일 최적화 미디어 쿼리 */
 @media (max-width: 768px) {
@@ -76,6 +116,21 @@
         box-sizing: border-box !important;
     }
 
+    /* 4-1. 상세페이지 펼치기 버튼 & 콘텐츠 (모바일) */
+    #detailExpandBtn {
+        width: 90% !important;
+        padding: 12px !important;
+        font-size: 14px !important;
+    }
+    #detailExpandInner {
+        width: 100% !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
+    }
+    #detailExpandInner p {
+        max-width: 100% !important;
+    }
+
     /* 5. 후가공선택 줄: 모바일에서도 무조건 한 줄 유지 */
     #finishingContainer .option-row {
         flex-wrap: nowrap !important;
@@ -86,6 +141,10 @@
     #finishingContainer .finishing-select {
         min-width: 0;
         flex: 1 1 0;
+    }
+    #finishingContainer .finishing-sub-select {
+        flex: 0 0 90px !important;
+        width: 90px !important;
     }
     .finishing-btn {
         padding: 5.4px 8px;
@@ -224,13 +283,7 @@
                     <option value="custom">비규격사이즈</option>
                 </select>
                 <select id="sizeList" style="flex:1;">
-                    <option value="90,50">90x50 mm</option>
-                    <option value="86,52">86x52 mm</option>
-                    <option value="85,49">85x49 mm</option>
-                    <option value="85,55">85x55 mm</option>
-                    <option value="86,50">86x50 mm</option>
-                    <option value="89,51">89x51 mm</option>
-                    <option value="91,51">91x51 mm</option>
+                    <option value="">불러오는 중...</option>
                 </select>
             </div>
         </div>
@@ -238,22 +291,26 @@
         <div class="option-row" style="flex-direction: column; align-items: flex-start; padding-left: 120px;">
             <!-- 재단사이즈 -->
             <div class="size-inputs">
-                <span style="color:red; width:100px;">재단사이즈</span> 
-                <input type="number" id="widthInput" value="60" style="width: 20%; margin-left: 5px;" disabled> x 
-                <input type="number" id="heightInput" value="50" style="width: 20%; margin-left: 5px;" disabled> mm
+                <span style="color:red; width:100px;">재단사이즈</span>
+                <input type="number" id="widthInput" value="60" style="width: 60px;" disabled>
+                <span>x</span>
+                <input type="number" id="heightInput" value="50" style="width: 60px;" disabled>
+                <span>mm</span>
             </div>
             <!-- 작업사이즈 (재단 + 2mm) -->
             <div class="size-inputs" style="margin-top:5px;">
-                <span style="width:100px;">작업사이즈</span> 
-                <input type="number" id="workWidthInput" value="62" style="width: 20%; margin-left: 5px;" disabled> x 
-                <input type="number" id="workHeightInput" value="52" style="width: 20%; margin-left: 5px;" disabled> mm
+                <span style="width:100px;">작업사이즈</span>
+                <input type="number" id="workWidthInput" value="62" style="width: 60px;" disabled>
+                <span>x</span>
+                <input type="number" id="workHeightInput" value="52" style="width: 60px;" disabled>
+                <span>mm</span>
             </div>
         </div>
 
         <div id="finishingContainer">
             <div class="option-row" id="finishingRow">
                 <div class="label">후가공선택</div>
-                <select class="finishing-select" style="flex:1"><option>불러오는 중...</option></select>
+                <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option>불러오는 중...</option></select>
                 <button type="button" id="addFinishingBtn" class="finishing-btn">추가하기</button>
             </div>
         </div>
@@ -311,7 +368,19 @@
 
         <div style="text-align:center; margin-top:80px;">
             <h2 style="font-size:24px; color:#333;">저렴한 가격 & 가장 많은 매수</h2>
-            <div id="bottomProductImage" style="width:1200px; height:1000px; background:#222; margin-top:80px; background-size: cover; background-position: center;"></div>
+            <div id="bottomProductImage" style="width:1200px; height:1000px; background:#222 url('https://sowonnamoo1005.cafe24.com/1/26070301.jpg') center/cover no-repeat; margin-top:80px;"></div>
+        </div>
+
+        <div style="text-align:center; margin-top:30px;">
+            <button id="detailExpandBtn" type="button">
+                상품 상세정보 펼쳐보기 <span id="detailExpandArrow">▼</span>
+            </button>
+        </div>
+
+        <div id="detailExpandContent">
+            <div id="detailExpandInner">
+                <!-- 어드민 ⑥ "상세페이지 하단 내용"에 등록한 글/사진이 여기에 자동으로 채워집니다. -->
+            </div>
         </div>
     </div>
 </div>
@@ -343,6 +412,27 @@ function setTab(el) {
         behavior: 'smooth'
     });
 }
+
+// ---- 상세페이지 펼치기/접기 ----
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('detailExpandBtn');
+    const content = document.getElementById('detailExpandContent');
+    const arrow = document.getElementById('detailExpandArrow');
+    if (!btn || !content) return;
+
+    btn.addEventListener('click', function () {
+        const isOpen = content.style.display === 'block';
+        if (isOpen) {
+            content.style.display = 'none';
+            arrow.textContent = '▼';
+            btn.firstChild.textContent = '상품 상세정보 펼쳐보기 ';
+        } else {
+            content.style.display = 'block';
+            arrow.textContent = '▲';
+            btn.firstChild.textContent = '상품 상세정보 접기 ';
+        }
+    });
+});
 
 // ---- 모바일 커스텀 셀렉트 피커 (긴 옵션 목록에서 완료 버튼이 안 보이던 문제 해결) ----
 // 네이티브 select의 "이전/다음" 툴바 대신, 하단에서 올라오는 목록 + 완료 버튼으로 대체한다.
@@ -478,6 +568,45 @@ window.enableMobileCustomPicker = function(selectEl) {
     function customConfig() {
         return findGroupById("options01");
     }
+    function standardSizeConfig() {
+        return findGroupById("options02");
+    }
+    function detailContentConfig() {
+        return findGroupById("detailContent");
+    }
+    // 상세페이지 펼치기 영역(#detailExpandInner)에 어드민에서 등록한 글/사진을 채웁니다.
+    function renderDetailContent() {
+        const inner = document.getElementById("detailExpandInner");
+        if (!inner) return;
+        const d = detailContentConfig();
+        inner.innerHTML = "";
+
+        if (d && d.text && d.text.trim()) {
+            const p = document.createElement("p");
+            p.style.whiteSpace = "pre-line"; // 줄바꿈 그대로 반영
+            p.textContent = d.text;
+            inner.appendChild(p);
+        }
+        if (d && Array.isArray(d.images)) {
+            d.images.forEach(url => {
+                if (!url) return;
+                const img = document.createElement("img");
+                img.src = url;
+                img.alt = "상품 상세";
+                img.loading = "lazy";
+                inner.appendChild(img);
+            });
+        }
+    }
+    // 입력한 가로/세로가 등록된 규격 사이즈 목록(options02)과 일치하는지 확인 (가로/세로 뒤바뀐 경우도 인정)
+    function isMatchingStandardSize(w, h) {
+        const g = standardSizeConfig();
+        if (!g || !Array.isArray(g.sizes)) return false;
+        return g.sizes.some(s => {
+            const sw = parseFloat(s.width), sh = parseFloat(s.height);
+            return (sw === w && sh === h) || (sw === h && sh === w);
+        });
+    }
 
     // ---- 옵션 <option> 하나 생성 (품목 데이터를 dataset에 그대로 실어둠) ----
     function buildOptionEl(v) {
@@ -547,6 +676,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         const subSelect = document.createElement("select");
         subSelect.className = "finishing-sub-select finishing-btn";
         subSelect.style.marginLeft = "5px";
+        subSelect.style.flex = "0 0 130px";
+        subSelect.style.width = "130px";
         subOptions.forEach(so => {
             const el = document.createElement("option");
             el.value = so.color;
@@ -579,7 +710,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         newRow.className = "option-row";
         newRow.innerHTML = `
             <div class="label">후가공 추가</div>
-            <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
+            <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option value="">선택안함</option></select>
             <button type="button" class="finishing-btn" onclick="this.parentElement.remove(); window.updatePrice();">삭제</button>
         `;
         container.appendChild(newRow);
@@ -632,6 +763,26 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
     }
 
+    // ---- ⑤ 규격 사이즈 목록 (options02) : sizeList select 채우기 ----
+    function loadSizeList() {
+        const sizeList = document.getElementById("sizeList");
+        sizeList.innerHTML = "";
+        const g = standardSizeConfig();
+        if (g && Array.isArray(g.sizes) && g.sizes.length > 0) {
+            g.sizes.forEach(s => {
+                const el = document.createElement("option");
+                el.value = `${s.width},${s.height}`;
+                el.textContent = `${s.width}x${s.height} mm`;
+                sizeList.appendChild(el);
+            });
+        } else {
+            const el = document.createElement("option");
+            el.value = "";
+            el.textContent = "등록된 규격사이즈 없음";
+            sizeList.appendChild(el);
+        }
+    }
+
     function updateMainImage(imageUrl) {
         if (!imageUrl || imageUrl.trim() === "") return;
         const mainImg = document.getElementById("mainProductImage");
@@ -652,14 +803,19 @@ window.enableMobileCustomPicker = function(selectEl) {
         const w = parseFloat(document.getElementById("widthInput").value) || 0;
         const h = parseFloat(document.getElementById("heightInput").value) || 0;
 
+        // 비규격을 선택했더라도 입력한 사이즈가 등록된 규격 사이즈(options02)와 똑같으면
+        // 규격사이즈와 동일한 가격으로 계산합니다.
+        const matchesStandard = isCustom && isMatchingStandardSize(w, h);
+        const useStandardPricing = !isCustom || matchesStandard;
+
         let sum = 0;
         let totalWeight = 0;
         let totalDeliveryDays = 0;
         const summary = [];
 
         // 일반 옵션 그룹
-        // - 규격사이즈: 선택한 품목의 price(원가) × (1+margin) × 매수배수 를 더합니다.
-        // - 비규격사이즈: 품목 가격은 쓰지 않고, 아래 ④ "options01 기준 추가 비용"만으로 계산합니다.
+        // - 규격사이즈(또는 규격과 같은 사이즈의 비규격): 선택한 품목의 price(원가) × (1+margin) × 매수배수 를 더합니다.
+        // - 진짜 비규격사이즈: 품목 가격은 쓰지 않고, 아래 "options01 기준 추가 비용"만으로 계산합니다.
         //   (무게·배송일은 규격/비규격 상관없이 선택한 옵션 값을 그대로 반영합니다)
         document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
@@ -669,7 +825,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const weight = parseFloat(opt.dataset.weight) || 0;
             const delivery = parseFloat(opt.dataset.delivery) || 0;
 
-            if (!isCustom) {
+            if (useStandardPricing) {
                 sum += price * (1 + margin / 100) * qtyFactor;
             }
 
@@ -701,7 +857,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             summary.push(label);
         });
 
-        // 비규격사이즈 가격 (options01 기준)
+        // 비규격사이즈 가격 (options01 기준) - 등록된 규격 사이즈와 일치하지 않을 때만 적용
         // - 가로/세로가 최소값(widthMin × heightMin)일 때는 basePrice 그대로.
         // - 그보다 커지면, 면적이 커진 비율만큼 multiplier를 곱해 할증합니다.
         //   예) basePrice 4000, multiplier 1.5, 최소사이즈 50×50 선택 → 4000원.
@@ -710,7 +866,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         // - 그룹에서 선택한 품목마다 다른 surcharge(비규격 추가마진율)를 반영해서,
         //   같은 사이즈라도 "명함"과 "명함 양면"처럼 품목이 다르면 가격도 달라지게 합니다.
         const c = customConfig();
-        if (isCustom && c) {
+        if (isCustom && !matchesStandard && c) {
             const clampedW = Math.min(Math.max(w, c.widthMin), c.widthMax);
             const clampedH = Math.min(Math.max(h, c.heightMin), c.heightMax);
             const refArea = (c.widthMin || 1) * (c.heightMin || 1);
@@ -758,7 +914,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         summary.push(`${count}건`);
         summaryEl.textContent = summary.filter(Boolean).join(" + ");
 
-        const finalPrice = Math.round((sum * count) / 100) * 100;
+        // 100원 단위로 반올림하면 소수점 끝자리가 50 이상일 때 위로 올라가서
+        // 실제 계산값보다 최대 100원 더 비싸게 보일 수 있어 내림으로 처리합니다.
+        const finalPrice = Math.floor((sum * count) / 100) * 100;
         document.getElementById("priceDisplay").textContent = finalPrice.toLocaleString() + "원";
 
         updateDeliveryDisplayFromDays(totalDeliveryDays);
@@ -795,9 +953,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         let h = parseFloat(hIn.value) || 0;
 
         if (!isCustom) {
-            const [svW, svH] = sizeList.value.split(",");
-            w = parseFloat(svW);
-            h = parseFloat(svH);
+            const [svW, svH] = (sizeList.value || "0,0").split(",");
+            w = parseFloat(svW) || 0;
+            h = parseFloat(svH) || 0;
             wIn.value = w;
             hIn.value = h;
         }
@@ -839,20 +997,23 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (!Array.isArray(productData.options)) productData.options = [];
 
         renderOptionGroups();
-        loadQtySelect();
-        applyCustomConfigToInputs();
-        loadFinishingOptions(document.querySelector(".finishing-select"));
-        setupFinishingListener(document.querySelector(".finishing-select"));
 
-        updateSizeMode();
-        updatePrice();
-
-        // 첫 옵션의 대표 이미지 반영
+        // 첫 옵션(그룹)의 첫 제품 이미지를 기본값(맨 밑 배경)으로 바로 반영
         const firstSelect = document.querySelector("#dynamicOptionsContainer select");
         if (firstSelect && firstSelect.options.length > 0) {
             const firstOpt = firstSelect.options[0];
             if (firstOpt.dataset.imageUrl) updateMainImage(firstOpt.dataset.imageUrl);
         }
+
+        loadQtySelect();
+        applyCustomConfigToInputs();
+        loadSizeList();
+        loadFinishingOptions(document.querySelector(".finishing-select"));
+        setupFinishingListener(document.querySelector(".finishing-select"));
+        renderDetailContent();
+
+        updateSizeMode();
+        updatePrice();
 
         window.enableMobileCustomPicker(document.getElementById("qtySelect"));
         window.enableMobileCustomPicker(document.getElementById("sizeList"));
