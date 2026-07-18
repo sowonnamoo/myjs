@@ -1,144 +1,575 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>상품 옵션 관리자</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        /* control-box 클래스에 스타일을 통합하여 동일한 레이아웃을 갖게 합니다 */
-        .control-box { border: 1px solid #ccc; padding: 20px; max-width: 500px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        input, select { padding: 8px; width: 100%; box-sizing: border-box; }
-        button { padding: 10px; background: #2b7bc3; color: white; border: none; cursor: pointer; width: 100%; }
-    </style>
+<meta charset="UTF-8">
+<title>01명함 상품 옵션 관리자</title>
+<style>
+    body { font-family: sans-serif; padding: 20px; background:#f5f6f8; }
+    h2 { margin-bottom: 4px; }
+    .sub { color:#666; font-size: 13px; margin-bottom: 20px; }
+    .control-box { border: 1px solid #ccc; padding: 20px; max-width: 560px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background:#fff; border-radius:6px; }
+    .control-box h3 { margin: 0 0 4px 0; }
+    .hint { font-size: 12px; color:#888; margin: -6px 0 4px 0; }
+    input, select { padding: 8px; width: 100%; box-sizing: border-box; font-size:14px; }
+    label.checkline { display:flex; align-items:center; gap:6px; font-size:14px; }
+    button { padding: 10px; background: #2b7bc3; color: white; border: none; cursor: pointer; width: 100%; border-radius:4px; font-size:14px; }
+    button.secondary { background:#888; }
+    button.danger { background:#c0392b; }
+    button.small { width:auto; padding:4px 10px; font-size:12px; }
+    .row-flex { display:flex; gap:6px; align-items:center; }
+    .row-flex input { flex:1; }
+    .subopt-row { display:flex; gap:6px; align-items:center; border:1px dashed #ccc; padding:6px; border-radius:4px; }
+    #statusBar { max-width:560px; padding:10px 14px; border-radius:4px; background:#eef4fb; color:#2b5f8a; font-size:13px; margin-bottom:16px; }
+    #verifyBox { max-width: 800px; }
+    .group-card { border:1px solid #ddd; border-radius:6px; padding:12px; margin-bottom:12px; background:#fafbfc; }
+    .group-card h4 { margin:0 0 8px 0; display:flex; align-items:center; gap:8px; }
+    .group-card h4 button { width:auto; }
+    .edit-highlight { animation: editFlash 1.5s ease; }
+    @keyframes editFlash { 0% { box-shadow: 0 0 0 3px #ffe08a; } 100% { box-shadow: none; } }
+    .item-row { border-top:1px solid #eee; padding:8px 0; font-size:13px; display:flex; justify-content:space-between; gap:10px; }
+    .item-meta { color:#555; }
+    .item-meta span { margin-right:10px; }
+    .subopt-list { margin-top:4px; padding-left:14px; color:#777; font-size:12px; }
+    details.rawjson { max-width:800px; margin-top:10px; }
+    details.rawjson pre { background:#1e1e1e; color:#d4d4d4; padding:12px; border-radius:6px; overflow:auto; font-size:12px; }
+</style>
 </head>
 <body>
-    <h2>01명함</h2>
-    
-    <!-- 새 옵션 저장 영역 -->
+    <h2>상품 옵션 관리자</h2>
+    <div class="sub">Firestore: products 컬렉션 (문서 1개 = 상품 1개, options 배열) · 문서 전환 시에만 다시 불러옵니다.</div>
+    <div id="statusBar">불러오는 중...</div>
+
+    <!-- 0. 상품 문서 선택 / 생성 -->
     <div class="control-box">
-        <select id="targetCategory">
-            <option value="myeong_paper">용지</option>
-            <option value="myeong_ink">편집</option>
-            <option value="myeong_bg">후가공</option>
-        </select>
-        <input type="text" id="nameInput" placeholder="옵션 이름 (예: 유포지)">
-        <input type="text" id="priceInput" placeholder="가격 또는 URL (예: 9000 또는 http://...)">
-        <input type="number" id="costMarginInput" placeholder="원가마진율 (%) (예: 50)">
-        <input type="number" id="marginInput" placeholder="개별 마진율 (%) (예: 0.1)">
-        <input type="number" id="deliveryInput" placeholder="배송일 숫자만 입력 (예: 3)">
-        <input type="number" id="weightInput" placeholder="종이 무게 (g/㎡) (예: 90)">
-        <input type="text" id="imageUrlInput" placeholder="이미지 URL 주소 (옵션)">
-        <button id="saveBtn">새 옵션 추가 저장</button>
+        <h3>⓪ 상품 문서 선택 / 생성</h3>
+        <div class="hint">01my, 02my 처럼 상품마다 문서를 하나씩 만듭니다. 아래에서 고르거나 새로 만드세요.</div>
+        <select id="productSelect"></select>
+        <input type="text" id="newProductIdInput" placeholder="새 문서 ID (예: 02my)">
+        <button id="createProductBtn" class="secondary" type="button">새 문서 생성 후 선택</button>
     </div>
 
-    <!-- 공식 환경설정 영역 (control-box 클래스 추가) -->
+    <!-- 1. 옵션 그룹 관리 -->
     <div class="control-box">
-        <h3>공식 환경설정</h3>
-        <input type="number" id="base500" placeholder="기본가">
-        <input type="number" id="areaRate" placeholder="면적요율">
-        <input type="number" id="marginRate" placeholder="마진율 (%)">
-        <button id="saveBaseConfigBtn">공식 설정 저장</button>
+        <h3>① 옵션 그룹 관리</h3>
+        <div class="hint">예: options1(일반명함), options2(인쇄방식), options3(후가공) 같은 큰 분류 · ID는 자동으로 번호가 붙습니다</div>
+        <select id="groupSelect"></select>
+        <input type="text" id="groupIdInput" placeholder="그룹 ID (자동 생성)" disabled>
+        <input type="text" id="groupTitleInput" placeholder="그룹 제목 (예: 일반명함 / 후가공)">
+        <button id="groupSaveBtn">그룹 저장</button>
+        <button id="groupDeleteBtn" class="danger">이 그룹 삭제</button>
     </div>
 
-    <script type="module">
-        // ... (이전과 동일한 JavaScript 로직)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    <!-- 2. 옵션 값(품목) 추가/수정 -->
+    <div class="control-box">
+        <h3>② 옵션 값(품목) 추가 / 수정</h3>
+        <div class="hint">같은 그룹 안에 이름이 같은 품목이 있으면 그대로 교체 저장됩니다.</div>
+        <select id="itemGroupSelect"></select>
+        <input type="text" id="itemNameInput" placeholder="품목명 (예: 명함양면 / 금박 / 즉시인쇄)">
+        <input type="number" id="itemPriceInput" placeholder="가격(원가) (예: 15000)">
+        <input type="number" id="itemWeightInput" placeholder="종이 무게 g/㎡ (선택, 예: 90)">
+        <input type="number" id="itemDeliveryInput" placeholder="배송일 (선택, 예: 1)">
+        <input type="number" step="0.1" id="itemMarginInput" placeholder="마진율 % (선택, 예: 40 → 40%)">
+        <input type="number" step="0.1" id="itemSurchargeInput" placeholder="추가마진율(surcharge) % (선택, 예: 5 → 5%)">
+        <input type="text" id="itemUrlInput" placeholder="클릭시 URL (선택)">
+        <input type="text" id="itemImageUrlInput" placeholder="이미지 URL (선택)">
+        <label class="checkline"><input type="checkbox" id="hasSubOptions"> 서브옵션 있음 (예: 금박 색상)</label>
+        <div id="subOptionsContainer"></div>
+        <button id="addSubOptionRowBtn" class="secondary" type="button">서브옵션 행 추가</button>
+        <button id="itemSaveBtn">품목 저장</button>
+    </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
-            authDomain: "ecogr-636c6.firebaseapp.com",
-            projectId: "ecogr-636c6",
-            storageBucket: "ecogr-636c6.firebasestorage.app",
-            messagingSenderId: "95745358447",
-            appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-        };
+    <!-- 3. 매수별 배수 (options00) -->
+    <div class="control-box">
+        <h3>③ 매수별 배수 (options00)</h3>
+        <div class="hint">예: 200매 → 1배, 1000매 → 1.8배</div>
+        <div id="qtyRowsContainer"></div>
+        <button id="addQtyRowBtn" class="secondary" type="button">행 추가</button>
+        <button id="saveQtyBtn">매수별 배수 저장</button>
+    </div>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    <!-- 4. 비규격 설정 (options01) -->
+    <div class="control-box">
+        <h3>④ 비규격 사이즈 설정 (options01)</h3>
+        <input type="number" id="basePriceInput" placeholder="비규격 베이스 가격 (예: 5000)">
+        <input type="number" step="0.01" id="customMultiplierInput" placeholder="비규격 배수 (예: 1.5)">
+        <input type="number" id="widthMinInput" placeholder="가로 최소길이 (mm)">
+        <input type="number" id="widthMaxInput" placeholder="가로 최대길이 (mm)">
+        <input type="number" id="heightMinInput" placeholder="세로 최소길이 (mm)">
+        <input type="number" id="heightMaxInput" placeholder="세로 최대길이 (mm)">
+        <button id="saveCustomBtn">비규격 설정 저장</button>
+    </div>
 
-        // 1. 새 옵션 저장
-        document.getElementById('saveBtn').addEventListener('click', async () => {
-            const category = document.getElementById('targetCategory').value;
-            const name = document.getElementById('nameInput').value;
-            const costMargin = parseFloat(document.getElementById('costMarginInput').value) || 0;
-            const priceInputVal = document.getElementById('priceInput').value;
-            const isUrl = priceInputVal.toLowerCase().startsWith('http');
-            const rawMargin = document.getElementById('marginInput').value;
-            const margin = rawMargin !== "" ? parseFloat(rawMargin) : 0;
-            const delivery = document.getElementById('deliveryInput').value; 
-            
-            if (!name) { alert("이름을 입력하세요."); return; }
+    <!-- 5. 저장 확인 -->
+    <div class="control-box" id="verifyBox">
+        <h3>⑤ 저장 확인 (Firestore 실제 내용)</h3>
+        <button id="refreshBtn" class="secondary" type="button">Firestore에서 새로고침</button>
+        <div id="verifyList">불러오는 중...</div>
+        <details class="rawjson">
+            <summary>원본 JSON 보기</summary>
+            <pre id="rawJson"></pre>
+        </details>
+    </div>
 
-            try {
-                const productRef = doc(db, "products", category);
-                const weight = document.getElementById('weightInput').value;
-                const optionData = { 
-                    name, 
-                    price: isUrl ? 0 : (parseInt(priceInputVal) || 0),
-                    weight: weight || 90,
-                    url: isUrl ? priceInputVal : "", 
-                    imageUrl: document.getElementById('imageUrlInput').value,
-                    margin: margin, 
-                    costMargin: costMargin,
-                    createdAt: new Date() 
-                };
-                
-                if (delivery.trim() !== "") {
-                    optionData.delivery = delivery;
-                }
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, getDocs, setDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-                // 기존 문서를 먼저 읽어와서, 같은 이름의 옵션이 이미 있으면
-                // 그 자리(원래 순서)에 새 데이터로 그대로 덮어씁니다(하위 내용 전체 교체).
-                // 이름이 새로운 경우엔 기존처럼 배열 맨 뒤에 추가됩니다.
-                const snap = await getDoc(productRef);
-                const existingOptions = (snap.exists() && Array.isArray(snap.data().options))
-                    ? snap.data().options
-                    : [];
+    const firebaseConfig = {
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    };
 
-                const existingIndex = existingOptions.findIndex(opt => opt.name === name);
-                const isReplace = existingIndex !== -1;
-                const updatedOptions = [...existingOptions];
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const productsCol = collection(db, "products");
 
-                if (isReplace) {
-                    updatedOptions[existingIndex] = optionData; // 원래 위치 그대로 교체
-                } else {
-                    updatedOptions.push(optionData); // 새 옵션은 맨 뒤에 추가
-                }
+    // ---- 상태: 현재 선택된 상품 문서 ID + 그 문서를 1회 불러와 보관하는 변수 ----
+    let currentProductId = "01my";
+    function productRef() { return doc(db, "products", currentProductId); }
+    let productData = { productId: currentProductId, options: [] };
 
-                await setDoc(productRef, { options: updatedOptions }, { merge: true });
-                alert(name + (isReplace ? " 기존 옵션을 교체 저장했습니다!" : " 저장 완료!"));
-                
-                document.getElementById('nameInput').value = '';
-                document.getElementById('priceInput').value = '';
-                document.getElementById('marginInput').value = '';
-                document.getElementById('deliveryInput').value = '';
-            } catch (e) { alert("저장 실패: " + e.message); }
+    const $ = (id) => document.getElementById(id);
+    const statusBar = $("statusBar");
+
+    function valueGroups() {
+        return productData.options.filter(o => Array.isArray(o.values));
+    }
+    function findGroupById(id) {
+        return productData.options.find(o => o.id === id);
+    }
+    function findSpecial(id) {
+        return productData.options.find(o => o.id === id);
+    }
+
+    // ---- ① 그룹 select 채우기 ----
+    function nextGroupId() {
+        const nums = valueGroups()
+            .map(g => (g.id.match(/^options(\d+)$/) || [])[1])
+            .filter(n => n !== undefined)
+            .map(n => parseInt(n, 10));
+        const max = nums.length ? Math.max(...nums) : 0;
+        return `options${max + 1}`;
+    }
+
+    function refreshGroupSelects() {
+        const prevGroup = $("groupSelect").value;
+        const prevItem = $("itemGroupSelect").value;
+        const groups = valueGroups();
+
+        [$("groupSelect"), $("itemGroupSelect")].forEach(sel => {
+            sel.innerHTML = "";
+            groups.forEach(g => {
+                const opt = document.createElement("option");
+                opt.value = g.id;
+                opt.textContent = `${g.id} (${g.title || "제목없음"})`;
+                sel.appendChild(opt);
+            });
+            const newOpt = document.createElement("option");
+            newOpt.value = "__new__";
+            newOpt.textContent = `+ 새 그룹 추가 (${nextGroupId()} 자동 부여)`;
+            sel.appendChild(newOpt);
         });
 
-        // 2. 공식 환경설정 저장
-        document.getElementById('saveBaseConfigBtn').addEventListener('click', async () => {
-            const base500 = parseInt(document.getElementById('base500').value);
-            const areaRate = parseFloat(document.getElementById('areaRate').value);
-            const marginRate = parseFloat(document.getElementById('marginRate').value);
-            
-            if (isNaN(base500) || isNaN(areaRate) || isNaN(marginRate)) { 
-                alert("모든 값을 입력하세요."); 
-                return; 
-            }
-            
-            try {
-                await setDoc(doc(db, "products", "myeong_price2"), { 
-                    base500, 
-                    areaRate, 
-                    marginRate 
-                }, { merge: true });
-                
-                alert("공식 환경설정이 myeong_price2에 저장되었습니다!");
-            } catch (e) { 
-                alert("저장 실패: " + e.message); 
+        if (groups.some(g => g.id === prevGroup)) $("groupSelect").value = prevGroup;
+        if (groups.some(g => g.id === prevItem)) $("itemGroupSelect").value = prevItem;
+
+        onGroupSelectChange();
+    }
+
+    function onGroupSelectChange() {
+        const val = $("groupSelect").value;
+        if (val === "__new__" || !val) {
+            $("groupIdInput").disabled = true;
+            $("groupIdInput").value = nextGroupId();
+            $("groupTitleInput").value = "";
+        } else {
+            const g = findGroupById(val);
+            $("groupIdInput").disabled = true;
+            $("groupIdInput").value = val;
+            $("groupTitleInput").value = g ? (g.title || "") : "";
+        }
+    }
+    $("groupSelect").addEventListener("change", onGroupSelectChange);
+
+    // ---- Firestore 저장 + 재확인 ----
+    async function saveProduct(successMsg) {
+        try {
+            productData.updatedAt = new Date();
+            await setDoc(productRef(), productData);
+            statusBar.textContent = "저장 완료. Firestore에서 다시 불러와 확인 중...";
+            await loadProduct(); // 저장이 실제로 반영됐는지 확인하기 위한 재조회
+            if (successMsg) alert(successMsg);
+        } catch (e) {
+            alert("저장 실패: " + e.message);
+        }
+    }
+
+    // ---- ① 그룹 저장 / 삭제 ----
+    $("groupSaveBtn").addEventListener("click", async () => {
+        const selected = $("groupSelect").value;
+        const id = (selected === "__new__" || !selected) ? $("groupIdInput").value.trim() : selected;
+        const title = $("groupTitleInput").value.trim();
+        if (!id) { alert("그룹 ID를 입력하세요."); return; }
+
+        let g = findGroupById(id);
+        if (!g) {
+            g = { id, title, values: [] };
+            productData.options.push(g);
+        } else {
+            g.title = title;
+        }
+        await saveProduct(`${id} 그룹이 저장되었습니다.`);
+    });
+
+    $("groupDeleteBtn").addEventListener("click", async () => {
+        const id = $("groupSelect").value;
+        if (!id || id === "__new__") { alert("삭제할 그룹을 선택하세요."); return; }
+        if (!confirm(`${id} 그룹과 그 안의 모든 품목을 삭제할까요?`)) return;
+        productData.options = productData.options.filter(o => o.id !== id);
+        await saveProduct(`${id} 그룹이 삭제되었습니다.`);
+    });
+
+    // ---- ② 서브옵션 행 ----
+    function addSubOptionRow(color = "", priceExtra = "") {
+        const row = document.createElement("div");
+        row.className = "subopt-row";
+        row.innerHTML = `
+            <input type="text" class="subopt-color" placeholder="서브옵션명 (예: 유광골드)" value="${color}">
+            <input type="number" class="subopt-price" placeholder="추가금액 (예: 2000)" value="${priceExtra}">
+            <button type="button" class="small danger remove-subopt">삭제</button>
+        `;
+        row.querySelector(".remove-subopt").addEventListener("click", () => row.remove());
+        $("subOptionsContainer").appendChild(row);
+    }
+    $("addSubOptionRowBtn").addEventListener("click", () => addSubOptionRow());
+
+    function collectSubOptionRows() {
+        const rows = $("subOptionsContainer").querySelectorAll(".subopt-row");
+        const result = [];
+        rows.forEach(r => {
+            const color = r.querySelector(".subopt-color").value.trim();
+            const priceExtraRaw = r.querySelector(".subopt-price").value;
+            if (color) {
+                result.push({ color, priceExtra: priceExtraRaw !== "" ? parseFloat(priceExtraRaw) : 0 });
             }
         });
-    </script>
+        return result;
+    }
+
+    $("hasSubOptions").addEventListener("change", (e) => {
+        if (e.target.checked && $("subOptionsContainer").children.length === 0) addSubOptionRow();
+    });
+
+    function clearItemForm() {
+        ["itemNameInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput"]
+            .forEach(id => $(id).value = "");
+        $("hasSubOptions").checked = false;
+        $("subOptionsContainer").innerHTML = "";
+    }
+
+    // ---- ② 품목 저장 ----
+    $("itemSaveBtn").addEventListener("click", async () => {
+        const groupId = $("itemGroupSelect").value;
+        if (!groupId || groupId === "__new__") { alert("먼저 ①에서 그룹을 추가하고 선택하세요."); return; }
+        const g = findGroupById(groupId);
+        if (!g) { alert("그룹을 찾을 수 없습니다."); return; }
+
+        const name = $("itemNameInput").value.trim();
+        if (!name) { alert("품목명을 입력하세요."); return; }
+
+        const item = { name };
+        const price = $("itemPriceInput").value; if (price !== "") item.price = parseFloat(price);
+        const weight = $("itemWeightInput").value; if (weight !== "") item.weight = parseFloat(weight);
+        const delivery = $("itemDeliveryInput").value; if (delivery !== "") item.delivery = parseFloat(delivery);
+        const margin = $("itemMarginInput").value; if (margin !== "") item.margin = parseFloat(margin);
+        const surcharge = $("itemSurchargeInput").value; if (surcharge !== "") item.surcharge = parseFloat(surcharge);
+        const url = $("itemUrlInput").value.trim(); if (url) item.url = url;
+        const imageUrl = $("itemImageUrlInput").value.trim(); if (imageUrl) item.imageUrl = imageUrl;
+        if ($("hasSubOptions").checked) {
+            const subs = collectSubOptionRows();
+            if (subs.length > 0) item.subOptions = subs;
+        }
+
+        const idx = g.values.findIndex(v => v.name === name);
+        const isReplace = idx !== -1;
+        if (isReplace) g.values[idx] = item; else g.values.push(item);
+
+        await saveProduct(`"${name}" ${isReplace ? "교체 저장" : "신규 저장"} 완료`);
+        clearItemForm();
+    });
+
+    // ---- ③ 매수별 배수 (options00) ----
+    function addQtyRow(qty = "", multi = "") {
+        const row = document.createElement("div");
+        row.className = "row-flex";
+        row.innerHTML = `
+            <input type="number" class="qty-value" placeholder="매수 (예: 200)" value="${qty}">
+            <input type="number" step="0.01" class="qty-multi" placeholder="배수 (예: 1.2)" value="${multi}">
+            <button type="button" class="small danger remove-qty">삭제</button>
+        `;
+        row.querySelector(".remove-qty").addEventListener("click", () => row.remove());
+        $("qtyRowsContainer").appendChild(row);
+    }
+    $("addQtyRowBtn").addEventListener("click", () => addQtyRow());
+
+    function fillOptions00Form() {
+        $("qtyRowsContainer").innerHTML = "";
+        const o = findSpecial("options00");
+        if (o && Array.isArray(o.quantities) && o.quantities.length > 0) {
+            o.quantities.forEach((q, i) => addQtyRow(q, o.multipliers ? o.multipliers[i] : ""));
+        } else {
+            addQtyRow();
+        }
+    }
+
+    $("saveQtyBtn").addEventListener("click", async () => {
+        const rows = $("qtyRowsContainer").querySelectorAll(".row-flex");
+        const quantities = [], multipliers = [];
+        rows.forEach(r => {
+            const q = r.querySelector(".qty-value").value;
+            const m = r.querySelector(".qty-multi").value;
+            if (q !== "") { quantities.push(parseFloat(q)); multipliers.push(m !== "" ? parseFloat(m) : 1); }
+        });
+        let o = findSpecial("options00");
+        if (!o) { o = { id: "options00", title: "매수별 배수" }; productData.options.push(o); }
+        o.quantities = quantities;
+        o.multipliers = multipliers;
+        await saveProduct("매수별 배수가 저장되었습니다.");
+    });
+
+    // ---- ④ 비규격 설정 (options01) ----
+    function fillOptions01Form() {
+        const o = findSpecial("options01");
+        $("basePriceInput").value = o && o.basePrice !== undefined ? o.basePrice : "";
+        $("customMultiplierInput").value = o && o.multiplier !== undefined ? o.multiplier : "";
+        $("widthMinInput").value = o && o.widthMin !== undefined ? o.widthMin : "";
+        $("widthMaxInput").value = o && o.widthMax !== undefined ? o.widthMax : "";
+        $("heightMinInput").value = o && o.heightMin !== undefined ? o.heightMin : "";
+        $("heightMaxInput").value = o && o.heightMax !== undefined ? o.heightMax : "";
+    }
+
+    $("saveCustomBtn").addEventListener("click", async () => {
+        const basePrice = parseFloat($("basePriceInput").value);
+        const multiplier = parseFloat($("customMultiplierInput").value);
+        const widthMin = parseFloat($("widthMinInput").value);
+        const widthMax = parseFloat($("widthMaxInput").value);
+        const heightMin = parseFloat($("heightMinInput").value);
+        const heightMax = parseFloat($("heightMaxInput").value);
+        if ([basePrice, multiplier, widthMin, widthMax, heightMin, heightMax].some(isNaN)) {
+            alert("모든 값을 입력하세요."); return;
+        }
+        let o = findSpecial("options01");
+        if (!o) { o = { id: "options01", title: "비규격 설정" }; productData.options.push(o); }
+        Object.assign(o, { basePrice, multiplier, widthMin, widthMax, heightMin, heightMax });
+        await saveProduct("비규격 설정이 저장되었습니다.");
+    });
+
+    // ---- ⑤ 저장 확인 목록 ----
+    function highlightBox(el) {
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.add("edit-highlight");
+        setTimeout(() => el.classList.remove("edit-highlight"), 1500);
+    }
+
+    function editGroup(groupId) {
+        $("groupSelect").value = groupId;
+        onGroupSelectChange();
+        highlightBox($("groupSelect").closest(".control-box"));
+        $("groupTitleInput").focus();
+    }
+
+    function editItem(groupId, name) {
+        const g = findGroupById(groupId);
+        if (!g) return;
+        const item = (g.values || []).find(v => v.name === name);
+        if (!item) return;
+
+        $("itemGroupSelect").value = groupId;
+        $("itemNameInput").value = item.name || "";
+        $("itemPriceInput").value = item.price ?? "";
+        $("itemWeightInput").value = item.weight ?? "";
+        $("itemDeliveryInput").value = item.delivery ?? "";
+        $("itemMarginInput").value = item.margin ?? "";
+        $("itemSurchargeInput").value = item.surcharge ?? "";
+        $("itemUrlInput").value = item.url ?? "";
+        $("itemImageUrlInput").value = item.imageUrl ?? "";
+
+        $("subOptionsContainer").innerHTML = "";
+        if (Array.isArray(item.subOptions) && item.subOptions.length) {
+            $("hasSubOptions").checked = true;
+            item.subOptions.forEach(so => addSubOptionRow(so.color, so.priceExtra));
+        } else {
+            $("hasSubOptions").checked = false;
+        }
+
+        highlightBox($("itemGroupSelect").closest(".control-box"));
+        $("itemNameInput").focus();
+    }
+
+    function editQty() {
+        highlightBox($("saveQtyBtn").closest(".control-box"));
+    }
+
+    function editCustom() {
+        highlightBox($("saveCustomBtn").closest(".control-box"));
+    }
+
+    function renderVerifyList() {
+        const box = $("verifyList");
+        box.innerHTML = "";
+
+        const groups = valueGroups();
+        if (groups.length === 0) {
+            box.innerHTML += "<div class='hint'>저장된 옵션 그룹이 없습니다.</div>";
+        }
+        groups.forEach(g => {
+            const card = document.createElement("div");
+            card.className = "group-card";
+            let itemsHtml = (g.values || []).map(v => {
+                const meta = [];
+                if (v.price !== undefined) meta.push(`가격 ${v.price}`);
+                if (v.weight !== undefined) meta.push(`무게 ${v.weight}`);
+                if (v.delivery !== undefined) meta.push(`배송 ${v.delivery}일`);
+                if (v.margin !== undefined) meta.push(`마진 ${v.margin}%`);
+                if (v.surcharge !== undefined) meta.push(`surcharge ${v.surcharge}%`);
+                if (v.url) meta.push(`url ✓`);
+                if (v.imageUrl) meta.push(`이미지 ✓`);
+                const subHtml = v.subOptions && v.subOptions.length
+                    ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
+                    : "";
+                return `<div class="item-row">
+                            <div><b>${v.name}</b><div class="item-meta">${meta.map(m=>`<span>${m}</span>`).join("")}</div>${subHtml}</div>
+                            <div class="row-flex" style="width:auto;">
+                                <button type="button" class="small edit-item" data-group="${g.id}" data-name="${v.name}">수정</button>
+                                <button type="button" class="small danger del-item" data-group="${g.id}" data-name="${v.name}">삭제</button>
+                            </div>
+                        </div>`;
+            }).join("") || "<div class='hint'>등록된 품목 없음</div>";
+
+            card.innerHTML = `<h4>${g.id} — ${g.title || "제목없음"} <button type="button" class="small edit-group" data-group="${g.id}">그룹 수정</button></h4>${itemsHtml}`;
+            box.appendChild(card);
+        });
+
+        // options00 표시
+        const o00 = findSpecial("options00");
+        const card00 = document.createElement("div");
+        card00.className = "group-card";
+        if (o00 && o00.quantities && o00.quantities.length) {
+            card00.innerHTML = `<h4>options00 — 매수별 배수 <button type="button" class="small edit-qty">수정</button></h4>` +
+                o00.quantities.map((q,i) => `<div class="item-row"><div>${q}매</div><div>${o00.multipliers[i]}배</div></div>`).join("");
+        } else {
+            card00.innerHTML = `<h4>options00 — 매수별 배수 <button type="button" class="small edit-qty">수정</button></h4><div class="hint">저장된 값 없음</div>`;
+        }
+        box.appendChild(card00);
+
+        // options01 표시
+        const o01 = findSpecial("options01");
+        const card01 = document.createElement("div");
+        card01.className = "group-card";
+        if (o01 && o01.basePrice !== undefined) {
+            card01.innerHTML = `<h4>options01 — 비규격 설정 <button type="button" class="small edit-custom">수정</button></h4>
+                <div class="item-row"><div>베이스가격</div><div>${o01.basePrice}</div></div>
+                <div class="item-row"><div>배수</div><div>${o01.multiplier}</div></div>
+                <div class="item-row"><div>가로 범위</div><div>${o01.widthMin} ~ ${o01.widthMax}</div></div>
+                <div class="item-row"><div>세로 범위</div><div>${o01.heightMin} ~ ${o01.heightMax}</div></div>`;
+        } else {
+            card01.innerHTML = `<h4>options01 — 비규격 설정 <button type="button" class="small edit-custom">수정</button></h4><div class="hint">저장된 값 없음</div>`;
+        }
+        box.appendChild(card01);
+
+        box.querySelectorAll(".edit-group").forEach(btn => {
+            btn.addEventListener("click", () => editGroup(btn.dataset.group));
+        });
+        box.querySelectorAll(".edit-item").forEach(btn => {
+            btn.addEventListener("click", () => editItem(btn.dataset.group, btn.dataset.name));
+        });
+        box.querySelectorAll(".edit-qty").forEach(btn => btn.addEventListener("click", editQty));
+        box.querySelectorAll(".edit-custom").forEach(btn => btn.addEventListener("click", editCustom));
+
+        box.querySelectorAll(".del-item").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const groupId = btn.dataset.group, name = btn.dataset.name;
+                if (!confirm(`"${name}" 품목을 삭제할까요?`)) return;
+                const g = findGroupById(groupId);
+                if (g) g.values = g.values.filter(v => v.name !== name);
+                await saveProduct(`"${name}" 삭제 완료`);
+            });
+        });
+
+        $("rawJson").textContent = JSON.stringify(productData, null, 2);
+    }
+
+    // ---- 최초 로드 (페이지 진입 시 1회) ----
+    async function loadProduct() {
+        const snap = await getDoc(productRef());
+        productData = snap.exists() ? snap.data() : { productId: currentProductId, options: [] };
+        if (!Array.isArray(productData.options)) productData.options = [];
+
+        statusBar.textContent = `[${currentProductId}] 불러오기 완료 · 그룹 ${valueGroups().length}개 · ${new Date().toLocaleTimeString()} 기준`;
+        refreshGroupSelects();
+        fillOptions00Form();
+        fillOptions01Form();
+        renderVerifyList();
+    }
+
+    $("refreshBtn").addEventListener("click", () => loadProduct());
+
+    // ---- ⓪ 상품 문서 목록 불러오기 / 선택 / 생성 ----
+    async function loadProductList(selectId) {
+        const snap = await getDocs(productsCol);
+        const ids = snap.docs.map(d => d.id).sort();
+        const sel = $("productSelect");
+        sel.innerHTML = "";
+        if (ids.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = ""; opt.textContent = "(등록된 문서 없음 - 아래에서 새로 생성하세요)";
+            sel.appendChild(opt);
+            return null;
+        }
+        ids.forEach(id => {
+            const opt = document.createElement("option");
+            opt.value = id; opt.textContent = id;
+            sel.appendChild(opt);
+        });
+        const target = ids.includes(selectId) ? selectId : ids[0];
+        sel.value = target;
+        return target;
+    }
+
+    $("productSelect").addEventListener("change", async (e) => {
+        currentProductId = e.target.value;
+        statusBar.textContent = `[${currentProductId}] 불러오는 중...`;
+        await loadProduct();
+    });
+
+    $("createProductBtn").addEventListener("click", async () => {
+        const id = $("newProductIdInput").value.trim();
+        if (!id) { alert("새 문서 ID를 입력하세요 (예: 02my)"); return; }
+        const existing = await getDoc(doc(db, "products", id));
+        if (existing.exists()) { alert(`${id} 문서는 이미 존재합니다. 목록에서 선택하세요.`); return; }
+        await setDoc(doc(db, "products", id), { productId: id, options: [] });
+        $("newProductIdInput").value = "";
+        currentProductId = id;
+        await loadProductList(id);
+        await loadProduct();
+        alert(`${id} 문서를 생성하고 선택했습니다.`);
+    });
+
+    // ---- 초기화: 문서 목록을 먼저 불러오고, 선택된 문서를 1회 불러옵니다 ----
+    (async () => {
+        const first = await loadProductList(currentProductId);
+        if (first) {
+            currentProductId = first;
+            await loadProduct();
+        } else {
+            statusBar.textContent = "등록된 상품 문서가 없습니다. ⓪에서 새로 생성하세요.";
+        }
+    })();
+</script>
 </body>
 </html>

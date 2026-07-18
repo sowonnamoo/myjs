@@ -183,7 +183,6 @@
 </style>
 <script src="delivery.js"></script>
 <script src="quote.js"></script>
-<script src="qtyOptions.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
@@ -196,18 +195,7 @@
     <div class="options-section">
         <h2 style="margin: 0 0 10px 0;">명함</h2>
         
-        <div class="option-row">
-            <div class="label">용지</div>
-            <select id="paperSelect" style="flex:1"><option>불러오는 중...</option></select>
-        </div>
-
-        <div class="option-row">
-            <div class="label">편집</div>
-            <select id="inkSelect" style="flex:1"><option>불러오는 중...</option></select>
-        </div>
-
-
-
+        <div id="dynamicOptionsContainer"></div>
 
 
         <!-- 수량 옆에 건수 박스를 한 줄에 나란히 배치 (크기 축소) -->
@@ -440,10 +428,10 @@ window.enableMobileCustomPicker = function(selectEl) {
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyBzHogA2iaQ...",
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
         authDomain: "ecogr-636c6.firebaseapp.com",
         projectId: "ecogr-636c6",
-        storageBucket: "ecogr-636c6.appspot.com",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
         messagingSenderId: "95745358447",
         appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
     };
@@ -451,220 +439,354 @@ window.enableMobileCustomPicker = function(selectEl) {
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let priceConfigCache = null;
-    let finishingOptionsCache = null;
+    // ---- 이 상품(01my)의 Firestore 문서. 페이지 진입 시 딱 1번만 불러와 여기에 보관합니다. ----
+    const PRODUCT_ID = "01my";
+    let productData = { productId: PRODUCT_ID, options: [] };
 
-    async function loadAllOptions() {
-        const optionConfigs = [
-            { id: "paperSelect", docId: "myeong_paper" },
-            { id: "inkSelect", docId: "myeong_ink" },
-        ];
+    // ---- 가격/화면 계산 관련 참고사항 (중요) ----
+    // 어드민 스키마(그룹 안에 여러 품목, 품목마다 price/margin/surcharge/weight/delivery)까지는
+    // 엑셀·문서 구조로 명확했지만, "규격 마진율(margin)"과 "비규격 추가마진율(surcharge)"을
+    // 실제로 어떻게 합산하는지, 비규격(options01) 가격을 표준가와 어떻게 섞는지는
+    // 원본 엑셀 메모가 서로 다른 말을 하고 있어 100% 확정된 공식이 아닙니다.
+    // 아래는 최대한 합리적으로 구성한 기본 공식입니다. 실제 매장 가격과 비교해보시고
+    // 다르면 알려주세요 — calculatePrice() 함수만 고치면 됩니다.
+    //   1) 그룹별로 선택한 품목의 price × (1 + margin%/100) 을 더합니다.
+    //   2) '비규격사이즈'를 선택한 경우에는 surcharge를 추가로 곱합니다: × (1 + surcharge)
+    //   3) 매수(options00)에 설정된 배수(multiplier)를 곱합니다.
+    //   4) 후가공(다중 선택 그룹)도 동일하게 더하고, 서브옵션(색상 등) 추가금액을 더합니다.
+    //   5) 비규격사이즈를 선택하면 options01(베이스가격 × 배수 × 면적비율)을 추가로 더합니다.
+    //   6) 건수(count)를 곱해 최종금액을 100원 단위로 반올림합니다.
 
-        for (const config of optionConfigs) {
-            const docSnap = await getDoc(doc(db, "products", config.docId));
-            if (docSnap.exists()) {
-                const select = document.getElementById(config.id);
-                if (!select) continue;
-                select.innerHTML = '';
-                
-                docSnap.data().options.forEach(opt => {
-                    const el = document.createElement('option');
-                    el.value = opt.name;
-                    el.textContent = opt.name;
-                    el.dataset.price = opt.price || 0;
-                    el.dataset.margin = opt.margin || 0;
-                    el.dataset.url = opt.url || "";
-                    el.dataset.imageUrl = opt.imageUrl || ""; 
-                    el.dataset.costMargin = opt.costMargin || 0;
-                    el.dataset.delivery = opt.delivery || 0; 
-                    el.dataset.weight = opt.weight || 0; 
-                    select.appendChild(el);
-                });
-            }
+    function findGroupById(id) {
+        return productData.options.find(o => o.id === id);
+    }
+    function isFinishingGroup(g) {
+        return (g.title || "").includes("후가공");
+    }
+    function valueGroups() {
+        return productData.options.filter(o => Array.isArray(o.values));
+    }
+    function normalGroups() {
+        return valueGroups().filter(g => !isFinishingGroup(g));
+    }
+    function finishingGroup() {
+        return valueGroups().find(isFinishingGroup) || null;
+    }
+    function qtyConfig() {
+        return findGroupById("options00");
+    }
+    function customConfig() {
+        return findGroupById("options01");
+    }
+
+    // ---- 옵션 <option> 하나 생성 (품목 데이터를 dataset에 그대로 실어둠) ----
+    function buildOptionEl(v) {
+        const el = document.createElement("option");
+        el.value = v.name;
+        el.textContent = v.name;
+        el.dataset.price = v.price ?? 0;
+        el.dataset.margin = v.margin ?? 0;
+        el.dataset.surcharge = v.surcharge ?? 0;
+        el.dataset.weight = v.weight ?? 0;
+        el.dataset.delivery = v.delivery ?? 0;
+        el.dataset.url = v.url ?? "";
+        el.dataset.imageUrl = v.imageUrl ?? "";
+        if (Array.isArray(v.subOptions) && v.subOptions.length) {
+            el.dataset.subOptions = JSON.stringify(v.subOptions);
         }
+        return el;
+    }
 
-        const sizeType = document.getElementById('sizeType');
-        const sizeList = document.getElementById('sizeList');
-        const wIn = document.getElementById('widthInput');
-        const hIn = document.getElementById('heightInput');
-
-        sizeType.addEventListener('change', () => {
-            const isCustom = sizeType.value === 'custom';
-            wIn.disabled = !isCustom;
-            hIn.disabled = !isCustom;
-            sizeList.disabled = isCustom;
-            if (!isCustom) {
-                const [w, h] = sizeList.value.split(',');
-                wIn.value = w; hIn.value = h;
-                updatePrice();
-            }
+    // ---- ① 일반 옵션 그룹(용지 등) 렌더링 ----
+    function renderOptionGroups() {
+        const container = document.getElementById("dynamicOptionsContainer");
+        container.innerHTML = "";
+        normalGroups().forEach(g => {
+            const row = document.createElement("div");
+            row.className = "option-row";
+            row.innerHTML = `<div class="label">${g.title || g.id}</div><select class="group-select" style="flex:1" data-group-id="${g.id}"></select>`;
+            const select = row.querySelector("select");
+            (g.values || []).forEach(v => select.appendChild(buildOptionEl(v)));
+            container.appendChild(row);
         });
 
-        sizeList.addEventListener('change', () => {
-            const [w, h] = sizeList.value.split(',');
-            wIn.value = w; hIn.value = h;
-            updatePrice();
-        });
-
-        updatePrice();
-
-        setTimeout(() => {
-            const firstSelect = document.querySelector('select');
-            if (firstSelect && firstSelect.options.length > 0) {
-                const firstOpt = firstSelect.options[0];
-                if (firstOpt.dataset.imageUrl) {
-                    updateMainImage(firstOpt.dataset.imageUrl);
+        // 새로 만들어진 select들에 이벤트 연결
+        container.querySelectorAll("select").forEach(sel => {
+            window.enableMobileCustomPicker(sel);
+            sel.addEventListener("change", (e) => {
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                if (selectedOpt && selectedOpt.dataset.imageUrl) {
+                    updateMainImage(selectedOpt.dataset.imageUrl);
                 }
+                if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith("http")) {
+                    openOnce(selectedOpt.dataset.url);
+                }
+                updatePrice();
+            });
+        });
+    }
+
+    // ---- ② 후가공(다중 선택) 렌더링 ----
+    function loadFinishingOptions(selectElement) {
+        selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
+        const g = finishingGroup();
+        if (!g) return;
+        (g.values || []).forEach(v => selectElement.appendChild(buildOptionEl(v)));
+    }
+
+    function buildSubOptionSelect(finishingSelect) {
+        // 이미 있으면 제거 후 다시 생성
+        const wrap = finishingSelect.parentElement;
+        const old = wrap.querySelector(".finishing-sub-select");
+        if (old) old.remove();
+
+        const opt = finishingSelect.options[finishingSelect.selectedIndex];
+        if (!opt || !opt.dataset.subOptions) return;
+
+        const subOptions = JSON.parse(opt.dataset.subOptions);
+        const subSelect = document.createElement("select");
+        subSelect.className = "finishing-sub-select finishing-btn";
+        subSelect.style.marginLeft = "5px";
+        subOptions.forEach(so => {
+            const el = document.createElement("option");
+            el.value = so.color;
+            el.textContent = so.priceExtra ? `${so.color} (+${so.priceExtra.toLocaleString()}원)` : so.color;
+            el.dataset.priceExtra = so.priceExtra || 0;
+            subSelect.appendChild(el);
+        });
+        subSelect.addEventListener("change", updatePrice);
+        finishingSelect.insertAdjacentElement("afterend", subSelect);
+        window.enableMobileCustomPicker(subSelect);
+    }
+
+    function setupFinishingListener(selectElement) {
+        selectElement.addEventListener("change", (e) => {
+            const selectedOpt = e.target.options[e.target.selectedIndex];
+            buildSubOptionSelect(selectElement);
+
+            const hasUrl = selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith("http");
+            if (hasUrl) {
+                openOnce(selectedOpt.dataset.url);
             }
-            updateDeliveryDisplay(); 
-        }, 500);
+            updatePrice();
+            updateDeliveryDisplay();
+        });
     }
 
-// 기존 updateMainImage 함수를 아래 내용으로 교체하세요
-function updateMainImage(imageUrl) {
-    if (!imageUrl || imageUrl.trim() === "") return;
-    
-    const mainImg = document.getElementById('mainProductImage');
-    const bottomImg = document.getElementById('bottomProductImage');
-    
-    // 메인 상단 이미지 URL 업데이트
-    if (mainImg) mainImg.src = imageUrl;
-    
-    // 하단 상세 이미지 업데이트 (기존 방식 유지)
-    if (bottomImg) bottomImg.style.backgroundImage = `url("${imageUrl}")`;
-}
+    document.getElementById("addFinishingBtn").addEventListener("click", () => {
+        const container = document.getElementById("finishingContainer");
+        const newRow = document.createElement("div");
+        newRow.className = "option-row";
+        newRow.innerHTML = `
+            <div class="label">후가공 추가</div>
+            <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
+            <button type="button" class="finishing-btn" onclick="this.parentElement.remove(); window.updatePrice();">삭제</button>
+        `;
+        container.appendChild(newRow);
 
-    // 중략 없이 모든 파이어베이스 용지/편집 옵션 마진 및 할증 공식이 복구된 가격 산출 함수
-   async function updatePrice() {
-    if (!priceConfigCache) {
-        const configSnap = await getDoc(doc(db, "products", "myeong_price2"));
-        if (!configSnap.exists()) return;
-        priceConfigCache = configSnap.data();
+        const newSelect = newRow.querySelector(".finishing-select");
+        loadFinishingOptions(newSelect);
+        setupFinishingListener(newSelect);
+        window.enableMobileCustomPicker(newSelect);
+    });
+
+    function openOnce(url) {
+        if (window.isOpening) return;
+        window.isOpening = true;
+        window.open(url, "_blank");
+        setTimeout(() => { window.isOpening = false; }, 500);
     }
 
-    const { base500, areaRate, marginRate } = priceConfigCache;
-    const w = parseFloat(document.getElementById('widthInput').value) || 0;
-    const h = parseFloat(document.getElementById('heightInput').value) || 0;
-    
-    const qtySelect = document.getElementById('qtySelect');
-    const qty = parseInt(qtySelect.value) || 500;
-    const count = parseInt(document.getElementById('setCountInput').value) || 1;
-    
-    // 수량에 따른 배율 확보
-    const qtyFactor = parseFloat(qtySelect.options[qtySelect.selectedIndex].dataset.multi) || 1;
-
-    // 용지 무게 계산
-    const paperSelect = document.getElementById('paperSelect');
-    const weightDisplay = document.getElementById('weightDisplay');
-    let paperWeight = 0;
-    if (paperSelect && paperSelect.options[paperSelect.selectedIndex]) {
-        paperWeight = parseFloat(paperSelect.options[paperSelect.selectedIndex].dataset.weight) || 0;
-    }
-
-    if (paperWeight > 0) {
-        const totalWeightKg = ((w * h) / 1000000) * (paperWeight / 1000) * qty * count;
-        weightDisplay.textContent = totalWeightKg < 1 ? Math.round(totalWeightKg * 1000) + 'g' : totalWeightKg.toFixed(2) + 'kg';
-    } else {
-        weightDisplay.textContent = '0kg';
-    }
-
-    // 기본 인쇄비 계산
-    let calcW = w, calcH = h;
-    const currentSizeType = document.getElementById('sizeType').value;
-    if (currentSizeType === 'custom' && ((w <= 90 && h <= 50) || (w <= 50 && h <= 90))) {
-        calcW = 90; calcH = 50;
-    }
-
-    const area = areaRate * calcW * calcH;
-    const margin = 1 + (marginRate / 100);
-    let finalPrice = (area * margin) * qtyFactor;
-
-    // 옵션 및 후가공비 합산 (qtyFactor를 곱하여 수량 비례 적용)
-    let optionPriceSum = 0;
-    document.querySelectorAll('select').forEach(sel => {
-        if (sel.selectedIndex >= 0) {
-            const selectedOpt = sel.options[sel.selectedIndex];
-            const p = parseFloat(selectedOpt.dataset.price) || 0;
-            const cm = parseFloat(selectedOpt.dataset.costMargin) || 0;
-            const m = parseFloat(selectedOpt.dataset.margin) || 0;
-            
-            if (sel.classList.contains('finishing-select')) {
-                if (p > 0) optionPriceSum += (p * (1 + (cm / 100))) * qtyFactor;
-            } else if (sel.id !== 'sizeType' && sel.id !== 'sizeList' && sel.id !== 'qtySelect') {
-                let priceWithCostMargin = p * (1 + (cm / 100));
-                if (selectedOpt.value.includes('양면') && currentSizeType === 'custom') priceWithCostMargin *= 2.9;
-                optionPriceSum += (priceWithCostMargin * (1 + (m / 100))) * qtyFactor;
-            }
+    // ---- ③ 매수/배수 (options00) ----
+    function loadQtySelect() {
+        const qtySelect = document.getElementById("qtySelect");
+        qtySelect.innerHTML = "";
+        const q = qtyConfig();
+        if (q && Array.isArray(q.quantities) && q.quantities.length) {
+            q.quantities.forEach((qty, i) => {
+                const el = document.createElement("option");
+                el.value = qty;
+                el.textContent = `${qty}매`;
+                el.dataset.multi = q.multipliers && q.multipliers[i] !== undefined ? q.multipliers[i] : 1;
+                qtySelect.appendChild(el);
+            });
+        } else {
+            const el = document.createElement("option");
+            el.value = 500;
+            el.textContent = "500매";
+            el.dataset.multi = 1;
+            qtySelect.appendChild(el);
         }
-    });
-
-    // 규격 사이즈 할인 적용
-    if (currentSizeType === 'standard') {
-        const inkValue = document.getElementById('inkSelect').value;
-        finalPrice = Math.round(finalPrice * (inkValue.includes('양면') ? 0.6 : 0.5));
     }
 
-    // 최종 합산 (인쇄비/옵션비 각각 건수 곱함)
-    finalPrice = Math.round(((finalPrice * count) + (optionPriceSum * count)) / 100) * 100;
-
-
-
-// [수정/추가] 하단 선택 옵션 서머리 문자열 구성 및 출력
-    const summary = [];
-    const paper = document.getElementById('paperSelect');
-    if (paper && paper.selectedIndex >= 0) summary.push(paper.options[paper.selectedIndex].text);
-    
-    const ink = document.getElementById('inkSelect');
-    if (ink && ink.selectedIndex >= 0) summary.push(ink.options[ink.selectedIndex].text);
-    
-    summary.push(`가로 ${w}mm × 세로 ${h}mm`);
-    summary.push(`${qty}매`);
-    summary.push(`${count}건`);
-
-    document.querySelectorAll('.finishing-select').forEach(sel => {
-        if (sel.value) summary.push(sel.value);
-    });
-
-    // 후가공 중복 방지 검증
-    const finishingValues = [];
-    let hasDuplicateFinishing = false;
-    document.querySelectorAll('.finishing-select').forEach(sel => {
-        if (!sel.value) return;
-        if (finishingValues.includes(sel.value)) hasDuplicateFinishing = true;
-        finishingValues.push(sel.value);
-    });
-
-    const summaryEl = document.getElementById('selectedOptionsSummary');
-    if (hasDuplicateFinishing) {
-        summaryEl.innerHTML = '<span style="color:red">동일한 후가공을 중복 선택할 수 없습니다.</span>';
-        document.getElementById('priceDisplay').textContent = "0원";
-        return;
+    // ---- ④ 비규격 설정 (options01) : 사이즈 입력 범위에 반영 ----
+    function applyCustomConfigToInputs() {
+        const c = customConfig();
+        const wIn = document.getElementById("widthInput");
+        const hIn = document.getElementById("heightInput");
+        if (c) {
+            wIn.min = c.widthMin;
+            wIn.max = c.widthMax;
+            hIn.min = c.heightMin;
+            hIn.max = c.heightMax;
+        }
     }
 
-    summaryEl.textContent = summary.filter(Boolean).join(' + ');
-    document.getElementById('priceDisplay').textContent = finalPrice.toLocaleString() + '원';
-}
+    function updateMainImage(imageUrl) {
+        if (!imageUrl || imageUrl.trim() === "") return;
+        const mainImg = document.getElementById("mainProductImage");
+        const bottomImg = document.getElementById("bottomProductImage");
+        if (mainImg) mainImg.src = imageUrl;
+        if (bottomImg) bottomImg.style.backgroundImage = `url("${imageUrl}")`;
+    }
 
+    // ---- ⑤ 가격/무게/납기 계산 ----
+    function updatePrice() {
+        const qtySelect = document.getElementById("qtySelect");
+        const qtyOpt = qtySelect.options[qtySelect.selectedIndex];
+        const qtyFactor = qtyOpt ? (parseFloat(qtyOpt.dataset.multi) || 1) : 1;
+        const count = parseInt(document.getElementById("setCountInput").value) || 1;
 
+        const sizeType = document.getElementById("sizeType").value;
+        const isCustom = sizeType === "custom";
+        const w = parseFloat(document.getElementById("widthInput").value) || 0;
+        const h = parseFloat(document.getElementById("heightInput").value) || 0;
 
+        let sum = 0;
+        let totalWeight = 0;
+        let totalDeliveryDays = 0;
+        const summary = [];
 
+        // 일반 옵션 그룹
+        // - 규격사이즈: 선택한 품목의 price(원가) × (1+margin) × 매수배수 를 더합니다.
+        // - 비규격사이즈: 품목 가격은 쓰지 않고, 아래 ④ "options01 기준 추가 비용"만으로 계산합니다.
+        //   (무게·배송일은 규격/비규격 상관없이 선택한 옵션 값을 그대로 반영합니다)
+        document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt) return;
+            const price = parseFloat(opt.dataset.price) || 0;
+            const margin = parseFloat(opt.dataset.margin) || 0;
+            const weight = parseFloat(opt.dataset.weight) || 0;
+            const delivery = parseFloat(opt.dataset.delivery) || 0;
 
+            if (!isCustom) {
+                sum += price * (1 + margin / 100) * qtyFactor;
+            }
 
+            totalWeight += weight;
+            if (!isNaN(delivery)) totalDeliveryDays += delivery;
+            if (opt.value) summary.push(opt.textContent);
+        });
 
+        // 후가공(다중 선택) - 규격/비규격 상관없이 항상 더합니다.
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt || !opt.value) return;
+            const price = parseFloat(opt.dataset.price) || 0;
+            const margin = parseFloat(opt.dataset.margin) || 0;
+            const delivery = parseFloat(opt.dataset.delivery) || 0;
 
+            let itemPrice = price * (1 + margin / 100) * qtyFactor;
 
+            const subSelect = sel.parentElement.querySelector(".finishing-sub-select");
+            let label = opt.value;
+            if (subSelect && subSelect.value) {
+                const subOpt = subSelect.options[subSelect.selectedIndex];
+                itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                label = `${opt.value}(${subOpt.value})`;
+            }
 
+            sum += itemPrice;
+            if (!isNaN(delivery)) totalDeliveryDays += delivery;
+            summary.push(label);
+        });
 
+        // 비규격사이즈 가격 (options01 기준)
+        // - 가로/세로가 최소값(widthMin × heightMin)일 때는 basePrice 그대로.
+        // - 그보다 커지면, 면적이 커진 비율만큼 multiplier를 곱해 할증합니다.
+        //   예) basePrice 4000, multiplier 1.5, 최소사이즈 50×50 선택 → 4000원.
+        //       면적이 2배가 되면 → 4000 × (1 + 1×1.5) = 10000원.
+        // - 규격사이즈와 동일하게 매수(options00) 배수도 곱해줍니다.
+        // - 그룹에서 선택한 품목마다 다른 surcharge(비규격 추가마진율)를 반영해서,
+        //   같은 사이즈라도 "명함"과 "명함 양면"처럼 품목이 다르면 가격도 달라지게 합니다.
+        const c = customConfig();
+        if (isCustom && c) {
+            const clampedW = Math.min(Math.max(w, c.widthMin), c.widthMax);
+            const clampedH = Math.min(Math.max(h, c.heightMin), c.heightMax);
+            const refArea = (c.widthMin || 1) * (c.heightMin || 1);
+            const areaRatio = refArea > 0 ? (clampedW * clampedH) / refArea : 1;
+            const growth = Math.max(0, areaRatio - 1) * (c.multiplier || 1);
+            let customBase = (c.basePrice || 0) * (1 + growth) * qtyFactor;
 
-    const sizeType = document.getElementById('sizeType');
-    const sizeList = document.getElementById('sizeList');
-    const wIn = document.getElementById('widthInput');
-    const hIn = document.getElementById('heightInput');
-    const workW = document.getElementById('workWidthInput');
-    const workH = document.getElementById('workHeightInput');
+            let surchargeSum = 0;
+            document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
+                const opt = sel.options[sel.selectedIndex];
+                if (opt) surchargeSum += parseFloat(opt.dataset.surcharge) || 0;
+            });
+            customBase *= (1 + surchargeSum / 100);
+
+            sum += customBase;
+        }
+
+        // 후가공 중복 선택 방지
+        const finishingValues = [];
+        let hasDuplicateFinishing = false;
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (!sel.value) return;
+            if (finishingValues.includes(sel.value)) hasDuplicateFinishing = true;
+            finishingValues.push(sel.value);
+        });
+
+        const summaryEl = document.getElementById("selectedOptionsSummary");
+        if (hasDuplicateFinishing) {
+            summaryEl.innerHTML = '<span style="color:red">동일한 후가공을 중복 선택할 수 없습니다.</span>';
+            document.getElementById("priceDisplay").textContent = "0원";
+            return;
+        }
+
+        // 무게 표시 (면적 × 평량 × 매수 × 건수)
+        const weightDisplay = document.getElementById("weightDisplay");
+        if (totalWeight > 0) {
+            const totalWeightKg = ((w * h) / 1000000) * (totalWeight / 1000) * (parseInt(qtySelect.value) || 0) * count;
+            weightDisplay.textContent = totalWeightKg < 1 ? Math.round(totalWeightKg * 1000) + "g" : totalWeightKg.toFixed(2) + "kg";
+        } else {
+            weightDisplay.textContent = "0kg";
+        }
+
+        summary.push(`가로 ${w}mm × 세로 ${h}mm`);
+        summary.push(`${qtySelect.value || 0}매`);
+        summary.push(`${count}건`);
+        summaryEl.textContent = summary.filter(Boolean).join(" + ");
+
+        const finalPrice = Math.round((sum * count) / 100) * 100;
+        document.getElementById("priceDisplay").textContent = finalPrice.toLocaleString() + "원";
+
+        updateDeliveryDisplayFromDays(totalDeliveryDays);
+    }
+    window.updatePrice = updatePrice;
+
+    function updateDeliveryDisplayFromDays(totalDeliveryDays) {
+        const display = document.getElementById("deliveryDisplay");
+        if (totalDeliveryDays > 0) {
+            const dateStr = calculateDeliveryDate(totalDeliveryDays);
+            display.innerHTML = `<span style="color:blue; font-weight:bold;">${dateStr}</span> 발송 예정`;
+        } else {
+            display.textContent = "1박2일";
+        }
+    }
+    // 사이즈/후가공 변경 등 가격과 무관하게 납기만 다시 계산하고 싶을 때 쓰던 이름을 유지
+    function updateDeliveryDisplay() { updatePrice(); }
+
+    // ---- 사이즈(규격/비규격) 처리 ----
+    const sizeType = document.getElementById("sizeType");
+    const sizeList = document.getElementById("sizeList");
+    const wIn = document.getElementById("widthInput");
+    const hIn = document.getElementById("heightInput");
+    const workW = document.getElementById("workWidthInput");
+    const workH = document.getElementById("workHeightInput");
 
     function updateSizeMode() {
-        const isCustom = sizeType.value === 'custom';
+        const isCustom = sizeType.value === "custom";
         wIn.disabled = !isCustom;
         hIn.disabled = !isCustom;
         sizeList.disabled = isCustom;
@@ -673,7 +795,7 @@ function updateMainImage(imageUrl) {
         let h = parseFloat(hIn.value) || 0;
 
         if (!isCustom) {
-            const [svW, svH] = sizeList.value.split(',');
+            const [svW, svH] = sizeList.value.split(",");
             w = parseFloat(svW);
             h = parseFloat(svH);
             wIn.value = w;
@@ -682,269 +804,122 @@ function updateMainImage(imageUrl) {
 
         workW.value = w + 2;
         workH.value = h + 2;
-        
         updatePrice();
     }
 
-    function updateDeliveryDisplay() {
-        let totalDeliveryDays = 0;
-        
-        document.querySelectorAll('select').forEach(sel => {
-            if (sel.selectedIndex >= 0) {
-                const selectedOpt = sel.options[sel.selectedIndex];
-                const rawDelivery = selectedOpt.dataset.delivery;
-                const d = Number(rawDelivery);
-                
-                if (!isNaN(d)) {
-                    totalDeliveryDays += d;
-                }
-            }
-        });
-
-        const display = document.getElementById('deliveryDisplay');
-        if (totalDeliveryDays > 0) {
-            const dateStr = calculateDeliveryDate(totalDeliveryDays);
-            display.innerHTML = `<span style="color:blue; font-weight:bold;">${dateStr}</span> 발송 예정`;
-        } else {
-            display.textContent = "1박2일";
-        }
-    }
-
-    sizeType.addEventListener('change', updateSizeMode);
-    sizeList.addEventListener('change', updateSizeMode);
-
-    const validateSize = (input, min, max, defaultVal) => {
+    function validateSize(input, min, max, defaultVal) {
         const val = parseFloat(input.value);
-        
         if (isNaN(val) || val < min || val > max) {
-            alert(`설정할 수 없는 사이즈입니다. \n가로: 60mm, 세로: 50mm부터 입력 가능합니다.`);
+            alert(`설정할 수 없는 사이즈입니다. \n가로: ${wIn.min}mm, 세로: ${hIn.min}mm부터 입력 가능합니다.`);
             input.value = defaultVal;
         }
-        
         workW.value = parseFloat(wIn.value) + 2;
         workH.value = parseFloat(hIn.value) + 2;
         updatePrice();
-    };
+    }
 
-    wIn.addEventListener('blur', () => {
-        setTimeout(() => validateSize(wIn, 60, 500, 60), 100);
+    sizeType.addEventListener("change", updateSizeMode);
+    sizeList.addEventListener("change", updateSizeMode);
+    wIn.addEventListener("blur", () => {
+        const c = customConfig();
+        const min = c ? c.widthMin : 60, max = c ? c.widthMax : 500;
+        setTimeout(() => validateSize(wIn, min, max, min), 100);
     });
-    hIn.addEventListener('blur', () => {
-        setTimeout(() => validateSize(hIn, 50, 500, 50), 100);
+    hIn.addEventListener("blur", () => {
+        const c = customConfig();
+        const min = c ? c.heightMin : 50, max = c ? c.heightMax : 500;
+        setTimeout(() => validateSize(hIn, min, max, min), 100);
     });
+    document.getElementById("setCountInput").addEventListener("input", updatePrice);
 
-    document.getElementById('paperSelect').addEventListener('change', (e) => {
-        const selectedOpt = e.target.options[e.target.selectedIndex];
-        if (selectedOpt.dataset.imageUrl && selectedOpt.dataset.imageUrl.trim() !== "") {
-            updateMainImage(selectedOpt.dataset.imageUrl);
-        }
+    // ---- 초기 로드: Firestore에서 01my 문서를 딱 1번만 불러옵니다 ----
+    async function loadProductAndInit() {
+        const snap = await getDoc(doc(db, "products", PRODUCT_ID));
+        productData = snap.exists() ? snap.data() : { productId: PRODUCT_ID, options: [] };
+        if (!Array.isArray(productData.options)) productData.options = [];
 
-        // 용지 옵션에 파이어베이스 url이 설정되어 있으면 새 창으로 이동
-        const paperUrl = selectedOpt.dataset.url && selectedOpt.dataset.url.trim();
-        if (paperUrl) {
-            if (!window.isOpening) {
-                window.isOpening = true;
-                window.open(paperUrl, '_blank');
-                setTimeout(() => { window.isOpening = false; }, 500);
-            }
-        }
+        renderOptionGroups();
+        loadQtySelect();
+        applyCustomConfigToInputs();
+        loadFinishingOptions(document.querySelector(".finishing-select"));
+        setupFinishingListener(document.querySelector(".finishing-select"));
 
-        // 공통 select 루프에서 paperSelect를 제외했으므로 여기서 직접 호출
+        updateSizeMode();
         updatePrice();
-        updateDeliveryDisplay();
-    });
 
-    document.querySelectorAll('select').forEach(sel => {
-        if (sel.id === 'paperSelect') return; // 용지는 위 전용 리스너에서 이미 처리함
-        sel.addEventListener('change', (e) => {
-            const selectedOpt = e.target.options[e.target.selectedIndex];
-           if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http')) {
-    // 혹시라도 중복 호출되는 것을 방지하기 위해 0.1초 차이로 한 번만 실행되게 함
-    if (!window.isOpening) {
-        window.isOpening = true;
-        window.open(selectedOpt.dataset.url, '_blank');
-        setTimeout(() => { window.isOpening = false; }, 500);
-    }
-}
-            updatePrice();
-            updateDeliveryDisplay();
-        });
-    });
-loadQtyOptions();
-    loadAllOptions();
-    updateSizeMode();
-    updateDeliveryDisplay();
-document.getElementById('setCountInput').addEventListener('input', updatePrice);
-
-// 모바일에서 긴 옵션 목록도 완료 버튼(상단)으로 선택할 수 있게 커스텀 피커 적용
-window.enableMobileCustomPicker(document.getElementById('paperSelect'));
-window.enableMobileCustomPicker(document.getElementById('inkSelect'));
-window.enableMobileCustomPicker(document.getElementById('qtySelect'));
-window.enableMobileCustomPicker(document.getElementById('sizeList'));
-
-loadFinishingOptions(document.querySelector('.finishing-select'));
-window.enableMobileCustomPicker(document.querySelector('.finishing-select'));
-
-    async function loadFinishingOptions(selectElement) {
-        selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
-
-        if (!finishingOptionsCache) {
-            const docSnap = await getDoc(doc(db, "products", "myeong_bg"));
-            if (!docSnap.exists()) return;
-            finishingOptionsCache = docSnap.data().options;
+        // 첫 옵션의 대표 이미지 반영
+        const firstSelect = document.querySelector("#dynamicOptionsContainer select");
+        if (firstSelect && firstSelect.options.length > 0) {
+            const firstOpt = firstSelect.options[0];
+            if (firstOpt.dataset.imageUrl) updateMainImage(firstOpt.dataset.imageUrl);
         }
 
-        const currentValue = selectElement.value;
-
-        // [기존 함수 내 수정]
-finishingOptionsCache.forEach(opt => {
-    const el = document.createElement('option');
-    el.value = opt.name;
-    el.textContent = opt.name;
-    el.dataset.price = opt.price || 0;
-    el.dataset.imageUrl = opt.imageUrl || "";
-    el.dataset.delivery = opt.delivery || 0;
-    // URL 추가
-    el.dataset.url = opt.url || ""; 
-    selectElement.appendChild(el);
-});
-
-        if (currentValue) {
-            selectElement.value = currentValue;
-        }
+        window.enableMobileCustomPicker(document.getElementById("qtySelect"));
+        window.enableMobileCustomPicker(document.getElementById("sizeList"));
+        window.enableMobileCustomPicker(document.querySelector(".finishing-select"));
     }
 
-  document.getElementById('addFinishingBtn').addEventListener('click', () => {
-    const container = document.getElementById('finishingContainer');
-    const newRow = document.createElement('div');
-    newRow.className = 'option-row';
-    newRow.innerHTML = `
-        <div class="label">후가공 추가</div>
-        <select class="finishing-select" style="flex:1"><option value="">선택안함</option></select>
-        <button type="button" class="finishing-btn" onclick="this.parentElement.remove(); updatePrice();">삭제</button>
-    `;
-    container.appendChild(newRow);
-    
-    const newSelect = newRow.querySelector('.finishing-select');
-    loadFinishingOptions(newSelect);
-    
-    // 이 부분이 핵심: 새로 생성된 셀렉트 박스에도 동일한 로직 적용
-    setupFinishingListener(newSelect); 
-    window.enableMobileCustomPicker(newSelect);
-});
+    loadProductAndInit();
 
+    // ---- 주문하기: 다음 페이지로 선택 옵션 전달 ----
+    window.handleOrder = function () {
+        const count = document.getElementById("setCountInput").value;
+        const width = document.getElementById("widthInput").value;
+        const height = document.getElementById("heightInput").value;
+        const price = document.getElementById("priceDisplay").textContent;
+        const qty = document.getElementById("qtySelect").value;
 
-// 후가공 선택 시 새 창 열기 및 가격 업데이트 로직
-function setupFinishingListener(selectElement) {
-    selectElement.addEventListener('change', (e) => {
-        const selectedOpt = e.target.options[e.target.selectedIndex];
-        
-        // URL이 존재하는지 확인
-        const hasUrl = selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith('http');
-        
-        if (hasUrl) {
-            // 1. URL이 있는 경우: 새 창 열기 및 부모 창 새로고침
-            if (!window.isOpening) {
-                window.isOpening = true;
-                window.open(selectedOpt.dataset.url, '_blank');
-                setTimeout(() => { window.isOpening = false; }, 500);
+        // 무게 추출 (kg 단위 통일)
+        const weightText = document.getElementById("weightDisplay").textContent;
+        let weightValue = 0;
+        if (weightText.includes("kg")) {
+            weightValue = parseFloat(weightText);
+        } else if (weightText.includes("g")) {
+            weightValue = parseFloat(weightText) / 1000;
+        }
+
+        // 그룹별 선택값 (그룹 id를 키로 사용 - 관리자 스키마와 이름을 맞춤)
+        const groupSelections = {};
+        let combinedGroupText = "";
+        document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            const groupId = sel.dataset.groupId;
+            if (opt && groupId) {
+                groupSelections[groupId] = opt.value;
+                combinedGroupText += (combinedGroupText ? " " : "") + opt.value;
             }
-            window.location.reload(); 
+        });
+
+        // 후가공 목록 추출
+        const finishings = [];
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (sel.value) finishings.push(sel.value);
+        });
+
+        // 인쇄방식(즉시인쇄/셀프인쇄)에 해당하는 그룹 값이 있으면 찾아서 라우팅에 사용
+        const printModeValue = Object.values(groupSelections).find(v => v.includes("즉시인쇄") || v.includes("셀프인쇄")) || "";
+
+        const params = new URLSearchParams({
+            productId: "01my",
+            options: encodeURIComponent(JSON.stringify(groupSelections)),
+            qty: qty,
+            count: count,
+            width: width,
+            height: height,
+            price: encodeURIComponent(price),
+            weight: weightValue,
+            finishings: encodeURIComponent(finishings.join(","))
+        }).toString();
+
+        let targetUrl = "";
+        if (printModeValue.includes("즉시인쇄")) {
+            targetUrl = "/myjs/includes/ecopro1";
         } else {
-            // 2. URL이 없는 경우: 새로고침 없이 가격 계산만 수행
-            updatePrice();
-            updateDeliveryDisplay();
+            targetUrl = "/myjs/includes/ecopro2";
         }
-    });
-}
 
-
-
-
-
-
-
-    
-// 위에서 만든 함수를 호출하는 곳(addFinishingBtn 클릭 이벤트 및 초기 로드)에 적용
-// 1. 기존 addFinishingBtn 클릭 이벤트 수정:
-document.getElementById('addFinishingBtn').addEventListener('click', () => {
-    // ... 기존 생성 코드 ...
-    const newSelect = newRow.querySelector('.finishing-select');
-    loadFinishingOptions(newSelect);
-    setupFinishingListener(newSelect); // 리스너 적용
-});
-
-// 2. 초기 로드 시 기존 후가공 셀렉트박스에도 적용:
-setupFinishingListener(document.querySelector('.finishing-select'));
-
-
-
-
-
-
-window.handleOrder = function() {
-    // 1. 데이터 수집
-    const paper = document.getElementById('paperSelect').value;
-    const ink = document.getElementById('inkSelect').value;
-    const qty = document.getElementById('qtySelect').value;
-    const count = document.getElementById('setCountInput').value;
-    const width = document.getElementById('widthInput').value;
-    const height = document.getElementById('heightInput').value;
-    const price = document.getElementById('priceDisplay').textContent;
-
-    // 2. 무게 추출 (kg 단위 통일)
-    const weightText = document.getElementById('weightDisplay').textContent;
-    let weightValue = 0;
-    if (weightText.includes('kg')) {
-        weightValue = parseFloat(weightText);
-    } else if (weightText.includes('g')) {
-        weightValue = parseFloat(weightText) / 1000;
-    }
-
-    // 3. 후가공 목록 추출
-    const finishings = [];
-    document.querySelectorAll('.finishing-select').forEach(sel => {
-        if (sel.value && sel.value !== "선택안함") finishings.push(sel.value);
-    });
-
-    // 4. 파라미터 생성 (한글 깨짐 방지 encodeURIComponent 적용)
-    const params = new URLSearchParams({
-        paper: encodeURIComponent(paper),
-        ink: encodeURIComponent(ink),
-        qty: qty,
-        count: count,
-        width: width,
-        height: height,
-        price: encodeURIComponent(price),
-        weight: weightValue,
-        finishings: encodeURIComponent(finishings.join(','))
-    }).toString();
-
-    // 5. URL 분기
-    let targetUrl = "";
-    if (ink.includes("즉시인쇄")) {
-        targetUrl = "/myjs/includes/ecopro1";
-    } else if (ink.includes("셀프인쇄")) {
-        targetUrl = "/myjs/includes/ecopro2";
-    } else {
-        targetUrl = "/myjs/includes/ecopro2";
-    }
-
-    // 6. 새 창 열기
-    window.open(`${targetUrl}?${params}`, '_blank');
-}
-
-    
-
-
-
-
-
-
-
-
-    
-
+        window.open(`${targetUrl}?${params}`, "_blank");
+    };
 </script>
 <!-- 푸터 자리 -->
     <div id="footer-container"></div>
