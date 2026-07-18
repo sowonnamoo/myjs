@@ -495,6 +495,108 @@
     ctx.restore();
   }
 
+  // ---- 기찻길 효과 (레이아웃 효과) ----
+  // 물결 효과와 같은 사인파를 따라 글자를 구불구불하게 배치하되, 그 아래에 침목과 레일 두 줄로
+  // 이루어진 선로를 함께 그리고 글자 하나하나 밑에는 바퀴를 달아서, 마치 글자들이 기차 칸이
+  // 되어 구불구불한 철길 위를 달리는 것처럼 보이게 함. "구불거림"은 선로/글자가 출렁이는
+  // 높이(진폭), "굽이 수"는 텍스트 전체 길이에 몇 번 굽이치는지(주기)를 정함
+  function drawTrainPass(ctx){
+    const cfg = this.trainText;
+    const text = this.text || '';
+    if (!cfg || !text.length) { origItextRender.call(this, ctx); return; }
+
+    const amp = Math.max(0, Math.min(100, cfg.amplitude != null ? cfg.amplitude : 45)) / 100;
+    const period = Math.max(1, cfg.period || 2);
+    const trackColor = cfg.trackColor || '#5a4632';
+    const baseFontSize = this.fontSize;
+    const fontFamily = this.fontFamily, fontWeight = this.fontWeight || '', fontStyle = this.fontStyle || '';
+
+    ctx.save();
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'center';
+    ctx.font = `${fontStyle} ${fontWeight} ${baseFontSize}px ${fontFamily}`;
+
+    const chars = text.split('').filter(c => c !== '\n' && c !== '\r');
+    const widths = chars.map(c => Math.max(1, ctx.measureText(c).width));
+    const totalWidth = widths.reduce((a, b) => a + b, 0);
+
+    const hasFill = this.fill && this.fill !== 'transparent' && this.fill !== '';
+    const hasStroke = this.stroke && this.strokeWidth > 0;
+    const strokeFirst = this.paintFirst === 'stroke';
+    const ampPx = baseFontSize * amp * 0.5;
+    const baseY = baseFontSize * 0.32;
+    const angFreq = (Math.PI * 2 * period) / Math.max(1, totalWidth);
+    const half = totalWidth / 2;
+
+    // px: 글자 중앙 기준 가로좌표(-half~half). 사인파 위상 계산에는 (px+half)를 사용
+    const pathY = (px) => baseY + Math.sin((px + half) * angFreq) * ampPx;
+    const pathSlope = (px) => Math.cos((px + half) * angFreq) * ampPx * angFreq;
+
+    const trackOffset = baseFontSize * 0.6;            // 글자 기준선에서 선로까지의 아래쪽 거리
+    const railGap = Math.max(6, baseFontSize * 0.26);  // 레일 두 줄 사이 간격
+    const wheelR = Math.max(2, baseFontSize * 0.065);
+
+    // 1) 선로: 레일 두 줄 + 침목(가로 막대)을 글자와 같은 굴곡을 따라 그림
+    ctx.save();
+    ctx.strokeStyle = trackColor;
+    ctx.lineWidth = Math.max(1, baseFontSize * 0.045);
+    [-1, 1].forEach(side => {
+      ctx.beginPath();
+      var first = true;
+      for (var sx = -half - 8; sx <= half + 8; sx += 4) {
+        var y = pathY(sx) + trackOffset;
+        var ang = Math.atan(pathSlope(sx));
+        var nx = -Math.sin(ang) * railGap / 2 * side;
+        var ny = Math.cos(ang) * railGap / 2 * side;
+        if (first) { ctx.moveTo(sx + nx, y + ny); first = false; } else { ctx.lineTo(sx + nx, y + ny); }
+      }
+      ctx.stroke();
+    });
+    for (var tx = -half - 8; tx <= half + 8; tx += 11) {
+      var ty = pathY(tx) + trackOffset;
+      var tang = Math.atan(pathSlope(tx));
+      var hx = Math.cos(tang) * (railGap / 2 + 4);
+      var hy = Math.sin(tang) * (railGap / 2 + 4);
+      ctx.beginPath();
+      ctx.moveTo(tx - hx, ty - hy);
+      ctx.lineTo(tx + hx, ty + hy);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 2) 글자(기차 칸처럼) + 바퀴를 선로 굴곡을 따라 배치
+    let x = -half;
+    chars.forEach((c, i) => {
+      const w = widths[i];
+      const drawX = x + w / 2;
+      const y = pathY(drawX);
+      const rot = Math.atan(pathSlope(drawX));
+
+      ctx.save();
+      ctx.translate(drawX, y);
+      ctx.rotate(rot);
+      ctx.fillStyle = '#2b2b2b';
+      [-1, 1].forEach(function(wsign){
+        ctx.beginPath();
+        ctx.arc(wsign * Math.max(3, w * 0.26), trackOffset, wheelR, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(drawX, y);
+      ctx.rotate(rot);
+      const drawFill = () => { if (hasFill) { ctx.fillStyle = this.fill; ctx.fillText(c, 0, 0); } };
+      const drawStroke = () => { if (hasStroke) { ctx.strokeStyle = this.stroke; ctx.lineWidth = this.strokeWidth; ctx.strokeText(c, 0, 0); } };
+      if (strokeFirst) { drawStroke(); drawFill(); } else { drawFill(); drawStroke(); }
+      ctx.restore();
+
+      x += w;
+    });
+
+    ctx.restore();
+  }
+
   // ---- 지침(흐물흐물) 효과 (레이아웃 효과) ----
   // 뒤로 갈수록 글자가 점점 아래로 축 처지고(고개가 떨궈지듯) 시계방향으로 기울며, 세로로는
   // 살짝 눌리고 가로로는 살짝 퍼져서 힘이 빠진 듯한 흐물흐물한 인상을 줌. "처짐"이 전체적인
@@ -1518,6 +1620,7 @@
     if (this.perspectiveText) { drawPerspectivePass.call(this, ctx); return; }
     if (this.curveText) { drawCurvePass.call(this, ctx); return; }
     if (this.waveText) { drawWavePass.call(this, ctx); return; }
+    if (this.trainText) { drawTrainPass.call(this, ctx); return; }
     if (this.tiredText) { drawTiredPass.call(this, ctx); return; }
     if (this.spiralText) { drawSpiralPass.call(this, ctx); return; }
     if (this.magazineText) { drawMagazinePass.call(this, ctx); return; }
@@ -1533,7 +1636,7 @@
   function unifiedCustomRender(ctx){
     if (this.isEditing) { origItextRender.call(this, ctx); return; }
 
-    const hasLayout = !!(this.circularText || this.verticalText || this.puffyText || this.vineText || this.rollText || this.perspectiveText || this.curveText || this.waveText || this.tiredText || this.spiralText || this.magazineText || this.puzzleText || this.skyText || this.chalkText || (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length));
+    const hasLayout = !!(this.circularText || this.verticalText || this.puffyText || this.vineText || this.rollText || this.perspectiveText || this.curveText || this.waveText || this.trainText || this.tiredText || this.spiralText || this.magazineText || this.puzzleText || this.skyText || this.chalkText || (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length));
     const has3D = !!(this.threeDText && this.threeDText.depth > 0);
     const hasMetal = !!(this.metalText && this.metalText.intensity > 0);
     const hasPopArt = !!(this.popArtText && this.popArtText.intensity > 0);
@@ -1546,9 +1649,17 @@
     const hasZebra = !!this.zebraText;
     const hasSpeed = !!(this.speedText && this.speedText.intensity > 0);
     const hasCrack = !!(this.crackText && this.crackText.intensity > 0);
+    const hasTile = !!(this.tileText && this.tileText.intensity > 0);
     const hasFootprint = !!(this.footprintText && this.footprintText.intensity > 0);
+    const hasAnimal = !!(this.animalText && this.animalText.intensity > 0);
+    const hasFruitVeg = !!(this.fruitVegText && this.fruitVegText.intensity > 0);
+    const hasHeart = !!(this.heartText && this.heartText.intensity > 0);
+    const hasCoffee = !!(this.coffeeText && this.coffeeText.intensity > 0);
+    const hasSports = !!(this.sportsText && this.sportsText.intensity > 0);
+    const hasClub = !!(this.clubText && this.clubText.intensity > 0);
     const hasSnow = !!(this.snowText && this.snowText.intensity > 0);
     const hasRain = !!(this.rainText && this.rainText.intensity > 0);
+    const hasSplash = !!(this.splashText && this.splashText.intensity > 0);
     const hasSky = !!this.skyText;
     const hasInkTrap = !!(this.inkTrapText && this.inkTrapText.intensity > 0);
     const hasLeafVine = !!(this.leafVineText && this.leafVineText.intensity > 0);
@@ -1557,7 +1668,7 @@
     const hasLight = !!(this.lightText && this.lightText.intensity > 0);
     const hasGrass = !!this.grassText;
     const hasBigbang = !!this.bigbangText;
-    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasCrack && !hasFootprint && !hasSnow && !hasRain && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang) { origItextRender.call(this, ctx); return; }
+    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang) { origItextRender.call(this, ctx); return; }
 
     // 말풍선 배경/구름 배경/풀밭 배경/빅뱅 배경/수줍수줍 배경은 항상 맨 먼저(가장 뒤에) 그려서, 다른 모든 효과가 그 위에 겹쳐 보이게 함
     if (hasBubble) { drawSpeechBubblePass.call(this, ctx); }
@@ -1747,9 +1858,17 @@
     if (hasTear) { drawTearPass.call(this, ctx); } else { baseCharacterDraw.call(this, ctx); }
     if (hasZebra) { drawZebraStripesPass.call(this, ctx); }
     if (hasCrack) { drawGlassCrackPass.call(this, ctx); }
+    if (hasTile) { drawTilePass.call(this, ctx); }
     if (hasFootprint) { drawFootprintPass.call(this, ctx); }
+    if (hasAnimal) { drawAnimalPass.call(this, ctx); }
+    if (hasFruitVeg) { drawFruitVegPass.call(this, ctx); }
+    if (hasHeart) { drawHeartsPass.call(this, ctx); }
+    if (hasCoffee) { drawCoffeeBeansPass.call(this, ctx); }
+    if (hasSports) { drawSportsPass.call(this, ctx); }
+    if (hasClub) { drawClubPass.call(this, ctx); }
     if (hasSnow) { drawSnowPass.call(this, ctx); }
     if (hasRain) { drawRainPass.call(this, ctx); }
+    if (hasSplash) { drawSplashPass.call(this, ctx); }
     if (hasInkTrap) { drawInkTrapPass.call(this, ctx); }
     if (hasLeafVine) { drawLeafVinePass.call(this, ctx); }
     if (hasSakura) { drawSakuraPass.call(this, ctx); }
@@ -2498,6 +2617,81 @@
     ctx.restore();
   }
 
+  // 타일무늬 효과: 글자 위에 랜덤한 크기의 직사각형 타일들을 격자 기반(칸마다 위치/크기를 살짝
+  // 흔들어 기계적이지 않게)으로 배치하되, 각 타일은 실제 글자 모양대로만 클리핑해서 채워 넣음
+  // (그 칸의 사각형과 글자가 겹치는 부분만 보임 → 퍼즐처럼 글자 위에 조각조각 붙인 모습).
+  // 색상은 seed로 고른 하나의 색상계열(hue) 안에서만 고르고, 밝기(명도)만 기준값 대비 ±10%
+  // (총 20% 이내)로 랜덤하게 달리해서 같은 색 계열이지만 살짝 어둡고 밝은 타일이 섞여 보이게 함.
+  // 타일 사이에 작은 틈(그라우트)을 둬서 원래 글자색이 살짝 비치며 격자 구분이 드러나게 함.
+  // 배치/크기/색상은 모두 seed로 고정 — "다시 붙이기"를 눌러야 새로 바뀜
+  function drawTilePass(ctx){
+    const cfg = this.tileText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+    const origFill = this.fill;
+
+    // 같은 색상계열 하나(hue)만 사용 — 채도는 고정, 명도만 기준값(약간 어두운 톤) 기준으로
+    // 타일마다 ±10%(총 20% 이내)씩 랜덤하게 갈라지게 함
+    const hue = pseudoRandom(seed + 501) * 360;
+    const sat = 0.32 + pseudoRandom(seed + 601) * 0.35;
+    const baseVal = 0.3 + pseudoRandom(seed + 701) * 0.25;
+
+    // 강도가 높을수록 타일이 더 작고 촘촘해짐. 가로세로 비율도 랜덤하게 달리해서 정사각형이
+    // 아니라 직사각형 타일들이 섞여 보이게 함
+    let tileW = fontSize * (0.6 - amt * 0.32);
+    let tileH = tileW * (0.5 + pseudoRandom(seed + 41) * 0.6);
+
+    let halfW = w / 2 + tileW, halfH = h / 2 + tileH;
+    let cols = Math.max(2, Math.ceil((halfW * 2) / tileW));
+    let rows = Math.max(2, Math.ceil((halfH * 2) / tileH));
+    const maxTiles = 220; // 너무 잘게 쪼개져 성능이 나빠지지 않도록 타일 개수 상한을 둠
+    if (cols * rows > maxTiles) {
+      const scale = Math.sqrt((cols * rows) / maxTiles);
+      tileW *= scale; tileH *= scale;
+      cols = Math.max(2, Math.ceil((halfW * 2) / tileW));
+      rows = Math.max(2, Math.ceil((halfH * 2) / tileH));
+    }
+    const startX = -cols * tileW / 2;
+    const startY = -rows * tileH / 2;
+
+    ctx.save();
+    ctx.globalAlpha = op;
+    for (let ry = 0; ry < rows; ry++) {
+      for (let rx = 0; rx < cols; rx++) {
+        const i = ry * cols + rx;
+        // 칸마다 위치와 크기를 살짝 흔들어서(+ 틈새) 기계적인 격자가 아니라 자연스러운
+        // 랜덤 사각 타일들처럼 보이게 함
+        const jitterX = (pseudoRandom(seed + i * 17.3 + 1) - 0.5) * tileW * 0.16;
+        const jitterY = (pseudoRandom(seed + i * 23.9 + 2) - 0.5) * tileH * 0.16;
+        const gapT = 0.08 + pseudoRandom(seed + i * 13.1 + 3) * 0.08;
+        const cellW = tileW * (1 - gapT);
+        const cellH = tileH * (1 - gapT);
+        const cx = startX + rx * tileW + tileW / 2 + jitterX;
+        const cy = startY + ry * tileH + tileH / 2 + jitterY;
+
+        const valOffset = (pseudoRandom(seed + i * 7.7 + 91) - 0.5) * 0.2; // ±10% (총 20% 이내)
+        const val = Math.max(0.05, Math.min(0.95, baseVal + valOffset));
+        const rgb = EP.hsvToRgb(hue, sat, val);
+        const tileColor = EP.rgbToHex(rgb.r, rgb.g, rgb.b);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cx - cellW / 2, cy - cellH / 2, cellW, cellH);
+        ctx.clip();
+        this.fill = tileColor;
+        baseCharacterDraw.call(this, ctx);
+        ctx.restore();
+      }
+    }
+    this.fill = origFill;
+    ctx.restore();
+  }
+
   // ---- 테마 장식 모양들 (중심 0,0 기준, size는 대략적인 크기) ----
   function drawHoofPrint(ctx, size){
     ctx.beginPath();
@@ -2635,6 +2829,702 @@
     ctx.restore();
   }
 
+  // ---- 귀여운 동물 장식 모양들 (중심 0,0 기준, size는 대략적인 크기) ----
+  function drawPawPrintShape(ctx, size){
+    // 발바닥(큰 볼록한 패드)
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.12, size * 0.32, size * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 발가락(작은 볼록 4개)
+    [[-0.30, -0.32], [-0.11, -0.44], [0.11, -0.44], [0.30, -0.32]].forEach(([tx, ty]) => {
+      ctx.beginPath();
+      ctx.arc(size * tx, size * ty, size * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  function drawCatFaceShape(ctx, size){
+    // 귀(뾰족한 세모, 양옆)
+    [-1, 1].forEach(s => {
+      ctx.beginPath();
+      ctx.moveTo(s * size * 0.30, -size * 0.14);
+      ctx.lineTo(s * size * 0.46, -size * 0.46);
+      ctx.lineTo(s * size * 0.10, -size * 0.30);
+      ctx.closePath();
+      ctx.fill();
+    });
+    // 둥근 머리
+    ctx.beginPath();
+    ctx.arc(0, size * 0.04, size * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawDogFaceShape(ctx, size){
+    // 귀(축 늘어진 타원, 양옆)
+    [-1, 1].forEach(s => {
+      ctx.beginPath();
+      ctx.ellipse(s * size * 0.36, -size * 0.02, size * 0.16, size * 0.30, s * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    // 둥근 머리
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.02, size * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    // 주둥이
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.22, size * 0.18, size * 0.14, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawBoneShape(ctx, size){
+    // 가운데 막대
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.32, -size * 0.10);
+    ctx.lineTo(size * 0.32, -size * 0.10);
+    ctx.lineTo(size * 0.32, size * 0.10);
+    ctx.lineTo(-size * 0.32, size * 0.10);
+    ctx.closePath();
+    ctx.fill();
+    // 양끝 동글동글한 손잡이
+    [[-0.36, -0.14], [-0.36, 0.14], [0.36, -0.14], [0.36, 0.14]].forEach(([bx, by]) => {
+      ctx.beginPath();
+      ctx.arc(size * bx, size * by, size * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  function drawPetHeartShape(ctx, size){
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.32);
+    ctx.bezierCurveTo(size * 0.55, -size * 0.05, size * 0.30, -size * 0.42, 0, -size * 0.12);
+    ctx.bezierCurveTo(-size * 0.30, -size * 0.42, -size * 0.55, -size * 0.05, 0, size * 0.32);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // 고양이/강아지 컨셉별로 묶어서, 한 번 뿌릴 때 한 종류만(서로 섞이지 않게) 등장하도록 함.
+  // 색도 각 동물다운 팔레트(고양이: 회색·주황 계열 / 강아지: 갈색·베이지 계열)에서만 골라
+  // 알록달록하지 않고 실제 털색처럼 자연스럽게 보이게 함
+  const ANIMAL_CONCEPTS = [
+    { shapes: [drawCatFaceShape, drawPawPrintShape, drawPetHeartShape] },  // 고양이
+    { shapes: [drawDogFaceShape, drawPawPrintShape, drawBoneShape] }       // 강아지
+  ];
+  const ANIMAL_PALETTES = [
+    ['#4a4a4a', '#8a6d4b', '#e8a33d', '#2b2b2b', '#f2c9a0'],  // 고양이(회색/주황/검정 계열)
+    ['#8a5a2b', '#c98a3e', '#e0b47a', '#5c3a1e', '#f2d9b0']   // 강아지(갈색/베이지 계열)
+  ];
+
+  // 귀여운 동물 효과: 글자 위/주변에 고양이 또는 강아지(seed로 골라서 하나만) 컨셉의 얼굴·
+  // 발자국·소품(고양이는 하트, 강아지는 뼈다귀)을 그 동물다운 색상으로 넓게 흩뿌려서 마치
+  // 강아지나 고양이가 뛰어놀다 남긴 자국처럼 보이게 함. 배치/컨셉/색상은 모두 seed로 고정
+  // — "다시 뿌리기"를 눌러야 새로 바뀜(고양이↔강아지도 이때 다시 뽑힘)
+  function drawAnimalPass(ctx){
+    const cfg = this.animalText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const conceptIdx = Math.floor(pseudoRandom(seed + 8888) * ANIMAL_CONCEPTS.length) % ANIMAL_CONCEPTS.length;
+    const concept = ANIMAL_CONCEPTS[conceptIdx];
+    const palette = ANIMAL_PALETTES[conceptIdx];
+
+    const count = Math.max(4, Math.round(5 + amt * 16));
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const rx = (pseudoRandom(seed + i * 11.9 + 1) - 0.5) * w * 2.0;
+      const ry = (pseudoRandom(seed + i * 7.3 + 51) - 0.5) * h * 2.6;
+      const size = fontSize * (0.2 + pseudoRandom(seed + i * 13.1 + 101) * 0.34);
+      const rot = (pseudoRandom(seed + i * 17.7 + 201) - 0.5) * 0.5; // 살짝만 기울여서 얼굴/모양이 알아볼 수 있게 유지
+      const shapeFn = concept.shapes[Math.floor(pseudoRandom(seed + i * 23.9 + 301) * concept.shapes.length) % concept.shapes.length];
+      const color = palette[Math.floor(pseudoRandom(seed + i * 29.3 + 401) * palette.length) % palette.length];
+
+      ctx.save();
+      ctx.translate(rx, ry);
+      ctx.rotate(rot);
+      ctx.globalAlpha = op * (0.6 + pseudoRandom(seed + i * 3 + 701) * 0.35);
+      ctx.fillStyle = color;
+      shapeFn(ctx, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // 색상 하나를 기준으로 밝기만 살짝(amt만큼) 더 밝게(+) 또는 어둡게(-) 조정함.
+  // 과일/채소는 실제 사물 고유의 색(빨강 사과, 노랑 바나나 등)은 그대로 유지하면서
+  // 개체마다 명암만 살짝 다르게 주기 위해 사용함
+  function shadeHexColor(hex, amt){
+    const rgb = EP.hexToRgb(hex);
+    const adj = (c) => {
+      const v = amt >= 0 ? c + (255 - c) * amt : c + c * amt;
+      return Math.max(0, Math.min(255, Math.round(v)));
+    };
+    return EP.rgbToHex(adj(rgb.r), adj(rgb.g), adj(rgb.b));
+  }
+
+  // ---- 과일 모양들 (중심 0,0 기준, size는 대략적인 크기, shade는 -1~1 명암 보정값) ----
+  function drawAppleFruitShape(ctx, size, shade){
+    const r = size * 0.42;
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.06, r, r * 0.94, 0, 0, Math.PI * 2);
+    ctx.fillStyle = shadeHexColor('#d6362b', shade);
+    ctx.fill();
+    ctx.strokeStyle = shadeHexColor('#7a4321', shade);
+    ctx.lineWidth = Math.max(1, size * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.85 + size * 0.06);
+    ctx.lineTo(size * 0.06, -r * 1.2 + size * 0.06);
+    ctx.stroke();
+    ctx.fillStyle = shadeHexColor('#4f9e4f', shade);
+    ctx.beginPath();
+    ctx.ellipse(size * 0.15, -r * 1.05 + size * 0.06, size * 0.14, size * 0.08, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawBananaFruitShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#f4cc4e', shade);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.4, size * 0.26);
+    ctx.quadraticCurveTo(-size * 0.16, -size * 0.46, size * 0.4, -size * 0.36);
+    ctx.quadraticCurveTo(size * 0.14, -size * 0.04, -size * 0.1, size * 0.4);
+    ctx.quadraticCurveTo(-size * 0.28, size * 0.4, -size * 0.4, size * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shadeHexColor('#8a6a2c', shade);
+    ctx.beginPath();
+    ctx.arc(size * 0.4, -size * 0.36, size * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawStrawberryFruitShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#e73a52', shade);
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.26);
+    ctx.quadraticCurveTo(size * 0.38, -size * 0.14, size * 0.3, size * 0.16);
+    ctx.quadraticCurveTo(size * 0.18, size * 0.42, 0, size * 0.44);
+    ctx.quadraticCurveTo(-size * 0.18, size * 0.42, -size * 0.3, size * 0.16);
+    ctx.quadraticCurveTo(-size * 0.38, -size * 0.14, 0, -size * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shadeHexColor('#f6dd82', shade);
+    [[-0.12, -0.02], [0.1, 0.06], [-0.05, 0.2], [0.16, 0.2], [0, -0.14], [-0.18, 0.14]].forEach(([sx, sy]) => {
+      ctx.beginPath();
+      ctx.ellipse(size * sx, size * sy, size * 0.025, size * 0.045, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = shadeHexColor('#4f9e4f', shade);
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + k * (Math.PI * 2 / 5);
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.26);
+      ctx.lineTo(Math.cos(a) * size * 0.18, -size * 0.26 + Math.sin(a) * size * 0.18 - size * 0.06);
+      ctx.lineTo(Math.cos(a + 0.5) * size * 0.08, -size * 0.26 - size * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  function drawGrapeFruitShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#7c4fa3', shade);
+    [[0, -0.24], [-0.22, -0.05], [0.22, -0.05], [-0.34, 0.2], [0, 0.16], [0.34, 0.2], [-0.17, 0.42], [0.17, 0.42]].forEach(([px, py]) => {
+      ctx.beginPath();
+      ctx.arc(px * size, py * size, size * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.strokeStyle = shadeHexColor('#4f9e4f', shade);
+    ctx.lineWidth = Math.max(1, size * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.4);
+    ctx.lineTo(0, -size * 0.24);
+    ctx.stroke();
+  }
+  function drawOrangeFruitShape(ctx, size, shade){
+    const r = size * 0.42;
+    ctx.fillStyle = shadeHexColor('#f3952e', shade);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shadeHexColor('#c96f13', shade);
+    ctx.lineWidth = Math.max(1, size * 0.02);
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.stroke();
+    }
+    ctx.fillStyle = shadeHexColor('#4f9e4f', shade);
+    ctx.beginPath();
+    ctx.ellipse(size * 0.05, -r * 0.95, size * 0.12, size * 0.07, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const FRUIT_SHAPES = [drawAppleFruitShape, drawBananaFruitShape, drawStrawberryFruitShape, drawGrapeFruitShape, drawOrangeFruitShape];
+
+  // ---- 채소 모양들 (중심 0,0 기준, size는 대략적인 크기, shade는 -1~1 명암 보정값) ----
+  function drawCarrotVegShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#f0793c', shade);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.18, -size * 0.3);
+    ctx.lineTo(size * 0.18, -size * 0.3);
+    ctx.lineTo(0, size * 0.48);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = shadeHexColor('#4f9e4f', shade);
+    ctx.lineWidth = Math.max(1, size * 0.05);
+    ctx.lineCap = 'round';
+    [-1, 0, 1].forEach(s => {
+      ctx.beginPath();
+      ctx.moveTo(s * size * 0.08, -size * 0.3);
+      ctx.lineTo(s * size * 0.15, -size * 0.5 - Math.abs(s) * size * 0.05);
+      ctx.stroke();
+    });
+  }
+  function drawBroccoliVegShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#4f9e4f', shade);
+    [[-0.2, -0.28], [0.2, -0.28], [0, -0.4], [-0.35, -0.1], [0.35, -0.1], [0, -0.14]].forEach(([px, py]) => {
+      ctx.beginPath();
+      ctx.arc(px * size, py * size, size * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = shadeHexColor('#cfe3ac', shade);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.12, 0);
+    ctx.lineTo(size * 0.12, 0);
+    ctx.lineTo(size * 0.08, size * 0.42);
+    ctx.lineTo(-size * 0.08, size * 0.42);
+    ctx.closePath();
+    ctx.fill();
+  }
+  function drawTomatoVegShape(ctx, size, shade){
+    const r = size * 0.4;
+    ctx.fillStyle = shadeHexColor('#e23a2c', shade);
+    ctx.beginPath();
+    ctx.arc(0, size * 0.05, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shadeHexColor('#4f9e4f', shade);
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + k * (Math.PI * 2 / 5);
+      ctx.beginPath();
+      ctx.moveTo(0, size * 0.05 - r * 0.9);
+      ctx.lineTo(Math.cos(a) * size * 0.14, size * 0.05 - r * 0.9 + Math.sin(a) * size * 0.14 - size * 0.04);
+      ctx.lineTo(Math.cos(a + 0.5) * size * 0.06, size * 0.05 - r * 0.9 - size * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  function drawCornVegShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#f4cc4e', shade);
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.02, size * 0.22, size * 0.46, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shadeHexColor('#c9a13e', shade);
+    ctx.lineWidth = Math.max(1, size * 0.02);
+    for (let ky = -0.34; ky <= 0.34; ky += 0.14) {
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.2, size * 0.02 + ky * size);
+      ctx.quadraticCurveTo(0, size * 0.02 + ky * size + size * 0.03, size * 0.2, size * 0.02 + ky * size);
+      ctx.stroke();
+    }
+    ctx.fillStyle = shadeHexColor('#5fae5f', shade);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.05, size * 0.02 - size * 0.46);
+    ctx.quadraticCurveTo(-size * 0.32, size * 0.02 - size * 0.6, -size * 0.12, size * 0.02 - size * 0.76);
+    ctx.quadraticCurveTo(0, size * 0.02 - size * 0.55, -size * 0.05, size * 0.02 - size * 0.46);
+    ctx.fill();
+  }
+  function drawEggplantVegShape(ctx, size, shade){
+    ctx.fillStyle = shadeHexColor('#5c3b7d', shade);
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.08, size * 0.24, size * 0.4, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shadeHexColor('#4f9e4f', shade);
+    ctx.beginPath();
+    ctx.ellipse(-size * 0.12, -size * 0.32, size * 0.14, size * 0.09, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shadeHexColor('#4f9e4f', shade);
+    ctx.lineWidth = Math.max(1, size * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.12, -size * 0.32);
+    ctx.lineTo(-size * 0.05, -size * 0.5);
+    ctx.stroke();
+  }
+  const VEGETABLE_SHAPES = [drawCarrotVegShape, drawBroccoliVegShape, drawTomatoVegShape, drawCornVegShape, drawEggplantVegShape];
+
+  const FRUIT_VEG_CONCEPTS = [
+    { shapes: FRUIT_SHAPES },      // 과일만
+    { shapes: VEGETABLE_SHAPES }   // 채소만
+  ];
+
+  // 과일/채소 효과: 글자 위/주변에 seed로 "과일" 또는 "채소" 중 한 컨셉만 골라서(서로 섞이지
+  // 않게) 인기 품목(과일: 사과·바나나·딸기·포도·오렌지 / 채소: 당근·브로콜리·토마토·옥수수·가지)을
+  // 실물 그대로의 색으로 흩뿌림. 색상 자체(색조)는 품목 고유값을 유지하되, 개체마다 명암만
+  // 살짝(±약 12%) 다르게 줘서 자연스럽게 섞여 보이게 하고, 크기와 위치는 넓게 랜덤 배치함.
+  // 컨셉/배치/크기/명암은 모두 seed로 고정 — "다시 뿌리기"를 눌러야 새로 바뀜(과일↔채소도 이때 다시 뽑힘)
+  function drawFruitVegPass(ctx){
+    const cfg = this.fruitVegText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const conceptIdx = Math.floor(pseudoRandom(seed + 6543) * FRUIT_VEG_CONCEPTS.length) % FRUIT_VEG_CONCEPTS.length;
+    const concept = FRUIT_VEG_CONCEPTS[conceptIdx];
+
+    const count = Math.max(4, Math.round(5 + amt * 16));
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const rx = (pseudoRandom(seed + i * 11.9 + 1) - 0.5) * w * 2.0;
+      const ry = (pseudoRandom(seed + i * 7.3 + 51) - 0.5) * h * 2.6;
+      const size = fontSize * (0.24 + pseudoRandom(seed + i * 13.1 + 101) * 0.36);
+      const rot = (pseudoRandom(seed + i * 17.7 + 201) - 0.5) * 0.5;
+      const shapeFn = concept.shapes[Math.floor(pseudoRandom(seed + i * 23.9 + 301) * concept.shapes.length) % concept.shapes.length];
+      const shade = (pseudoRandom(seed + i * 31.3 + 401) - 0.5) * 0.24; // 실제 색은 유지, 명암만 ±12% 정도로 살짝
+
+      ctx.save();
+      ctx.translate(rx, ry);
+      ctx.rotate(rot);
+      ctx.globalAlpha = op * (0.65 + pseudoRandom(seed + i * 3 + 701) * 0.35);
+      shapeFn(ctx, size, shade);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // 하트 효과: 글자 옆/주변에 랜덤한 크기(아주 작은 것부터 큰 것까지 편차 크게)의 하트를 붉은
+  // 색부터 핑크색까지(색상값 320~10도 범위, 즉 자홍/핫핑크~빨강 쪽만) 넓게 흩뿌림. 채도/명도도
+  // 함께 랜덤이라 어떤 건 진한 빨강, 어떤 건 옅은 파스텔 핑크로 자연스럽게 섞여 보임. 배치/
+  // 크기/색상은 모두 seed로 고정 — "다시 흩뿌리기"를 눌러야 새로 바뀜
+  function drawHeartsPass(ctx){
+    const cfg = this.heartText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const count = Math.max(4, Math.round(5 + amt * 18));
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const rx = (pseudoRandom(seed + i * 11.7 + 1) - 0.5) * w * 2.2;
+      const ry = (pseudoRandom(seed + i * 7.9 + 51) - 0.5) * h * 2.8;
+      const size = fontSize * (0.14 + pseudoRandom(seed + i * 13.3 + 101) * 0.42); // 크기 편차를 크게 줘서 작은/큰 하트가 섞이게 함
+      const rot = (pseudoRandom(seed + i * 17.1 + 201) - 0.5) * 0.7;
+
+      // 붉은~핑크 계열만: 색상값 320~360(자홍/핫핑크) + 0~10(빨강)을 이어붙인 범위에서만 고름
+      const hue = (320 + pseudoRandom(seed + i * 29.3 + 301) * 50) % 360;
+      const sat = 0.4 + pseudoRandom(seed + i * 31.7 + 401) * 0.55;
+      const val = 0.55 + pseudoRandom(seed + i * 23.1 + 501) * 0.4;
+      const rgb = EP.hsvToRgb(hue, sat, val);
+
+      ctx.save();
+      ctx.translate(rx, ry);
+      ctx.rotate(rot);
+      ctx.globalAlpha = op * (0.6 + pseudoRandom(seed + i * 3 + 701) * 0.35);
+      ctx.fillStyle = EP.rgbToHex(rgb.r, rgb.g, rgb.b);
+      drawPetHeartShape(ctx, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // 커피 원두 모양(중심 0,0 기준): 길쭉한 타원 몸통 + 가운데 살짝 S자로 휜 홈(크림선)
+  function drawCoffeeBeanShape(ctx, size){
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.27, size * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 가운데 홈 — 원두 특유의 갈라진 선을 반투명한 어두운 선으로 표현(콩 색이 밝든 어둡든 잘 보이게)
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = Math.max(0.8, size * 0.05);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.46);
+    ctx.quadraticCurveTo(size * 0.1, -size * 0.15, 0, 0);
+    ctx.quadraticCurveTo(-size * 0.1, size * 0.15, 0, size * 0.46);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // 로스팅 정도가 제각각인 커피색 팔레트(연한 라이트로스트 ~ 진한 다크로스트)
+  const COFFEE_PALETTE = ['#a97147', '#8b5a2b', '#6f4e37', '#5c3a21', '#4b2e1e', '#3b2412'];
+
+  // 커피 원두 효과: 글자 옆/주변에 랜덤한 크기(작은 것부터 큰 것까지 편차 크게)의 커피 원두를
+  // 커피색 팔레트(라이트로스트~다크로스트) 안에서 랜덤으로 색을 입혀 넓게 흩뿌림. 원두는 방향이
+  // 뚜렷하지 않아 360도 자유롭게 회전시켜 자연스럽게 흩어진 느낌을 냄. 배치/크기/색상은 모두
+  // seed로 고정 — "다시 흩뿌리기"를 눌러야 새로 바뀜
+  function drawCoffeeBeansPass(ctx){
+    const cfg = this.coffeeText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const count = Math.max(4, Math.round(5 + amt * 18));
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const rx = (pseudoRandom(seed + i * 11.3 + 1) - 0.5) * w * 2.2;
+      const ry = (pseudoRandom(seed + i * 7.7 + 51) - 0.5) * h * 2.8;
+      const size = fontSize * (0.14 + pseudoRandom(seed + i * 13.9 + 101) * 0.44); // 크기 편차를 크게 줘서 작은/큰 원두가 섞이게 함
+      const rot = pseudoRandom(seed + i * 17.3 + 201) * Math.PI * 2; // 원두는 방향이 뚜렷하지 않아 자유롭게 회전
+      const color = COFFEE_PALETTE[Math.floor(pseudoRandom(seed + i * 23.7 + 301) * COFFEE_PALETTE.length) % COFFEE_PALETTE.length];
+
+      ctx.save();
+      ctx.translate(rx, ry);
+      ctx.rotate(rot);
+      ctx.globalAlpha = op * (0.65 + pseudoRandom(seed + i * 3 + 701) * 0.3);
+      ctx.fillStyle = color;
+      drawCoffeeBeanShape(ctx, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ---- 스포츠공 장식 모양들 (중심 0,0 기준, size는 지름 기준 대략적인 크기) ----
+  function drawRegularPolygonPath(ctx, radius, sides, rotation){
+    ctx.beginPath();
+    for (let k = 0; k < sides; k++) {
+      const a = rotation + k * (Math.PI * 2 / sides);
+      const px = Math.cos(a) * radius, py = Math.sin(a) * radius;
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  }
+  function drawSoccerBallShape(ctx, size){
+    const r = size * 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#f7f7f2';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, size * 0.035);
+    ctx.strokeStyle = '#22221f';
+    ctx.stroke();
+    ctx.fillStyle = '#22221f';
+    drawRegularPolygonPath(ctx, r * 0.32, 5, -Math.PI / 2);
+    ctx.fill();
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + k * (Math.PI * 2 / 5);
+      ctx.save();
+      ctx.translate(Math.cos(a) * r * 0.66, Math.sin(a) * r * 0.66);
+      ctx.rotate(a + Math.PI / 2);
+      drawRegularPolygonPath(ctx, r * 0.2, 5, Math.PI / 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  function drawBasketballShape(ctx, size){
+    const r = size * 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#e8792c';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, size * 0.045);
+    ctx.strokeStyle = '#3a2010';
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.quadraticCurveTo(r * 0.62, 0, 0, r); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.quadraticCurveTo(-r * 0.62, 0, 0, r); ctx.stroke();
+  }
+  function drawBaseballShape(ctx, size){
+    const r = size * 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#fbf6ec';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, size * 0.03);
+    ctx.strokeStyle = '#c9beA8';
+    ctx.stroke();
+    ctx.strokeStyle = '#c94b4b';
+    ctx.lineWidth = Math.max(1, size * 0.045);
+    ctx.setLineDash([Math.max(1, size * 0.05), Math.max(1, size * 0.04)]);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.7, -r * 0.15);
+    ctx.quadraticCurveTo(-r * 0.1, -r * 0.78, r * 0.55, -r * 0.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, r * 0.5);
+    ctx.quadraticCurveTo(r * 0.1, r * 0.78, r * 0.7, r * 0.15);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function drawTennisBallShape(ctx, size){
+    const r = size * 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#d4f24a';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, size * 0.06);
+    ctx.strokeStyle = '#f5fbe0';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.12, -r * 0.98);
+    ctx.quadraticCurveTo(r * 0.58, -r * 0.35, 0, 0);
+    ctx.quadraticCurveTo(-r * 0.58, r * 0.35, r * 0.12, r * 0.98);
+    ctx.stroke();
+  }
+  function drawVolleyballShape(ctx, size){
+    const r = size * 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, size * 0.04);
+    ctx.strokeStyle = '#2255aa';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.9, -r * 0.1);
+    ctx.quadraticCurveTo(0, r * 0.55, r * 0.75, -r * 0.55);
+    ctx.stroke();
+    ctx.strokeStyle = '#e8a33d';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.75, r * 0.55);
+    ctx.quadraticCurveTo(0, -r * 0.15, r * 0.5, -r * 0.85);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1, size * 0.03);
+    ctx.strokeStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const SPORTS_BALL_SHAPES = [drawSoccerBallShape, drawBasketballShape, drawBaseballShape, drawTennisBallShape, drawVolleyballShape];
+
+  // 스포츠공 효과: 글자 위/주변에 축구공·농구공·야구공·테니스공·배구공을 실제 공처럼 보이는
+  // 고유 색상/무늬로 그려서 여러 크기·위치·회전으로 넓게 흩뿌림(공 종류는 섞여서 등장).
+  // 배치/크기/회전/공 종류는 모두 seed로 고정 — "다시 뿌리기"를 눌러야 새로 바뀜
+  function drawSportsPass(ctx){
+    const cfg = this.sportsText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const count = Math.max(4, Math.round(5 + amt * 16));
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const rx = (pseudoRandom(seed + i * 11.3 + 1) - 0.5) * w * 2.2;
+      const ry = (pseudoRandom(seed + i * 7.7 + 51) - 0.5) * h * 2.8;
+      const size = fontSize * (0.24 + pseudoRandom(seed + i * 13.9 + 101) * 0.38);
+      const rot = pseudoRandom(seed + i * 17.3 + 201) * Math.PI * 2;
+      const shapeFn = SPORTS_BALL_SHAPES[Math.floor(pseudoRandom(seed + i * 23.7 + 301) * SPORTS_BALL_SHAPES.length) % SPORTS_BALL_SHAPES.length];
+
+      ctx.save();
+      ctx.translate(rx, ry);
+      ctx.rotate(rot);
+      ctx.globalAlpha = op * (0.65 + pseudoRandom(seed + i * 3 + 701) * 0.3);
+      shapeFn(ctx, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // 클럽 사람 실루엣(중심 0,0, 발밑 기준): 머리(원) + 몸통(둥근 사다리꼴) + 팔.
+  // armsUp이면 신나게 양팔을 번쩍 든 포즈, 아니면 자연스럽게 내린 포즈
+  function drawClubPersonShape(ctx, size, armsUp){
+    // 머리
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.38, size * 0.14, 0, Math.PI * 2);
+    ctx.fill();
+    // 몸통
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.16, -size * 0.22);
+    ctx.lineTo(size * 0.16, -size * 0.22);
+    ctx.lineTo(size * 0.22, size * 0.32);
+    ctx.lineTo(-size * 0.22, size * 0.32);
+    ctx.closePath();
+    ctx.fill();
+    // 팔
+    ctx.lineWidth = size * 0.09;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = ctx.fillStyle;
+    if (armsUp) {
+      [-1, 1].forEach(s => {
+        ctx.beginPath();
+        ctx.moveTo(s * size * 0.14, -size * 0.20);
+        ctx.lineTo(s * size * 0.30, -size * 0.50);
+        ctx.stroke();
+      });
+    } else {
+      [-1, 1].forEach(s => {
+        ctx.beginPath();
+        ctx.moveTo(s * size * 0.16, -size * 0.18);
+        ctx.lineTo(s * size * 0.26, size * 0.10);
+        ctx.stroke();
+      });
+    }
+  }
+  // 클럽 조명/실루엣용 네온 컬러 팔레트
+  const CLUB_COLORS = ['#ff2e63', '#a52eff', '#2ee6ff', '#ff6ec7', '#7b2ff7', '#ffea00'];
+
+  // 클럽 분위기 효과: 글자 옆(좌/우 중 seed로 골라진 한쪽)에 사람들이 와르르 몰려있는 무리를
+  // 그림. 인원 수는 강도와 무관하게 seed로 완전히 랜덤(대략 6~40명)하게 정해지고, 각 사람은
+  // 중심에 몰리도록(가장자리보다 중심 쪽에 확률이 높게) 배치해서 빽빽하게 뭉친 느낌을 냄.
+  // 일부는 양팔을 번쩍 든 신난 포즈로 섞여 나오고, 네온 색상 + 은은한 발광으로 클럽 조명 아래
+  // 있는 듯한 느낌을 주며, 그 뒤로 위에서 무리 쪽을 향해 쏟아지는 스포트라이트 빛줄기도 함께
+  // 그림. 배치/인원수/포즈/색상은 모두 seed로 고정 — "다시 모으기"를 눌러야 새로 바뀜
+  function drawClubPass(ctx){
+    const cfg = this.clubText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    // 사람 수는 강도와 무관하게 seed로 완전 랜덤(강도는 대략적인 범위에만 영향)
+    const count = 6 + Math.floor(pseudoRandom(seed + 9999) * (10 + amt * 24));
+    const baseSize = fontSize * (0.4 + amt * 0.25);
+
+    // 무리 중심 — 글자 좌/우 중 한쪽에 뭉쳐있는 느낌
+    const clusterSide = pseudoRandom(seed + 111) < 0.5 ? -1 : 1;
+    const clusterCx = clusterSide * (w / 2 + fontSize * 0.9);
+    const clusterCy = (pseudoRandom(seed + 222) - 0.5) * h * 0.6;
+    const maxRadius = fontSize * (1.1 + amt * 1.3);
+
+    // 스포트라이트 빛줄기 — 무리 위쪽에서 쏟아지는 은은한 조명(먼저 그려서 사람들 뒤에 깔림)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let b = 0; b < 3; b++) {
+      const topX = clusterCx + (pseudoRandom(seed + b * 19.3 + 401) - 0.5) * maxRadius * 1.4;
+      const topY = clusterCy - maxRadius * 1.6;
+      const spread = maxRadius * (0.3 + pseudoRandom(seed + b * 7.1 + 451) * 0.25);
+      const beamColor = CLUB_COLORS[Math.floor(pseudoRandom(seed + b * 13.3 + 501) * CLUB_COLORS.length) % CLUB_COLORS.length];
+      ctx.globalAlpha = op * 0.18;
+      ctx.fillStyle = beamColor;
+      ctx.beginPath();
+      ctx.moveTo(topX, topY);
+      ctx.lineTo(clusterCx - spread, clusterCy);
+      ctx.lineTo(clusterCx + spread, clusterCy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 사람들 — 중심에 몰리도록 반지름을 지수적으로 눌러서(pow 0.65) 빽빽하게 뭉친 느낌을 냄
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const ang = pseudoRandom(seed + i * 13.1 + 1) * Math.PI * 2;
+      const rad = maxRadius * Math.pow(pseudoRandom(seed + i * 9.7 + 51), 0.65);
+      const px = clusterCx + Math.cos(ang) * rad;
+      const py = clusterCy + Math.sin(ang) * rad * 0.7; // 세로는 살짝 눌러서 바닥에 선 무리처럼 보이게 함
+      const size = baseSize * (0.65 + pseudoRandom(seed + i * 11.3 + 101) * 0.55);
+      const armsUp = pseudoRandom(seed + i * 17.9 + 151) < 0.35;
+      const color = CLUB_COLORS[Math.floor(pseudoRandom(seed + i * 23.3 + 201) * CLUB_COLORS.length) % CLUB_COLORS.length];
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.globalAlpha = op * (0.7 + pseudoRandom(seed + i * 3 + 701) * 0.3);
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = size * 0.5;
+      drawClubPersonShape(ctx, size, armsUp);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
   // 눈 내리는 효과: 글자 바닥에는 둥글둥글하게(양 옆이 각지지 않게) 눈이 쌓이고, 그 주변으로
   // 눈송이가 넓게 흩날리는 모습을 그림. 흩날리는 눈 중 일부는 장난스럽게 별 모양으로 깜짝
   // 섞여 나옴. 텍스트보다 나중에(위에) 그려져서 쌓인 눈이 글자 아랫부분을 자연스럽게 덮음.
@@ -2782,6 +3672,97 @@
       ctx.moveTo(rx, ry);
       ctx.lineTo(rx + dx, ry + dy);
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 물이 팍팍 튀는 효과: 글자 주변 여기저기에 "물이 부딪혀 튄" 지점(터짐 지점)을 몇 군데 두고,
+  // 그 지점마다 불규칙한 중심 물방울 얼룩 + 흰 하이라이트를 그린 뒤 사방으로 가느다란 물줄기가
+  // 휘어져 뻗어나가다 끝에 작은 물방울로 맺히게 함. 그 위에 잘게 흩어진 잔 물방울(스프레이)을
+  // 넓게 뿌려서 텍스트에 실제로 물이 튄 듯한 느낌을 냄. seed로 배치가 고정되며 "다시 튀기기"로
+  // 새로 뿌려짐
+  function drawSplashPass(ctx){
+    const cfg = this.splashText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+    const splashColor = cfg.splashColor || '#7fd7ff';
+
+    // 1) 터짐 지점들 — 중심 얼룩 + 방사형 물줄기 + 끝 물방울
+    const burstCount = Math.max(2, Math.round(2 + amt * 6));
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let b = 0; b < burstCount; b++) {
+      const bx = (pseudoRandom(seed + b * 19.3 + 1) - 0.5) * w * 1.6;
+      const by = (pseudoRandom(seed + b * 13.7 + 51) - 0.5) * h * 1.8;
+      const burstSize = fontSize * (0.12 + pseudoRandom(seed + b * 7.1 + 101) * 0.16);
+      const rayCount = 5 + Math.floor(pseudoRandom(seed + b * 5.3 + 151) * 5);
+
+      // 중심 물방울(불규칙한 얼룩 모양)
+      ctx.globalAlpha = op * (0.5 + pseudoRandom(seed + b * 3.7 + 201) * 0.3);
+      ctx.fillStyle = splashColor;
+      ctx.beginPath();
+      const blobPoints = 7;
+      for (let p = 0; p < blobPoints; p++) {
+        const ang = (p / blobPoints) * Math.PI * 2;
+        const rad = burstSize * (0.6 + pseudoRandom(seed + b * 23.1 + p * 9.3 + 251) * 0.5);
+        const px = bx + Math.cos(ang) * rad, py = by + Math.sin(ang) * rad;
+        if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // 밝은 하이라이트
+      ctx.globalAlpha = op * 0.7;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(bx - burstSize * 0.22, by - burstSize * 0.22, burstSize * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 사방으로 휘어져 튀는 물줄기 + 끝 물방울
+      for (let r = 0; r < rayCount; r++) {
+        const rang = pseudoRandom(seed + b * 31.7 + r * 11.3 + 301) * Math.PI * 2;
+        const rlen = burstSize * (0.8 + pseudoRandom(seed + b * 17.9 + r * 7.7 + 351) * 1.6);
+        const ex = bx + Math.cos(rang) * rlen, ey = by + Math.sin(rang) * rlen;
+        const bend = (pseudoRandom(seed + b * 41.1 + r * 5.9 + 381) - 0.5) * burstSize * 0.8;
+        const midx = bx + Math.cos(rang) * rlen * 0.55 - Math.sin(rang) * bend;
+        const midy = by + Math.sin(rang) * rlen * 0.55 + Math.cos(rang) * bend;
+        const thick = Math.max(0.6, burstSize * 0.09);
+
+        ctx.globalAlpha = op * (0.35 + pseudoRandom(seed + b * 11.1 + r * 3.3 + 401) * 0.35);
+        ctx.strokeStyle = splashColor;
+        ctx.lineWidth = thick;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(midx, midy, ex, ey);
+        ctx.stroke();
+
+        const dropR = Math.max(0.8, burstSize * (0.06 + pseudoRandom(seed + b * 29.3 + r * 13.1 + 451) * 0.06));
+        ctx.globalAlpha = op * (0.55 + pseudoRandom(seed + b * 7.3 + r * 17.9 + 501) * 0.35);
+        ctx.fillStyle = splashColor;
+        ctx.beginPath();
+        ctx.arc(ex, ey, dropR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // 2) 넓게 흩어진 잔 물방울(스프레이) — 터짐 지점 주변까지 넓게 퍼져 있음
+    const fineCount = Math.max(15, Math.round(18 + amt * 55));
+    ctx.save();
+    for (let i = 0; i < fineCount; i++) {
+      const fx = (pseudoRandom(seed + i * 9.1 + 601) - 0.5) * w * 2.2;
+      const fy = (pseudoRandom(seed + i * 6.7 + 701) - 0.5) * h * 2.4;
+      const fr = Math.max(0.6, fontSize * (0.008 + pseudoRandom(seed + i * 4.3 + 801) * 0.02));
+      ctx.globalAlpha = op * (0.25 + pseudoRandom(seed + i * 3.9 + 901) * 0.45);
+      ctx.fillStyle = splashColor;
+      ctx.beginPath();
+      ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -3106,7 +4087,7 @@
   }
 
   function hasAnyRenderEffect(t){
-    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.grassText || t.bigbangText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.crackText || t.footprintText || t.snowText || t.rainText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
+    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.grassText || t.bigbangText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.crackText || t.tileText || t.footprintText || t.animalText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
   }
   // 효과를 하나라도 켜면 이 통합 _render로 바꿔치기하고, objectCaching을 꺼서
   // (렌더 방식이 계속 바뀌는 오브젝트라 fabric의 캐시 비트맵이 못 따라와 지저분한 잔상이
@@ -3135,6 +4116,7 @@
     if (except !== 'perspective') t.perspectiveText = null;
     if (except !== 'curve') t.curveText = null;
     if (except !== 'wave') t.waveText = null;
+    if (except !== 'train') t.trainText = null;
     if (except !== 'tired') t.tiredText = null;
     if (except !== 'spiral') t.spiralText = null;
     if (except !== 'magazine') t.magazineText = null;
@@ -3380,6 +4362,37 @@
   });
 
 
+  // ---- 타일무늬 효과 ---- (같은 색상계열 안에서 밝기만 랜덤(±10%)한 직사각형 타일들을 글자 모양에 맞춰 붙임, 배치/색상은 seed 고정)
+  const qaTileIntensity = document.getElementById('qaTileIntensity');
+  function applyQaTile(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaTileIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.tileText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.tileText) ? Math.floor(Math.random() * 100000) : t.tileText.seed;
+        t.tileText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaTileIntensity.addEventListener('input', () => applyQaTile(false));
+  qaTileIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaTileShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaTileIntensity.value) || 0) <= 0) qaTileIntensity.value = 55;
+    applyQaTile(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaTileOffBtn').addEventListener('click', () => {
+    qaTileIntensity.value = 0;
+    applyQaTile(false); EP.pushHistory();
+  });
+
+
   // ---- 발자국 효과 ---- (말발굽/소/닭 발자국을 여러 색상·크기·위치로 흩뿌림, 배치는 seed 고정)
   const qaFootprintIntensity = document.getElementById('qaFootprintIntensity');
   function applyQaFootprint(regenerateSeed){
@@ -3408,6 +4421,192 @@
   document.getElementById('qaFootprintOffBtn').addEventListener('click', () => {
     qaFootprintIntensity.value = 0;
     applyQaFootprint(false); EP.pushHistory();
+  });
+
+
+  // ---- 귀여운 동물 효과 ---- (고양이 또는 강아지 얼굴·발자국·소품을 흩뿌림, 배치/동물 종류는 seed 고정)
+  const qaAnimalIntensity = document.getElementById('qaAnimalIntensity');
+  function applyQaAnimal(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaAnimalIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.animalText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.animalText) ? Math.floor(Math.random() * 100000) : t.animalText.seed;
+        t.animalText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaAnimalIntensity.addEventListener('input', () => applyQaAnimal(false));
+  qaAnimalIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaAnimalShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaAnimalIntensity.value) || 0) <= 0) qaAnimalIntensity.value = 55;
+    applyQaAnimal(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaAnimalOffBtn').addEventListener('click', () => {
+    qaAnimalIntensity.value = 0;
+    applyQaAnimal(false); EP.pushHistory();
+  });
+
+
+  // ---- 과일&채소 효과 ---- (과일 또는 채소 중 하나만 골라 실물 색 그대로(명암만 살짝 랜덤) 흩뿌림, 컨셉/배치는 seed 고정)
+  const qaFruitVegIntensity = document.getElementById('qaFruitVegIntensity');
+  function applyQaFruitVeg(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaFruitVegIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.fruitVegText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.fruitVegText) ? Math.floor(Math.random() * 100000) : t.fruitVegText.seed;
+        t.fruitVegText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaFruitVegIntensity.addEventListener('input', () => applyQaFruitVeg(false));
+  qaFruitVegIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaFruitVegShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaFruitVegIntensity.value) || 0) <= 0) qaFruitVegIntensity.value = 55;
+    applyQaFruitVeg(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaFruitVegOffBtn').addEventListener('click', () => {
+    qaFruitVegIntensity.value = 0;
+    applyQaFruitVeg(false); EP.pushHistory();
+  });
+
+
+  // ---- 하트 효과 ---- (붉은~핑크 계열 랜덤 색, 랜덤 크기의 하트를 흩뿌림, 배치는 seed 고정)
+  const qaHeartIntensity = document.getElementById('qaHeartIntensity');
+  function applyQaHeart(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaHeartIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.heartText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.heartText) ? Math.floor(Math.random() * 100000) : t.heartText.seed;
+        t.heartText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaHeartIntensity.addEventListener('input', () => applyQaHeart(false));
+  qaHeartIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaHeartShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaHeartIntensity.value) || 0) <= 0) qaHeartIntensity.value = 55;
+    applyQaHeart(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaHeartOffBtn').addEventListener('click', () => {
+    qaHeartIntensity.value = 0;
+    applyQaHeart(false); EP.pushHistory();
+  });
+
+
+  // ---- 커피 원두 효과 ---- (커피색(라이트~다크로스트) 랜덤, 랜덤 크기의 원두를 흩뿌림, 배치는 seed 고정)
+  const qaCoffeeIntensity = document.getElementById('qaCoffeeIntensity');
+  function applyQaCoffee(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaCoffeeIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.coffeeText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.coffeeText) ? Math.floor(Math.random() * 100000) : t.coffeeText.seed;
+        t.coffeeText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaCoffeeIntensity.addEventListener('input', () => applyQaCoffee(false));
+  qaCoffeeIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaCoffeeShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaCoffeeIntensity.value) || 0) <= 0) qaCoffeeIntensity.value = 55;
+    applyQaCoffee(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaCoffeeOffBtn').addEventListener('click', () => {
+    qaCoffeeIntensity.value = 0;
+    applyQaCoffee(false); EP.pushHistory();
+  });
+
+
+  // ---- 스포츠공 효과 ---- (축구공·농구공·야구공·테니스공·배구공을 여러 크기·위치로 흩뿌림, 배치는 seed 고정)
+  const qaSportsIntensity = document.getElementById('qaSportsIntensity');
+  function applyQaSports(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaSportsIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.sportsText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.sportsText) ? Math.floor(Math.random() * 100000) : t.sportsText.seed;
+        t.sportsText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaSportsIntensity.addEventListener('input', () => applyQaSports(false));
+  qaSportsIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaSportsShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaSportsIntensity.value) || 0) <= 0) qaSportsIntensity.value = 55;
+    applyQaSports(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaSportsOffBtn').addEventListener('click', () => {
+    qaSportsIntensity.value = 0;
+    applyQaSports(false); EP.pushHistory();
+  });
+
+
+  // ---- 클럽 분위기 효과 ---- (글자 옆에 사람들이 와르르 몰려있는 무리 + 스포트라이트, 인원수는 seed로 완전 랜덤)
+  const qaClubIntensity = document.getElementById('qaClubIntensity');
+  function applyQaClub(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaClubIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.clubText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.clubText) ? Math.floor(Math.random() * 100000) : t.clubText.seed;
+        t.clubText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaClubIntensity.addEventListener('input', () => applyQaClub(false));
+  qaClubIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaClubShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaClubIntensity.value) || 0) <= 0) qaClubIntensity.value = 55;
+    applyQaClub(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaClubOffBtn').addEventListener('click', () => {
+    qaClubIntensity.value = 0;
+    applyQaClub(false); EP.pushHistory();
   });
 
 
@@ -3480,6 +4679,39 @@
   document.getElementById('qaRainOffBtn').addEventListener('click', () => {
     qaRainIntensity.value = 0;
     applyQaRain(false); EP.pushHistory();
+  });
+
+
+  // ---- 물 튀기는 효과 ---- (터짐 지점 + 방사형 물줄기 + 잔 물방울 스프레이, seed 고정 — "다시 튀기기"로 재배치)
+  const qaSplashIntensity = document.getElementById('qaSplashIntensity');
+  const qaSplashColor = document.getElementById('qaSplashColor');
+  function applyQaSplash(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaSplashIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.splashText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.splashText) ? Math.floor(Math.random() * 100000) : t.splashText.seed;
+        t.splashText = { intensity, splashColor: qaSplashColor.value || '#7fd7ff', seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaSplashIntensity.addEventListener('input', () => applyQaSplash(false));
+  qaSplashColor.addEventListener('input', () => applyQaSplash(false));
+  qaSplashIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaSplashShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaSplashIntensity.value) || 0) <= 0) qaSplashIntensity.value = 55;
+    applyQaSplash(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaSplashOffBtn').addEventListener('click', () => {
+    qaSplashIntensity.value = 0;
+    applyQaSplash(false); EP.pushHistory();
   });
 
 
@@ -4062,6 +5294,39 @@
   });
 
 
+  // ---- 기찻길 효과 ---- (사인파를 따라 구불구불하게 배치 + 선로/바퀴를 함께 그려 기차처럼 보이게 함)
+  const qaTrainAmplitude = document.getElementById('qaTrainAmplitude');
+  const qaTrainPeriod = document.getElementById('qaTrainPeriod');
+  const qaTrainTrackColor = document.getElementById('qaTrainTrackColor');
+  function applyQaTrain(){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const amplitude = parseFloat(qaTrainAmplitude.value) || 0;
+    if (amplitude <= 0) {
+      boxes.forEach(t => { t.trainText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      const period = parseFloat(qaTrainPeriod.value) || 2;
+      const trackColor = qaTrainTrackColor.value || '#5a4632';
+      boxes.forEach(t => {
+        clearOtherLayoutEffects(t, 'train');
+        t.trainText = { amplitude, period, trackColor };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaTrainAmplitude.addEventListener('input', applyQaTrain);
+  qaTrainPeriod.addEventListener('input', applyQaTrain);
+  qaTrainTrackColor.addEventListener('input', applyQaTrain);
+  qaTrainAmplitude.addEventListener('change', () => EP.pushHistory());
+  qaTrainPeriod.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaTrainOffBtn').addEventListener('click', () => {
+    qaTrainAmplitude.value = 0;
+    applyQaTrain(); EP.pushHistory();
+  });
+
+
   // ---- 지침(흐물흐물) 효과 ---- (뒤로 갈수록 축 처지고 기울며, 힘 빠진 듯 글자마다 흔들리고 옅어짐)
   const qaTiredDroop = document.getElementById('qaTiredDroop');
   const qaTiredWobble = document.getElementById('qaTiredWobble');
@@ -4519,9 +5784,37 @@
         qaCrackIntensity.value = crack ? (crack.intensity || 0) : 0;
         qaCrackColor.value = crack ? (EP.toHex(crack.crackColor) || '#ffffff') : '#ffffff';
   }
+  function populate_tile(anchor){
+        const tile = anchor.tileText;
+        qaTileIntensity.value = tile ? (tile.intensity || 0) : 0;
+  }
   function populate_footprint(anchor){
         const footprint = anchor.footprintText;
         qaFootprintIntensity.value = footprint ? (footprint.intensity || 0) : 0;
+  }
+  function populate_animal(anchor){
+        const animal = anchor.animalText;
+        qaAnimalIntensity.value = animal ? (animal.intensity || 0) : 0;
+  }
+  function populate_fruitveg(anchor){
+        const fruitVeg = anchor.fruitVegText;
+        qaFruitVegIntensity.value = fruitVeg ? (fruitVeg.intensity || 0) : 0;
+  }
+  function populate_heart(anchor){
+        const heart = anchor.heartText;
+        qaHeartIntensity.value = heart ? (heart.intensity || 0) : 0;
+  }
+  function populate_coffee(anchor){
+        const coffee = anchor.coffeeText;
+        qaCoffeeIntensity.value = coffee ? (coffee.intensity || 0) : 0;
+  }
+  function populate_sports(anchor){
+        const sports = anchor.sportsText;
+        qaSportsIntensity.value = sports ? (sports.intensity || 0) : 0;
+  }
+  function populate_club(anchor){
+        const club = anchor.clubText;
+        qaClubIntensity.value = club ? (club.intensity || 0) : 0;
   }
   function populate_snow(anchor){
         const snow = anchor.snowText;
@@ -4534,6 +5827,11 @@
         const rain = anchor.rainText;
         qaRainIntensity.value = rain ? (rain.intensity || 0) : 0;
         qaRainColor.value = rain ? (EP.toHex(rain.rainColor) || '#bcdfff') : '#bcdfff';
+  }
+  function populate_splash(anchor){
+        const splash = anchor.splashText;
+        qaSplashIntensity.value = splash ? (splash.intensity || 0) : 0;
+        qaSplashColor.value = splash ? (EP.toHex(splash.splashColor) || '#7fd7ff') : '#7fd7ff';
   }
   function populate_threeD(anchor){
         const t3d = anchor.threeDText;
@@ -4626,6 +5924,12 @@
         qaWaveAmplitude.value = wave ? (wave.amplitude || 0) : 0;
         qaWavePeriod.value = wave ? (wave.period || 2) : 2;
         qaWavePerspective.value = wave ? (wave.perspective || 0) : 0;
+  }
+  function populate_train(anchor){
+        const train = anchor.trainText;
+        qaTrainAmplitude.value = train ? (train.amplitude || 0) : 0;
+        qaTrainPeriod.value = train ? (train.period || 2) : 2;
+        qaTrainTrackColor.value = train ? (EP.toHex(train.trackColor) || '#5a4632') : '#5a4632';
   }
   function populate_tired(anchor){
         const tired = anchor.tiredText;
@@ -4731,9 +6035,44 @@
     apply: applyQaCrack, randomize: function(){ var b=document.getElementById('qaCrackShuffleBtn'); if(b) b.click(); }, populate: populate_crack
   });
   EP.registerFilter({
+    id: 'tile', label: '타일무늬', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaTile, randomize: function(){ var b=document.getElementById('qaTileShuffleBtn'); if(b) b.click(); }, populate: populate_tile
+  });
+  EP.registerFilter({
     id: 'footprint', label: '테마 장식', commonEffect: false,
     appliesTo: ['text'], group: null, includeInRandom: true,
     apply: applyQaFootprint, randomize: function(){ var b=document.getElementById('qaFootprintShuffleBtn'); if(b) b.click(); }, populate: populate_footprint
+  });
+  EP.registerFilter({
+    id: 'animal', label: '귀여운 동물', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaAnimal, randomize: function(){ var b=document.getElementById('qaAnimalShuffleBtn'); if(b) b.click(); }, populate: populate_animal
+  });
+  EP.registerFilter({
+    id: 'fruitveg', label: '과일&채소', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaFruitVeg, randomize: function(){ var b=document.getElementById('qaFruitVegShuffleBtn'); if(b) b.click(); }, populate: populate_fruitveg
+  });
+  EP.registerFilter({
+    id: 'heart', label: '하트', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaHeart, randomize: function(){ var b=document.getElementById('qaHeartShuffleBtn'); if(b) b.click(); }, populate: populate_heart
+  });
+  EP.registerFilter({
+    id: 'coffee', label: '커피 원두', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaCoffee, randomize: function(){ var b=document.getElementById('qaCoffeeShuffleBtn'); if(b) b.click(); }, populate: populate_coffee
+  });
+  EP.registerFilter({
+    id: 'sports', label: '스포츠공', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaSports, randomize: function(){ var b=document.getElementById('qaSportsShuffleBtn'); if(b) b.click(); }, populate: populate_sports
+  });
+  EP.registerFilter({
+    id: 'club', label: '클럽 분위기', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaClub, randomize: function(){ var b=document.getElementById('qaClubShuffleBtn'); if(b) b.click(); }, populate: populate_club
   });
   EP.registerFilter({
     id: 'snow', label: '눈', commonEffect: false,
@@ -4744,6 +6083,11 @@
     id: 'rain', label: '비', commonEffect: false,
     appliesTo: ['text'], group: null, includeInRandom: true,
     apply: applyQaRain, randomize: function(){ var b=document.getElementById('qaRainShuffleBtn'); if(b) b.click(); }, populate: populate_rain
+  });
+  EP.registerFilter({
+    id: 'splash', label: '물 튀기는 효과', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaSplash, randomize: function(){ var b=document.getElementById('qaSplashShuffleBtn'); if(b) b.click(); }, populate: populate_splash
   });
   EP.registerFilter({
     id: 'threeD', label: '3D 효과', commonEffect: false,
@@ -4826,6 +6170,11 @@
     apply: applyQaWave, randomize: null, populate: populate_wave
   });
   EP.registerFilter({
+    id: 'train', label: '기찻길', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: applyQaTrain, randomize: null, populate: populate_train
+  });
+  EP.registerFilter({
     id: 'tired', label: '지침(흐물흐물)', commonEffect: false,
     appliesTo: ['text'], group: 'layout', includeInRandom: true,
     apply: applyQaTired, randomize: function(){ var b=document.getElementById('qaTiredShuffleBtn'); if(b) b.click(); }, populate: populate_tired
@@ -4905,6 +6254,8 @@
   EP.initCmykPicker(qaZebraColorA);
   EP.initCmykPicker(qaZebraColorB);
   EP.initCmykPicker(qaRainColor);
+  EP.initCmykPicker(qaSplashColor);
+  EP.initCmykPicker(qaTrainTrackColor);
   EP.initCmykPicker(qaSpeedDustColor);
   EP.initCmykPicker(qaCrackColor);
 

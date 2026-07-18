@@ -142,8 +142,8 @@
         <span class="crop-toolbar-hint" id="mapInputToolbarHint">지도에 표시할 주소를 입력하세요 (도로명·지번 주소, 건물명·장소명도 가능)</span>
         <input type="text" id="mapAddressInput" style="width:420px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;" placeholder="예) 서울 강남구 테헤란로 152">
         <div class="table-toolbar-row">
-          <button type="button" class="btn" id="applyMapBtn">🗺 지도 만들기</button>
-          <button type="button" class="btn primary" id="randomMapBtn" title="등록된 지도 필터 중 하나를 무작위로 골라 적용해서 만들어요">🎲 랜덤 지도 만들기</button>
+          <button type="button" class="btn primary" id="applyMapBtn">🗺 지도 만들기</button>
+          <button type="button" class="btn" id="randomMapBtn" title="등록된 지도 필터 중 하나를 무작위로 골라 적용해서 만들어요">🎲 랜덤 지도 만들기</button>
           <button type="button" class="btn" id="cancelMapBtn">✕ 닫기</button>
         </div>
       </div>
@@ -307,9 +307,17 @@
     <option value="melt">녹아 늘러붙은 효과</option>
     <option value="speed">스피드 잔상 효과</option>
     <option value="crack">유리 깨짐 효과</option>
+    <option value="tile">타일무늬 효과</option>
     <option value="footprint">테마 장식 효과</option>
+    <option value="animal">귀여운 동물 효과</option>
+    <option value="fruitveg">과일&amp;채소 효과</option>
+    <option value="heart">하트 효과</option>
+    <option value="coffee">커피 원두 효과</option>
+    <option value="sports">스포츠공 효과</option>
+    <option value="club">클럽 분위기 효과</option>
     <option value="snow">눈 내리는 효과</option>
     <option value="rain">비 내리는 효과</option>
+    <option value="splash">물 튀기는 효과</option>
     <option value="threeD">3D 효과</option>
     <option value="metal">메탈(크롬) 효과</option>
     <option value="fire">불타는 효과</option>
@@ -321,6 +329,7 @@
     <option value="perspective">원근법 효과</option>
     <option value="curve">곡선 효과</option>
     <option value="wave">물결 효과</option>
+    <option value="train">기찻길 효과</option>
     <option value="tired">지침(흐물흐물) 효과</option>
     <option value="spiral">나선(달팽이) 효과</option>
     <option value="magazine">잡지 오려붙인 효과</option>
@@ -563,6 +572,17 @@
     </div>
   </div>
 
+  <div class="qa-filter-detail hidden" id="qaDetailTile">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaTileIntensity" min="0" max="100" step="1" title="같은 색상계열 안에서 밝기만 랜덤(최대 20%차)한 직사각형 타일이 글자 모양대로 붙습니다. 강도가 높을수록 타일이 잘게 쪼개집니다">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaTileShuffleBtn" style="flex:1;">🎲 다시 붙이기</button>
+      <button type="button" class="qa-btn" id="qaTileOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
   <div class="qa-filter-detail hidden" id="qaDetailFootprint">
     <div class="row">
       <label>강도</label>
@@ -571,6 +591,72 @@
     <div class="row">
       <button type="button" class="qa-btn" id="qaFootprintShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
       <button type="button" class="qa-btn" id="qaFootprintOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailAnimal">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaAnimalIntensity" min="0" max="100" step="1" title="고양이 또는 강아지가 seed로 골라져 흩뿌려집니다">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaAnimalShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
+      <button type="button" class="qa-btn" id="qaAnimalOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailFruitVeg">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaFruitVegIntensity" min="0" max="100" step="1" title="과일(사과·바나나·딸기·포도·오렌지) 또는 채소(당근·브로콜리·토마토·옥수수·가지) 중 하나만 골라 실물 색 그대로(명암만 살짝 랜덤) 흩뿌려집니다">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaFruitVegShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
+      <button type="button" class="qa-btn" id="qaFruitVegOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailHeart">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaHeartIntensity" min="0" max="100" step="1" title="랜덤 크기의 붉은~핑크 계열 하트가 흩뿌려집니다">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaHeartShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+      <button type="button" class="qa-btn" id="qaHeartOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailCoffee">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaCoffeeIntensity" min="0" max="100" step="1" title="랜덤 크기의 커피색(라이트~다크로스트) 원두가 흩뿌려집니다">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaCoffeeShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+      <button type="button" class="qa-btn" id="qaCoffeeOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailSports">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaSportsIntensity" min="0" max="100" step="1" title="축구공·농구공·야구공·테니스공·배구공이 랜덤 크기·위치로 흩뿌려집니다">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSportsShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
+      <button type="button" class="qa-btn" id="qaSportsOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailClub">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaClubIntensity" min="0" max="100" step="1" title="글자 옆에 사람들이 와르르 몰려있는 무리가 생깁니다(인원수는 랜덤)">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaClubShuffleBtn" style="flex:1;">🎲 다시 모으기</button>
+      <button type="button" class="qa-btn" id="qaClubOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
     </div>
   </div>
 
@@ -600,6 +686,21 @@
     <div class="row">
       <button type="button" class="qa-btn" id="qaRainShuffleBtn" style="flex:1;">🎲 다시 내리기</button>
       <button type="button" class="qa-btn" id="qaRainOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailSplash">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaSplashIntensity" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaSplashColor" title="물방울 색상"></div>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSplashShuffleBtn" style="flex:1;">🎲 다시 튀기기</button>
+      <button type="button" class="qa-btn" id="qaSplashOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
     </div>
   </div>
 
@@ -772,6 +873,24 @@
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaWaveOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailTrain">
+    <div class="row">
+      <label>구불거림</label>
+      <input type="range" id="qaTrainAmplitude" min="0" max="100" step="1" title="선로와 글자가 출렁이는 높이">
+    </div>
+    <div class="row">
+      <label>굽이 수</label>
+      <input type="range" id="qaTrainPeriod" min="1" max="6" step="1" title="텍스트 전체에 몇 번 굽이치는지">
+    </div>
+    <div class="row">
+      <label>선로 색상</label>
+      <div class="cmyk-picker mini" id="qaTrainTrackColor" title="레일/침목 색상"></div>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaTrainOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
     </div>
   </div>
 
