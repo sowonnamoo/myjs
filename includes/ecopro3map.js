@@ -24,6 +24,7 @@
   var mapInputToolbar = document.getElementById('mapInputToolbar');
   var mapInputToolbarHint = document.getElementById('mapInputToolbarHint');
   var mapAddressInput = document.getElementById('mapAddressInput');
+  var mapAddressSearchBtn = document.getElementById('mapAddressSearchBtn');
   var applyMapBtn = document.getElementById('applyMapBtn');
   var randomMapBtn = document.getElementById('randomMapBtn');
   var cancelMapBtn = document.getElementById('cancelMapBtn');
@@ -34,12 +35,20 @@
   var APPLY_BTN_DEFAULT_LABEL = applyMapBtn.textContent;
   var busy = false; // 중복 클릭(연속 요청) 방지
 
+  // 주소 입력창은 readonly라서(아래 다음(카카오) 주소검색 팝업으로만 채워짐) 사용자가 직접 타이핑해서
+  // 존재하지 않는/이상한 주소를 넣을 수 없음. 팝업에서 실제 주소를 고르기 전까지는 만들기 버튼도 꺼둠.
+  function setAddressButtonsEnabled(enabled){
+    applyMapBtn.disabled = !enabled;
+    if (randomMapBtn) randomMapBtn.disabled = !enabled;
+  }
+
   function openMapInputToolbar(){
     shapeMenu.classList.add('hidden');
     mapInputToolbarHint.textContent = DEFAULT_HINT;
+    mapAddressInput.value = '';
+    setAddressButtonsEnabled(false);
     mapInputToolbar.classList.remove('hidden');
-    mapAddressInput.focus();
-    mapAddressInput.select();
+    openAddressSearchPopup(); // 열자마자 바로 주소검색 팝업을 띄워서 자연스럽게 검색을 유도
   }
 
   addMapBtn.addEventListener('click', function(e){
@@ -49,8 +58,50 @@
   cancelMapBtn.addEventListener('click', function(){
     mapInputToolbar.classList.add('hidden');
   });
-  mapAddressInput.addEventListener('keydown', function(e){
-    if (e.key === 'Enter') { e.preventDefault(); applyMapBtn.click(); }
+
+  // ---------- 다음(카카오) 주소검색 팝업 ----------
+  // 사용자가 직접 텍스트를 입력하지 못하게(readonly) 막아두고, 이 팝업에서 실제 존재하는
+  // 도로명/지번 주소를 검색해서 고른 결과만 입력창에 채워넣도록 해서 임의의 이상한 주소를
+  // 입력할 수 없도록 유도함.
+  function openAddressSearchPopup(){
+    if (typeof daum === 'undefined' || !daum.Postcode) {
+      mapInputToolbarHint.textContent = '주소검색 서비스를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 열어주세요.';
+      return;
+    }
+    new daum.Postcode({
+      oncomplete: function(data){
+        // 도로명 주소가 있으면 그걸 우선 쓰고, 없으면 지번 주소를 씀. 건물명이 있으면 뒤에 덧붙여서
+        // 지오코딩(geocodeAddress)이 더 정확한 좌표를 찾도록 도움.
+        var addr = data.roadAddress || data.jibunAddress || '';
+        if (data.buildingName && data.buildingName.trim() && addr.indexOf(data.buildingName) === -1) {
+          addr += ' (' + data.buildingName + ')';
+        }
+        if (!addr) return;
+        mapAddressInput.value = addr;
+        setAddressButtonsEnabled(true);
+        mapInputToolbarHint.textContent = '선택한 주소로 지도를 만들 수 있어요. 주소를 바꾸려면 입력창을 다시 눌러주세요.';
+        applyMapBtn.focus();
+      },
+      onclose: function(state){
+        // 검색창을 그냥 닫아버려서(state === 'FORCE_CLOSE') 아직 주소를 못 골랐으면 버튼을 계속 꺼둠
+        if (state === 'FORCE_CLOSE' && !mapAddressInput.value) {
+          mapInputToolbarHint.textContent = '지도에 표시할 주소를 검색해서 선택해주세요.';
+        }
+      },
+      width: '100%',
+      height: '100%'
+    }).open();
+  }
+
+  // 입력창(readonly)을 눌러도 같은 검색 팝업이 뜨도록 해서, 주소를 바꾸고 싶을 때 자연스럽게
+  // 다시 검색하도록 유도함.
+  mapAddressInput.addEventListener('click', function(){
+    if (busy) return;
+    openAddressSearchPopup();
+  });
+  mapAddressSearchBtn.addEventListener('click', function(){
+    if (busy) return;
+    openAddressSearchPopup();
   });
 
   function setBusy(isBusy, label){
@@ -653,7 +704,7 @@
   applyMapBtn.addEventListener('click', function(){
     if (busy) return;
     var address = (mapAddressInput.value || '').trim();
-    if (!address) { mapAddressInput.focus(); return; }
+    if (!address) { openAddressSearchPopup(); return; }
     setBusy(true, '🗺 주소 찾는 중...');
     geocodeAndBuild(address);
   });
@@ -662,7 +713,7 @@
     randomMapBtn.addEventListener('click', function(){
       if (busy) return;
       var address = (mapAddressInput.value || '').trim();
-      if (!address) { mapAddressInput.focus(); return; }
+      if (!address) { openAddressSearchPopup(); return; }
       setBusy(true, '🎲 주소 찾는 중...');
       geocodeAndBuild(address, pickRandomMapFilterConfig());
     });

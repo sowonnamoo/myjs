@@ -769,7 +769,7 @@
   function serializeCurrentCanvas(){
     const objs = canvas.getObjects().filter(o => !o.isGuide);
     return {
-      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'grassText', 'bigbangText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'crackText', 'footprintText', 'sportsText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
+      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'grassText', 'bigbangText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'sportsText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
       background: canvas.backgroundColor || '#ffffff'
     };
   }
@@ -865,7 +865,7 @@
   let saveTimer = null;
 
   function snapshot(){
-    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'grassText', 'bigbangText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'crackText', 'footprintText', 'sportsText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText']));
+    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'grassText', 'bigbangText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'sportsText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText']));
   }
   function pushHistory(){
     if (restoring || cropState) return; // 자르기 모드 중 임시 사각형은 실행취소 기록에서 제외

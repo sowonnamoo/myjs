@@ -11,7 +11,7 @@
   var OFF_BTN = {
     shadow:'qaShadowOffBtn', glow:'qaGlowOffBtn', light:'qaLightOffBtn', gradient:'qaGradOffBtn',
     emboss:'qaEmbossOffBtn', outline:'qaOutlineOffBtn', doubleOutline:'qaDblOffBtn', glitch:'qaGlitchOffBtn',
-    tear:'qaTearOffBtn', melt:'qaMeltOffBtn', speed:'qaSpeedOffBtn', crack:'qaCrackOffBtn', tile:'qaTileOffBtn',
+    tear:'qaTearOffBtn', melt:'qaMeltOffBtn', speed:'qaSpeedOffBtn', reflection:'qaReflectionOffBtn', crack:'qaCrackOffBtn', tile:'qaTileOffBtn',
     footprint:'qaFootprintOffBtn', animal:'qaAnimalOffBtn', fruitveg:'qaFruitVegOffBtn', heart:'qaHeartOffBtn', coffee:'qaCoffeeOffBtn', sports:'qaSportsOffBtn', club:'qaClubOffBtn', snow:'qaSnowOffBtn', rain:'qaRainOffBtn', splash:'qaSplashOffBtn', threeD:'qa3DOffBtn',
     metal:'qaMetalOffBtn', popart:'qaPopartOffBtn', inktrap:'qaInktrapOffBtn', leafvine:'qaLeafvineOffBtn',
     sakura:'qaSakuraOffBtn', fire:'qaFireOffBtn', randomTypo:'qaRandomTypoOffBtn', circular:'qaCircularOffBtn',

@@ -1648,6 +1648,7 @@
     const hasBubble = !!this.bubbleText;
     const hasZebra = !!this.zebraText;
     const hasSpeed = !!(this.speedText && this.speedText.intensity > 0);
+    const hasReflection = !!(this.reflectionText && this.reflectionText.intensity > 0);
     const hasCrack = !!(this.crackText && this.crackText.intensity > 0);
     const hasTile = !!(this.tileText && this.tileText.intensity > 0);
     const hasFootprint = !!(this.footprintText && this.footprintText.intensity > 0);
@@ -1668,7 +1669,7 @@
     const hasLight = !!(this.lightText && this.lightText.intensity > 0);
     const hasGrass = !!this.grassText;
     const hasBigbang = !!this.bigbangText;
-    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang) { origItextRender.call(this, ctx); return; }
+    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasReflection && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang) { origItextRender.call(this, ctx); return; }
 
     // 말풍선 배경/구름 배경/풀밭 배경/빅뱅 배경/수줍수줍 배경은 항상 맨 먼저(가장 뒤에) 그려서, 다른 모든 효과가 그 위에 겹쳐 보이게 함
     if (hasBubble) { drawSpeechBubblePass.call(this, ctx); }
@@ -1856,6 +1857,7 @@
     }
 
     if (hasTear) { drawTearPass.call(this, ctx); } else { baseCharacterDraw.call(this, ctx); }
+    if (hasReflection) { this.fill = baseFill; this.stroke = baseStroke; this.strokeWidth = baseStrokeWidth; drawReflectionPass.call(this, ctx); }
     if (hasZebra) { drawZebraStripesPass.call(this, ctx); }
     if (hasCrack) { drawGlassCrackPass.call(this, ctx); }
     if (hasTile) { drawTilePass.call(this, ctx); }
@@ -2447,7 +2449,96 @@
     ctx.restore();
   }
 
-  // 유리 깨짐 효과: 텍스트 안 임의의 충격 지점에서 삐뚤빼뚤한 금(균열)이 방사형으로 뻗어나가고,
+  // 거울 반사 효과: 원본 글자 바로 아래에 상하로 뒤집힌 복사본을 옅게 그리고, 아래로 갈수록
+  // 점점 투명해지도록(destination-in으로 위→아래 불투명→투명 그라디언트를 곱함) 페이드시켜서
+  // 마치 바닥/유리에 살짝 비친 것처럼 보이게 함. "흐림"을 올리면 안개 낀 듯 부드럽게 퍼져
+  // 더 입체적인 반사 느낌이 남. 반사 영역만 클리핑해서 캔버스의 다른 부분에는 영향 없음.
+  // 거울 반사 비트맵을 만들어서(글자 모양+블러+페이드 그라디언트까지 전부 한 번만 그려서) 오브젝트에
+  // 캐싱해둠. 텍스트 내용/폰트/색상/효과값이 그대로면 캐시를 재사용하고, 그중 하나라도 바뀌었을 때만
+  // 다시 만듦 — ctx.filter의 blur는 원래 매 프레임 다시 계산하면 매우 무거운데(특히 드래그·타이핑
+  // 중 캔버스 전체가 계속 다시 그려질 때), 이렇게 캐싱해두면 평소 렌더링은 그냥 drawImage 한 번으로
+  // 끝나서 훨씬 가벼워짐.
+  function buildReflectionBitmap(t, cfg, w, h, gap, reflectH, pad){
+    const fill = (t.fill && typeof t.fill === 'string') ? t.fill : '#333333';
+    const stroke = (t.stroke && typeof t.stroke === 'string') ? t.stroke : '';
+    const key = [
+      t.text, t.fontFamily, t.fontWeight, t.fontStyle, t.fontSize, t.charSpacing, t.lineHeight,
+      fill, stroke, t.strokeWidth, Math.round(w), Math.round(h),
+      cfg.intensity, cfg.blur, cfg.gap
+    ].join('|');
+    const cache = t.__reflectionCache;
+    if (cache && cache.key === key) return cache;
+
+    const res = 2; // 확대해도 흐릿하지 않도록 2배 해상도로 그려둠
+    const cw = Math.max(1, Math.ceil(w * 2 * res));
+    const ch = Math.max(1, Math.ceil((reflectH + pad) * res));
+    let off = document.createElement('canvas');
+    off.width = cw; off.height = ch;
+    const octx = off.getContext('2d');
+    octx.scale(res, res);
+    octx.translate(w, -(h / 2 + gap)); // 클립 영역 좌상단(-w, h/2+gap)이 오프스크린 (0,0)이 되도록 이동
+
+    const savedFill = t.fill, savedStroke = t.stroke, savedStrokeWidth = t.strokeWidth;
+    octx.save();
+    octx.translate(0, h + gap * 2);
+    octx.scale(1, -1);
+    t.fill = fill; t.stroke = stroke || null; t.strokeWidth = stroke ? t.strokeWidth : 0;
+    baseCharacterDraw.call(t, octx);
+    octx.restore();
+    t.fill = savedFill; t.stroke = savedStroke; t.strokeWidth = savedStrokeWidth;
+
+    // 위(글자와 가까운 쪽)는 진하게, 아래로 갈수록 완전히 투명해지도록 알파 그라디언트를 곱함
+    octx.save();
+    octx.globalCompositeOperation = 'destination-in';
+    const grad = octx.createLinearGradient(0, h / 2 + gap, 0, h / 2 + gap + reflectH);
+    grad.addColorStop(0, 'rgba(0,0,0,0.9)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    octx.fillStyle = grad;
+    octx.fillRect(-w, h / 2 + gap, w * 2, reflectH + pad);
+    octx.restore();
+
+    // 흐림은 여기 오프스크린에서 딱 한 번만 적용(성능 핵심 — 매 프레임 반복하지 않음)
+    if (cfg.blur > 0) {
+      const blurred = document.createElement('canvas');
+      blurred.width = cw; blurred.height = ch;
+      const bctx = blurred.getContext('2d');
+      bctx.filter = 'blur(' + (cfg.blur * res) + 'px)';
+      bctx.drawImage(off, 0, 0);
+      off = blurred;
+    }
+
+    const result = { key, canvas: off };
+    t.__reflectionCache = result;
+    return result;
+  }
+
+  function drawReflectionPass(ctx){
+    const cfg = this.reflectionText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 55)) / 100;
+    if (amt <= 0) return;
+    const blurPx = Math.max(0, Math.min(20, cfg.blur != null ? cfg.blur : 4));
+    // 간격은 음수까지 허용 — 글꼴 자체의 위아래 여백(줄간격) 때문에 0으로 둬도 살짝 떠 보일 수 있어서,
+    // 안쪽(음수)으로 당길수록 그 여백까지 파고들어 글자 바로 아래에 완전히 딱 붙을 수 있게 함.
+    // 안쪽으로 당기는 쪽(gapRaw<0)은 바깥으로 벌리는 쪽보다 배율을 더 크게 줘서(0.4→0.65)
+    // 슬라이더를 조금만 내려도 확실히 닫히도록 한계치를 늘림.
+    const gapRaw = Math.max(-60, Math.min(100, cfg.gap != null ? cfg.gap : 0)) / 100;
+    const w = this.width || 100;
+    const h = this.height || (this.fontSize || 40) * 1.2;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const gap = h * gapRaw * (gapRaw >= 0 ? 0.4 : 0.65); // 원본과 반사 사이 틈(음수면 안쪽으로 파고듦)
+    const reflectH = h * (0.5 + amt * 0.7); // 강도가 셀수록 반사가 더 길게 이어져 보임
+    const topY = h / 2 + gap; // 원본 텍스트 아랫변 기준 위치(간격만큼 위/아래로 이동)
+    const pad = blurPx * 2; // 흐림 반경만큼 여유를 둬서 가장자리가 잘리지 않게 함
+
+    const bmp = buildReflectionBitmap(this, cfg, w, h, gap, reflectH, pad);
+
+    ctx.save();
+    ctx.globalAlpha = op * (0.35 + amt * 0.4);
+    ctx.drawImage(bmp.canvas, -w, topY, w * 2, reflectH + pad);
+    ctx.restore();
+  }
   // (1) 큰 파편 몇 조각은 제자리에서 살짝 어긋나게(이동/회전) 다시 그려서 밀려난 것처럼 보이게 하고,
   // (2) 작은 파편(칩)들은 충격 지점에서 사방으로 멀리 튀어나가며 흩어지게 함.
   // 각 파편은 뒤에 그림자를, 가장자리에 밝은 테두리(베벨)를 넣어서 붕 떠 있는 입체감을 냄.
@@ -4087,7 +4178,7 @@
   }
 
   function hasAnyRenderEffect(t){
-    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.grassText || t.bigbangText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.crackText || t.tileText || t.footprintText || t.animalText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
+    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.grassText || t.bigbangText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
   }
   // 효과를 하나라도 켜면 이 통합 _render로 바꿔치기하고, objectCaching을 꺼서
   // (렌더 방식이 계속 바뀌는 오브젝트라 fabric의 캐시 비트맵이 못 따라와 지저분한 잔상이
@@ -4326,6 +4417,39 @@
   document.getElementById('qaSpeedOffBtn').addEventListener('click', () => {
     qaSpeedIntensity.value = 0;
     applyQaSpeed(false); EP.pushHistory();
+  });
+
+
+  // ---- 거울 반사 효과 ---- (원본 바로 아래에 상하반전 복사본을 옅게+흐리게 그려 바닥/유리에 비친 느낌)
+  const qaReflectionIntensity = document.getElementById('qaReflectionIntensity');
+  const qaReflectionBlur = document.getElementById('qaReflectionBlur');
+  const qaReflectionGap = document.getElementById('qaReflectionGap');
+  function applyQaReflection(){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaReflectionIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.reflectionText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      const blur = parseFloat(qaReflectionBlur.value) || 0;
+      const gap = parseFloat(qaReflectionGap.value) || 0;
+      boxes.forEach(t => {
+        t.reflectionText = { intensity, blur, gap };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaReflectionIntensity.addEventListener('input', () => applyQaReflection());
+  qaReflectionBlur.addEventListener('input', () => applyQaReflection());
+  qaReflectionGap.addEventListener('input', () => applyQaReflection());
+  qaReflectionIntensity.addEventListener('change', () => EP.pushHistory());
+  qaReflectionBlur.addEventListener('change', () => EP.pushHistory());
+  qaReflectionGap.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaReflectionOffBtn').addEventListener('click', () => {
+    qaReflectionIntensity.value = 0;
+    applyQaReflection(); EP.pushHistory();
   });
 
 
@@ -5779,6 +5903,12 @@
         qaSpeedIntensity.value = speed ? (speed.intensity || 0) : 0;
         qaSpeedDustColor.value = speed ? (EP.toHex(speed.dustColor) || '#8a6a45') : '#8a6a45';
   }
+  function populate_reflection(anchor){
+        const reflection = anchor.reflectionText;
+        qaReflectionIntensity.value = reflection ? (reflection.intensity || 0) : 0;
+        qaReflectionBlur.value = reflection ? (reflection.blur != null ? reflection.blur : 4) : 4;
+        qaReflectionGap.value = reflection ? (reflection.gap != null ? reflection.gap : 0) : 0;
+  }
   function populate_crack(anchor){
         const crack = anchor.crackText;
         qaCrackIntensity.value = crack ? (crack.intensity || 0) : 0;
@@ -6028,6 +6158,19 @@
     id: 'speed', label: '스피드 잔상', commonEffect: false,
     appliesTo: ['text'], group: null, includeInRandom: true,
     apply: applyQaSpeed, randomize: function(){ var b=document.getElementById('qaSpeedShuffleBtn'); if(b) b.click(); }, populate: populate_speed
+  });
+  EP.registerFilter({
+    id: 'reflection', label: '거울 반사', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaReflection,
+    randomize: function(){
+      qaReflectionIntensity.value = Math.round(35 + Math.random() * 55);
+      qaReflectionBlur.value = Math.round(Math.random() * 10);
+      qaReflectionGap.value = Math.round(Math.random() * 40 - 20);
+      applyQaReflection();
+      EP.pushHistory();
+    },
+    populate: populate_reflection
   });
   EP.registerFilter({
     id: 'crack', label: '유리 깨짐', commonEffect: false,

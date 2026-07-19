@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SVG · 이미지 편집기</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Nanum+Gothic:wght@400;700;800&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Dodum&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -139,11 +140,14 @@
         </div>
       </div>
       <div class="crop-toolbar table-toolbar hidden" id="mapInputToolbar">
-        <span class="crop-toolbar-hint" id="mapInputToolbarHint">지도에 표시할 주소를 입력하세요 (도로명·지번 주소, 건물명·장소명도 가능)</span>
-        <input type="text" id="mapAddressInput" style="width:420px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;" placeholder="예) 서울 강남구 테헤란로 152">
+        <span class="crop-toolbar-hint" id="mapInputToolbarHint">🔍 버튼을 눌러 실제 존재하는 주소를 검색·선택하세요</span>
         <div class="table-toolbar-row">
-          <button type="button" class="btn primary" id="applyMapBtn">🗺 지도 만들기</button>
-          <button type="button" class="btn" id="randomMapBtn" title="등록된 지도 필터 중 하나를 무작위로 골라 적용해서 만들어요">🎲 랜덤 지도 만들기</button>
+          <input type="text" id="mapAddressInput" readonly style="width:340px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;background:#fff;" placeholder="주소 검색 버튼을 눌러주세요">
+          <button type="button" class="btn" id="mapAddressSearchBtn" title="다음(카카오) 주소검색으로 실제 주소를 찾아 입력해요">🔍 주소 검색</button>
+        </div>
+        <div class="table-toolbar-row">
+          <button type="button" class="btn primary" id="applyMapBtn" disabled>🗺 지도 만들기</button>
+          <button type="button" class="btn" id="randomMapBtn" disabled title="등록된 지도 필터 중 하나를 무작위로 골라 적용해서 만들어요">🎲 랜덤 지도 만들기</button>
           <button type="button" class="btn" id="cancelMapBtn">✕ 닫기</button>
         </div>
       </div>
@@ -306,6 +310,7 @@
     <option value="tear">잘게 자르기</option>
     <option value="melt">녹아 늘러붙은 효과</option>
     <option value="speed">스피드 잔상 효과</option>
+    <option value="reflection">거울 반사 효과</option>
     <option value="crack">유리 깨짐 효과</option>
     <option value="tile">타일무늬 효과</option>
     <option value="footprint">테마 장식 효과</option>
@@ -554,6 +559,24 @@
     <div class="row">
       <button type="button" class="qa-btn" id="qaSpeedShuffleBtn" style="flex:1;">🎲 다시 튀기기</button>
       <button type="button" class="qa-btn" id="qaSpeedOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailReflection">
+    <div class="row">
+      <label>반사 진하기</label>
+      <input type="range" id="qaReflectionIntensity" min="0" max="100" step="1" title="글자 바로 아래에 비치는 거울상의 선명한 정도와 길이">
+    </div>
+    <div class="row">
+      <label>흐림</label>
+      <input type="range" id="qaReflectionBlur" min="0" max="20" step="1" title="반사된 글자를 뿌옇게 흐릴수록 수면/유리에 비친 느낌이 강해짐">
+    </div>
+    <div class="row">
+      <label>간격</label>
+      <input type="range" id="qaReflectionGap" min="-60" max="100" step="1" title="원본 글자와 반사 이미지 사이의 틈 (음수로 내리면 글꼴 여백까지 당겨져 딱 붙게 됨)">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaReflectionOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
     </div>
   </div>
 

@@ -139,6 +139,7 @@
     tear: document.getElementById('qaDetailTear'),
     melt: document.getElementById('qaDetailMelt'),
     speed: document.getElementById('qaDetailSpeed'),
+    reflection: document.getElementById('qaDetailReflection'),
     crack: document.getElementById('qaDetailCrack'),
     tile: document.getElementById('qaDetailTile'),
     footprint: document.getElementById('qaDetailFootprint'),
