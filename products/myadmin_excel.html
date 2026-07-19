@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>엑셀 하나로 전체 상품 옵션 관리</title>
+<style>
+    body { font-family: sans-serif; padding: 20px; background:#f5f6f8; }
+    h2 { margin-bottom: 4px; }
+    .sub { color:#666; font-size: 13px; margin-bottom: 20px; line-height:1.6; }
+    .control-box { border: 1px solid #ccc; padding: 20px; max-width: 760px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background:#fff; border-radius:6px; }
+    .control-box h3 { margin: 0 0 4px 0; }
+    .hint { font-size: 12px; color:#888; margin: -6px 0 4px 0; line-height:1.5; }
+    input, select { padding: 8px; width: 100%; box-sizing: border-box; font-size:14px; font-family: inherit; }
+    button { padding: 10px; background: #2b7bc3; color: white; border: none; cursor: pointer; width: 100%; border-radius:4px; font-size:14px; }
+    button.secondary { background:#888; }
+    button.danger { background:#c0392b; }
+    button:disabled { background:#bbb; cursor:not-allowed; }
+    #statusBar { max-width:760px; padding:10px 14px; border-radius:4px; background:#eef4fb; color:#2b5f8a; font-size:13px; margin-bottom:16px; white-space:pre-line; }
+    #previewBox { max-width: 760px; }
+    .sheet-guide { font-size:12px; color:#555; background:#fafbfc; border:1px dashed #ccc; border-radius:4px; padding:10px; }
+    .sheet-guide b { color:#2b5f8a; }
+    table.mini { border-collapse:collapse; font-size:12px; width:100%; margin-top:6px; }
+    table.mini th, table.mini td { border:1px solid #ddd; padding:4px 6px; text-align:left; }
+    table.mini th { background:#eef4fb; }
+    .product-card { border:1px solid #ddd; border-radius:6px; padding:10px 12px; margin-bottom:12px; background:#fafbfc; }
+    .product-card h4 { margin:0 0 6px 0; display:flex; align-items:center; gap:8px; }
+    .badge { font-size:11px; padding:2px 8px; border-radius:10px; color:white; }
+    .badge.new { background:#2b8a3e; }
+    .badge.update { background:#2b7bc3; }
+    .badge.delete { background:#c0392b; }
+    .delete-list { font-size:13px; }
+    .delete-list li { color:#c0392b; }
+    a.back-link { font-size:13px; color:#2b7bc3; }
+</style>
+</head>
+<body>
+    <h2>엑셀 하나로 전체 상품 옵션 / 가격 관리</h2>
+    <div class="sub">
+        엑셀 파일 <b>하나</b>로 01my, 02my, 03my... 여러 상품을 한꺼번에 등록·수정·삭제합니다.<br>
+        각 시트 맨 앞 <b>상품ID</b> 칸에 문서 ID를 적어두면, 그 ID로 Firestore 문서가 자동 생성되거나 갱신됩니다. 새 상품은 상품ID만 새로 적으면 새 문서로 생성됩니다.<br>
+        <span class="hint" style="margin:0;">참고: SEO(검색최적화)/상세페이지 글·사진은 이제 각 상품 HTML 파일 안에 직접 적는 방식으로 관리합니다. 이 엑셀 도구는 가격/옵션 전용입니다.</span><br>
+        <a class="back-link" href="myadmin.html">← 기존 관리자 화면(폼 입력)으로 가기</a>
+    </div>
+    <div id="statusBar">불러오는 중...</div>
+
+    <!-- 1. 엑셀로 내보내기 -->
+    <div class="control-box">
+        <h3>① 지금 등록된 모든 상품을 엑셀로 내보내기</h3>
+        <div class="hint">Firestore에 있는 모든 상품 문서(01my, 02my 등)를 한 파일로 내려받습니다. 새 상품을 추가하려면 이 파일에 새 상품ID로 행을 이어서 적으면 됩니다.</div>
+        <button id="exportBtn" type="button">전체 상품 엑셀로 내보내기 (.xlsx 다운로드)</button>
+    </div>
+
+    <!-- 2. 엑셀 업로드 -->
+    <div class="control-box">
+        <h3>② 수정한 엑셀 업로드</h3>
+        <div class="hint">파일을 열어 상품을 추가/수정하거나, 삭제할 상품ID를 "삭제" 시트에 적은 뒤 여기에 다시 올리세요. "미리보기"로 어떤 상품이 생성/수정/삭제되는지 확인한 다음 "Firestore에 저장"을 눌러야 실제로 반영됩니다.</div>
+        <input type="file" id="fileInput" accept=".xlsx">
+        <button id="previewBtn" type="button" class="secondary">미리보기</button>
+        <button id="saveBtn" type="button" disabled>Firestore에 저장 (실제 반영)</button>
+    </div>
+
+    <!-- 3. 미리보기 -->
+    <div class="control-box" id="previewBox" style="display:none;">
+        <h3>③ 업로드 내용 미리보기</h3>
+        <div id="previewSummary"></div>
+        <div id="previewProducts"></div>
+        <div id="previewDelete"></div>
+    </div>
+
+    <!-- 4. 엑셀 시트 작성 가이드 -->
+    <div class="control-box">
+        <h3>④ 엑셀 시트 작성 가이드</h3>
+        <div class="sheet-guide">
+            <p>모든 시트(삭제 시트 제외)는 맨 앞에 <b>상품ID</b> 칸이 있습니다. 같은 상품ID를 여러 행에 반복해서 적으면 한 상품 안의 여러 그룹/품목/사이즈로 합쳐집니다.</p>
+            <p><b>그룹</b> 시트: 상품ID / 그룹ID(비워두면 자동 부여) / 그룹제목</p>
+            <p><b>품목</b> 시트: 상품ID / 그룹ID(또는 그룹제목) / 품목명 / 가로mm / 세로mm / 가격 / 종이무게 / 배송일 / 마진율% / 추가마진율% / 클릭URL / 이미지URL / 다음페이지이동URL / 최우선다음페이지이동URL / 서브옵션(<code>이름:추가금액</code>을 세미콜론으로 연결, 예: <code>유광골드:2000; 무광레드:1500</code>)</p>
+            <p><b>매수별배수</b> 시트: 상품ID / 매수 / 배수</p>
+            <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대) / 값</p>
+            <p><b>삭제</b> 시트: 상품ID 한 칸만 있습니다. 여기 적힌 상품ID는 Firestore 문서 자체가 통째로 삭제됩니다.</p>
+            <p>상품ID나 품목명이 비어있는 행은 자동으로 무시됩니다. 새 상품ID를 적으면 새 문서가 만들어지고, 기존 상품ID를 적으면 그 문서 전체가 엑셀 내용으로 덮어써집니다.</p>
+        </div>
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const productsCol = collection(db, "products");
+
+    const $ = (id) => document.getElementById(id);
+    const statusBar = $("statusBar");
+
+    let existingProductIds = [];
+
+    async function refreshExistingIds() {
+        const snap = await getDocs(productsCol);
+        existingProductIds = snap.docs.map(d => d.id).sort();
+        statusBar.textContent = existingProductIds.length
+            ? `현재 Firestore에 등록된 상품: ${existingProductIds.join(", ")} (${existingProductIds.length}개)`
+            : `현재 Firestore에 등록된 상품이 없습니다. ①에서 빈 엑셀을 내려받아 새 상품을 채워 넣어도 됩니다.`;
+        return existingProductIds;
+    }
+
+    // ---- 숫자 헬퍼 ----
+    function toNum(v) {
+        if (v === "" || v === undefined || v === null) return undefined;
+        const n = parseFloat(v);
+        return isNaN(n) ? undefined : n;
+    }
+    function orEmpty(v) { return v === undefined || v === null ? "" : v; }
+
+    function valueGroups(productData) {
+        return productData.options.filter(o => Array.isArray(o.values));
+    }
+    function findSpecial(productData, id) {
+        return productData.options.find(o => o.id === id);
+    }
+
+    // =========================================================
+    // ① 엑셀로 내보내기 (Firestore 전체 -> 워크북, 상품ID 컬럼 포함)
+    // =========================================================
+    $("exportBtn").addEventListener("click", async () => {
+        statusBar.textContent = "전체 상품을 불러오는 중...";
+        const snap = await getDocs(productsCol);
+        const allProducts = snap.docs.map(d => {
+            const data = d.data();
+            if (!Array.isArray(data.options)) data.options = [];
+            return { id: d.id, data };
+        });
+
+        const wb = XLSX.utils.book_new();
+
+        const groupRows = [["상품ID", "그룹ID", "그룹제목"]];
+        const itemHeader = ["상품ID", "그룹ID", "품목명", "가로mm", "세로mm", "가격", "종이무게", "배송일", "마진율%", "추가마진율%", "클릭URL", "이미지URL", "다음페이지이동URL", "최우선다음페이지이동URL", "서브옵션"];
+        const itemRows = [itemHeader];
+        const qtyRows = [["상품ID", "매수", "배수"]];
+        const customRows = [["상품ID", "항목", "값"]];
+
+        allProducts.forEach(({ id, data }) => {
+            const groups = valueGroups(data);
+            groups.forEach(g => {
+                groupRows.push([id, g.id, g.title || ""]);
+                (g.values || []).forEach(v => {
+                    const subText = Array.isArray(v.subOptions) && v.subOptions.length
+                        ? v.subOptions.map(s => `${s.color}:${s.priceExtra ?? 0}`).join("; ")
+                        : "";
+                    itemRows.push([
+                        id, g.id, v.name || "", orEmpty(v.width), orEmpty(v.height), orEmpty(v.price),
+                        orEmpty(v.weight), orEmpty(v.delivery), orEmpty(v.margin), orEmpty(v.surcharge),
+                        orEmpty(v.url), orEmpty(v.imageUrl), orEmpty(v.nextPageUrl), orEmpty(v.priorityNextPageUrl), subText
+                    ]);
+                });
+            });
+
+            const o00 = findSpecial(data, "options00");
+            if (o00 && Array.isArray(o00.quantities)) {
+                o00.quantities.forEach((q, i) => qtyRows.push([id, q, o00.multipliers ? o00.multipliers[i] : ""]));
+            }
+
+            const o01 = findSpecial(data, "options01");
+            if (o01 && o01.basePrice !== undefined) {
+                customRows.push([id, "베이스가격", orEmpty(o01.basePrice)]);
+                customRows.push([id, "배수", orEmpty(o01.multiplier)]);
+                customRows.push([id, "가로최소", orEmpty(o01.widthMin)]);
+                customRows.push([id, "가로최대", orEmpty(o01.widthMax)]);
+                customRows.push([id, "세로최소", orEmpty(o01.heightMin)]);
+                customRows.push([id, "세로최대", orEmpty(o01.heightMax)]);
+            }
+        });
+
+        if (groupRows.length === 1) groupRows.push(["", "", ""]);
+        if (itemRows.length === 1) itemRows.push(itemHeader.map(() => ""));
+        if (qtyRows.length === 1) qtyRows.push(["", "", ""]);
+        if (customRows.length === 1) customRows.push(["", "", ""]);
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(groupRows), "그룹");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(itemRows), "품목");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qtyRows), "매수별배수");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(customRows), "비규격설정");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["상품ID"], [""]]), "삭제");
+
+        XLSX.writeFile(wb, `전체상품_옵션.xlsx`);
+        statusBar.textContent = `전체 ${allProducts.length}개 상품을 엑셀로 내려받았습니다. 수정 후 ②에서 다시 업로드하세요.`;
+    });
+
+    // =========================================================
+    // ② 엑셀 업로드 -> 미리보기 -> Firestore 저장
+    // =========================================================
+    let parsedResult = null; // { products: {id: productData}, deleteIds: [] }
+
+    function rowsOf(wb, sheetName) {
+        const ws = wb.Sheets[sheetName];
+        if (!ws) return [];
+        return XLSX.utils.sheet_to_json(ws, { defval: "" });
+    }
+
+    // 상품ID 기준으로 행을 그룹핑
+    function groupByProductId(rows) {
+        const map = {};
+        rows.forEach(r => {
+            const pid = String(r["상품ID"] || "").trim();
+            if (!pid) return;
+            if (!map[pid]) map[pid] = [];
+            map[pid].push(r);
+        });
+        return map;
+    }
+
+    function buildOneProductData(productId, groupRows, itemRows, qtyRows, customRows) {
+        const options = [];
+
+        // ---- 그룹 + 품목 ----
+        const validGroupRows = groupRows.filter(r => String(r["그룹제목"] || "").trim() || String(r["그룹ID"] || "").trim());
+        const usedNums = new Set();
+        validGroupRows.forEach(r => {
+            const m = String(r["그룹ID"] || "").match(/^options(\d+)$/);
+            if (m) usedNums.add(parseInt(m[1], 10));
+        });
+        let autoCounter = 1;
+        function nextAutoId() {
+            while (usedNums.has(autoCounter)) autoCounter++;
+            usedNums.add(autoCounter);
+            return `options${autoCounter}`;
+        }
+
+        const groups = [];
+        const titleToId = {};
+        validGroupRows.forEach(r => {
+            let id = String(r["그룹ID"] || "").trim();
+            const title = String(r["그룹제목"] || "").trim();
+            if (!id) id = nextAutoId();
+            const g = { id, title, values: [] };
+            groups.push(g);
+            if (title) titleToId[title] = id;
+        });
+
+        itemRows.forEach(r => {
+            const name = String(r["품목명"] || "").trim();
+            if (!name) return;
+            let groupId = String(r["그룹ID"] || "").trim();
+            if (!groups.some(g => g.id === groupId)) {
+                groupId = titleToId[groupId] || groupId;
+            }
+            const g = groups.find(gg => gg.id === groupId);
+            if (!g) return;
+
+            const item = { name };
+            const width = toNum(r["가로mm"]), height = toNum(r["세로mm"]);
+            if (width !== undefined && height !== undefined) { item.width = width; item.height = height; }
+            const price = toNum(r["가격"]); if (price !== undefined) item.price = price;
+            const weight = toNum(r["종이무게"]); if (weight !== undefined) item.weight = weight;
+            const delivery = toNum(r["배송일"]); if (delivery !== undefined) item.delivery = delivery;
+            const margin = toNum(r["마진율%"]); if (margin !== undefined) item.margin = margin;
+            const surcharge = toNum(r["추가마진율%"]); if (surcharge !== undefined) item.surcharge = surcharge;
+            const url = String(r["클릭URL"] || "").trim(); if (url) item.url = url;
+            const imageUrl = String(r["이미지URL"] || "").trim(); if (imageUrl) item.imageUrl = imageUrl;
+            const nextPageUrl = String(r["다음페이지이동URL"] || "").trim(); if (nextPageUrl) item.nextPageUrl = nextPageUrl;
+            const priorityNextPageUrl = String(r["최우선다음페이지이동URL"] || "").trim(); if (priorityNextPageUrl) item.priorityNextPageUrl = priorityNextPageUrl;
+            const subText = String(r["서브옵션"] || "").trim();
+            if (subText) {
+                const subs = subText.split(";").map(s => s.trim()).filter(Boolean).map(s => {
+                    const [color, priceExtra] = s.split(":").map(x => (x || "").trim());
+                    return { color, priceExtra: parseFloat(priceExtra) || 0 };
+                }).filter(s => s.color);
+                if (subs.length) item.subOptions = subs;
+            }
+            g.values.push(item);
+        });
+        options.push(...groups);
+
+        // ---- 매수별배수 (options00) ----
+        const quantities = [], multipliers = [];
+        qtyRows.forEach(r => {
+            const q = toNum(r["매수"]), m = toNum(r["배수"]);
+            if (q !== undefined && m !== undefined) { quantities.push(q); multipliers.push(m); }
+        });
+        if (quantities.length) options.push({ id: "options00", title: "매수별 배수", quantities, multipliers });
+
+        // ---- 비규격설정 (options01) ----
+        const customMap = {};
+        customRows.forEach(r => { customMap[String(r["항목"] || "").trim()] = r["값"]; });
+        const basePrice = toNum(customMap["베이스가격"]), multiplier = toNum(customMap["배수"]);
+        const widthMin = toNum(customMap["가로최소"]), widthMax = toNum(customMap["가로최대"]);
+        const heightMin = toNum(customMap["세로최소"]), heightMax = toNum(customMap["세로최대"]);
+        if ([basePrice, multiplier, widthMin, widthMax, heightMin, heightMax].every(v => v !== undefined)) {
+            options.push({ id: "options01", title: "비규격 설정", basePrice, multiplier, widthMin, widthMax, heightMin, heightMax });
+        }
+
+        return { productId, options };
+    }
+
+    function buildAllFromWorkbook(wb) {
+        const groupRowsAll = rowsOf(wb, "그룹");
+        const itemRowsAll = rowsOf(wb, "품목");
+        const qtyRowsAll = rowsOf(wb, "매수별배수");
+        const customRowsAll = rowsOf(wb, "비규격설정");
+        const deleteRowsAll = rowsOf(wb, "삭제");
+
+        const deleteIds = [...new Set(
+            deleteRowsAll.map(r => String(r["상품ID"] || "").trim()).filter(Boolean)
+        )];
+
+        const byProductGroup = groupByProductId(groupRowsAll);
+        const byProductItem = groupByProductId(itemRowsAll);
+        const byProductQty = groupByProductId(qtyRowsAll);
+        const byProductCustom = groupByProductId(customRowsAll);
+
+        const allIds = new Set([
+            ...Object.keys(byProductGroup), ...Object.keys(byProductItem),
+            ...Object.keys(byProductQty), ...Object.keys(byProductCustom)
+        ]);
+
+        const products = {};
+        allIds.forEach(pid => {
+            if (deleteIds.includes(pid)) return; // 삭제 대상이면 등록/수정하지 않음
+            products[pid] = buildOneProductData(
+                pid,
+                byProductGroup[pid] || [], byProductItem[pid] || [], byProductQty[pid] || [],
+                byProductCustom[pid] || []
+            );
+        });
+
+        return { products, deleteIds };
+    }
+
+    function renderPreview(result) {
+        const productIds = Object.keys(result.products).sort();
+
+        $("previewSummary").innerHTML = `
+            <div class="summary-row" style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px; margin-bottom:10px;">
+                <div style="background:#eef4fb; padding:6px 10px; border-radius:4px;">등록/수정될 상품 ${productIds.length}개</div>
+                <div style="background:#fdeaea; padding:6px 10px; border-radius:4px; color:#c0392b;">삭제될 상품 ${result.deleteIds.length}개</div>
+            </div>
+        `;
+
+        let html = "";
+        productIds.forEach(pid => {
+            const productData = result.products[pid];
+            const groups = valueGroups(productData);
+            const itemCount = groups.reduce((sum, g) => sum + (g.values || []).length, 0);
+            const isNew = !existingProductIds.includes(pid);
+            html += `<div class="product-card"><h4>${pid} <span class="badge ${isNew ? 'new' : 'update'}">${isNew ? '신규 생성' : '기존 수정'}</span></h4>
+                <div style="font-size:13px; color:#555;">그룹 ${groups.length}개 · 품목 ${itemCount}개</div>`;
+            groups.forEach(g => {
+                html += `<table class="mini"><tr><th colspan="4">${g.id} — ${g.title || "제목없음"}</th></tr>
+                    <tr><th>품목명</th><th>가격</th><th>사이즈</th><th>URL/이미지/이동URL</th></tr>`;
+                (g.values || []).forEach(v => {
+                    const flags = [v.url && "URL", v.imageUrl && "이미지", v.nextPageUrl && "다음URL", v.priorityNextPageUrl && "최우선URL"].filter(Boolean).join(", ");
+                    html += `<tr><td>${v.name}</td><td>${orEmpty(v.price)}</td><td>${v.width !== undefined ? v.width + "×" + v.height : ""}</td><td>${flags}</td></tr>`;
+                });
+                html += `</table>`;
+            });
+            html += `</div>`;
+        });
+        $("previewProducts").innerHTML = html || "<div class='hint'>등록/수정될 상품이 없습니다.</div>";
+
+        if (result.deleteIds.length) {
+            $("previewDelete").innerHTML = `<h4 style="color:#c0392b;">삭제될 상품</h4><ul class="delete-list">${result.deleteIds.map(id => `<li>${id}</li>`).join("")}</ul>`;
+        } else {
+            $("previewDelete").innerHTML = "";
+        }
+
+        $("previewBox").style.display = "flex";
+        $("previewBox").style.flexDirection = "column";
+    }
+
+    $("previewBtn").addEventListener("click", async () => {
+        const file = $("fileInput").files[0];
+        if (!file) { alert("업로드할 엑셀 파일을 선택하세요."); return; }
+        await refreshExistingIds();
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+                parsedResult = buildAllFromWorkbook(wb);
+                if (Object.keys(parsedResult.products).length === 0 && parsedResult.deleteIds.length === 0) {
+                    alert("엑셀에서 유효한 상품ID를 찾지 못했습니다. 각 시트 맨 앞 상품ID 칸이 채워져 있는지 확인하세요.");
+                    return;
+                }
+                renderPreview(parsedResult);
+                $("saveBtn").disabled = false;
+                statusBar.textContent = `미리보기 확인 후 문제 없으면 "Firestore에 저장"을 누르세요.`;
+            } catch (err) {
+                alert("엑셀을 읽는 중 오류가 발생했습니다: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    $("saveBtn").addEventListener("click", async () => {
+        if (!parsedResult) { alert("먼저 미리보기를 실행하세요."); return; }
+        const productIds = Object.keys(parsedResult.products);
+        const deleteIds = parsedResult.deleteIds;
+        if (!confirm(`상품 ${productIds.length}개 생성/수정, ${deleteIds.length}개 삭제를 지금 Firestore에 반영합니다. 계속할까요?`)) return;
+
+        $("saveBtn").disabled = true;
+        let done = 0;
+        const total = productIds.length + deleteIds.length;
+        try {
+            for (const pid of productIds) {
+                const data = parsedResult.products[pid];
+                data.updatedAt = new Date();
+                await setDoc(doc(db, "products", pid), data);
+                done++;
+                statusBar.textContent = `저장 중... (${done}/${total})`;
+            }
+            for (const pid of deleteIds) {
+                await deleteDoc(doc(db, "products", pid));
+                done++;
+                statusBar.textContent = `저장 중... (${done}/${total})`;
+            }
+            alert(`완료: ${productIds.length}개 생성/수정, ${deleteIds.length}개 삭제되었습니다.`);
+            parsedResult = null;
+            await refreshExistingIds();
+        } catch (err) {
+            alert("저장 중 오류가 발생했습니다: " + err.message);
+            $("saveBtn").disabled = false;
+        }
+    });
+
+    // ---- 초기화 ----
+    refreshExistingIds();
+</script>
+</body>
+</html>

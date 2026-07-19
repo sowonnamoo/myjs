@@ -36,7 +36,8 @@
 </head>
 <body>
     <h2>상품 옵션 관리자</h2>
-    <div class="sub">Firestore: products 컬렉션 (문서 1개 = 상품 1개, options 배열) · 문서 전환 시에만 다시 불러옵니다.</div>
+    <div class="sub">Firestore: products 컬렉션 (문서 1개 = 상품 1개, options 배열) · 문서 전환 시에만 다시 불러옵니다.<br>
+    <a href="myadmin_excel.html" style="color:#2b7bc3;">→ 엑셀로 가격/옵션 한번에 올리기</a></div>
     <div id="statusBar">불러오는 중...</div>
 
     <!-- 0. 상품 문서 선택 / 생성 -->
@@ -77,6 +78,10 @@
         <input type="number" step="0.1" id="itemSurchargeInput" placeholder="추가마진율(surcharge) % (선택, 예: 5 → 5%)">
         <input type="text" id="itemUrlInput" placeholder="클릭시 URL (선택)">
         <input type="text" id="itemImageUrlInput" placeholder="이미지 URL (선택)">
+        <input type="text" id="itemNextPageUrlInput" placeholder="다음페이지 이동 URL (선택)">
+        <input type="text" id="itemPriorityNextPageUrlInput" placeholder="최우선 다음페이지 이동 URL (선택)">
+        <div class="hint">이 옵션이 선택된 상태로 "셀프편집 &amp; 주문하기" 버튼을 누르면, 선택된 모든 옵션 값을 쿼리로 붙여서 이 URL로 이동합니다. 비워두면 이동하지 않고 기존 동작을 유지합니다.<br>
+        선택된 여러 옵션에 "다음페이지 이동 URL"이 서로 다르게 입력되어 충돌할 경우, <b>최우선 다음페이지 이동 URL</b>이 입력된 옵션 쪽이 우선합니다.</div>
         <label class="checkline"><input type="checkbox" id="hasSubOptions"> 서브옵션 있음 (예: 금박 색상)</label>
         <div id="subOptionsContainer"></div>
         <button id="addSubOptionRowBtn" class="secondary" type="button">서브옵션 행 추가</button>
@@ -111,17 +116,6 @@
         <div id="sizeRowsContainer"></div>
         <button id="addSizeRowBtn" class="secondary" type="button">행 추가</button>
         <button id="saveSizeListBtn">규격 사이즈 목록 저장</button>
-    </div>
-
-    <!-- 6. 상세페이지 하단 내용 (detailContent) -->
-    <div class="control-box">
-        <h3>⑥ 상세페이지 하단 내용 (펼치기 영역)</h3>
-        <div class="hint">계산기 페이지의 "상품 상세정보 펼쳐보기" 버튼을 눌렀을 때 나오는 글/사진입니다.</div>
-        <textarea id="detailTextInput" rows="6" placeholder="상세페이지 하단에 들어갈 설명 글을 입력하세요. 줄바꿈은 그대로 반영됩니다."></textarea>
-        <div class="hint">사진 URL (jpg/png 등) - 순서대로 위에서 아래로 표시됩니다.</div>
-        <div id="detailImageRowsContainer"></div>
-        <button id="addDetailImageRowBtn" class="secondary" type="button">사진 URL 행 추가</button>
-        <button id="saveDetailContentBtn">상세페이지 내용 저장</button>
     </div>
 
     <!-- 7. 저장 확인 -->
@@ -290,7 +284,7 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput"]
             .forEach(id => $(id).value = "");
         $("hasSubOptions").checked = false;
         $("subOptionsContainer").innerHTML = "";
@@ -332,6 +326,8 @@
         const surcharge = $("itemSurchargeInput").value; if (surcharge !== "") item.surcharge = parseFloat(surcharge);
         const url = $("itemUrlInput").value.trim(); if (url) item.url = url;
         const imageUrl = $("itemImageUrlInput").value.trim(); if (imageUrl) item.imageUrl = imageUrl;
+        const nextPageUrl = $("itemNextPageUrlInput").value.trim(); if (nextPageUrl) item.nextPageUrl = nextPageUrl;
+        const priorityNextPageUrl = $("itemPriorityNextPageUrlInput").value.trim(); if (priorityNextPageUrl) item.priorityNextPageUrl = priorityNextPageUrl;
         if ($("hasSubOptions").checked) {
             const subs = collectSubOptionRows();
             if (subs.length > 0) item.subOptions = subs;
@@ -453,45 +449,6 @@
         await saveProduct("규격 사이즈 목록이 저장되었습니다.");
     });
 
-    // ---- ⑥ 상세페이지 하단 내용 (detailContent) ----
-    function addDetailImageRow(url = "") {
-        const row = document.createElement("div");
-        row.className = "row-flex";
-        row.innerHTML = `
-            <input type="text" class="detail-image-url" placeholder="사진 URL (예: https://.../상세1.jpg)" value="${url}">
-            <button type="button" class="small danger remove-detail-image">삭제</button>
-        `;
-        row.querySelector(".remove-detail-image").addEventListener("click", () => row.remove());
-        $("detailImageRowsContainer").appendChild(row);
-    }
-    $("addDetailImageRowBtn").addEventListener("click", () => addDetailImageRow());
-
-    function fillDetailContentForm() {
-        const o = findSpecial("detailContent");
-        $("detailTextInput").value = o && o.text ? o.text : "";
-        $("detailImageRowsContainer").innerHTML = "";
-        if (o && Array.isArray(o.images) && o.images.length > 0) {
-            o.images.forEach(url => addDetailImageRow(url));
-        } else {
-            addDetailImageRow();
-        }
-    }
-
-    $("saveDetailContentBtn").addEventListener("click", async () => {
-        const text = $("detailTextInput").value;
-        const images = [];
-        $("detailImageRowsContainer").querySelectorAll(".detail-image-url").forEach(input => {
-            const url = input.value.trim();
-            if (url) images.push(url);
-        });
-
-        let o = findSpecial("detailContent");
-        if (!o) { o = { id: "detailContent", title: "상세페이지 하단 내용" }; productData.options.push(o); }
-        o.text = text;
-        o.images = images;
-        await saveProduct("상세페이지 하단 내용이 저장되었습니다.");
-    });
-
     // ---- ⑦ 저장 확인 목록 ----
     function highlightBox(el) {
         if (!el) return;
@@ -524,6 +481,8 @@
         $("itemSurchargeInput").value = item.surcharge ?? "";
         $("itemUrlInput").value = item.url ?? "";
         $("itemImageUrlInput").value = item.imageUrl ?? "";
+        $("itemNextPageUrlInput").value = item.nextPageUrl ?? "";
+        $("itemPriorityNextPageUrlInput").value = item.priorityNextPageUrl ?? "";
 
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
@@ -549,10 +508,6 @@
         highlightBox($("saveSizeListBtn").closest(".control-box"));
     }
 
-    function editDetailContent() {
-        highlightBox($("saveDetailContentBtn").closest(".control-box"));
-    }
-
     function renderVerifyList() {
         const box = $("verifyList");
         box.innerHTML = "";
@@ -574,6 +529,8 @@
                 if (v.surcharge !== undefined) meta.push(`surcharge ${v.surcharge}%`);
                 if (v.url) meta.push(`url ✓`);
                 if (v.imageUrl) meta.push(`이미지 ✓`);
+                if (v.nextPageUrl) meta.push(`다음URL ✓`);
+                if (v.priorityNextPageUrl) meta.push(`최우선URL ✓`);
                 const subHtml = v.subOptions && v.subOptions.length
                     ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";
@@ -629,23 +586,6 @@
         }
         box.appendChild(card02);
 
-        // detailContent 표시
-        const oDetail = findSpecial("detailContent");
-        const cardDetail = document.createElement("div");
-        cardDetail.className = "group-card";
-        if (oDetail && ((oDetail.text && oDetail.text.trim()) || (Array.isArray(oDetail.images) && oDetail.images.length))) {
-            const textPreview = oDetail.text
-                ? `<div class="item-row"><div>글자수</div><div>${oDetail.text.length}자</div></div>`
-                : `<div class="item-row"><div>글</div><div>없음</div></div>`;
-            const imagesHtml = (oDetail.images || []).length
-                ? (oDetail.images || []).map((url, i) => `<div class="item-row"><div>사진 ${i + 1}</div><div style="word-break:break-all;">${url}</div></div>`).join("")
-                : `<div class="item-row"><div>사진</div><div>없음</div></div>`;
-            cardDetail.innerHTML = `<h4>detailContent — 상세페이지 하단 내용 <button type="button" class="small edit-detailcontent">수정</button></h4>${textPreview}${imagesHtml}`;
-        } else {
-            cardDetail.innerHTML = `<h4>detailContent — 상세페이지 하단 내용 <button type="button" class="small edit-detailcontent">수정</button></h4><div class="hint">저장된 값 없음</div>`;
-        }
-        box.appendChild(cardDetail);
-
         box.querySelectorAll(".edit-group").forEach(btn => {
             btn.addEventListener("click", () => editGroup(btn.dataset.group));
         });
@@ -655,7 +595,6 @@
         box.querySelectorAll(".edit-qty").forEach(btn => btn.addEventListener("click", editQty));
         box.querySelectorAll(".edit-custom").forEach(btn => btn.addEventListener("click", editCustom));
         box.querySelectorAll(".edit-sizelist").forEach(btn => btn.addEventListener("click", editSizeList));
-        box.querySelectorAll(".edit-detailcontent").forEach(btn => btn.addEventListener("click", editDetailContent));
 
         box.querySelectorAll(".del-item").forEach(btn => {
             btn.addEventListener("click", async () => {
@@ -681,7 +620,6 @@
         fillOptions00Form();
         fillOptions01Form();
         fillOptions02Form();
-        fillDetailContentForm();
         renderVerifyList();
     }
 

@@ -2,6 +2,27 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+
+<!-- ▼▼▼ SEO 설정: 이 블록 안의 내용만 바꾸면 됩니다 (01my 전용) ▼▼▼ -->
+<title>명함 인쇄 | 당일발송 셀프 명함제작 전문 - 코코프린트</title>
+<meta name="description" content="고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.">
+<meta name="keywords" content="명함인쇄, 명함제작, 셀프명함, 즉시인쇄명함, 저렴한명함, 당일발송명함">
+<meta property="og:type" content="product">
+<meta property="og:title" content="명함 인쇄 | 당일발송 셀프 명함제작 전문 - 코코프린트">
+<meta property="og:description" content="고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.">
+<meta property="og:image" content="https://example.com/images/01my-og.jpg">
+<link rel="canonical" href="https://example.com/01my">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "명함 인쇄 | 당일발송 셀프 명함제작 전문 - 코코프린트",
+  "description": "고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.",
+  "image": ["https://example.com/images/01my-og.jpg"]
+}
+</script>
+<!-- ▲▲▲ SEO 설정 끝 ▲▲▲ -->
+
 <style>
     body {
         display: block;
@@ -69,7 +90,9 @@
         max-width: 100%;
         height: auto;
         display: block;
-        margin: 0 auto;
+        margin: 24px auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.10);
     }
     #detailExpandInner p {
         font-size: 15px;
@@ -146,10 +169,21 @@
         flex: 0 0 90px !important;
         width: 90px !important;
     }
+    #finishingContainer .finishing-sub-wrap {
+        flex: 0 0 90px !important;
+        width: 90px !important;
+    }
     .finishing-btn {
         padding: 5.4px 8px;
         font-size: 11px;
     }
+}
+
+/* 후가공 서브옵션(색상 등) select를 감싸는 모바일피커 래퍼: 메인 select의 flex:1과
+   폭을 나눠 갖지 않도록 고정폭으로 둡니다 (그렇지 않으면 재선택할 때마다 좁아지는 버그 발생) */
+.finishing-sub-wrap {
+    flex: 0 0 130px;
+    width: 130px;
 }
 
 /* ---- 모바일 커스텀 셀렉트 피커 (네이티브 select 툴바 대체) ---- */
@@ -357,7 +391,7 @@
 <div style="width:100%; display:flex; justify-content:center; margin-top:80px;">
     <div style="width:1195px;">
         <div style="display:flex; border:1px solid #ccc; text-align:center; border-bottom:2px solid #ccc;">
-<div style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:default;">제품정보/제품상세보기</div>            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">별도 후가공 안내</div>
+<div onclick="setTab(this)" style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:pointer;">제품정보/제품상세보기</div>            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">별도 후가공 안내</div>
             <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">출고 납기일 안내</div>
             <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">재작업/취소/환불</div>
         </div>
@@ -379,7 +413,16 @@
 
         <div id="detailExpandContent">
             <div id="detailExpandInner">
-                <!-- 어드민 ⑥ "상세페이지 하단 내용"에 등록한 글/사진이 여기에 자동으로 채워집니다. -->
+                <!-- ▼▼▼ 상세설명 글/사진: 이 블록 안의 내용만 바꾸면 됩니다 ▼▼▼ -->
+                <p style="text-align:center; line-height:1.85;">
+                    코코프린트 명함은 <strong style="color:#2b7bc3;">친환경 인증 용지</strong>만 사용합니다.<br>
+                    주문 후 <strong style="color:#2b7bc3;">당일 발송</strong>을 원칙으로 하며, 전국 어디서나 빠르게 받아보실 수 있습니다.<br>
+                    디자인이 걱정되신다면 무료 시안 확인 서비스를 이용해보세요.
+                </p>
+                <img src="https://example.com/images/01my-detail1.jpg" alt="명함 상세 이미지 1" loading="lazy">
+                <img src="https://example.com/images/01my-detail2.jpg" alt="명함 상세 이미지 2" loading="lazy">
+                <img src="https://example.com/images/01my-detail3.jpg" alt="명함 상세 이미지 3" loading="lazy">
+                <!-- ▲▲▲ 상세설명 글/사진 끝 ▲▲▲ -->
             </div>
         </div>
     </div>
@@ -392,12 +435,7 @@
 
 <script>
 function setTab(el) {
-    // 1. 클릭한 탭이 '제품정보'를 포함하고 있다면 바로 종료 (아무것도 안 함)
-    if (el.textContent.includes("제품정보")) {
-        return;
-    }
-
-    // 2. 탭 버튼 색상 변경
+    // 1. 탭 버튼 색상 변경 (클릭한 탭만 회색으로 활성화 표시)
     const tabs = el.parentElement.children;
     for (let i = 0; i < tabs.length; i++) {
         tabs[i].style.background = "white";
@@ -406,7 +444,13 @@ function setTab(el) {
     el.style.background = "#999";
     el.style.color = "white";
 
-    // 3. 아래로 이동 (나머지 탭들만 작동)
+    // 2. '제품정보/제품상세보기'는 회색 박스만 그쪽으로 옮기고, 화면은 맨 위(제품 이미지/옵션 영역)로 이동
+    if (el.textContent.includes("제품정보")) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+
+    // 3. 나머지 탭은 기존처럼 하단으로 이동
     window.scrollTo({
         top: document.body.scrollHeight,
         behavior: 'smooth'
@@ -571,33 +615,8 @@ window.enableMobileCustomPicker = function(selectEl) {
     function standardSizeConfig() {
         return findGroupById("options02");
     }
-    function detailContentConfig() {
-        return findGroupById("detailContent");
-    }
-    // 상세페이지 펼치기 영역(#detailExpandInner)에 어드민에서 등록한 글/사진을 채웁니다.
-    function renderDetailContent() {
-        const inner = document.getElementById("detailExpandInner");
-        if (!inner) return;
-        const d = detailContentConfig();
-        inner.innerHTML = "";
-
-        if (d && d.text && d.text.trim()) {
-            const p = document.createElement("p");
-            p.style.whiteSpace = "pre-line"; // 줄바꿈 그대로 반영
-            p.textContent = d.text;
-            inner.appendChild(p);
-        }
-        if (d && Array.isArray(d.images)) {
-            d.images.forEach(url => {
-                if (!url) return;
-                const img = document.createElement("img");
-                img.src = url;
-                img.alt = "상품 상세";
-                img.loading = "lazy";
-                inner.appendChild(img);
-            });
-        }
-    }
+    // ---- 상세페이지 하단 글/사진은 이제 HTML(#detailExpandInner)에 직접 작성되어 있어
+    // 별도의 렌더링 함수가 필요 없습니다. ----
     // 입력한 가로/세로가 등록된 규격 사이즈 목록(options02)과 일치하는지 확인 (가로/세로 뒤바뀐 경우도 인정)
     function isMatchingStandardSize(w, h) {
         const g = standardSizeConfig();
@@ -620,6 +639,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         el.dataset.delivery = v.delivery ?? 0;
         el.dataset.url = v.url ?? "";
         el.dataset.imageUrl = v.imageUrl ?? "";
+        el.dataset.nextPageUrl = v.nextPageUrl ?? "";
+        el.dataset.priorityNextPageUrl = v.priorityNextPageUrl ?? "";
         if (Array.isArray(v.subOptions) && v.subOptions.length) {
             el.dataset.subOptions = JSON.stringify(v.subOptions);
         }
@@ -664,10 +685,19 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
     function buildSubOptionSelect(finishingSelect) {
-        // 이미 있으면 제거 후 다시 생성
+        // 이미 있으면 (모바일 피커용 래퍼까지 포함해서) 완전히 제거 후 다시 생성
         const wrap = finishingSelect.parentElement;
         const old = wrap.querySelector(".finishing-sub-select");
-        if (old) old.remove();
+        if (old) {
+            // enableMobileCustomPicker가 select를 별도의 .select-wrap div로 감싸놓았을 수 있으므로,
+            // select만 지우면 빈 래퍼(div)가 DOM에 남아 폭을 계속 나눠 가져가게 됩니다. 래퍼째로 지웁니다.
+            const oldWrap = old.parentElement;
+            if (oldWrap && oldWrap !== wrap && oldWrap.classList.contains("select-wrap")) {
+                oldWrap.remove();
+            } else {
+                old.remove();
+            }
+        }
 
         const opt = finishingSelect.options[finishingSelect.selectedIndex];
         if (!opt || !opt.dataset.subOptions) return;
@@ -688,6 +718,15 @@ window.enableMobileCustomPicker = function(selectEl) {
         subSelect.addEventListener("change", updatePrice);
         finishingSelect.insertAdjacentElement("afterend", subSelect);
         window.enableMobileCustomPicker(subSelect);
+        // enableMobileCustomPicker가 subSelect를 flex:1짜리 .select-wrap div로 감싸는데,
+        // 그대로 두면 메인 후가공 select(flex:1)와 폭을 나눠 가지면서 계속 좁아집니다.
+        // 래퍼 폭을 subSelect가 원래 갖던 고정폭(130px)으로 고정합니다.
+        const subWrap = subSelect.parentElement;
+        if (subWrap && subWrap.classList.contains("select-wrap")) {
+            subWrap.classList.add("finishing-sub-wrap");
+            subWrap.style.marginLeft = "5px";
+            subSelect.style.marginLeft = "0";
+        }
     }
 
     function setupFinishingListener(selectElement) {
@@ -895,7 +934,7 @@ window.enableMobileCustomPicker = function(selectEl) {
 
         const summaryEl = document.getElementById("selectedOptionsSummary");
         if (hasDuplicateFinishing) {
-            summaryEl.innerHTML = '<span style="color:red">동일한 후가공을 중복 선택할 수 없습니다.</span>';
+            summaryEl.innerHTML = '<span style="color:red; font-size:16px; font-weight:700;">동일한 후가공을 중복 선택할 수 없습니다.</span>';
             document.getElementById("priceDisplay").textContent = "0원";
             return;
         }
@@ -990,7 +1029,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     });
     document.getElementById("setCountInput").addEventListener("input", updatePrice);
 
-    // ---- 초기 로드: Firestore에서 01my 문서를 딱 1번만 불러옵니다 ----
+    // ---- 초기 로드: Firestore에서 01my 문서를 딱 1번만 불러옵니다 (SEO/상세내용도 이 문서 안에 함께 있음) ----
     async function loadProductAndInit() {
         const snap = await getDoc(doc(db, "products", PRODUCT_ID));
         productData = snap.exists() ? snap.data() : { productId: PRODUCT_ID, options: [] };
@@ -1010,7 +1049,6 @@ window.enableMobileCustomPicker = function(selectEl) {
         loadSizeList();
         loadFinishingOptions(document.querySelector(".finishing-select"));
         setupFinishingListener(document.querySelector(".finishing-select"));
-        renderDetailContent();
 
         updateSizeMode();
         updatePrice();
@@ -1024,6 +1062,19 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     // ---- 주문하기: 다음 페이지로 선택 옵션 전달 ----
     window.handleOrder = function () {
+        // 동일한 후가공을 중복 선택한 상태면 다음 페이지로 이동하지 않고 경고만 띄웁니다.
+        const finishingValuesCheck = [];
+        let hasDuplicateFinishingCheck = false;
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (!sel.value) return;
+            if (finishingValuesCheck.includes(sel.value)) hasDuplicateFinishingCheck = true;
+            finishingValuesCheck.push(sel.value);
+        });
+        if (hasDuplicateFinishingCheck) {
+            alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
+            return;
+        }
+
         const count = document.getElementById("setCountInput").value;
         const width = document.getElementById("widthInput").value;
         const height = document.getElementById("heightInput").value;
@@ -1042,6 +1093,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 그룹별 선택값 (그룹 id를 키로 사용 - 관리자 스키마와 이름을 맞춤)
         const groupSelections = {};
         let combinedGroupText = "";
+        let nextPageUrl = ""; // 선택된 옵션 중 "다음페이지 이동 URL"이 입력된 것이 있으면 여기에 담김
+        let priorityNextPageUrl = ""; // 선택된 옵션 중 "최우선 다음페이지 이동 URL"이 입력된 것이 있으면 여기에 담김
         document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
             const groupId = sel.dataset.groupId;
@@ -1049,16 +1102,26 @@ window.enableMobileCustomPicker = function(selectEl) {
                 groupSelections[groupId] = opt.value;
                 combinedGroupText += (combinedGroupText ? " " : "") + opt.value;
             }
+            if (!nextPageUrl && opt && opt.dataset.nextPageUrl && opt.dataset.nextPageUrl.startsWith("http")) {
+                nextPageUrl = opt.dataset.nextPageUrl;
+            }
+            if (!priorityNextPageUrl && opt && opt.dataset.priorityNextPageUrl && opt.dataset.priorityNextPageUrl.startsWith("http")) {
+                priorityNextPageUrl = opt.dataset.priorityNextPageUrl;
+            }
         });
 
         // 후가공 목록 추출
         const finishings = [];
         document.querySelectorAll(".finishing-select").forEach(sel => {
             if (sel.value) finishings.push(sel.value);
+            const fOpt = sel.options[sel.selectedIndex];
+            if (!nextPageUrl && fOpt && fOpt.dataset.nextPageUrl && fOpt.dataset.nextPageUrl.startsWith("http")) {
+                nextPageUrl = fOpt.dataset.nextPageUrl;
+            }
+            if (!priorityNextPageUrl && fOpt && fOpt.dataset.priorityNextPageUrl && fOpt.dataset.priorityNextPageUrl.startsWith("http")) {
+                priorityNextPageUrl = fOpt.dataset.priorityNextPageUrl;
+            }
         });
-
-        // 인쇄방식(즉시인쇄/셀프인쇄)에 해당하는 그룹 값이 있으면 찾아서 라우팅에 사용
-        const printModeValue = Object.values(groupSelections).find(v => v.includes("즉시인쇄") || v.includes("셀프인쇄")) || "";
 
         const params = new URLSearchParams({
             productId: "01my",
@@ -1072,14 +1135,13 @@ window.enableMobileCustomPicker = function(selectEl) {
             finishings: encodeURIComponent(finishings.join(","))
         }).toString();
 
-        let targetUrl = "";
-        if (printModeValue.includes("즉시인쇄")) {
-            targetUrl = "/myjs/includes/ecopro1";
-        } else {
-            targetUrl = "/myjs/includes/ecopro2";
+        // 선택된 옵션에 "다음페이지 이동 URL"이 입력되어 있을 때만, 선택한 모든 옵션 쿼리를 붙여
+        // 새 창이 아닌 현재 창(self)에서 그 URL로 이동합니다. 입력되지 않았으면 아무 동작도 하지 않습니다.
+        // 여러 선택된 옵션의 URL이 서로 달라 충돌하는 경우, "최우선 다음페이지 이동 URL"이 있는 쪽을 우선합니다.
+        const finalNextUrl = priorityNextPageUrl || nextPageUrl;
+        if (finalNextUrl) {
+            window.location.href = `${finalNextUrl}?${params}`;
         }
-
-        window.open(`${targetUrl}?${params}`, "_blank");
     };
 </script>
 <!-- 푸터 자리 -->
