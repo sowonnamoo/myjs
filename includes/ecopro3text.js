@@ -108,6 +108,73 @@
     ctx.restore();
   }
 
+  // 둥근 사각형 경로 그리기(테두리용) — 우편번호 칸의 모서리를 둥글게 할 때 씀(radius=0이면 각진 사각형)
+  function tracePostalBoxPath(ctx, x, y, w, h, r){
+    if (r <= 0) { ctx.rect(x, y, w, h); return; }
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  // 우편번호 칸 (레이아웃 효과) — 봉투 우편번호 칸처럼 글자마다 똑같은 크기의 네모 칸을 그리고,
+  // 그 정중앙에 글자를 맞춰 넣어서 나란히 배치함. 숫자/영문/한글이 섞여 폭이 서로 달라도
+  // 칸 크기와 칸 사이 간격은 항상 균일하게 유지되어 "예쁘게 정렬된" 느낌을 냄.
+  function drawPostalPass(ctx){
+    const cfg = this.postalText;
+    const text = this.text || '';
+    if (!cfg || !text.length) { origItextRender.call(this, ctx); return; }
+
+    const chars = text.split('').filter(c => c !== '\n' && c !== '\r' && c !== ' ');
+    if (!chars.length) { origItextRender.call(this, ctx); return; }
+
+    const boxSize = this.fontSize * (cfg.boxScale != null ? cfg.boxScale : 1.5);
+    const gap = this.fontSize * ((cfg.gap != null ? cfg.gap : 14) / 100);
+    const radius = (boxSize / 2) * ((cfg.radius != null ? cfg.radius : 0) / 100);
+    const borderWidth = cfg.borderWidth != null ? cfg.borderWidth : 2;
+    const borderColor = cfg.borderColor || '#000000';
+
+    const n = chars.length;
+    const totalWidth = boxSize * n + gap * (n - 1);
+    let x = -totalWidth / 2;
+
+    const fontDecl = (this._getFontDeclaration ? this._getFontDeclaration() : `${this.fontStyle || ''} ${this.fontWeight || ''} ${this.fontSize}px ${this.fontFamily}`).trim();
+    const hasFill = this.fill && this.fill !== 'transparent' && this.fill !== '';
+    const hasStroke = this.stroke && this.strokeWidth > 0;
+    const strokeFirst = this.paintFirst === 'stroke';
+
+    chars.forEach((c) => {
+      const cx = x + boxSize / 2;
+
+      // 1) 칸(사각형 테두리)
+      if (borderWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        tracePostalBoxPath(ctx, x, -boxSize / 2, boxSize, boxSize, radius);
+        ctx.lineWidth = borderWidth;
+        ctx.strokeStyle = borderColor;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 2) 글자를 칸 정중앙에 배치(글자 폭과 상관없이 칸 중심 기준으로 정렬)
+      ctx.save();
+      ctx.translate(cx, 0);
+      ctx.font = fontDecl;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const drawFill = () => { if (hasFill) { ctx.fillStyle = this.fill; ctx.fillText(c, 0, 0); } };
+      const drawStroke = () => { if (hasStroke) { ctx.strokeStyle = this.stroke; ctx.lineWidth = this.strokeWidth; ctx.strokeText(c, 0, 0); } };
+      if (strokeFirst) { drawStroke(); drawFill(); } else { drawFill(); drawStroke(); }
+      ctx.restore();
+
+      x += boxSize + gap;
+    });
+  }
+
   function drawCircularPass(ctx){
     const cfg = this.circularText;
     const text = this.text || '';
@@ -1457,6 +1524,194 @@
     ctx.restore();
   }
 
+  // 골프채를 휘두른 직후(팔로우스루) 자세의 간단한 스틱맨 골퍼 — 머리(원)+몸통/다리(직선)+
+  // 팔 뒤로 넘어간 클럽(직선)으로만 구성된 아주 단순한 실루엣
+  function drawGolferFigure(ctx, size, color){
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = size * 0.12;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // 머리
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.85, size * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+    // 몸통
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.7);
+    ctx.lineTo(size * 0.05, -size * 0.15);
+    ctx.stroke();
+    // 다리(스윙 후 벌어진 자세)
+    ctx.beginPath();
+    ctx.moveTo(size * 0.05, -size * 0.15);
+    ctx.lineTo(-size * 0.22, size * 0.42);
+    ctx.moveTo(size * 0.05, -size * 0.15);
+    ctx.lineTo(size * 0.3, size * 0.42);
+    ctx.stroke();
+    // 팔 + 클럽(공을 친 뒤 몸 뒤쪽 위로 넘어간 팔로우스루 자세)
+    ctx.beginPath();
+    ctx.moveTo(0.02 * size, -size * 0.55);
+    ctx.lineTo(-size * 0.32, -size * 0.78);
+    ctx.lineTo(-size * 0.6, -size * 1.18);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 딤플이 있는 하얀 골프공
+  function drawGolfBall(ctx, x, y, r, color){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = color || '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = Math.max(0.4, r * 0.12);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r * 0.45, Math.sin(a) * r * 0.45, r * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 골프 홀(구멍)과 깃발
+  function drawFlagHole(ctx, x, y, size, flagColor){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.35, size * 0.12, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#173d1f';
+    ctx.fill();
+    ctx.strokeStyle = '#e6e6e6';
+    ctx.lineWidth = Math.max(1, size * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -size * 1.6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 1.6);
+    ctx.lineTo(size * 0.72, -size * 1.42);
+    ctx.lineTo(0, -size * 1.24);
+    ctx.closePath();
+    ctx.fillStyle = flagColor || '#e03b3b';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---- 골프 효과 (배경 효과) ----
+  // 텍스트 아래쪽에 골프장 페어웨이(잔디깎이 줄무늬가 있는 초록 필드)를 깔고, 그 위에 홀+깃발을
+  // 하나 세운 뒤, 스윙 자세의 골퍼 몇 명을 배치함. 각 골퍼가 친 공이 점선 포물선 궤적을 그리며
+  // 홀 쪽으로 날아가는 모습(잔상 포함)을 함께 그려서 "골프공이 펑 날아가는" 느낌을 냄.
+  // 글자보다 먼저(맨 뒤에) 그려져서 글자가 필드 위에 놓인 것처럼 보임.
+  // "밀도"로 골퍼 수를, "퍼짐"으로 필드 세로 폭과 공이 날아가는 높이를 조절함.
+  function drawGolfPass(ctx){
+    const cfg = this.golfText;
+    if (!cfg) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+    const density = Math.max(0, Math.min(100, cfg.density != null ? cfg.density : 55)) / 100;
+    const spread = Math.max(0, Math.min(100, cfg.spread != null ? cfg.spread : 55)) / 100;
+
+    ctx.save();
+    ctx.globalAlpha = op;
+
+    // ① 페어웨이(잔디 필드) — 넓은 초록 그라디언트 위에 잔디깎이 줄무늬를 더함
+    const groundTop = h / 2 - fontSize * 0.1;
+    const groundBottom = h / 2 + fontSize * (1.7 + spread * 1.6);
+    const groundLeft = -w * 1.15, groundRight = w * 1.15;
+    const grad = ctx.createLinearGradient(0, groundTop, 0, groundBottom);
+    grad.addColorStop(0, '#8fd66c');
+    grad.addColorStop(1, '#4c9a3e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(groundLeft, groundTop, groundRight - groundLeft, groundBottom - groundTop);
+
+    const stripeCount = 12;
+    const stripeW = (groundRight - groundLeft) / stripeCount;
+    ctx.globalAlpha = op * 0.13;
+    ctx.fillStyle = '#2f7a2c';
+    for (let s = 0; s < stripeCount; s += 2) {
+      ctx.fillRect(groundLeft + s * stripeW, groundTop, stripeW, groundBottom - groundTop);
+    }
+    ctx.globalAlpha = op;
+
+    // ② 홀 + 깃발 — 필드 오른쪽 편에 하나
+    const holeX = groundRight * (0.55 + pseudoRandom(seed + 9001) * 0.25);
+    const holeY = groundTop + (groundBottom - groundTop) * (0.32 + pseudoRandom(seed + 9002) * 0.2);
+    drawFlagHole(ctx, holeX, holeY, fontSize * 0.36, '#e03b3b');
+
+    // ③ 골퍼들 — 필드 위 여러 위치에 스윙 자세로 배치
+    const golferCount = Math.max(1, Math.round(1 + density * 3));
+    const golfers = [];
+    for (let i = 0; i < golferCount; i++) {
+      const gx = groundLeft + (groundRight - groundLeft) * (0.08 + pseudoRandom(seed + i * 13.1 + 2000) * 0.5);
+      const gy = groundTop + (groundBottom - groundTop) * (0.58 + pseudoRandom(seed + i * 7.3 + 2050) * 0.36);
+      const gSize = fontSize * (0.4 + pseudoRandom(seed + i * 3.3 + 2100) * 0.22);
+      const hue = 195 + pseudoRandom(seed + i * 19 + 2150) * 90;
+      const rgb = EP.hsvToRgb(hue, 0.5, 0.5 + pseudoRandom(seed + i * 5 + 2170) * 0.15);
+      const color = EP.rgbToHex(rgb.r, rgb.g, rgb.b);
+      ctx.save();
+      ctx.translate(gx, gy);
+      drawGolferFigure(ctx, gSize, color);
+      ctx.restore();
+      golfers.push({ x: gx, y: gy, size: gSize });
+    }
+
+    // ④ 날아가는 골프공 — 각 골퍼가 친 공이 점선 포물선 궤적을 그리며 홀 쪽으로 날아감(잔상 포함)
+    golfers.forEach((g, i) => {
+      const targetX = holeX + (pseudoRandom(seed + i * 29 + 3000) - 0.5) * fontSize * 1.1;
+      const targetY = holeY + (pseudoRandom(seed + i * 31 + 3050) - 0.5) * fontSize * 0.5;
+      const startX = g.x, startY = g.y - g.size * 0.9;
+      const midX = (startX + targetX) / 2 + (pseudoRandom(seed + i * 17 + 3100) - 0.5) * fontSize * 0.8;
+      const arcH = fontSize * (1.0 + spread * 1.7);
+      const midY = Math.min(startY, targetY) - arcH;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = Math.max(1, fontSize * 0.015);
+      ctx.setLineDash([fontSize * 0.05, fontSize * 0.07]);
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.quadraticCurveTo(midX, midY, targetX, targetY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      const bezierPoint = (t) => ({
+        x: (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * midX + t * t * targetX,
+        y: (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * midY + t * t * targetY
+      });
+
+      const ballsOnPath = 1 + Math.floor(pseudoRandom(seed + i * 7 + 3200) * 2);
+      for (let b = 0; b < ballsOnPath; b++) {
+        const t = 0.25 + pseudoRandom(seed + i * 11 + b * 5 + 3250) * 0.6;
+        const p = bezierPoint(t);
+        const br = fontSize * (0.045 + pseudoRandom(seed + i * 13 + b * 7 + 3300) * 0.02);
+
+        for (let tr = 1; tr <= 3; tr++) {
+          const tt = Math.max(0, t - tr * 0.04);
+          const tp = bezierPoint(tt);
+          ctx.globalAlpha = op * (0.35 - tr * 0.1);
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, br * 0.8, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+        }
+        ctx.globalAlpha = op;
+        drawGolfBall(ctx, p.x, p.y, br, '#ffffff');
+      }
+    });
+
+    ctx.globalAlpha = op;
+    ctx.restore();
+  }
+
   // 반짝이는 별(스파클) 하나를 그림: 위/아래/좌/우로 길게 뻗은 4개의 뾰족한 꼭짓점과
   // 오목한 옆선으로 이루어진 전형적인 "✦" 모양. rotation(라디안)만큼 통째로 돌려서 그림
   function drawSparkleStar(ctx, cx, cy, size, color, rotation){
@@ -1551,6 +1806,134 @@
     ctx.restore();
   }
 
+  // 구불구불한 색색 리본(색테이프) 한 가닥을 그림 — 축포 효과에서 폭죽과 함께 날리는 리본용
+  function drawRibbonStreamer(ctx, x, y, angle, length, waveAmp, waveFreq, width, color){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    const segments = 20;
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const px = length * t;
+      const py = Math.sin(t * Math.PI * waveFreq) * waveAmp * (1 - t * 0.2);
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---- 축포 효과 (배경 효과) ----
+  // 폭죽 여러 발이 여기저기서 "팡팡" 터지고(섬광+방사형 광선), 그 사이로 구불구불한 색색 리본이
+  // 흩날리며, 오색의 별과 색종이 조각이 곳곳에 뿌려짐 — 생일/축하 이벤트 느낌의 왁자지껄한 배경.
+  // 빅뱅 효과처럼 글자보다 먼저(맨 뒤에) 그려서, 글자가 그 한가운데 놓인 것처럼 보임.
+  // "밀도"로 폭죽·리본·별의 전체 개수를, "퍼짐"으로 얼마나 넓게 흩어지는지 조절함.
+  function drawEventPass(ctx){
+    const cfg = this.eventText;
+    if (!cfg) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+    const density = Math.max(0, Math.min(100, cfg.density != null ? cfg.density : 55)) / 100;
+    const spread = Math.max(0, Math.min(100, cfg.spread != null ? cfg.spread : 55)) / 100;
+
+    const diag = Math.hypot(w, h);
+    const areaR = diag * (0.5 + spread * 0.9); // 폭죽/리본/별이 흩어지는 전체 반경
+
+    ctx.save();
+    ctx.globalAlpha = op;
+
+    // ① 폭죽 — 무작위 위치에서 팡 터지는 밝은 섬광 + 사방으로 뻗는 광선을 여러 발
+    const burstCount = Math.max(2, Math.round(2 + density * 6));
+    for (let i = 0; i < burstCount; i++) {
+      const ang = pseudoRandom(seed + i * 13.1 + 1000) * Math.PI * 2;
+      const dist = (0.3 + pseudoRandom(seed + i * 7.7 + 1050) * 0.7) * areaR;
+      const bx = Math.cos(ang) * dist;
+      const by = Math.sin(ang) * dist;
+      const hue = pseudoRandom(seed + i * 19.7 + 1100) * 360;
+      const rgb = EP.hsvToRgb(hue, 0.6 + pseudoRandom(seed + i * 3.1 + 1120) * 0.3, 1);
+      const color = EP.rgbToHex(rgb.r, rgb.g, rgb.b);
+      const burstSize = fontSize * (0.32 + pseudoRandom(seed + i * 3.3 + 1200) * 0.32);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const grad = ctx.createRadialGradient(bx, by, 0, bx, by, burstSize);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, color);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(bx, by, burstSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      const rays = 8;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = fontSize * 0.015;
+      for (let r = 0; r < rays; r++) {
+        const ra = (r / rays) * Math.PI * 2 + pseudoRandom(seed + i * 5 + r + 1300) * 0.5;
+        const rl = burstSize * (0.85 + pseudoRandom(seed + i * 9 + r + 1400) * 0.6);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + Math.cos(ra) * rl, by + Math.sin(ra) * rl);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.globalAlpha = op;
+
+    // ② 리본(색테이프) — 구불구불한 색색 리본 여러 가닥이 사방으로 날림
+    const ribbonCount = Math.max(3, Math.round(3 + density * 9));
+    for (let i = 0; i < ribbonCount; i++) {
+      const ang = pseudoRandom(seed + i * 23.3 + 2000) * Math.PI * 2;
+      const dist = pseudoRandom(seed + i * 17.9 + 2050) * areaR * 0.85;
+      const rx = Math.cos(ang) * dist, ry = Math.sin(ang) * dist;
+      const rAngle = pseudoRandom(seed + i * 29.1 + 2100) * Math.PI * 2;
+      const length = fontSize * (1.1 + pseudoRandom(seed + i * 11.3 + 2150) * 1.9);
+      const hue2 = pseudoRandom(seed + i * 31.7 + 2200) * 360;
+      const rgb2 = EP.hsvToRgb(hue2, 0.6 + pseudoRandom(seed + i * 4.1 + 2220) * 0.3, 0.95);
+      const rcolor = EP.rgbToHex(rgb2.r, rgb2.g, rgb2.b);
+      const rwidth = fontSize * (0.045 + pseudoRandom(seed + i * 3.7 + 2250) * 0.045);
+      const waveFreq = 1.5 + pseudoRandom(seed + i * 7 + 2300) * 2.5;
+      ctx.globalAlpha = op * (0.75 + pseudoRandom(seed + i * 9.3 + 2350) * 0.25);
+      drawRibbonStreamer(ctx, rx, ry, rAngle, length, fontSize * 0.22, waveFreq, rwidth, rcolor);
+    }
+    ctx.globalAlpha = op;
+
+    // ③ 오색 별 + 색종이 조각 — 곳곳에 흩뿌려짐(면적이 고르게 퍼지도록 sqrt로 거리 보정)
+    const starCount = Math.max(10, Math.round(14 + density * 46));
+    for (let i = 0; i < starCount; i++) {
+      const ang = pseudoRandom(seed + i * 13.7 + 3000) * Math.PI * 2;
+      const distT = pseudoRandom(seed + i * 17.3 + 3050);
+      const dist = Math.sqrt(distT) * areaR;
+      const sx = Math.cos(ang) * dist, sy = Math.sin(ang) * dist;
+      const size = fontSize * (0.025 + pseudoRandom(seed + i * 11.1 + 3100) * 0.06);
+      const hue3 = pseudoRandom(seed + i * 19.3 + 3150) * 360;
+      const rgb3 = EP.hsvToRgb(hue3, 0.55 + pseudoRandom(seed + i * 23.1 + 3200) * 0.45, 0.9 + pseudoRandom(seed + i * 29.7 + 3250) * 0.1);
+      const color3 = EP.rgbToHex(rgb3.r, rgb3.g, rgb3.b);
+      const rotation = pseudoRandom(seed + i * 37.9 + 3300) * Math.PI * 2;
+      ctx.globalAlpha = op * (0.6 + pseudoRandom(seed + i * 31 + 3350) * 0.4) * (1 - distT * 0.25);
+      if (pseudoRandom(seed + i * 41 + 3400) < 0.6) {
+        drawSparkleStar(ctx, sx, sy, size, color3, rotation);
+      } else {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(rotation);
+        ctx.fillStyle = color3;
+        ctx.fillRect(-size, -size * 0.6, size * 2, size * 1.2);
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = op;
+
+    ctx.restore();
+  }
+
   function randomTypoFontPool(){
     return RANDOM_TYPO_BASE_FONTS.concat(Array.from(EP.customFontNames));
   }
@@ -1627,6 +2010,7 @@
     if (this.puzzleText) { drawPuzzlePass.call(this, ctx); return; }
     if (this.skyText) { drawSkyLettersPass.call(this, ctx); return; }
     if (this.chalkText) { drawChalkPass.call(this, ctx); return; }
+    if (this.postalText) { drawPostalPass.call(this, ctx); return; }
     if (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length) { drawRandomTypoPass.call(this, ctx); return; }
     origItextRender.call(this, ctx);
   }
@@ -1636,7 +2020,7 @@
   function unifiedCustomRender(ctx){
     if (this.isEditing) { origItextRender.call(this, ctx); return; }
 
-    const hasLayout = !!(this.circularText || this.verticalText || this.puffyText || this.vineText || this.rollText || this.perspectiveText || this.curveText || this.waveText || this.trainText || this.tiredText || this.spiralText || this.magazineText || this.puzzleText || this.skyText || this.chalkText || (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length));
+    const hasLayout = !!(this.circularText || this.verticalText || this.puffyText || this.vineText || this.rollText || this.perspectiveText || this.curveText || this.waveText || this.trainText || this.tiredText || this.spiralText || this.magazineText || this.puzzleText || this.skyText || this.chalkText || this.postalText || (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length));
     const has3D = !!(this.threeDText && this.threeDText.depth > 0);
     const hasMetal = !!(this.metalText && this.metalText.intensity > 0);
     const hasPopArt = !!(this.popArtText && this.popArtText.intensity > 0);
@@ -1653,6 +2037,7 @@
     const hasTile = !!(this.tileText && this.tileText.intensity > 0);
     const hasFootprint = !!(this.footprintText && this.footprintText.intensity > 0);
     const hasAnimal = !!(this.animalText && this.animalText.intensity > 0);
+    const hasSeafood = !!(this.seafoodText && this.seafoodText.intensity > 0);
     const hasFruitVeg = !!(this.fruitVegText && this.fruitVegText.intensity > 0);
     const hasHeart = !!(this.heartText && this.heartText.intensity > 0);
     const hasCoffee = !!(this.coffeeText && this.coffeeText.intensity > 0);
@@ -1669,13 +2054,17 @@
     const hasLight = !!(this.lightText && this.lightText.intensity > 0);
     const hasGrass = !!this.grassText;
     const hasBigbang = !!this.bigbangText;
-    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasReflection && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang) { origItextRender.call(this, ctx); return; }
+    const hasEvent = !!this.eventText;
+    const hasGolf = !!this.golfText;
+    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasReflection && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasSeafood && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang && !hasEvent && !hasGolf) { origItextRender.call(this, ctx); return; }
 
-    // 말풍선 배경/구름 배경/풀밭 배경/빅뱅 배경/수줍수줍 배경은 항상 맨 먼저(가장 뒤에) 그려서, 다른 모든 효과가 그 위에 겹쳐 보이게 함
+    // 말풍선 배경/구름 배경/풀밭 배경/빅뱅 배경/축포 배경/골프 배경/수줍수줍 배경은 항상 맨 먼저(가장 뒤에) 그려서, 다른 모든 효과가 그 위에 겹쳐 보이게 함
     if (hasBubble) { drawSpeechBubblePass.call(this, ctx); }
     if (hasSky) { drawSkyBackgroundPass.call(this, ctx); }
     if (hasGrass) { drawGrassFieldPass.call(this, ctx); }
     if (hasBigbang) { drawBigBangPass.call(this, ctx); }
+    if (hasEvent) { drawEventPass.call(this, ctx); }
+    if (hasGolf) { drawGolfPass.call(this, ctx); }
     if (hasShy) { drawShyPass.call(this, ctx); }
 
     const origFill = this.fill, origStroke = this.stroke, origStrokeWidth = this.strokeWidth;
@@ -1863,6 +2252,7 @@
     if (hasTile) { drawTilePass.call(this, ctx); }
     if (hasFootprint) { drawFootprintPass.call(this, ctx); }
     if (hasAnimal) { drawAnimalPass.call(this, ctx); }
+    if (hasSeafood) { drawSeafoodPass.call(this, ctx); }
     if (hasFruitVeg) { drawFruitVegPass.call(this, ctx); }
     if (hasHeart) { drawHeartsPass.call(this, ctx); }
     if (hasCoffee) { drawCoffeeBeansPass.call(this, ctx); }
@@ -3039,6 +3429,197 @@
     ctx.restore();
   }
 
+  // ---- 해산물 장식 모양들 (중심 0,0 기준, size는 대략적인 크기) ----
+  function drawOctopusShape(ctx, size){
+    // 둥근 머리(외투막)
+    ctx.beginPath();
+    ctx.ellipse(0, -size * 0.15, size * 0.42, size * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 다리 6가닥 — 물결치듯 곡선으로 아래로 늘어뜨림
+    const legCount = 6;
+    for (let i = 0; i < legCount; i++) {
+      const t = legCount > 1 ? i / (legCount - 1) : 0.5;
+      const baseX = (t - 0.5) * size * 0.72;
+      const dir = baseX >= 0 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(baseX, size * 0.1);
+      ctx.quadraticCurveTo(baseX + dir * size * 0.24, size * 0.42, baseX + dir * size * 0.1, size * 0.64);
+      ctx.quadraticCurveTo(baseX + dir * size * 0.02, size * 0.74, baseX - dir * size * 0.08, size * 0.66);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // 눈 2개
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    [[-0.15, -0.2], [0.15, -0.2]].forEach(([ex, ey]) => {
+      ctx.beginPath();
+      ctx.arc(size * ex, size * ey, size * 0.06, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+  function drawSquidShape(ctx, size){
+    // 몸통(어뢰형)
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.55);
+    ctx.quadraticCurveTo(size * 0.32, -size * 0.25, size * 0.28, size * 0.15);
+    ctx.quadraticCurveTo(size * 0.18, size * 0.35, 0, size * 0.42);
+    ctx.quadraticCurveTo(-size * 0.18, size * 0.35, -size * 0.28, size * 0.15);
+    ctx.quadraticCurveTo(-size * 0.32, -size * 0.25, 0, -size * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    // 지느러미(양옆 삼각)
+    [-1, 1].forEach(s => {
+      ctx.beginPath();
+      ctx.moveTo(s * size * 0.05, -size * 0.4);
+      ctx.lineTo(s * size * 0.38, -size * 0.5);
+      ctx.lineTo(s * size * 0.1, -size * 0.12);
+      ctx.closePath();
+      ctx.fill();
+    });
+    // 짧은 다리 여러 가닥(몸통 아래에서 뻗어나옴)
+    const legCount = 5;
+    for (let i = 0; i < legCount; i++) {
+      const t = legCount > 1 ? i / (legCount - 1) : 0.5;
+      const baseX = (t - 0.5) * size * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(baseX, size * 0.4);
+      ctx.quadraticCurveTo(baseX * 1.4, size * 0.62, baseX * 1.1, size * 0.78);
+      ctx.lineTo(baseX * 0.7, size * 0.74);
+      ctx.quadraticCurveTo(baseX * 1.0, size * 0.58, baseX * 0.6, size * 0.42);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  function drawMackerelShape(ctx, size){
+    // 몸통(길쭉한 유선형)
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.5, 0);
+    ctx.quadraticCurveTo(-size * 0.2, -size * 0.28, size * 0.25, -size * 0.16);
+    ctx.quadraticCurveTo(size * 0.5, -size * 0.06, size * 0.55, 0);
+    ctx.quadraticCurveTo(size * 0.5, size * 0.06, size * 0.25, size * 0.16);
+    ctx.quadraticCurveTo(-size * 0.2, size * 0.28, -size * 0.5, 0);
+    ctx.closePath();
+    ctx.fill();
+    // 꼬리지느러미(갈라진 삼각)
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.48, 0);
+    ctx.lineTo(-size * 0.72, -size * 0.2);
+    ctx.lineTo(-size * 0.58, 0);
+    ctx.lineTo(-size * 0.72, size * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    // 등 무늬(고등어 특유의 물결 줄무늬)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(20,40,60,0.55)';
+    ctx.lineWidth = Math.max(0.5, size * 0.035);
+    for (let i = 0; i < 4; i++) {
+      const sx = -size * 0.28 + i * size * 0.18;
+      ctx.beginPath();
+      ctx.moveTo(sx, -size * 0.2);
+      ctx.quadraticCurveTo(sx + size * 0.06, -size * 0.05, sx - size * 0.03, size * 0.05);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawTunaShape(ctx, size){
+    // 몸통(참치다운 통통한 유선형)
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.55, 0);
+    ctx.quadraticCurveTo(-size * 0.25, -size * 0.32, size * 0.3, -size * 0.14);
+    ctx.quadraticCurveTo(size * 0.58, -size * 0.04, size * 0.62, 0);
+    ctx.quadraticCurveTo(size * 0.58, size * 0.04, size * 0.3, size * 0.14);
+    ctx.quadraticCurveTo(-size * 0.25, size * 0.32, -size * 0.55, 0);
+    ctx.closePath();
+    ctx.fill();
+    // 등지느러미
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.02, -size * 0.24);
+    ctx.lineTo(size * 0.1, -size * 0.5);
+    ctx.lineTo(size * 0.2, -size * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    // 꼬리지느러미(초승달형 갈라짐)
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.52, 0);
+    ctx.lineTo(-size * 0.8, -size * 0.26);
+    ctx.lineTo(-size * 0.62, 0);
+    ctx.lineTo(-size * 0.8, size * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    // 눈
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(size * 0.35, -size * 0.02, size * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  function drawWaveShape(ctx, size){
+    // 물결치는 파도 실루엣
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.6, size * 0.15);
+    ctx.quadraticCurveTo(-size * 0.4, -size * 0.25, -size * 0.15, size * 0.02);
+    ctx.quadraticCurveTo(size * 0.05, -size * 0.35, size * 0.3, 0);
+    ctx.quadraticCurveTo(size * 0.5, -size * 0.2, size * 0.6, size * 0.05);
+    ctx.lineTo(size * 0.6, size * 0.4);
+    ctx.lineTo(-size * 0.6, size * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    // 물보라(포말) 점들
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    [[-0.15, 0.02], [0.05, -0.32], [0.3, 0.0], [-0.35, -0.15]].forEach(([wx, wy]) => {
+      ctx.beginPath();
+      ctx.arc(size * wx, size * wy, size * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+  // 해산물 종류별로 어울리는 색상 팔레트를 따로 두고, 뿌릴 때마다 종류와 색을 각각 무작위로
+  // 골라 서로 섞여서 등장하게 함(동물 효과와 달리 한 종류로 고정하지 않음)
+  const SEAFOOD_ITEMS = [
+    { shape: drawOctopusShape, colors: ['#c9576b', '#d97690', '#a83f56'] },
+    { shape: drawSquidShape, colors: ['#e8b8c8', '#f4d8e0', '#d99bb0'] },
+    { shape: drawMackerelShape, colors: ['#3f6d8e', '#4a89a8', '#2f5670'] },
+    { shape: drawTunaShape, colors: ['#2b4a63', '#3a5f7a', '#6b8ba3'] },
+    { shape: drawWaveShape, colors: ['#3a7ca5', '#5a9bc4', '#8fc1e3'] }
+  ];
+
+  // 해산물 효과: 문어·오징어·고등어·참치·파도를 글자 위/주변에 종류·크기·색상·회전 전부 무작위로
+  // 흩뿌림. 크기 편차를 크게 줘서(작은 것~큰 것) 요청대로 "랜덤 크기"가 뚜렷하게 드러나게 함.
+  // 배치는 seed로 고정 — "다시 뿌리기"를 눌러야 새로 바뀜
+  function drawSeafoodPass(ctx){
+    const cfg = this.seafoodText;
+    if (!cfg) return;
+    const amt = Math.max(0, Math.min(100, cfg.intensity != null ? cfg.intensity : 60)) / 100;
+    if (amt <= 0) return;
+    const seed = cfg.seed || 0;
+    const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
+    const fontSize = this.fontSize || 40;
+    const op = this.opacity != null ? this.opacity : 1;
+
+    const count = Math.max(4, Math.round(5 + amt * 18));
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const rx = (pseudoRandom(seed + i * 11.9 + 1) - 0.5) * w * 2.1;
+      const ry = (pseudoRandom(seed + i * 7.3 + 51) - 0.5) * h * 2.8;
+      const size = fontSize * (0.16 + pseudoRandom(seed + i * 13.1 + 101) * 0.6);
+      const rot = (pseudoRandom(seed + i * 17.7 + 201) - 0.5) * 0.9;
+      const item = SEAFOOD_ITEMS[Math.floor(pseudoRandom(seed + i * 23.9 + 301) * SEAFOOD_ITEMS.length) % SEAFOOD_ITEMS.length];
+      const color = item.colors[Math.floor(pseudoRandom(seed + i * 29.3 + 401) * item.colors.length) % item.colors.length];
+
+      ctx.save();
+      ctx.translate(rx, ry);
+      ctx.rotate(rot);
+      ctx.globalAlpha = op * (0.6 + pseudoRandom(seed + i * 3 + 701) * 0.35);
+      ctx.fillStyle = color;
+      item.shape(ctx, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   // 색상 하나를 기준으로 밝기만 살짝(amt만큼) 더 밝게(+) 또는 어둡게(-) 조정함.
   // 과일/채소는 실제 사물 고유의 색(빨강 사과, 노랑 바나나 등)은 그대로 유지하면서
   // 개체마다 명암만 살짝 다르게 주기 위해 사용함
@@ -4178,7 +4759,7 @@
   }
 
   function hasAnyRenderEffect(t){
-    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.grassText || t.bigbangText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
+    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.postalText || t.grassText || t.bigbangText || t.eventText || t.golfText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.seafoodText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
   }
   // 효과를 하나라도 켜면 이 통합 _render로 바꿔치기하고, objectCaching을 꺼서
   // (렌더 방식이 계속 바뀌는 오브젝트라 fabric의 캐시 비트맵이 못 따라와 지저분한 잔상이
@@ -4214,6 +4795,7 @@
     if (except !== 'puzzle') t.puzzleText = null;
     if (except !== 'sky') t.skyText = null;
     if (except !== 'chalk') t.chalkText = null;
+    if (except !== 'postal') t.postalText = null;
     if (except !== 'randomTypo') t.randomTypo = null;
   }
   // 프로젝트 불러오기/실행취소·다시실행으로 오브젝트가 새로 만들어지면 패치가 사라지므로,
@@ -4576,6 +5158,37 @@
   document.getElementById('qaAnimalOffBtn').addEventListener('click', () => {
     qaAnimalIntensity.value = 0;
     applyQaAnimal(false); EP.pushHistory();
+  });
+
+
+  // ---- 해산물 효과 ---- (문어/오징어/고등어/참치/파도를 종류·크기·색 전부 무작위로 흩뿌림)
+  const qaSeafoodIntensity = document.getElementById('qaSeafoodIntensity');
+  function applyQaSeafood(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const intensity = parseFloat(qaSeafoodIntensity.value) || 0;
+    if (intensity <= 0) {
+      boxes.forEach(t => { t.seafoodText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      boxes.forEach(t => {
+        const seed = (regenerateSeed || !t.seafoodText) ? Math.floor(Math.random() * 100000) : t.seafoodText.seed;
+        t.seafoodText = { intensity, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaSeafoodIntensity.addEventListener('input', () => applyQaSeafood(false));
+  qaSeafoodIntensity.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaSeafoodShuffleBtn').addEventListener('click', () => {
+    if ((parseFloat(qaSeafoodIntensity.value) || 0) <= 0) qaSeafoodIntensity.value = 55;
+    applyQaSeafood(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaSeafoodOffBtn').addEventListener('click', () => {
+    qaSeafoodIntensity.value = 0;
+    applyQaSeafood(false); EP.pushHistory();
   });
 
 
@@ -5202,6 +5815,48 @@
   });
 
 
+  // ---- 우편번호 칸 ---- (봉투 우편번호 칸처럼 글자마다 균일한 네모 칸 안에 정중앙 정렬)
+  const qaPostalBoxSize = document.getElementById('qaPostalBoxSize');
+  const qaPostalGap = document.getElementById('qaPostalGap');
+  const qaPostalBorderWidth = document.getElementById('qaPostalBorderWidth');
+  const qaPostalRadius = document.getElementById('qaPostalRadius');
+  const qaPostalColor = document.getElementById('qaPostalColor');
+  function applyQaPostal(){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const on = qaPostalBoxSize.dataset.on === '1';
+    if (!on) {
+      boxes.forEach(t => { t.postalText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      const boxScale = (parseFloat(qaPostalBoxSize.value) || 150) / 100;
+      const gap = parseFloat(qaPostalGap.value) || 0;
+      const borderWidth = parseFloat(qaPostalBorderWidth.value) || 0;
+      const radius = parseFloat(qaPostalRadius.value) || 0;
+      const borderColor = qaPostalColor.value || '#000000';
+      boxes.forEach(t => {
+        clearOtherLayoutEffects(t, 'postal');
+        t.postalText = { boxScale, gap, borderWidth, radius, borderColor };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaPostalBoxSize.addEventListener('input', () => { qaPostalBoxSize.dataset.on = '1'; applyQaPostal(); });
+  qaPostalGap.addEventListener('input', () => { qaPostalBoxSize.dataset.on = '1'; applyQaPostal(); });
+  qaPostalBorderWidth.addEventListener('input', () => { qaPostalBoxSize.dataset.on = '1'; applyQaPostal(); });
+  qaPostalRadius.addEventListener('input', () => { qaPostalBoxSize.dataset.on = '1'; applyQaPostal(); });
+  qaPostalColor.addEventListener('input', () => { qaPostalBoxSize.dataset.on = '1'; applyQaPostal(); });
+  qaPostalBoxSize.addEventListener('change', () => EP.pushHistory());
+  qaPostalGap.addEventListener('change', () => EP.pushHistory());
+  qaPostalBorderWidth.addEventListener('change', () => EP.pushHistory());
+  qaPostalRadius.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaPostalOffBtn').addEventListener('click', () => {
+    qaPostalBoxSize.dataset.on = '0';
+    applyQaPostal(); EP.pushHistory();
+  });
+
+
   const qaPuffyIntensity = document.getElementById('qaPuffyIntensity');
   const qaPuffyPeriod = document.getElementById('qaPuffyPeriod');
   function applyQaPuffy(){
@@ -5772,6 +6427,80 @@
   });
 
 
+  // ---- 축포 효과 ---- (폭죽 여러 발 + 색색 리본 + 오색 별/색종이, 밀도/퍼짐 조절, 배치는 전부 랜덤)
+  const qaEventDensity = document.getElementById('qaEventDensity');
+  const qaEventSpread = document.getElementById('qaEventSpread');
+  function applyQaEvent(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const on = qaEventDensity.dataset.on === '1';
+    if (!on) {
+      boxes.forEach(t => { t.eventText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      const density = parseFloat(qaEventDensity.value) || 55;
+      const spread = parseFloat(qaEventSpread.value) || 55;
+      boxes.forEach(t => {
+        // 폭죽/리본/별의 위치·크기·색상은 seed로 정해짐 — "다시 터트리기"를 눌러야 새로 흩날림
+        const seed = (regenerateSeed || !t.eventText) ? Math.floor(Math.random() * 100000) : t.eventText.seed;
+        t.eventText = { density, spread, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaEventDensity.addEventListener('input', () => { qaEventDensity.dataset.on = '1'; applyQaEvent(false); });
+  qaEventSpread.addEventListener('input', () => { qaEventDensity.dataset.on = '1'; applyQaEvent(false); });
+  qaEventDensity.addEventListener('change', () => EP.pushHistory());
+  qaEventSpread.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaEventShuffleBtn').addEventListener('click', () => {
+    qaEventDensity.dataset.on = '1';
+    applyQaEvent(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaEventOffBtn').addEventListener('click', () => {
+    qaEventDensity.dataset.on = '0';
+    applyQaEvent(false); EP.pushHistory();
+  });
+
+
+  // ---- 골프 효과 ---- (잔디 필드+홀/깃발+스윙하는 골퍼들+날아가는 골프공, 밀도/퍼짐 조절)
+  const qaGolfDensity = document.getElementById('qaGolfDensity');
+  const qaGolfSpread = document.getElementById('qaGolfSpread');
+  function applyQaGolf(regenerateSeed){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const on = qaGolfDensity.dataset.on === '1';
+    if (!on) {
+      boxes.forEach(t => { t.golfText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      const density = parseFloat(qaGolfDensity.value) || 55;
+      const spread = parseFloat(qaGolfSpread.value) || 55;
+      boxes.forEach(t => {
+        // 골퍼 위치·공 궤적은 seed로 정해짐 — "다시 치기"를 눌러야 새로 배치됨
+        const seed = (regenerateSeed || !t.golfText) ? Math.floor(Math.random() * 100000) : t.golfText.seed;
+        t.golfText = { density, spread, seed };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaGolfDensity.addEventListener('input', () => { qaGolfDensity.dataset.on = '1'; applyQaGolf(false); });
+  qaGolfSpread.addEventListener('input', () => { qaGolfDensity.dataset.on = '1'; applyQaGolf(false); });
+  qaGolfDensity.addEventListener('change', () => EP.pushHistory());
+  qaGolfSpread.addEventListener('change', () => EP.pushHistory());
+  document.getElementById('qaGolfShuffleBtn').addEventListener('click', () => {
+    qaGolfDensity.dataset.on = '1';
+    applyQaGolf(true);
+    EP.pushHistory();
+  });
+  document.getElementById('qaGolfOffBtn').addEventListener('click', () => {
+    qaGolfDensity.dataset.on = '0';
+    applyQaGolf(false); EP.pushHistory();
+  });
+
+
   // ---- 말풍선 배경 ---- (매번 다른 삐뚤빼뚤한 윤곽 + 꼬리, 모양은 seed로 고정 — "다시 뽑기"로 재배치)
   const qaBubblePadding = document.getElementById('qaBubblePadding');
   const qaBubbleFillColor = document.getElementById('qaBubbleFillColor');
@@ -5926,6 +6655,10 @@
         const animal = anchor.animalText;
         qaAnimalIntensity.value = animal ? (animal.intensity || 0) : 0;
   }
+  function populate_seafood(anchor){
+        const seafood = anchor.seafoodText;
+        qaSeafoodIntensity.value = seafood ? (seafood.intensity || 0) : 0;
+  }
   function populate_fruitveg(anchor){
         const fruitVeg = anchor.fruitVegText;
         qaFruitVegIntensity.value = fruitVeg ? (fruitVeg.intensity || 0) : 0;
@@ -6019,6 +6752,15 @@
         qaVerticalSpacing.value = vert ? Math.round((vert.spacing || 1.2) * 100) : 120;
         qaVerticalSpacing.dataset.on = vert ? '1' : '0';
   }
+  function populate_postal(anchor){
+        const postal = anchor.postalText;
+        qaPostalBoxSize.value = postal ? Math.round((postal.boxScale || 1.5) * 100) : 150;
+        qaPostalGap.value = postal ? (postal.gap != null ? postal.gap : 14) : 14;
+        qaPostalBorderWidth.value = postal ? (postal.borderWidth != null ? postal.borderWidth : 2) : 2;
+        qaPostalRadius.value = postal ? (postal.radius != null ? postal.radius : 0) : 0;
+        qaPostalColor.value = postal ? (EP.toHex(postal.borderColor) || '#000000') : '#000000';
+        qaPostalBoxSize.dataset.on = postal ? '1' : '0';
+  }
   function populate_puffy(anchor){
         const puf = anchor.puffyText;
         qaPuffyIntensity.value = puf ? (puf.amplitude || 0) : 0;
@@ -6111,6 +6853,18 @@
         qaBigbangSpread.value = bigbang ? (bigbang.spread != null ? bigbang.spread : 55) : 55;
         qaBigbangDensity.dataset.on = bigbang ? '1' : '0';
   }
+  function populate_event(anchor){
+        const ev = anchor.eventText;
+        qaEventDensity.value = ev ? (ev.density != null ? ev.density : 55) : 55;
+        qaEventSpread.value = ev ? (ev.spread != null ? ev.spread : 55) : 55;
+        qaEventDensity.dataset.on = ev ? '1' : '0';
+  }
+  function populate_golf(anchor){
+        const golf = anchor.golfText;
+        qaGolfDensity.value = golf ? (golf.density != null ? golf.density : 55) : 55;
+        qaGolfSpread.value = golf ? (golf.spread != null ? golf.spread : 55) : 55;
+        qaGolfDensity.dataset.on = golf ? '1' : '0';
+  }
   function populate_bubble(anchor){
         const bubble = anchor.bubbleText;
         qaBubblePadding.value = bubble ? (bubble.padding != null ? bubble.padding : 18) : 18;
@@ -6191,6 +6945,11 @@
     id: 'animal', label: '귀여운 동물', commonEffect: false,
     appliesTo: ['text'], group: null, includeInRandom: true,
     apply: applyQaAnimal, randomize: function(){ var b=document.getElementById('qaAnimalShuffleBtn'); if(b) b.click(); }, populate: populate_animal
+  });
+  EP.registerFilter({
+    id: 'seafood', label: '해산물', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaSeafood, randomize: function(){ var b=document.getElementById('qaSeafoodShuffleBtn'); if(b) b.click(); }, populate: populate_seafood
   });
   EP.registerFilter({
     id: 'fruitveg', label: '과일&채소', commonEffect: false,
@@ -6283,6 +7042,11 @@
     apply: applyQaVertical, randomize: null, populate: populate_vertical
   });
   EP.registerFilter({
+    id: 'postal', label: '우편번호 칸', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: applyQaPostal, randomize: null, populate: populate_postal
+  });
+  EP.registerFilter({
     id: 'puffy', label: '부풀리기', commonEffect: false,
     appliesTo: ['text'], group: 'layout', includeInRandom: true,
     apply: applyQaPuffy, randomize: null, populate: populate_puffy
@@ -6363,6 +7127,16 @@
     apply: applyQaBigbang, randomize: function(){ var b=document.getElementById('qaBigbangShuffleBtn'); if(b) b.click(); }, populate: populate_bigbang
   });
   EP.registerFilter({
+    id: 'event', label: '축포 효과', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaEvent, randomize: function(){ var b=document.getElementById('qaEventShuffleBtn'); if(b) b.click(); }, populate: populate_event
+  });
+  EP.registerFilter({
+    id: 'golf', label: '골프 효과', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true,
+    apply: applyQaGolf, randomize: function(){ var b=document.getElementById('qaGolfShuffleBtn'); if(b) b.click(); }, populate: populate_golf
+  });
+  EP.registerFilter({
     id: 'bubble', label: '말풍선 배경', commonEffect: false,
     appliesTo: ['text'], group: null, includeInRandom: true,
     apply: applyQaBubble, randomize: function(){ var b=document.getElementById('qaBubbleShuffleBtn'); if(b) b.click(); }, populate: populate_bubble
@@ -6391,6 +7165,7 @@
   EP.initCmykPicker(qaFireOuterColor);
   EP.initCmykPicker(qaFireInnerColor);
   EP.initCmykPicker(qaLightColor);
+  EP.initCmykPicker(qaPostalColor);
   EP.initCmykPicker(qaGrassColor);
   EP.initCmykPicker(qaBubbleFillColor);
   EP.initCmykPicker(qaBubbleStrokeColor);

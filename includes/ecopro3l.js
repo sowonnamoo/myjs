@@ -12,13 +12,13 @@
     shadow:'qaShadowOffBtn', glow:'qaGlowOffBtn', light:'qaLightOffBtn', gradient:'qaGradOffBtn',
     emboss:'qaEmbossOffBtn', outline:'qaOutlineOffBtn', doubleOutline:'qaDblOffBtn', glitch:'qaGlitchOffBtn',
     tear:'qaTearOffBtn', melt:'qaMeltOffBtn', speed:'qaSpeedOffBtn', reflection:'qaReflectionOffBtn', crack:'qaCrackOffBtn', tile:'qaTileOffBtn',
-    footprint:'qaFootprintOffBtn', animal:'qaAnimalOffBtn', fruitveg:'qaFruitVegOffBtn', heart:'qaHeartOffBtn', coffee:'qaCoffeeOffBtn', sports:'qaSportsOffBtn', club:'qaClubOffBtn', snow:'qaSnowOffBtn', rain:'qaRainOffBtn', splash:'qaSplashOffBtn', threeD:'qa3DOffBtn',
+    footprint:'qaFootprintOffBtn', animal:'qaAnimalOffBtn', seafood:'qaSeafoodOffBtn', fruitveg:'qaFruitVegOffBtn', heart:'qaHeartOffBtn', coffee:'qaCoffeeOffBtn', sports:'qaSportsOffBtn', club:'qaClubOffBtn', snow:'qaSnowOffBtn', rain:'qaRainOffBtn', splash:'qaSplashOffBtn', threeD:'qa3DOffBtn',
     metal:'qaMetalOffBtn', popart:'qaPopartOffBtn', inktrap:'qaInktrapOffBtn', leafvine:'qaLeafvineOffBtn',
     sakura:'qaSakuraOffBtn', fire:'qaFireOffBtn', randomTypo:'qaRandomTypoOffBtn', circular:'qaCircularOffBtn',
-    vertical:'qaVerticalOffBtn', puffy:'qaPuffyOffBtn', vine:'qaVineOffBtn', roll:'qaRollOffBtn',
+    vertical:'qaVerticalOffBtn', postal:'qaPostalOffBtn', puffy:'qaPuffyOffBtn', vine:'qaVineOffBtn', roll:'qaRollOffBtn',
     perspective:'qaPerspectiveOffBtn', curve:'qaCurveOffBtn', wave:'qaWaveOffBtn', tired:'qaTiredOffBtn',
     spiral:'qaSpiralOffBtn', magazine:'qaMagazineOffBtn', puzzle:'qaPuzzleOffBtn', sky:'qaSkyOffBtn', train:'qaTrainOffBtn',
-    shy:'qaShyOffBtn', chalk:'qaChalkOffBtn', grass:'qaGrassOffBtn', bigbang:'qaBigbangOffBtn',
+    shy:'qaShyOffBtn', chalk:'qaChalkOffBtn', grass:'qaGrassOffBtn', bigbang:'qaBigbangOffBtn', event:'qaEventOffBtn', golf:'qaGolfOffBtn',
     bg:'qaBgOffBtn', bubble:'qaBubbleOffBtn', zebra:'qaZebraOffBtn'
   };
 
@@ -37,7 +37,7 @@
   // 이 13개만 후보로 허용함 — 나머지(원형글자/세로쓰기/이중테두리/글리치 외 다수)는 표 셀 안에서
   // 삐져나가거나 안 어울려서 제외. 공통필터(그림자/외부광선/그라디언트/엠보스/테두리/배경)는 이 제한과 무관하게 그대로 허용됨.
   var TABLE_TEXT_FILTER_WHITELIST = [
-    'puzzle', 'sakura', 'grass', 'footprint', 'animal', 'fruitveg', 'heart', 'coffee', 'sports', 'club', 'rain', 'splash', 'glitch', 'leafvine', 'tile',
+    'puzzle', 'sakura', 'grass', 'footprint', 'animal', 'seafood', 'fruitveg', 'heart', 'coffee', 'sports', 'club', 'rain', 'splash', 'glitch', 'leafvine', 'tile',
     'randomTypo', 'snow', 'magazine', 'bigbang', 'shy', 'popart'
   ];
 
