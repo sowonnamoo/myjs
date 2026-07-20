@@ -677,6 +677,13 @@ window.enableMobileCustomPicker = function(selectEl) {
     function isFinishingGroup(g) {
         return (g.title || "").includes("후가공");
     }
+    // finishing-select의 서브옵션(색상 등) select를 찾는다. 모바일에서는 둘 다
+    // .select-wrap으로 감싸져 있을 수 있으므로 부모가 아니라 같은 .option-row
+    // 안에서 찾아야 정확하다.
+    function getFinishingSubSelect(sel) {
+        const row = sel.closest('.option-row') || sel.parentElement;
+        return row ? row.querySelector('.finishing-sub-select') : null;
+    }
     function valueGroups() {
         return productData.options.filter(o => Array.isArray(o.values));
     }
@@ -765,14 +772,21 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
     function buildSubOptionSelect(finishingSelect) {
-        // 이미 있으면 (모바일 피커용 래퍼까지 포함해서) 완전히 제거 후 다시 생성
-        const wrap = finishingSelect.parentElement;
-        const old = wrap.querySelector(".finishing-sub-select");
+        // finishingSelect는 모바일에서 enableMobileCustomPicker에 의해 .select-wrap
+        // (select + 탭 오버레이)으로 감싸져 있을 수 있다. 서브옵션(색상 등) select를
+        // "afterend"로 넣을 기준점은 finishingSelect 자신이 아니라 이 바깥 wrap이어야 한다.
+        // 그렇지 않으면 새 서브옵션 select가 메인 select의 오버레이 영역 안쪽에 갇혀서,
+        // 탭을 해도 전부 메인 후가공 select 쪽 모달이 열리고 서브옵션 자체는 선택이
+        // 안 되는 문제가 생긴다 (금박 색상 선택 등 추가옵션이 모바일에서 안 먹히는 버그).
+        const anchor = finishingSelect.closest('.select-wrap') || finishingSelect;
+        const row = anchor.parentElement; // .option-row
+
+        // 이미 있으면 (모바일 피커용 래퍼까지 포함해서) 완전히 제거 후 다시 생성.
+        // row 전체에서 찾아야 위 문제로 엉뚱한 곳에 들어간 예전 서브옵션도 확실히 제거된다.
+        const old = row ? row.querySelector(".finishing-sub-select") : null;
         if (old) {
-            // enableMobileCustomPicker가 select를 별도의 .select-wrap div로 감싸놓았을 수 있으므로,
-            // select만 지우면 빈 래퍼(div)가 DOM에 남아 폭을 계속 나눠 가져가게 됩니다. 래퍼째로 지웁니다.
-            const oldWrap = old.parentElement;
-            if (oldWrap && oldWrap !== wrap && oldWrap.classList.contains("select-wrap")) {
+            const oldWrap = old.closest('.select-wrap');
+            if (oldWrap && oldWrap !== anchor) {
                 oldWrap.remove();
             } else {
                 old.remove();
@@ -796,7 +810,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             subSelect.appendChild(el);
         });
         subSelect.addEventListener("change", updatePrice);
-        finishingSelect.insertAdjacentElement("afterend", subSelect);
+        anchor.insertAdjacentElement("afterend", subSelect); // wrap 바로 뒤, row의 직계 자식으로 삽입
         window.enableMobileCustomPicker(subSelect);
         // enableMobileCustomPicker가 subSelect를 flex:1짜리 .select-wrap div로 감싸는데,
         // 그대로 두면 메인 후가공 select(flex:1)와 폭을 나눠 가지면서 계속 좁아집니다.
@@ -963,7 +977,7 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             let itemPrice = price * (1 + margin / 100) * qtyFactor;
 
-            const subSelect = sel.parentElement.querySelector(".finishing-sub-select");
+            const subSelect = getFinishingSubSelect(sel);
             let label = opt.value;
             if (subSelect && subSelect.value) {
                 const subOpt = subSelect.options[subSelect.selectedIndex];
@@ -1194,7 +1208,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         const finishings = [];
         document.querySelectorAll(".finishing-select").forEach(sel => {
             if (sel.value) {
-                const subSelect = sel.parentElement.querySelector(".finishing-sub-select");
+                const subSelect = getFinishingSubSelect(sel);
                 const subValue = subSelect ? subSelect.value : "";
                 finishings.push(subValue ? `${sel.value}(${subValue})` : sel.value);
             }
