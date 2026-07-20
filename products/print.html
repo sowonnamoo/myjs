@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>견적서 출력</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -15,10 +16,15 @@
             box-shadow: 0 2px 12px rgba(0,0,0,0.06);
             display: flex; flex-direction: column;
         }
+
+        /* ---- 모바일 캡처용 견적서 카드 ---- */
+        #mobile-quote { display: none; }
+        .mq-row + .mq-row { border-top: 1px solid #f3f4f6; }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gradient-to-b from-slate-100 to-slate-200">
 
+    <!-- 데스크톱/인쇄용 A4 견적서 -->
     <div class="a4-page" id="printable">
         <div class="flex-grow">
 
@@ -75,6 +81,71 @@
         </div>
     </div>
 
+    <!-- 모바일 캡처용 견적서 카드 (좁은 화면에서 스크린샷 찍기 좋은 세로형 레이아웃) -->
+    <div id="mobile-quote" class="max-w-sm mx-auto px-4 py-8">
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+            <div class="h-2 bg-gradient-to-r from-gray-800 via-gray-600 to-gray-800"></div>
+
+            <div class="text-center pt-7 pb-5 px-6 border-b border-dashed border-gray-300">
+                <h1 class="text-2xl font-bold tracking-[0.2em] text-gray-900">견 적 서</h1>
+                <p class="text-[10px] text-gray-400 mt-1 tracking-[0.3em]">QUOTATION</p>
+                <div class="flex items-center justify-center gap-3 text-[11px] text-gray-400 mt-4">
+                    <span>견적번호 <span id="m-quote-no" class="text-gray-600 font-medium"></span></span>
+                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span id="m-date" class="text-gray-600 font-medium"></span>
+                </div>
+            </div>
+
+            <div class="px-6 py-5">
+                <p id="m-product-name" class="text-lg font-bold text-gray-900 leading-snug"></p>
+                <p id="m-size" class="text-sm text-gray-500 mt-0.5"></p>
+
+                <div class="mt-5 rounded-xl bg-gray-50 overflow-hidden">
+                    <div class="mq-row px-4 py-3">
+                        <p class="text-[11px] text-gray-400 tracking-wide">선택 옵션</p>
+                        <p id="m-options" class="text-sm text-gray-800 font-medium mt-0.5"></p>
+                    </div>
+                    <div class="mq-row px-4 py-3">
+                        <p class="text-[11px] text-gray-400 tracking-wide">후가공</p>
+                        <p id="m-finishings" class="text-sm text-gray-800 font-medium mt-0.5"></p>
+                    </div>
+                    <div class="mq-row px-4 py-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-[11px] text-gray-400 tracking-wide">수량</p>
+                            <p id="m-qty" class="text-sm text-gray-800 font-medium mt-0.5"></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[11px] text-gray-400 tracking-wide">예상 무게</p>
+                            <p id="m-weight" class="text-sm text-gray-800 font-medium mt-0.5"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-dashed border-gray-300 space-y-2">
+                    <div class="flex justify-between text-sm text-gray-500">
+                        <span>공급가</span>
+                        <span id="m-supply"></span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-500">
+                        <span>부가세</span>
+                        <span id="m-tax"></span>
+                    </div>
+                </div>
+
+                <div class="mt-3 flex justify-between items-center bg-gray-900 text-white rounded-xl px-4 py-3.5">
+                    <span class="text-sm font-medium text-gray-300">최종 합계 (VAT 포함)</span>
+                    <span id="m-final-total" class="text-xl font-bold"></span>
+                </div>
+            </div>
+
+            <div class="text-center text-[11px] text-gray-400 border-t border-dashed border-gray-300 px-6 py-4">
+                본 견적서는 웹사이트에서 선택하신 옵션 기준으로 자동 생성되었으며, 실제 결제 금액과 다를 수 있습니다.
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-gray-400 mt-4">📸 화면을 길게 눌러 이미지로 저장하거나 캡처해서 보관하세요</p>
+    </div>
+
     <script>
         function esc(s) {
             return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -93,31 +164,53 @@
         const supply = Math.round(finalPrice / 1.1);
         const tax = finalPrice - supply;
 
-        document.getElementById('print-product-name').textContent = product;
-        document.getElementById('print-size').textContent = size;
-        document.getElementById('print-options').textContent = options || "-";
-        document.getElementById('print-finishings').textContent = finishings || "선택안함";
-        document.getElementById('print-qty').textContent = `${qty}매 x ${count}건`;
-        document.getElementById('print-weight').textContent = weight || "-";
-
-        document.getElementById('print-tbody').innerHTML = `
-            <tr class="h-12 text-center">
-                <td class="border border-gray-800 p-2">${esc(product)}</td>
-                <td class="border border-gray-800 p-2">${esc(size)}</td>
-                <td class="border border-gray-800 p-2">${esc(qty)}매 x ${esc(count)}건</td>
-                <td class="border border-gray-800 p-2">${supply.toLocaleString()}</td>
-                <td class="border border-gray-800 p-2">${tax.toLocaleString()}</td>
-                <td class="border border-gray-800 p-2 font-bold">${finalPrice.toLocaleString()}원</td>
-            </tr>`;
-
-        document.getElementById('print-final-total').textContent = `${finalPrice.toLocaleString()}원`;
-
         const now = new Date();
-        document.getElementById('print-date').textContent = now.toLocaleDateString('ko-KR');
+        const dateStr = now.toLocaleDateString('ko-KR');
         const quoteNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
-        document.getElementById('print-quote-no').textContent = quoteNo;
 
-        window.onload = () => { setTimeout(window.print, 500); };
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+        if (isMobile) {
+            // ---- 모바일: 캡처하기 좋은 세로형 카드 렌더링 (인쇄창은 띄우지 않음) ----
+            document.getElementById('printable').style.display = 'none';
+            document.getElementById('mobile-quote').style.display = 'block';
+
+            document.getElementById('m-quote-no').textContent = quoteNo;
+            document.getElementById('m-date').textContent = dateStr;
+            document.getElementById('m-product-name').textContent = product;
+            document.getElementById('m-size').textContent = size;
+            document.getElementById('m-options').textContent = options || "-";
+            document.getElementById('m-finishings').textContent = finishings || "선택안함";
+            document.getElementById('m-qty').textContent = `${qty}매 x ${count}건`;
+            document.getElementById('m-weight').textContent = weight || "-";
+            document.getElementById('m-supply').textContent = `${supply.toLocaleString()}원`;
+            document.getElementById('m-tax').textContent = `${tax.toLocaleString()}원`;
+            document.getElementById('m-final-total').textContent = `${finalPrice.toLocaleString()}원`;
+        } else {
+            // ---- 데스크톱: 기존 A4 인쇄용 견적서 ----
+            document.getElementById('print-product-name').textContent = product;
+            document.getElementById('print-size').textContent = size;
+            document.getElementById('print-options').textContent = options || "-";
+            document.getElementById('print-finishings').textContent = finishings || "선택안함";
+            document.getElementById('print-qty').textContent = `${qty}매 x ${count}건`;
+            document.getElementById('print-weight').textContent = weight || "-";
+
+            document.getElementById('print-tbody').innerHTML = `
+                <tr class="h-12 text-center">
+                    <td class="border border-gray-800 p-2">${esc(product)}</td>
+                    <td class="border border-gray-800 p-2">${esc(size)}</td>
+                    <td class="border border-gray-800 p-2">${esc(qty)}매 x ${esc(count)}건</td>
+                    <td class="border border-gray-800 p-2">${supply.toLocaleString()}</td>
+                    <td class="border border-gray-800 p-2">${tax.toLocaleString()}</td>
+                    <td class="border border-gray-800 p-2 font-bold">${finalPrice.toLocaleString()}원</td>
+                </tr>`;
+
+            document.getElementById('print-final-total').textContent = `${finalPrice.toLocaleString()}원`;
+            document.getElementById('print-date').textContent = dateStr;
+            document.getElementById('print-quote-no').textContent = quoteNo;
+
+            window.onload = () => { setTimeout(window.print, 500); };
+        }
     </script>
 </body>
 </html>
