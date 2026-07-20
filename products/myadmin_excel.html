@@ -76,6 +76,7 @@
             <p><b>품목</b> 시트: 상품ID / 그룹ID(또는 그룹제목) / 품목명 / 가로mm / 세로mm / 가격 / 종이무게 / 배송일 / 마진율% / 추가마진율% / 클릭URL / 이미지URL / 다음페이지이동URL / 최우선다음페이지이동URL / 서브옵션(<code>이름:추가금액</code>을 세미콜론으로 연결, 예: <code>유광골드:2000; 무광레드:1500</code>)</p>
             <p><b>매수별배수</b> 시트: 상품ID / 매수 / 배수</p>
             <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대) / 값</p>
+            <p><b>규격사이즈목록</b> 시트: 상품ID / 가로mm / 세로mm (계산기 화면의 "규격사이즈" 드롭다운에 나오는 목록입니다. 사이즈 하나당 한 행씩 적으세요)</p>
             <p><b>삭제</b> 시트: 상품ID 한 칸만 있습니다. 여기 적힌 상품ID는 Firestore 문서 자체가 통째로 삭제됩니다.</p>
             <p>상품ID나 품목명이 비어있는 행은 자동으로 무시됩니다. 새 상품ID를 적으면 새 문서가 만들어지고, 기존 상품ID를 적으면 그 문서 전체가 엑셀 내용으로 덮어써집니다.</p>
         </div>
@@ -147,6 +148,7 @@
         const itemRows = [itemHeader];
         const qtyRows = [["상품ID", "매수", "배수"]];
         const customRows = [["상품ID", "항목", "값"]];
+        const sizeRows = [["상품ID", "가로mm", "세로mm"]];
 
         allProducts.forEach(({ id, data }) => {
             const groups = valueGroups(data);
@@ -178,17 +180,24 @@
                 customRows.push([id, "세로최소", orEmpty(o01.heightMin)]);
                 customRows.push([id, "세로최대", orEmpty(o01.heightMax)]);
             }
+
+            const o02 = findSpecial(data, "options02");
+            if (o02 && Array.isArray(o02.sizes)) {
+                o02.sizes.forEach(s => sizeRows.push([id, orEmpty(s.width), orEmpty(s.height)]));
+            }
         });
 
         if (groupRows.length === 1) groupRows.push(["", "", ""]);
         if (itemRows.length === 1) itemRows.push(itemHeader.map(() => ""));
         if (qtyRows.length === 1) qtyRows.push(["", "", ""]);
         if (customRows.length === 1) customRows.push(["", "", ""]);
+        if (sizeRows.length === 1) sizeRows.push(["", "", ""]);
 
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(groupRows), "그룹");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(itemRows), "품목");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qtyRows), "매수별배수");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(customRows), "비규격설정");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sizeRows), "규격사이즈목록");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["상품ID"], [""]]), "삭제");
 
         XLSX.writeFile(wb, `전체상품_옵션.xlsx`);
@@ -218,7 +227,7 @@
         return map;
     }
 
-    function buildOneProductData(productId, groupRows, itemRows, qtyRows, customRows) {
+    function buildOneProductData(productId, groupRows, itemRows, qtyRows, customRows, sizeRows) {
         const options = [];
 
         // ---- 그룹 + 품목 ----
@@ -298,6 +307,16 @@
             options.push({ id: "options01", title: "비규격 설정", basePrice, multiplier, widthMin, widthMax, heightMin, heightMax });
         }
 
+        // ---- 규격 사이즈 목록 (options02) ----
+        const sizes = [];
+        (sizeRows || []).forEach(r => {
+            const w = toNum(r["가로mm"]), h = toNum(r["세로mm"]);
+            if (w !== undefined && h !== undefined) sizes.push({ width: w, height: h });
+        });
+        if (sizes.length) {
+            options.push({ id: "options02", title: "규격 사이즈 목록", sizes });
+        }
+
         return { productId, options };
     }
 
@@ -306,6 +325,7 @@
         const itemRowsAll = rowsOf(wb, "품목");
         const qtyRowsAll = rowsOf(wb, "매수별배수");
         const customRowsAll = rowsOf(wb, "비규격설정");
+        const sizeRowsAll = rowsOf(wb, "규격사이즈목록");
         const deleteRowsAll = rowsOf(wb, "삭제");
 
         const deleteIds = [...new Set(
@@ -316,10 +336,12 @@
         const byProductItem = groupByProductId(itemRowsAll);
         const byProductQty = groupByProductId(qtyRowsAll);
         const byProductCustom = groupByProductId(customRowsAll);
+        const byProductSize = groupByProductId(sizeRowsAll);
 
         const allIds = new Set([
             ...Object.keys(byProductGroup), ...Object.keys(byProductItem),
-            ...Object.keys(byProductQty), ...Object.keys(byProductCustom)
+            ...Object.keys(byProductQty), ...Object.keys(byProductCustom),
+            ...Object.keys(byProductSize)
         ]);
 
         const products = {};
@@ -328,7 +350,7 @@
             products[pid] = buildOneProductData(
                 pid,
                 byProductGroup[pid] || [], byProductItem[pid] || [], byProductQty[pid] || [],
-                byProductCustom[pid] || []
+                byProductCustom[pid] || [], byProductSize[pid] || []
             );
         });
 
@@ -362,6 +384,12 @@
                 });
                 html += `</table>`;
             });
+            const o02 = findSpecial(productData, "options02");
+            if (o02 && Array.isArray(o02.sizes) && o02.sizes.length) {
+                html += `<table class="mini"><tr><th colspan="1">options02 — 규격 사이즈 목록</th></tr>`;
+                o02.sizes.forEach(s => { html += `<tr><td>${s.width} × ${s.height} mm</td></tr>`; });
+                html += `</table>`;
+            }
             html += `</div>`;
         });
         $("previewProducts").innerHTML = html || "<div class='hint'>등록/수정될 상품이 없습니다.</div>";

@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 
 <!-- ▼▼▼ SEO 설정: 이 블록 안의 내용만 바꾸면 됩니다 (01my 전용) ▼▼▼ -->
-<title>명함 인쇄 | 당일발송 셀프 명함제작 전문 - 코코프린트</title>
+<title>명함 인쇄 | 당일발송 셀프 명함제작 전문 - 에코그래픽스</title>
 <meta name="description" content="고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.">
 <meta name="keywords" content="명함인쇄, 명함제작, 셀프명함, 즉시인쇄명함, 저렴한명함, 당일발송명함">
 <meta property="og:type" content="product">
-<meta property="og:title" content="명함 인쇄 | 당일발송 셀프 명함제작 전문 - 코코프린트">
+<meta property="og:title" content="명함 인쇄 | 당일발송 셀프 명함제작 전문 - 에코그래픽스">
 <meta property="og:description" content="고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.">
 <meta property="og:image" content="https://example.com/images/01my-og.jpg">
 <link rel="canonical" href="https://example.com/01my">
@@ -16,7 +16,7 @@
 {
   "@context": "https://schema.org",
   "@type": "Product",
-  "name": "명함 인쇄 | 당일발송 셀프 명함제작 전문 - 코코프린트",
+  "name": "명함 인쇄 | 당일발송 셀프 명함제작 전문 - 에코그래픽스",
   "description": "고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.",
   "image": ["https://example.com/images/01my-og.jpg"]
 }
@@ -405,7 +405,7 @@
             <div id="bottomProductImage" style="width:1200px; height:1000px; background:#222 url('https://sowonnamoo1005.cafe24.com/1/26070301.jpg') center/cover no-repeat; margin-top:80px;"></div>
         </div>
 
-        <div style="text-align:center; margin-top:30px;">
+        <div id="detailExpandBtnWrap" style="text-align:center; margin-top:30px;">
             <button id="detailExpandBtn" type="button">
                 상품 상세정보 펼쳐보기 <span id="detailExpandArrow">▼</span>
             </button>
@@ -414,14 +414,8 @@
         <div id="detailExpandContent">
             <div id="detailExpandInner">
                 <!-- ▼▼▼ 상세설명 글/사진: 이 블록 안의 내용만 바꾸면 됩니다 ▼▼▼ -->
-                <p style="text-align:center; line-height:1.85;">
-                    코코프린트 명함은 <strong style="color:#2b7bc3;">친환경 인증 용지</strong>만 사용합니다.<br>
-                    주문 후 <strong style="color:#2b7bc3;">당일 발송</strong>을 원칙으로 하며, 전국 어디서나 빠르게 받아보실 수 있습니다.<br>
-                    디자인이 걱정되신다면 무료 시안 확인 서비스를 이용해보세요.
-                </p>
-                <img src="https://example.com/images/01my-detail1.jpg" alt="명함 상세 이미지 1" loading="lazy">
-                <img src="https://example.com/images/01my-detail2.jpg" alt="명함 상세 이미지 2" loading="lazy">
-                <img src="https://example.com/images/01my-detail3.jpg" alt="명함 상세 이미지 3" loading="lazy">
+            
+
                 <!-- ▲▲▲ 상세설명 글/사진 끝 ▲▲▲ -->
             </div>
         </div>
@@ -458,11 +452,25 @@ function setTab(el) {
 }
 
 // ---- 상세페이지 펼치기/접기 ----
+// #detailExpandInner 안에 실제로 글이나 사진이 작성되어 있을 때만 버튼을 보여줍니다.
+// (아직 내용을 못 넣은 상품은 빈 버튼이 덩그러니 떠 있지 않도록 버튼 자체를 숨김)
 document.addEventListener('DOMContentLoaded', function () {
+    const btnWrap = document.getElementById('detailExpandBtnWrap');
     const btn = document.getElementById('detailExpandBtn');
     const content = document.getElementById('detailExpandContent');
+    const inner = document.getElementById('detailExpandInner');
     const arrow = document.getElementById('detailExpandArrow');
-    if (!btn || !content) return;
+    if (!btn || !content || !inner || !btnWrap) return;
+
+    const hasText = inner.textContent.trim().length > 0;
+    const hasImage = Array.from(inner.querySelectorAll('img')).some(img => (img.getAttribute('src') || '').trim().length > 0);
+
+    if (!hasText && !hasImage) {
+        // 작성된 내용이 없으면 버튼과 내용 영역 자체를 렌더링하지 않음
+        btnWrap.style.display = 'none';
+        content.style.display = 'none';
+        return;
+    }
 
     btn.addEventListener('click', function () {
         const isOpen = content.style.display === 'block';
@@ -1110,10 +1118,14 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
         });
 
-        // 후가공 목록 추출
+        // 후가공 목록 추출 (색상 등 서브옵션이 선택되어 있으면 "이름(서브옵션)" 형태로 함께 담음)
         const finishings = [];
         document.querySelectorAll(".finishing-select").forEach(sel => {
-            if (sel.value) finishings.push(sel.value);
+            if (sel.value) {
+                const subSelect = sel.parentElement.querySelector(".finishing-sub-select");
+                const subValue = subSelect ? subSelect.value : "";
+                finishings.push(subValue ? `${sel.value}(${subValue})` : sel.value);
+            }
             const fOpt = sel.options[sel.selectedIndex];
             if (!nextPageUrl && fOpt && fOpt.dataset.nextPageUrl && fOpt.dataset.nextPageUrl.startsWith("http")) {
                 nextPageUrl = fOpt.dataset.nextPageUrl;
@@ -1123,16 +1135,24 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
         });
 
+        // 주의: URLSearchParams가 값들을 알아서 인코딩해줍니다. 여기서 encodeURIComponent를
+        // 미리 씌우면 이중 인코딩이 되어버리므로 절대 추가하지 마세요.
+        // 이 구조 덕분에 다음페이지 쪽에서는 특별한 디코딩 없이 그냥
+        //   const params = new URLSearchParams(location.search);
+        //   const options = JSON.parse(params.get('options'));
+        //   const price = params.get('price');
+        //   const finishings = params.get('finishings'); // "후가공1,후가공2" 형태의 일반 문자열
+        // 처럼 표준적인 방법으로만 꺼내 쓰면 됩니다. (다음페이지가 바뀌어도 이 부분은 그대로 유지)
         const params = new URLSearchParams({
             productId: "01my",
-            options: encodeURIComponent(JSON.stringify(groupSelections)),
+            options: JSON.stringify(groupSelections),
             qty: qty,
             count: count,
             width: width,
             height: height,
-            price: encodeURIComponent(price),
+            price: price,
             weight: weightValue,
-            finishings: encodeURIComponent(finishings.join(","))
+            finishings: finishings.join(",")
         }).toString();
 
         // 선택된 옵션에 "다음페이지 이동 URL"이 입력되어 있을 때만, 선택한 모든 옵션 쿼리를 붙여
