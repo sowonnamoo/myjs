@@ -348,6 +348,18 @@
     <option value="bigbang">빅뱅 효과</option>
     <option value="event">축포 효과 (폭죽+리본+오색별)</option>
     <option value="golf">골프 효과 (필드+골퍼+날아가는 공)</option>
+    <option value="christmas">크리스마스 효과 (트리 장식 흩뿌리기)</option>
+    <option value="autumn">가을 효과 (단풍잎+은행잎 흩뿌리기)</option>
+    <option value="space">우주 효과 (별+행성+혜성)</option>
+    <option value="doodle">낙서 효과 (손그림 스케치)</option>
+    <option value="butterfly">나비 효과 (팔랑이는 나비)</option>
+    <option value="soapbubble">비눗방울 효과</option>
+    <option value="lightning">번개 효과</option>
+    <option value="halloween">할로윈 효과 (호박+박쥐+유령)</option>
+    <option value="musicnote">음표 효과</option>
+    <option value="gem">보석 효과</option>
+    <option value="tropical">열대 효과 (야자잎+히비스커스)</option>
+    <option value="candy">사탕 효과 (막대사탕+캔디)</option>
     <option value="popart">팝아트 효과</option>
     <option value="inktrap">잉크트랩 스타일</option>
     <option value="leafvine">나뭇잎 덩굴 효과</option>
@@ -1104,18 +1116,222 @@
 
   <div class="qa-filter-detail hidden" id="qaDetailGolf">
     <div class="row">
-      <label>골퍼 수</label>
-      <input type="range" id="qaGolfDensity" min="0" max="100" step="1" title="필드에 배치되는 골퍼 인원수">
+      <label>인원 수</label>
+      <input type="range" id="qaGolfDensity" min="0" max="100" step="1" title="글자 주변에 배치되는 사람 수">
     </div>
     <div class="row">
       <label>퍼짐 크기</label>
-      <input type="range" id="qaGolfSpread" min="0" max="100" step="1" title="필드 세로 폭과 골프공이 날아가는 높이">
+      <input type="range" id="qaGolfSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaGolfOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
     </div>
     <div class="row">
-      <button type="button" class="qa-btn" id="qaGolfShuffleBtn" style="flex:1;">🎲 다시 치기</button>
+      <button type="button" class="qa-btn" id="qaGolfShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailChristmas">
+    <div class="row">
+      <label>장식 개수</label>
+      <input type="range" id="qaChristmasDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 장식 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaChristmasSpread" min="0" max="100" step="1" title="글자 주변에 장식이 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaChristmasOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaChristmasShuffleBtn" style="flex:1;">🎲 다시 걸기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailAutumn">
+    <div class="row">
+      <label>잎사귀 개수</label>
+      <input type="range" id="qaAutumnDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 단풍잎/은행잎 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaAutumnSpread" min="0" max="100" step="1" title="글자 주변에 잎사귀가 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaAutumnOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaAutumnShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailSpace">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaSpaceDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 별/행성/혜성 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaSpaceSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSpaceOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSpaceShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailDoodle">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaDoodleDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 낙서 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaDoodleSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaDoodleOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaDoodleShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailButterfly">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaButterflyDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 나비 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaButterflySpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaButterflyOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaButterflyShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailSoapbubble">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaSoapbubbleDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 비눗방울 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaSoapbubbleSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSoapbubbleOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSoapbubbleShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailLightning">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaLightningDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 번개 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaLightningSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaLightningOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaLightningShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailHalloween">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaHalloweenDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 호박/박쥐/유령 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaHalloweenSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaHalloweenOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaHalloweenShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailMusicnote">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaMusicnoteDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 음표 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaMusicnoteSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaMusicnoteOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaMusicnoteShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailGem">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaGemDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 보석 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaGemSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaGemOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaGemShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailTropical">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaTropicalDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 야자잎/히비스커스 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaTropicalSpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaTropicalOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaTropicalShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailCandy">
+    <div class="row">
+      <label>개수</label>
+      <input type="range" id="qaCandyDensity" min="0" max="100" step="1" title="글자 주변에 흩뿌려지는 사탕 개수">
+    </div>
+    <div class="row">
+      <label>퍼짐 크기</label>
+      <input type="range" id="qaCandySpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaCandyOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaCandyShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
     </div>
   </div>
 

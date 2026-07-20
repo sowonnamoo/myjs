@@ -18,7 +18,8 @@
     vertical:'qaVerticalOffBtn', postal:'qaPostalOffBtn', puffy:'qaPuffyOffBtn', vine:'qaVineOffBtn', roll:'qaRollOffBtn',
     perspective:'qaPerspectiveOffBtn', curve:'qaCurveOffBtn', wave:'qaWaveOffBtn', tired:'qaTiredOffBtn',
     spiral:'qaSpiralOffBtn', magazine:'qaMagazineOffBtn', puzzle:'qaPuzzleOffBtn', sky:'qaSkyOffBtn', train:'qaTrainOffBtn',
-    shy:'qaShyOffBtn', chalk:'qaChalkOffBtn', grass:'qaGrassOffBtn', bigbang:'qaBigbangOffBtn', event:'qaEventOffBtn', golf:'qaGolfOffBtn',
+    shy:'qaShyOffBtn', chalk:'qaChalkOffBtn', grass:'qaGrassOffBtn', bigbang:'qaBigbangOffBtn', event:'qaEventOffBtn', golf:'qaGolfOffBtn', christmas:'qaChristmasOffBtn', autumn:'qaAutumnOffBtn',
+    space:'qaSpaceOffBtn', doodle:'qaDoodleOffBtn', butterfly:'qaButterflyOffBtn', soapbubble:'qaSoapbubbleOffBtn', lightning:'qaLightningOffBtn', halloween:'qaHalloweenOffBtn', musicnote:'qaMusicnoteOffBtn', gem:'qaGemOffBtn', tropical:'qaTropicalOffBtn', candy:'qaCandyOffBtn',
     bg:'qaBgOffBtn', bubble:'qaBubbleOffBtn', zebra:'qaZebraOffBtn'
   };
 
