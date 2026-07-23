@@ -80,8 +80,14 @@
         <input type="text" id="itemImageUrlInput" placeholder="이미지 URL (선택)">
         <input type="text" id="itemNextPageUrlInput" placeholder="다음페이지 이동 URL (선택)">
         <input type="text" id="itemPriorityNextPageUrlInput" placeholder="최우선 다음페이지 이동 URL (선택)">
+        <label class="checkline"><input type="checkbox" id="itemOpenNewWindowInput"> 새 창으로 열기 (체크 안하면 현재 창에서 이동)</label>
+        <div class="row-flex">
+            <input type="number" id="itemNewWindowWidthInput" placeholder="새창 가로 크기 px (예: 900)">
+            <input type="number" id="itemNewWindowHeightInput" placeholder="새창 세로 크기 px (예: 1000)">
+        </div>
         <div class="hint">이 옵션이 선택된 상태로 "셀프편집 &amp; 주문하기" 버튼을 누르면, 선택된 모든 옵션 값을 쿼리로 붙여서 이 URL로 이동합니다. 비워두면 이동하지 않고 기존 동작을 유지합니다.<br>
-        선택된 여러 옵션에 "다음페이지 이동 URL"이 서로 다르게 입력되어 충돌할 경우, <b>최우선 다음페이지 이동 URL</b>이 입력된 옵션 쪽이 우선합니다.</div>
+        선택된 여러 옵션에 "다음페이지 이동 URL"이 서로 다르게 입력되어 충돌할 경우, <b>최우선 다음페이지 이동 URL</b>이 입력된 옵션 쪽이 우선합니다.<br>
+        "새 창으로 열기"를 체크하면 현재 창(self) 대신 새 창으로 해당 URL이 열립니다. 새창 가로/세로 크기를 비워두면 기본값(900x1000)으로 열립니다.</div>
         <label class="checkline"><input type="checkbox" id="hasSubOptions"> 서브옵션 있음 (예: 금박 색상)</label>
         <div id="subOptionsContainer"></div>
         <button id="addSubOptionRowBtn" class="secondary" type="button">서브옵션 행 추가</button>
@@ -284,8 +290,9 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput"]
             .forEach(id => $(id).value = "");
+        $("itemOpenNewWindowInput").checked = false;
         $("hasSubOptions").checked = false;
         $("subOptionsContainer").innerHTML = "";
     }
@@ -328,6 +335,9 @@
         const imageUrl = $("itemImageUrlInput").value.trim(); if (imageUrl) item.imageUrl = imageUrl;
         const nextPageUrl = $("itemNextPageUrlInput").value.trim(); if (nextPageUrl) item.nextPageUrl = nextPageUrl;
         const priorityNextPageUrl = $("itemPriorityNextPageUrlInput").value.trim(); if (priorityNextPageUrl) item.priorityNextPageUrl = priorityNextPageUrl;
+        if ($("itemOpenNewWindowInput").checked) item.openInNewWindow = true;
+        const newWindowWidth = $("itemNewWindowWidthInput").value; if (newWindowWidth !== "") item.newWindowWidth = parseFloat(newWindowWidth);
+        const newWindowHeight = $("itemNewWindowHeightInput").value; if (newWindowHeight !== "") item.newWindowHeight = parseFloat(newWindowHeight);
         if ($("hasSubOptions").checked) {
             const subs = collectSubOptionRows();
             if (subs.length > 0) item.subOptions = subs;
@@ -483,6 +493,9 @@
         $("itemImageUrlInput").value = item.imageUrl ?? "";
         $("itemNextPageUrlInput").value = item.nextPageUrl ?? "";
         $("itemPriorityNextPageUrlInput").value = item.priorityNextPageUrl ?? "";
+        $("itemOpenNewWindowInput").checked = !!item.openInNewWindow;
+        $("itemNewWindowWidthInput").value = item.newWindowWidth ?? "";
+        $("itemNewWindowHeightInput").value = item.newWindowHeight ?? "";
 
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
@@ -531,6 +544,7 @@
                 if (v.imageUrl) meta.push(`이미지 ✓`);
                 if (v.nextPageUrl) meta.push(`다음URL ✓`);
                 if (v.priorityNextPageUrl) meta.push(`최우선URL ✓`);
+                if (v.openInNewWindow) meta.push(`새창${(v.newWindowWidth||v.newWindowHeight) ? ` ${v.newWindowWidth||900}x${v.newWindowHeight||1000}` : ''} ✓`);
                 const subHtml = v.subOptions && v.subOptions.length
                     ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";

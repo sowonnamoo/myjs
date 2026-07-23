@@ -728,6 +728,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         el.dataset.imageUrl = v.imageUrl ?? "";
         el.dataset.nextPageUrl = v.nextPageUrl ?? "";
         el.dataset.priorityNextPageUrl = v.priorityNextPageUrl ?? "";
+        el.dataset.openNewWindow = v.openInNewWindow ? "1" : "";
+        el.dataset.newWindowWidth = v.newWindowWidth ?? "";
+        el.dataset.newWindowHeight = v.newWindowHeight ?? "";
         if (Array.isArray(v.subOptions) && v.subOptions.length) {
             el.dataset.subOptions = JSON.stringify(v.subOptions);
         }
@@ -1189,6 +1192,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         let combinedGroupText = "";
         let nextPageUrl = ""; // 선택된 옵션 중 "다음페이지 이동 URL"이 입력된 것이 있으면 여기에 담김
         let priorityNextPageUrl = ""; // 선택된 옵션 중 "최우선 다음페이지 이동 URL"이 입력된 것이 있으면 여기에 담김
+        // 위 두 URL과 같은 옵션(품목)에 실려 있는 "새 창으로 열기" 설정을 함께 담아둡니다.
+        let nextPageOpenNewWindow = false, nextPageNewWindowW = "", nextPageNewWindowH = "";
+        let priorityNextPageOpenNewWindow = false, priorityNextPageNewWindowW = "", priorityNextPageNewWindowH = "";
         document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
             const groupId = sel.dataset.groupId;
@@ -1198,9 +1204,15 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
             if (!nextPageUrl && opt && opt.dataset.nextPageUrl && opt.dataset.nextPageUrl.startsWith("http")) {
                 nextPageUrl = opt.dataset.nextPageUrl;
+                nextPageOpenNewWindow = opt.dataset.openNewWindow === "1";
+                nextPageNewWindowW = opt.dataset.newWindowWidth || "";
+                nextPageNewWindowH = opt.dataset.newWindowHeight || "";
             }
             if (!priorityNextPageUrl && opt && opt.dataset.priorityNextPageUrl && opt.dataset.priorityNextPageUrl.startsWith("http")) {
                 priorityNextPageUrl = opt.dataset.priorityNextPageUrl;
+                priorityNextPageOpenNewWindow = opt.dataset.openNewWindow === "1";
+                priorityNextPageNewWindowW = opt.dataset.newWindowWidth || "";
+                priorityNextPageNewWindowH = opt.dataset.newWindowHeight || "";
             }
         });
 
@@ -1215,9 +1227,15 @@ window.enableMobileCustomPicker = function(selectEl) {
             const fOpt = sel.options[sel.selectedIndex];
             if (!nextPageUrl && fOpt && fOpt.dataset.nextPageUrl && fOpt.dataset.nextPageUrl.startsWith("http")) {
                 nextPageUrl = fOpt.dataset.nextPageUrl;
+                nextPageOpenNewWindow = fOpt.dataset.openNewWindow === "1";
+                nextPageNewWindowW = fOpt.dataset.newWindowWidth || "";
+                nextPageNewWindowH = fOpt.dataset.newWindowHeight || "";
             }
             if (!priorityNextPageUrl && fOpt && fOpt.dataset.priorityNextPageUrl && fOpt.dataset.priorityNextPageUrl.startsWith("http")) {
                 priorityNextPageUrl = fOpt.dataset.priorityNextPageUrl;
+                priorityNextPageOpenNewWindow = fOpt.dataset.openNewWindow === "1";
+                priorityNextPageNewWindowW = fOpt.dataset.newWindowWidth || "";
+                priorityNextPageNewWindowH = fOpt.dataset.newWindowHeight || "";
             }
         });
 
@@ -1242,11 +1260,23 @@ window.enableMobileCustomPicker = function(selectEl) {
         }).toString();
 
         // 선택된 옵션에 "다음페이지 이동 URL"이 입력되어 있을 때만, 선택한 모든 옵션 쿼리를 붙여
-        // 새 창이 아닌 현재 창(self)에서 그 URL로 이동합니다. 입력되지 않았으면 아무 동작도 하지 않습니다.
+        // 그 URL로 이동합니다. 입력되지 않았으면 아무 동작도 하지 않습니다.
         // 여러 선택된 옵션의 URL이 서로 달라 충돌하는 경우, "최우선 다음페이지 이동 URL"이 있는 쪽을 우선합니다.
+        // 관리자에서 해당 옵션에 "새 창으로 열기"가 체크되어 있으면 새 창으로, 아니면 기존처럼 현재 창(self)에서 이동합니다.
         const finalNextUrl = priorityNextPageUrl || nextPageUrl;
+        const finalOpenNewWindow = priorityNextPageUrl ? priorityNextPageOpenNewWindow : nextPageOpenNewWindow;
+        const finalNewWindowW = priorityNextPageUrl ? priorityNextPageNewWindowW : nextPageNewWindowW;
+        const finalNewWindowH = priorityNextPageUrl ? priorityNextPageNewWindowH : nextPageNewWindowH;
         if (finalNextUrl) {
-            window.location.href = `${finalNextUrl}?${params}`;
+            const targetUrl = `${finalNextUrl}?${params}`;
+            if (finalOpenNewWindow) {
+                // 새창 사이즈: 관리자에서 입력한 값이 있으면 그 값을, 없으면 기본값(900x1000)을 사용합니다.
+                const w = parseInt(finalNewWindowW, 10) || 900;
+                const h = parseInt(finalNewWindowH, 10) || 1000;
+                window.open(targetUrl, "_blank", `width=${w},height=${h}`);
+            } else {
+                window.location.href = targetUrl;
+            }
         }
     };
 </script>

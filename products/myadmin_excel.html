@@ -144,7 +144,7 @@
         const wb = XLSX.utils.book_new();
 
         const groupRows = [["상품ID", "그룹ID", "그룹제목"]];
-        const itemHeader = ["상품ID", "그룹ID", "품목명", "가로mm", "세로mm", "가격", "종이무게", "배송일", "마진율%", "추가마진율%", "클릭URL", "이미지URL", "다음페이지이동URL", "최우선다음페이지이동URL", "서브옵션"];
+        const itemHeader = ["상품ID", "그룹ID", "품목명", "가로mm", "세로mm", "가격", "종이무게", "배송일", "마진율%", "추가마진율%", "클릭URL", "이미지URL", "다음페이지이동URL", "최우선다음페이지이동URL", "새창으로열기", "새창가로px", "새창세로px", "서브옵션"];
         const itemRows = [itemHeader];
         const qtyRows = [["상품ID", "매수", "배수"]];
         const customRows = [["상품ID", "항목", "값"]];
@@ -161,7 +161,8 @@
                     itemRows.push([
                         id, g.id, v.name || "", orEmpty(v.width), orEmpty(v.height), orEmpty(v.price),
                         orEmpty(v.weight), orEmpty(v.delivery), orEmpty(v.margin), orEmpty(v.surcharge),
-                        orEmpty(v.url), orEmpty(v.imageUrl), orEmpty(v.nextPageUrl), orEmpty(v.priorityNextPageUrl), subText
+                        orEmpty(v.url), orEmpty(v.imageUrl), orEmpty(v.nextPageUrl), orEmpty(v.priorityNextPageUrl),
+                        v.openInNewWindow ? "Y" : "", orEmpty(v.newWindowWidth), orEmpty(v.newWindowHeight), subText
                     ]);
                 });
             });
@@ -277,6 +278,10 @@
             const imageUrl = String(r["이미지URL"] || "").trim(); if (imageUrl) item.imageUrl = imageUrl;
             const nextPageUrl = String(r["다음페이지이동URL"] || "").trim(); if (nextPageUrl) item.nextPageUrl = nextPageUrl;
             const priorityNextPageUrl = String(r["최우선다음페이지이동URL"] || "").trim(); if (priorityNextPageUrl) item.priorityNextPageUrl = priorityNextPageUrl;
+            const openInNewWindow = String(r["새창으로열기"] || "").trim();
+            if (openInNewWindow && /^(y|yes|true|1|o|ㅇ)$/i.test(openInNewWindow)) item.openInNewWindow = true;
+            const newWindowWidth = toNum(r["새창가로px"]); if (newWindowWidth !== undefined) item.newWindowWidth = newWindowWidth;
+            const newWindowHeight = toNum(r["새창세로px"]); if (newWindowHeight !== undefined) item.newWindowHeight = newWindowHeight;
             const subText = String(r["서브옵션"] || "").trim();
             if (subText) {
                 const subs = subText.split(";").map(s => s.trim()).filter(Boolean).map(s => {
@@ -379,7 +384,7 @@
                 html += `<table class="mini"><tr><th colspan="4">${g.id} — ${g.title || "제목없음"}</th></tr>
                     <tr><th>품목명</th><th>가격</th><th>사이즈</th><th>URL/이미지/이동URL</th></tr>`;
                 (g.values || []).forEach(v => {
-                    const flags = [v.url && "URL", v.imageUrl && "이미지", v.nextPageUrl && "다음URL", v.priorityNextPageUrl && "최우선URL"].filter(Boolean).join(", ");
+                    const flags = [v.url && "URL", v.imageUrl && "이미지", v.nextPageUrl && "다음URL", v.priorityNextPageUrl && "최우선URL", v.openInNewWindow && "새창"].filter(Boolean).join(", ");
                     html += `<tr><td>${v.name}</td><td>${orEmpty(v.price)}</td><td>${v.width !== undefined ? v.width + "×" + v.height : ""}</td><td>${flags}</td></tr>`;
                 });
                 html += `</table>`;
