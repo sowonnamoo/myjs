@@ -17,6 +17,7 @@
     sakura:'qaSakuraOffBtn', fire:'qaFireOffBtn', randomTypo:'qaRandomTypoOffBtn', circular:'qaCircularOffBtn',
     vertical:'qaVerticalOffBtn', postal:'qaPostalOffBtn', puffy:'qaPuffyOffBtn', vine:'qaVineOffBtn', roll:'qaRollOffBtn',
     perspective:'qaPerspectiveOffBtn', curve:'qaCurveOffBtn', wave:'qaWaveOffBtn', tired:'qaTiredOffBtn',
+    jump:'qaJumpOffBtn', pulse:'qaPulseOffBtn', sway:'qaSwayOffBtn', waddle:'qaWaddleOffBtn', popcorn:'qaPopcornOffBtn', hiccup:'qaHiccupOffBtn', breathe:'qaBreatheOffBtn', flicker:'qaFlickerOffBtn', chatter:'qaChatterOffBtn', walk:'qaWalkOffBtn',
     spiral:'qaSpiralOffBtn', magazine:'qaMagazineOffBtn', puzzle:'qaPuzzleOffBtn', sky:'qaSkyOffBtn', train:'qaTrainOffBtn',
     shy:'qaShyOffBtn', chalk:'qaChalkOffBtn', grass:'qaGrassOffBtn', bigbang:'qaBigbangOffBtn', event:'qaEventOffBtn', golf:'qaGolfOffBtn', christmas:'qaChristmasOffBtn', autumn:'qaAutumnOffBtn',
     space:'qaSpaceOffBtn', doodle:'qaDoodleOffBtn', butterfly:'qaButterflyOffBtn', soapbubble:'qaSoapbubbleOffBtn', lightning:'qaLightningOffBtn', halloween:'qaHalloweenOffBtn', musicnote:'qaMusicnoteOffBtn', gem:'qaGemOffBtn', tropical:'qaTropicalOffBtn', candy:'qaCandyOffBtn',

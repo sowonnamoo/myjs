@@ -827,7 +827,10 @@
     addPuzzleEdge(ctx, left, bottom, left, top, -1, 0, dirs[3], r);
     ctx.closePath();
   }
-  // 글자 하나하나를 각기 다른 색의 직소 퍼즐 조각 위에 얹어서 그림. 조각 모양(돌기/홈 배치)과
+  // 글자 하나하나를 각기 다른 색(또는 unified가 true면 전부 같은 색)의 직소 퍼즐 조각 위에
+  // 얹어서 그림. 조각 모양(돌기/홈 배치)과 색상 모두 seed로 정해지며, "다시 맞추기"를 누를 때마다
+  // 모양과 색이 통째로 다시 섞이고, 그때마다 약 35% 확률로 조각들이 전부 같은 색으로 통일되는
+  // unified 모드가 새로 정해짐(applyQaPuzzle 참고).
   // 색상 모두 seed로 정해지며, "다시 맞추기"를 누를 때마다 모양과 색이 통째로 다시 섞임.
   // 조각 색의 밝기에 따라 글자 색(밝은 조각→어두운 글자, 어두운 조각→흰 글자)을 자동으로 골라
   // 항상 눈에 잘 띄게 함
@@ -860,9 +863,12 @@
       const cx = x + pw / 2;
       const pieceSeed = seed + i * 199 + 7;
 
-      const hue = pseudoRandom(seed + i * 29.3 + 251) * 360;
-      const sat = 0.5 + pseudoRandom(seed + i * 17.1 + 91) * 0.4;
-      const val = 0.55 + pseudoRandom(seed + i * 11.3 + 171) * 0.35;
+      // unified가 true면 글자 인덱스(i)를 색 계산에 섞지 않아서 모든 조각이 같은 색이 되게 함
+      // (조각 모양/돌기 배치는 pieceSeed로 여전히 조각마다 다르게 유지됨 — 색만 통일됨)
+      const colorSeedPart = cfg.unified ? 0 : i;
+      const hue = pseudoRandom(seed + colorSeedPart * 29.3 + 251) * 360;
+      const sat = 0.5 + pseudoRandom(seed + colorSeedPart * 17.1 + 91) * 0.4;
+      const val = 0.55 + pseudoRandom(seed + colorSeedPart * 11.3 + 171) * 0.35;
       const rgb = EP.hsvToRgb(hue, sat, val);
       const pieceColor = EP.rgbToHex(rgb.r, rgb.g, rgb.b);
       const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
@@ -2707,6 +2713,178 @@
     ctx.restore();
   }
 
+  // ==== 공용 "글자별 변형" 레이아웃 효과 팩토리 ====
+  // 물결/지침 효과처럼 "글자 하나하나를 원래 자리에서 조금씩 옮기고·돌리고·늘였다 줄였다·
+  // 밝기를 바꿔서 마치 살아 움직이는 듯한 인상을 주는" 패턴이 반복되므로 한 곳에 모음.
+  // transformFn(cfg, info)는 글자 하나마다 호출되며 info = {i, n, t, midX, totalWidth, w, baseFontSize}.
+  // 반환값 { dx, dy, rot(라디안), scaleX, scaleY, fontScale, alpha, color } 중 필요한 것만 채우면 됨.
+  function createCharTransformPass(cfgKey, transformFn){
+    return function(ctx){
+      const cfg = this[cfgKey];
+      const text = this.text || '';
+      if (!cfg || !text.length) { origItextRender.call(this, ctx); return; }
+
+      const baseFontSize = this.fontSize;
+      const fontFamily = this.fontFamily, fontWeight = this.fontWeight || '', fontStyle = this.fontStyle || '';
+
+      ctx.save();
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'center';
+      ctx.font = `${fontStyle} ${fontWeight} ${baseFontSize}px ${fontFamily}`;
+
+      const chars = text.split('').filter(c => c !== '\n' && c !== '\r');
+      const n = chars.length;
+      const widths = chars.map(c => Math.max(1, ctx.measureText(c).width));
+      const totalWidth = widths.reduce((a, b) => a + b, 0);
+
+      const hasFill = this.fill && this.fill !== 'transparent' && this.fill !== '';
+      const hasStroke = this.stroke && this.strokeWidth > 0;
+      const strokeFirst = this.paintFirst === 'stroke';
+      const baseY = baseFontSize * 0.35;
+      const baseAlpha = ctx.globalAlpha;
+
+      let x = -totalWidth / 2;
+      let cum = 0;
+      chars.forEach((c, i) => {
+        const w = widths[i];
+        const midX = cum + w / 2;
+        const t = n > 1 ? i / (n - 1) : 0;
+        const tr = transformFn(cfg, { i, n, t, midX, totalWidth, w, baseFontSize }) || {};
+
+        ctx.save();
+        ctx.translate(x + w / 2 + (tr.dx || 0), baseY + (tr.dy || 0));
+        if (tr.rot) ctx.rotate(tr.rot);
+        const sX = tr.scaleX != null ? tr.scaleX : 1, sY = tr.scaleY != null ? tr.scaleY : 1;
+        if (sX !== 1 || sY !== 1) ctx.scale(sX, sY);
+        ctx.globalAlpha = baseAlpha * (tr.alpha != null ? tr.alpha : 1);
+        if (tr.fontScale && tr.fontScale !== 1) {
+          ctx.font = `${fontStyle} ${fontWeight} ${baseFontSize * tr.fontScale}px ${fontFamily}`;
+        }
+        const drawFill = () => { if (hasFill) { ctx.fillStyle = tr.color || this.fill; ctx.fillText(c, 0, 0); } };
+        const drawStroke = () => { if (hasStroke) { ctx.strokeStyle = this.stroke; ctx.lineWidth = this.strokeWidth; ctx.strokeText(c, 0, 0); } };
+        if (strokeFirst) { drawStroke(); drawFill(); } else { drawFill(); drawStroke(); }
+        ctx.restore();
+        if (tr.fontScale && tr.fontScale !== 1) { ctx.font = `${fontStyle} ${fontWeight} ${baseFontSize}px ${fontFamily}`; }
+
+        x += w;
+        cum += w;
+      });
+
+      ctx.restore();
+    };
+  }
+  function clamp01_100(v, def){ return Math.max(0, Math.min(100, v != null ? v : def)) / 100; }
+
+  // ① 바운스(통통 튀는) 효과 — 글자들이 저마다 다른 순간에 통통 튀어오른 스냅샷.
+  // "높이"로 튀어오르는 정도를, "리듬"으로 튀는 물결이 텍스트를 몇 번 훑는지를 정함. 착지할 때
+  // 살짝 눌리고(스쿼시) 뜰 때 살짝 늘어나는(스트레치) 효과로 탄력을 표현함.
+  var drawJumpPass = createCharTransformPass('jumpText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 55), period = 1 + clamp01_100(cfg.p2, 45) * 4;
+    const phase = c.t * Math.PI * 2 * period + (cfg.seed || 0) * 0.001;
+    const jump = Math.abs(Math.sin(phase));
+    return { dy: -jump * c.baseFontSize * 0.55 * amt, scaleY: 1 - jump * 0.1 * amt, scaleX: 1 + jump * 0.08 * amt };
+  });
+
+  // ② 두근두근(심장박동) 효과 — 글자 크기가 물결치듯 커졌다 작아졌다 하는 순간을 포착해서
+  // 마치 맥박이 뛰는 것처럼 보이게 함. "세기"로 커지는 폭을, "리듬"으로 파동의 빈도를 조절함.
+  var drawPulsePass = createCharTransformPass('pulseText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 55), period = 1 + clamp01_100(cfg.p2, 40) * 3;
+    const phase = c.t * Math.PI * 2 * period + (cfg.seed || 0) * 0.001;
+    return { fontScale: 1 + Math.sin(phase) * 0.25 * amt };
+  });
+
+  // ③ 살랑살랑(흔들림) 효과 — 잔잔한 바람에 풀잎이 흔들리듯, 텍스트를 가로지르는 부드러운
+  // 물결을 따라 글자들이 좌우로 살짝 기울며 흔들리는 순간을 포착함. "흔들림"은 좌우로 밀리는
+  // 폭을, "리듬"은 흔들림 물결이 몇 번 굽이치는지를 정함.
+  var drawSwayPass = createCharTransformPass('swayText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 50), period = 1 + clamp01_100(cfg.p2, 45) * 3;
+    const angFreq = (Math.PI * 2 * period) / Math.max(1, c.totalWidth);
+    const sway = Math.sin(c.midX * angFreq + (cfg.seed || 0) * 0.01);
+    return { dx: sway * c.baseFontSize * 0.16 * amt, rot: sway * 0.16 * amt };
+  });
+
+  // ④ 아장아장(뒤뚱뒤뚱) 효과 — 글자가 한 자씩 번갈아 좌우로 기울고 살짝 떠오르며, 마치
+  // 오리가 뒤뚱뒤뚱 걷는 듯한 순간을 포착함. "뒤뚱임"은 기울기·들림 정도를, "리듬"은 옆 글자와
+  // 얼마나 다른 타이밍처럼 보이는지를 정함.
+  var drawWaddlePass = createCharTransformPass('waddleText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 55), period = 1 + clamp01_100(cfg.p2, 45) * 3;
+    const parity = c.i % 2 === 0 ? 1 : -1;
+    const phase = c.i * period * 0.5 + (cfg.seed || 0) * 0.01;
+    const wob = Math.sin(phase);
+    return { rot: parity * 0.12 * amt + wob * 0.05 * amt, dy: -Math.abs(Math.sin(phase)) * c.baseFontSize * 0.12 * amt };
+  });
+
+  // ⑤ 콩닥콩닥(팝콘) 효과 — 팝콘이 튀듯, 몇몇 글자만 불규칙하게 훌쩍 튀어 오른 순간을 포착함.
+  // "튀는 정도"는 튀어 오르는 최대 높이를, "빈도"는 높이 튀는 글자가 얼마나 많은지를 정함.
+  var drawPopcornPass = createCharTransformPass('popcornText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 55), freq = clamp01_100(cfg.p2, 45);
+    const seed = cfg.seed || 0;
+    const pop = pseudoRandom(seed + c.i * 17.3 + 5);
+    const bias = 1 + (1 - freq) * 3;
+    const height = Math.pow(pop, bias) * amt;
+    return {
+      dy: -height * c.baseFontSize * 0.9,
+      rot: (pseudoRandom(seed + c.i * 9.7 + 50) - 0.5) * 0.5 * height,
+      scaleY: 1 + height * 0.15, scaleX: 1 - height * 0.08
+    };
+  });
+
+  // ⑥ 딸꾹질 효과 — 대부분의 글자는 가만히 있다가, 이따금 한 글자씩 딸꾹 하고 갑자기 위로
+  // 튀며 흔들리는 그 순간을 포착함. "세기"는 딸꾹질할 때 튀는 정도를, "빈도"는 딸꾹질하는
+  // 글자가 얼마나 자주 나오는지를 정함.
+  var drawHiccupPass = createCharTransformPass('hiccupText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 55), freq = clamp01_100(cfg.p2, 35);
+    const seed = cfg.seed || 0;
+    const trigger = pseudoRandom(seed + c.i * 31.1 + 7);
+    const jitter = (pseudoRandom(seed + c.i * 5 + 3) - 0.5) * c.baseFontSize * 0.03;
+    if (trigger < freq * 0.5) {
+      return { dy: -c.baseFontSize * 0.35 * amt + jitter, rot: (pseudoRandom(seed + c.i * 13 + 9) - 0.5) * 0.35 * amt };
+    }
+    return { dy: jitter, rot: (pseudoRandom(seed + c.i * 13 + 9) - 0.5) * 0.03 };
+  });
+
+  // ⑦ 숨쉬기(브리딩) 효과 — 텍스트 전체가 한숨에 맞춰 다 같이 살짝 커졌다 작아지고 밝기도
+  // 은은하게 오르내리는, 숨을 들이쉬거나 내쉬는 중간 어느 한 순간을 포착함. "세기"는 커지는
+  // 폭을, "밝기 변화"는 흐려지는 정도를 정함. (다른 효과와 달리 모든 글자가 같은 위상으로 움직임)
+  var drawBreathePass = createCharTransformPass('breatheText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 50), alphaAmt = clamp01_100(cfg.p2, 35);
+    const phase = ((cfg.seed || 0) % 1000) / 1000 * Math.PI * 2;
+    return { fontScale: 1 + Math.sin(phase) * 0.15 * amt, alpha: 1 - (1 - Math.cos(phase)) / 2 * 0.4 * alphaAmt };
+  });
+
+  // ⑧ 깜빡깜빡(플리커) 효과 — 몇몇 글자가 네온사인처럼 불규칙하게 흐려졌다 밝아졌다 하는
+  // 순간을 포착함. "세기"는 흐려지는 정도를, "불규칙함"은 깜빡이는 글자가 얼마나 많은지를 정함.
+  var drawFlickerPass = createCharTransformPass('flickerText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 55), chance = clamp01_100(cfg.p2, 45);
+    const seed = cfg.seed || 0;
+    const isFlicker = pseudoRandom(seed + c.i * 9 + 41) < (0.2 + chance * 0.6);
+    if (!isFlicker) return {};
+    return { alpha: Math.max(0.15, 1 - pseudoRandom(seed + c.i * 21.3 + 13) * amt) };
+  });
+
+  // ⑨ 재잘재잘(수다) 효과 — 여러 사람이 동시에 재잘재잘 떠들듯, 글자들이 저마다 아주 잘게
+  // 흔들리고 있는 순간을 포착함. "흔들림"은 흔들리는 폭을, "빠르기"는 흔들림이 얼마나 잦고
+  // 격렬해 보이는지를 정함.
+  var drawChatterPass = createCharTransformPass('chatterText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 50), freqBoost = 0.5 + clamp01_100(cfg.p2, 45) * 1.5;
+    const seed = cfg.seed || 0;
+    return {
+      dx: (pseudoRandom(seed + c.i * 7.7 + 21) - 0.5) * c.baseFontSize * 0.12 * amt * freqBoost,
+      dy: (pseudoRandom(seed + c.i * 11.3 + 41) - 0.5) * c.baseFontSize * 0.12 * amt * freqBoost,
+      rot: (pseudoRandom(seed + c.i * 5.1 + 61) - 0.5) * 0.25 * amt * freqBoost
+    };
+  });
+
+  // ⑩ 성큼성큼(걷기) 효과 — 앞 글자부터 뒷 글자까지 순서대로 한 걸음씩 내딛는 물결이
+  // 훑고 지나가는 듯한, 마치 글자들이 줄지어 걸어가는 중간 순간을 포착함. "보폭"은 발을
+  // 내딛을 때 떠오르는 높이를, "리듬"은 걸음 물결이 얼마나 촘촘한지를 정함.
+  var drawWalkPass = createCharTransformPass('walkText', function(cfg, c){
+    const amt = clamp01_100(cfg.p1, 50), period = 1 + clamp01_100(cfg.p2, 45) * 3;
+    const phase = c.i * Math.PI / 2 * period * 0.3 + (cfg.seed || 0) * 0.01;
+    const step = Math.sin(phase);
+    return { dy: -Math.max(0, step) * c.baseFontSize * 0.3 * amt, rot: step * 0.15 * amt };
+  });
+
   // 현재 켜진 "레이아웃" 효과(원형/부풀리기/랜덤) 중 하나를 골라서 그리거나, 없으면 기본 텍스트로 그림
   function baseCharacterDraw(ctx){
     if (this.circularText) { drawCircularPass.call(this, ctx); return; }
@@ -2725,6 +2903,16 @@
     if (this.skyText) { drawSkyLettersPass.call(this, ctx); return; }
     if (this.chalkText) { drawChalkPass.call(this, ctx); return; }
     if (this.postalText) { drawPostalPass.call(this, ctx); return; }
+    if (this.jumpText) { drawJumpPass.call(this, ctx); return; }
+    if (this.pulseText) { drawPulsePass.call(this, ctx); return; }
+    if (this.swayText) { drawSwayPass.call(this, ctx); return; }
+    if (this.waddleText) { drawWaddlePass.call(this, ctx); return; }
+    if (this.popcornText) { drawPopcornPass.call(this, ctx); return; }
+    if (this.hiccupText) { drawHiccupPass.call(this, ctx); return; }
+    if (this.breatheText) { drawBreathePass.call(this, ctx); return; }
+    if (this.flickerText) { drawFlickerPass.call(this, ctx); return; }
+    if (this.chatterText) { drawChatterPass.call(this, ctx); return; }
+    if (this.walkText) { drawWalkPass.call(this, ctx); return; }
     if (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length) { drawRandomTypoPass.call(this, ctx); return; }
     origItextRender.call(this, ctx);
   }
@@ -2734,7 +2922,7 @@
   function unifiedCustomRender(ctx){
     if (this.isEditing) { origItextRender.call(this, ctx); return; }
 
-    const hasLayout = !!(this.circularText || this.verticalText || this.puffyText || this.vineText || this.rollText || this.perspectiveText || this.curveText || this.waveText || this.trainText || this.tiredText || this.spiralText || this.magazineText || this.puzzleText || this.skyText || this.chalkText || this.postalText || (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length));
+    const hasLayout = !!(this.circularText || this.verticalText || this.puffyText || this.vineText || this.rollText || this.perspectiveText || this.curveText || this.waveText || this.trainText || this.tiredText || this.spiralText || this.magazineText || this.puzzleText || this.skyText || this.chalkText || this.postalText || this.jumpText || this.pulseText || this.swayText || this.waddleText || this.popcornText || this.hiccupText || this.breatheText || this.flickerText || this.chatterText || this.walkText || (this.randomTypo && this.randomTypo.chars && this.randomTypo.chars.length));
     const has3D = !!(this.threeDText && this.threeDText.depth > 0);
     const hasMetal = !!(this.metalText && this.metalText.intensity > 0);
     const hasPopArt = !!(this.popArtText && this.popArtText.intensity > 0);
@@ -3020,8 +3208,9 @@
   }
 
   // 말풍선 배경: 글자 둘레를 감싸는 배경을 그리고, 네 변 중 한 곳에서 뾰족한 꼬리가 튀어나오게 함.
-  // 모양(삐뚤빼뚤한 구름형/직사각/둥근사각/사다리꼴)과 꼬리 위치는 모두 seed로 정해지므로
-  // "다시 뽑기"를 누를 때마다 매번 다른 모양이 나옴. 꼬리는 몸통 윤곽선 안에 이어붙여서 하나의
+  // 모양(삐뚤빼뚤한 구름형/직사각/둥근사각/각진 크리스탈형, 그리고 약 30% 확률로 톱니형)과
+  // 꼬리 위치는 모두 seed로 정해지므로 "다시 뽑기"를 누를 때마다 매번 다른 모양이 나옴. 꼬리는
+  // 몸통 윤곽선 안에 이어붙여서 하나의
   // path로 그리기 때문에(테두리를 두 번 겹쳐 그리지 않음), 이어지는 지점에 경계선이 생기지 않음.
   function drawSpeechBubblePass(ctx){
     const cfg = this.bubbleText;
@@ -3032,24 +3221,22 @@
     const fillColor = cfg.fillColor || '#ffffff';
     const strokeColor = cfg.strokeColor || '#222222';
     const strokeWidth = cfg.strokeWidth != null ? cfg.strokeWidth : 3;
-    const shape = ['blob', 'rect', 'round', 'trapezoid'][Math.floor(pseudoRandom(seed + 12345) * 4) % 4];
+    // 약 30% 확률로 바깥 윤곽이 톱니처럼 삐죽삐죽한 'spiky' 모양이 됨(다른 4종 모양 선택과는
+    // 무관하게 독립적으로 굴림). 아니면 기존 4종(구름형/직사각/둥근사각) 중 하나를 고르되,
+    // 예전 '사다리꼴'은 모서리가 뾰족한 각진 폴리곤('angular')으로 교체함.
+    const isSpiky = pseudoRandom(seed + 5001) < 0.3;
+    const shape = isSpiky ? 'spiky' : ['blob', 'rect', 'round', 'angular'][Math.floor(pseudoRandom(seed + 12345) * 4) % 4];
 
     const left = -w / 2 - pad, right = w / 2 + pad, top = -h / 2 - pad, bottom = h / 2 + pad;
     const bw = right - left, bh = bottom - top;
 
-    // 네 꼭짓점(사다리꼴이면 위/아래 폭을 다르게 만들어 기울어진 변을 냄)
-    let topLeftX = left, topRightX = right, bottomLeftX = left, bottomRightX = right;
-    if (shape === 'trapezoid') {
-      const inset = bw * (0.14 + pseudoRandom(seed + 601) * 0.14);
-      if (pseudoRandom(seed + 602) > 0.5) { topLeftX += inset; topRightX -= inset; }
-      else { bottomLeftX += inset; bottomRightX -= inset; }
-    }
+    // 네 꼭짓점(단순 직사각 기준 — 각진/구름형/톱니 모양은 이 네 점을 기준으로 변형됨)
     const corners = [
-      [topLeftX, top], [topRightX, top], [bottomRightX, bottom], [bottomLeftX, bottom]
+      [left, top], [right, top], [right, bottom], [left, bottom]
     ];
 
     // 꼬리: 네 변 중 하나를 랜덤으로 골라, 그 변 위의 랜덤 위치에서 바깥으로 뾰족하게 튀어나가게 함
-    // (변 방향 기준으로 계산하므로 사다리꼴처럼 기울어진 변에서도 자연스럽게 붙음)
+    // (변 방향 기준으로 계산하므로 각진 모양처럼 기울어진 변에서도 자연스럽게 붙음)
     const side = Math.floor(pseudoRandom(seed + 999) * 4); // 0위 1오른쪽 2아래 3왼쪽
     const tailT = 0.25 + pseudoRandom(seed + 888) * 0.5;
     const tailLen = Math.min(bw, bh) * (0.3 + pseudoRandom(seed + 777) * 0.25);
@@ -3073,9 +3260,11 @@
     ctx.globalAlpha = this.opacity != null ? this.opacity : 1;
     ctx.beginPath();
 
-    if (shape === 'blob') {
+    if (shape === 'blob' || shape === 'angular') {
       // 네 변을 각각 몇 개 점으로 쪼개고, 점마다 랜덤 오프셋을 줘서 삐뚤빼뚤한 윤곽을 만듦.
-      // 꼬리가 붙는 변에서는 중간 지점에 꼬리 세 점(t1→tip→t2)을 끼워 넣어 같은 path로 이어 그림
+      // 'blob'은 점 사이를 완만한 곡선으로 잇고, 'angular'는 항상 직선으로 이어서 모서리가
+      // 각지고 뾰족한 크리스탈/각석 같은 느낌을 냄. 꼬리가 붙는 변에서는 중간 지점에 꼬리 세 점
+      // (t1→tip→t2)을 끼워 넣어 같은 path로 이어 그림
       const wobble = Math.min(bw, bh) * 0.05;
       const perSide = 3;
       const pts = [];
@@ -3102,7 +3291,7 @@
       ctx.moveTo((first.x + last.x) / 2, (first.y + last.y) / 2);
       for (let i = 0; i < n; i++) {
         const cur = pts[i], next = pts[(i + 1) % n];
-        if (cur.sharp || next.sharp) {
+        if (shape === 'angular' || cur.sharp || next.sharp) {
           ctx.lineTo(cur.x, cur.y);
         } else {
           const midX = (cur.x + next.x) / 2, midY = (cur.y + next.y) / 2;
@@ -3130,8 +3319,40 @@
         ctx.arcTo(next[0], next[1], afterNext[0], afterNext[1], r);
       }
       ctx.closePath();
+    } else if (shape === 'spiky') {
+      // 톱니(삐죽삐죽) 윤곽 — 네 변을 촘촘히 쪼개서 기준점과 바깥으로 뾰족 튀어나온 점을
+      // 번갈아 이어 붙임. 부드러운 곡선 없이 전부 직선(lineTo)만 써서 날카로운 톱니 느낌을 냄.
+      const spikeLen = Math.min(bw, bh) * (0.05 + pseudoRandom(seed + 701) * 0.04);
+      const perSide = 5;
+      const pts = [];
+      for (let e = 0; e < 4; e++) {
+        const p0 = corners[e], p1 = corners[(e + 1) % 4];
+        const ex = p1[0] - p0[0], ey = p1[1] - p0[1];
+        const elen2 = Math.sqrt(ex * ex + ey * ey) || 1;
+        let nx2 = -ey / elen2, ny2 = ex / elen2; // 변에 수직인 단위벡터
+        const midx = (p0[0] + p1[0]) / 2, midy = (p0[1] + p1[1]) / 2;
+        if ((midx - cx) * nx2 + (midy - cy) * ny2 < 0) { nx2 = -nx2; ny2 = -ny2; } // 바깥쪽으로 보정
+        for (let i = 0; i < perSide; i++) {
+          const t = i / perSide;
+          const isTailSpot = (e === side && i === 1);
+          if (isTailSpot) {
+            pts.push({ x: t1x, y: t1y });
+            pts.push({ x: tx, y: ty });
+            pts.push({ x: t2x, y: t2y });
+          } else {
+            const bx2 = p0[0] + ex * t, by2 = p0[1] + ey * t;
+            pts.push({ x: bx2, y: by2 }); // 변 위 기준점
+            const tHalf = (i + 0.5) / perSide;
+            const spikeBaseX = p0[0] + ex * tHalf, spikeBaseY = p0[1] + ey * tHalf;
+            pts.push({ x: spikeBaseX + nx2 * spikeLen, y: spikeBaseY + ny2 * spikeLen }); // 바깥 뾰족점
+          }
+        }
+      }
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
     } else {
-      // 'rect' 또는 'trapezoid': 직선 폴리곤, 꼬리가 붙는 변에서만 t1→tip→t2를 끼워 넣음
+      // 'rect': 직선 폴리곤, 꼬리가 붙는 변에서만 t1→tip→t2를 끼워 넣음
       ctx.moveTo(corners[0][0], corners[0][1]);
       for (let i = 0; i < 4; i++) {
         if (i === side) {
@@ -5499,7 +5720,7 @@
   }
 
   function hasAnyRenderEffect(t){
-    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.postalText || t.grassText || t.bigbangText || t.eventText || t.golfText || t.christmasText || t.autumnText || t.spaceText || t.doodleText || t.butterflyText || t.soapbubbleText || t.lightningText || t.halloweenText || t.musicnoteText || t.gemText || t.tropicalText || t.candyText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.seafoodText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
+    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.postalText || t.jumpText || t.pulseText || t.swayText || t.waddleText || t.popcornText || t.hiccupText || t.breatheText || t.flickerText || t.chatterText || t.walkText || t.grassText || t.bigbangText || t.eventText || t.golfText || t.christmasText || t.autumnText || t.spaceText || t.doodleText || t.butterflyText || t.soapbubbleText || t.lightningText || t.halloweenText || t.musicnoteText || t.gemText || t.tropicalText || t.candyText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.seafoodText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
   }
   // 효과를 하나라도 켜면 이 통합 _render로 바꿔치기하고, objectCaching을 꺼서
   // (렌더 방식이 계속 바뀌는 오브젝트라 fabric의 캐시 비트맵이 못 따라와 지저분한 잔상이
@@ -5536,6 +5757,16 @@
     if (except !== 'sky') t.skyText = null;
     if (except !== 'chalk') t.chalkText = null;
     if (except !== 'postal') t.postalText = null;
+    if (except !== 'jump') t.jumpText = null;
+    if (except !== 'pulse') t.pulseText = null;
+    if (except !== 'sway') t.swayText = null;
+    if (except !== 'waddle') t.waddleText = null;
+    if (except !== 'popcorn') t.popcornText = null;
+    if (except !== 'hiccup') t.hiccupText = null;
+    if (except !== 'breathe') t.breatheText = null;
+    if (except !== 'flicker') t.flickerText = null;
+    if (except !== 'chatter') t.chatterText = null;
+    if (except !== 'walk') t.walkText = null;
     if (except !== 'randomTypo') t.randomTypo = null;
   }
   // 프로젝트 불러오기/실행취소·다시실행으로 오브젝트가 새로 만들어지면 패치가 사라지므로,
@@ -6883,6 +7114,63 @@
   });
 
 
+  // ---- 새로 추가한 "글자별 변형(레이아웃)" 효과 10종 공용 UI 배선 ----
+  // 슬라이더 2개(p1/p2) + 끄기/다시 흔들기 버튼 조합이 지침(흐물흐물) 효과와 완전히 같은
+  // 패턴이라(관례상 id: qa{Id}P1, qa{Id}P2, qa{Id}OffBtn, qa{Id}ShuffleBtn) 한 번에 배선하는
+  // 헬퍼로 처리함. 다른 레이아웃 효과와 마찬가지로 clearOtherLayoutEffects로 서로 배타적임.
+  function setupLayoutFilterUI(id, cfgKey, p1Default, p2Default){
+    const p1El = document.getElementById('qa' + id + 'P1');
+    const p2El = document.getElementById('qa' + id + 'P2');
+    function apply(regenerateSeed){
+      const boxes = EP.qaTargets.filter(EP.isTextObject);
+      if (!boxes.length) return;
+      const p1 = parseFloat(p1El.value) || 0;
+      const p2 = parseFloat(p2El.value) || 0;
+      if (p1 <= 0 && p2 <= 0) {
+        boxes.forEach(t => { t[cfgKey] = null; t.dirty = true; maybeUnpatchRender(t); });
+      } else {
+        boxes.forEach(t => {
+          clearOtherLayoutEffects(t, id.charAt(0).toLowerCase() + id.slice(1));
+          const seed = (regenerateSeed || !t[cfgKey]) ? Math.floor(Math.random() * 100000) : t[cfgKey].seed;
+          t[cfgKey] = { p1, p2, seed };
+          patchUnifiedRender(t);
+          t.dirty = true;
+        });
+      }
+      EP.canvas.requestRenderAll();
+    }
+    function populate(anchor){
+      const cfg = anchor[cfgKey];
+      p1El.value = cfg ? (cfg.p1 != null ? cfg.p1 : 0) : 0;
+      p2El.value = cfg ? (cfg.p2 != null ? cfg.p2 : 0) : 0;
+    }
+    p1El.addEventListener('input', () => apply(false));
+    p2El.addEventListener('input', () => apply(false));
+    p1El.addEventListener('change', () => EP.pushHistory());
+    p2El.addEventListener('change', () => EP.pushHistory());
+    const shuffleBtn = document.getElementById('qa' + id + 'ShuffleBtn');
+    if (shuffleBtn) shuffleBtn.addEventListener('click', () => {
+      if ((parseFloat(p1El.value) || 0) <= 0 && (parseFloat(p2El.value) || 0) <= 0) {
+        p1El.value = p1Default; p2El.value = p2Default;
+      }
+      apply(true); EP.pushHistory();
+    });
+    const offBtn = document.getElementById('qa' + id + 'OffBtn');
+    if (offBtn) offBtn.addEventListener('click', () => { p1El.value = 0; p2El.value = 0; apply(false); EP.pushHistory(); });
+    return { apply: apply, populate: populate };
+  }
+  const jumpUI = setupLayoutFilterUI('Jump', 'jumpText', 55, 45);
+  const pulseUI = setupLayoutFilterUI('Pulse', 'pulseText', 55, 40);
+  const swayUI = setupLayoutFilterUI('Sway', 'swayText', 50, 45);
+  const waddleUI = setupLayoutFilterUI('Waddle', 'waddleText', 55, 45);
+  const popcornUI = setupLayoutFilterUI('Popcorn', 'popcornText', 55, 45);
+  const hiccupUI = setupLayoutFilterUI('Hiccup', 'hiccupText', 55, 35);
+  const breatheUI = setupLayoutFilterUI('Breathe', 'breatheText', 50, 35);
+  const flickerUI = setupLayoutFilterUI('Flicker', 'flickerText', 55, 45);
+  const chatterUI = setupLayoutFilterUI('Chatter', 'chatterText', 50, 45);
+  const walkUI = setupLayoutFilterUI('Walk', 'walkText', 50, 45);
+
+
   // ---- 나선(달팽이) 효과 ---- (중심에서 시작해 바깥으로 나선형으로 뻗어나감, 글자 수가 많을수록 자연히 커짐)
   const qaSpiralGrowth = document.getElementById('qaSpiralGrowth');
   const qaSpiralFlipBtn = document.getElementById('qaSpiralFlipBtn');
@@ -6960,10 +7248,13 @@
     } else {
       const intensity = parseFloat(qaPuzzleIntensity.value) || 0;
       boxes.forEach(t => {
-        // 조각 모양(돌기/홈 배치)과 색상 모두 이 seed로 정해짐 — "다시 맞추기"를 눌러야 새로 섞임
-        const seed = (regenerateSeed || !t.puzzleText) ? Math.floor(Math.random() * 100000) : t.puzzleText.seed;
+        // 조각 모양(돌기/홈 배치)과 색상 모두 이 seed로 정해짐 — "다시 맞추기"를 눌러야 새로 섞임.
+        // unified가 true면 조각마다 다른 색 대신 전부 같은 색으로 통일됨(약 35% 확률로 새로 섞일 때 결정).
+        const isNewShuffle = regenerateSeed || !t.puzzleText;
+        const seed = isNewShuffle ? Math.floor(Math.random() * 100000) : t.puzzleText.seed;
+        const unified = isNewShuffle ? (Math.random() < 0.35) : !!t.puzzleText.unified;
         clearOtherLayoutEffects(t, 'puzzle');
-        t.puzzleText = { intensity, seed };
+        t.puzzleText = { intensity, seed, unified };
         patchUnifiedRender(t);
         t.dirty = true;
       });
@@ -7924,6 +8215,56 @@
     id: 'postal', label: '우편번호 칸', commonEffect: false,
     appliesTo: ['text'], group: 'layout', includeInRandom: true,
     apply: applyQaPostal, randomize: null, populate: populate_postal
+  });
+  EP.registerFilter({
+    id: 'jump', label: '바운스(통통 튀는)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: jumpUI.apply, randomize: function(){ var b=document.getElementById('qaJumpShuffleBtn'); if(b) b.click(); }, populate: jumpUI.populate
+  });
+  EP.registerFilter({
+    id: 'pulse', label: '두근두근(심장박동)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: pulseUI.apply, randomize: function(){ var b=document.getElementById('qaPulseShuffleBtn'); if(b) b.click(); }, populate: pulseUI.populate
+  });
+  EP.registerFilter({
+    id: 'sway', label: '살랑살랑(흔들림)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: swayUI.apply, randomize: function(){ var b=document.getElementById('qaSwayShuffleBtn'); if(b) b.click(); }, populate: swayUI.populate
+  });
+  EP.registerFilter({
+    id: 'waddle', label: '아장아장(뒤뚱뒤뚱)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: waddleUI.apply, randomize: function(){ var b=document.getElementById('qaWaddleShuffleBtn'); if(b) b.click(); }, populate: waddleUI.populate
+  });
+  EP.registerFilter({
+    id: 'popcorn', label: '콩닥콩닥(팝콘)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: popcornUI.apply, randomize: function(){ var b=document.getElementById('qaPopcornShuffleBtn'); if(b) b.click(); }, populate: popcornUI.populate
+  });
+  EP.registerFilter({
+    id: 'hiccup', label: '딸꾹질', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: hiccupUI.apply, randomize: function(){ var b=document.getElementById('qaHiccupShuffleBtn'); if(b) b.click(); }, populate: hiccupUI.populate
+  });
+  EP.registerFilter({
+    id: 'breathe', label: '숨쉬기(브리딩)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: breatheUI.apply, randomize: function(){ var b=document.getElementById('qaBreatheShuffleBtn'); if(b) b.click(); }, populate: breatheUI.populate
+  });
+  EP.registerFilter({
+    id: 'flicker', label: '깜빡깜빡(플리커)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: flickerUI.apply, randomize: function(){ var b=document.getElementById('qaFlickerShuffleBtn'); if(b) b.click(); }, populate: flickerUI.populate
+  });
+  EP.registerFilter({
+    id: 'chatter', label: '재잘재잘(수다)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: chatterUI.apply, randomize: function(){ var b=document.getElementById('qaChatterShuffleBtn'); if(b) b.click(); }, populate: chatterUI.populate
+  });
+  EP.registerFilter({
+    id: 'walk', label: '성큼성큼(걷기)', commonEffect: false,
+    appliesTo: ['text'], group: 'layout', includeInRandom: true,
+    apply: walkUI.apply, randomize: function(){ var b=document.getElementById('qaWalkShuffleBtn'); if(b) b.click(); }, populate: walkUI.populate
   });
   EP.registerFilter({
     id: 'puffy', label: '부풀리기', commonEffect: false,

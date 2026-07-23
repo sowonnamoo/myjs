@@ -36,6 +36,7 @@
       }
       ctx.save();
       ctx.translate(left, top);
+      ctx.rotate(fabric.util.degreesToRadians(EP.canvasRotationDeg || 0));
       ctx.beginPath();
       ctx.arc(0, 0, 14, 0, Math.PI * 2);
       ctx.fillStyle = '#e67e22';
@@ -66,11 +67,9 @@
     fabric.IText.prototype.controls = Object.assign({}, fabric.IText.prototype.controls, { qa: pControl });
     fabric.ActiveSelection.prototype.controls = Object.assign({}, fabric.ActiveSelection.prototype.controls, { qa: pControl });
     fabric.Group.prototype.controls = Object.assign({}, fabric.Group.prototype.controls, { qa: pControl });
-    // 도형(사각형/원/삼각형/펜도구 패스)도 단독으로 P 버튼을 눌러 모양필터(그림자/그라디언트 등)를 열 수 있게 함
-    fabric.Rect.prototype.controls = Object.assign({}, fabric.Rect.prototype.controls, { qa: pControl });
-    fabric.Circle.prototype.controls = Object.assign({}, fabric.Circle.prototype.controls, { qa: pControl });
-    fabric.Triangle.prototype.controls = Object.assign({}, fabric.Triangle.prototype.controls, { qa: pControl });
-    fabric.Path.prototype.controls = Object.assign({}, fabric.Path.prototype.controls, { qa: pControl });
+    // 도형(사각형/원/삼각형/펜도구 패스) 전용 "M" 버튼은 ecopro3m.js에서 이 자리(controls.qa)에
+    // 덮어씌워 등록함 — 도형을 선택하면 이제 P 대신 M이 뜨고, 모양 전용 필터 메뉴가 열림.
+    // (이 파일에서는 더 이상 도형 프로토타입에 pControl을 붙이지 않음)
   })();
 
   const qaPopover = document.getElementById('qaPopover');
@@ -95,10 +94,10 @@
         top = tRect.bottom + 12;
         if (top + ph > window.innerHeight - 8) top = tRect.top - ph - 12;
       }
-      left = Math.min(Math.max(8, left), window.innerWidth - pw - 8);
-      top = Math.min(Math.max(8, top), window.innerHeight - ph - 8);
-      qaPopover.style.left = left + 'px';
-      qaPopover.style.top = top + 'px';
+      const r1 = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
+      qaPopover.style.left = r1.left + 'px';
+      qaPopover.style.top = r1.top + 'px';
+      EP.applyPopoverRotationStyle(qaPopover);
       return;
     }
 
@@ -118,10 +117,10 @@
     let top = objTop + objH + 14;
     if (top + ph > window.innerHeight - 8) top = objTop - ph - 14; // 아래 공간 부족하면 위쪽에 표시
 
-    left = Math.min(Math.max(8, left), window.innerWidth - pw - 8);
-    top = Math.min(Math.max(8, top), window.innerHeight - ph - 8);
-    qaPopover.style.left = left + 'px';
-    qaPopover.style.top = top + 'px';
+    const r2 = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
+    qaPopover.style.left = r2.left + 'px';
+    qaPopover.style.top = r2.top + 'px';
+    EP.applyPopoverRotationStyle(qaPopover);
   }
 
   // ---- 메뉴(그림자/배경 ... 계속 추가될 예정) ↔ 상세조절 아코디언 ----
@@ -159,6 +158,16 @@
     circular: document.getElementById('qaDetailCircular'),
     vertical: document.getElementById('qaDetailVertical'),
     postal: document.getElementById('qaDetailPostal'),
+    jump: document.getElementById('qaDetailJump'),
+    pulse: document.getElementById('qaDetailPulse'),
+    sway: document.getElementById('qaDetailSway'),
+    waddle: document.getElementById('qaDetailWaddle'),
+    popcorn: document.getElementById('qaDetailPopcorn'),
+    hiccup: document.getElementById('qaDetailHiccup'),
+    breathe: document.getElementById('qaDetailBreathe'),
+    flicker: document.getElementById('qaDetailFlicker'),
+    chatter: document.getElementById('qaDetailChatter'),
+    walk: document.getElementById('qaDetailWalk'),
     puffy: document.getElementById('qaDetailPuffy'),
     vine: document.getElementById('qaDetailVine'),
     roll: document.getElementById('qaDetailRoll'),
@@ -210,26 +219,46 @@
   const qaShadowBlur = document.getElementById('qaShadowBlur');
   const qaShadowDist = document.getElementById('qaShadowDist');
   const qaShadowColor = document.getElementById('qaShadowColor');
+  // 캔버스 그림자(shadowColor)의 알파 채널은 브라우저/버전에 따라 눈에 잘 안 띄게 렌더링될 때가
+  // 있어서, "투명도"는 알파 대신 색 자체를 흰색 쪽으로 섞어 밝게(연하게) 만드는 방식으로 구현함
+  // — 100이면 원래 색 그대로, 0에 가까울수록 거의 흰색(원래 검정이었다면 연한 회색이 됨).
+  function lightenColor(hex, opacityPct){
+    const rgb = EP.hexToRgb(hex || '#000000') || { r: 0, g: 0, b: 0 };
+    const t = Math.max(0, Math.min(100, opacityPct)) / 100;
+    const mr = Math.round(rgb.r * t + 255 * (1 - t));
+    const mg = Math.round(rgb.g * t + 255 * (1 - t));
+    const mb = Math.round(rgb.b * t + 255 * (1 - t));
+    return 'rgb(' + mr + ',' + mg + ',' + mb + ')';
+  }
+
+  const qaShadowOpacity = document.getElementById('qaShadowOpacity');
   function applyQaShadow(){
     const boxes = EP.qaTargets.filter(isTextOrShape);
     if (!boxes.length) return;
     const blur = parseFloat(qaShadowBlur.value) || 0;
     const dist = parseFloat(qaShadowDist.value) || 0;
+    const opacity = qaShadowOpacity.value === '' ? 100 : (parseFloat(qaShadowOpacity.value) || 0);
     boxes.forEach(t => {
       if (blur <= 0 && dist <= 0) {
         t.set('shadow', null);
+        t.shadowOpacityValue = null;
+        t.shadowBaseColorValue = null;
       } else {
         const off = dist / Math.SQRT2;
-        t.set('shadow', new fabric.Shadow({ color: qaShadowColor.value || '#000000', blur, offsetX: off, offsetY: off }));
+        t.set('shadow', new fabric.Shadow({ color: lightenColor(qaShadowColor.value, opacity), blur, offsetX: off, offsetY: off }));
+        t.shadowOpacityValue = opacity; // populate 시 정확히 되읽기 위해 원본 값을 따로 저장해둠
+        t.shadowBaseColorValue = qaShadowColor.value || '#000000';
       }
     });
     EP.canvas.requestRenderAll();
   }
   qaShadowBlur.addEventListener('input', applyQaShadow);
   qaShadowDist.addEventListener('input', applyQaShadow);
+  qaShadowOpacity.addEventListener('input', applyQaShadow);
   qaShadowColor.addEventListener('input', applyQaShadow);
   qaShadowBlur.addEventListener('change', () => EP.pushHistory());
   qaShadowDist.addEventListener('change', () => EP.pushHistory());
+  qaShadowOpacity.addEventListener('change', () => EP.pushHistory());
   document.getElementById('qaShadowOffBtn').addEventListener('click', () => {
     qaShadowBlur.value = 0; qaShadowDist.value = 0;
     applyQaShadow(); EP.pushHistory();
@@ -510,10 +539,9 @@
     const ph = qaPopover.offsetHeight || 140;
     const curLeft = parseFloat(qaPopover.style.left) || 0;
     const curTop = parseFloat(qaPopover.style.top) || 0;
-    const left = Math.min(Math.max(8, curLeft), window.innerWidth - pw - 8);
-    const top = Math.min(Math.max(8, curTop), window.innerHeight - ph - 8);
-    qaPopover.style.left = left + 'px';
-    qaPopover.style.top = top + 'px';
+    const r = EP.clampPopoverRect(curLeft, curTop, pw, ph, EP.canvasRotationDeg);
+    qaPopover.style.left = r.left + 'px';
+    qaPopover.style.top = r.top + 'px';
   }
 
   // P 팝업이 열려 있는 동안, 다른 텍스트(또는 텍스트 여러 개를 새로 선택)를 선택하면
@@ -534,12 +562,14 @@
   // 패널을 자유롭게 드래그로 이동 (드롭다운/게이지/스와치/닫기버튼 위에서는 드래그 시작 안 함)
 
   EP.makeDraggablePopover(qaPopover);
+  EP.registerRotatablePopover(qaPopover);
 
   function populate_shadow(anchor){
         const sh = anchor.shadow;
         qaShadowBlur.value = sh ? (sh.blur || 0) : 0;
         qaShadowDist.value = sh ? Math.round(Math.sqrt((sh.offsetX || 0) ** 2 + (sh.offsetY || 0) ** 2)) : 0;
-        qaShadowColor.value = sh ? (EP.toHex(sh.color) || '#000000') : '#000000';
+        qaShadowColor.value = sh ? (anchor.shadowBaseColorValue || EP.toHex(sh.color) || '#000000') : '#000000';
+        qaShadowOpacity.value = sh ? (anchor.shadowOpacityValue != null ? anchor.shadowOpacityValue : 100) : 100;
   }
   function populate_glow(anchor){
         const sh = anchor.shadow;
@@ -593,6 +623,7 @@
   function randomizeShadow(){
     qaShadowBlur.value = Math.round(4 + Math.random() * 16);
     qaShadowDist.value = Math.round(2 + Math.random() * 12);
+    qaShadowOpacity.value = Math.round(40 + Math.random() * 60);
     qaShadowColor.value = randHex();
     applyQaShadow(); pushHistory();
   }
@@ -627,34 +658,36 @@
   // ---- 필터 레지스트리 등록 ----
   // 그림자~배경 6개는 도형(shape)에도 적용 가능한 "공통 효과"라 appliesTo에 shape를 함께 넣음.
   // (번역/맞춤법검사는 텍스트 전용이라 그대로 text만 유지)
+  // includeInRandom:false — 이 6개는 "🎲 랜덤 적용"으로 무작위로 뽑히지 않음(직접 골라서만 적용).
+  // 드롭다운 목록에서도 <optgroup>으로 나머지 장식 효과들과 분리해서 보여줌.
   EP.registerFilter({
     id: 'shadow', label: '그림자', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
     apply: applyQaShadow, randomize: randomizeShadow, populate: populate_shadow
   });
   EP.registerFilter({
     id: 'glow', label: '외부광선', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
     apply: applyQaGlow, randomize: randomizeGlow, populate: populate_glow
   });
   EP.registerFilter({
     id: 'gradient', label: '그라디언트', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
     apply: applyQaGradient, randomize: randomizeGradient, populate: populate_gradient
   });
   EP.registerFilter({
     id: 'emboss', label: '경사와 엠보스', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
     apply: applyQaEmboss, randomize: randomizeEmboss, populate: populate_emboss
   });
   EP.registerFilter({
     id: 'outline', label: '테두리', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
     apply: applyQaOutline, randomize: randomizeOutline, populate: populate_outline
   });
   EP.registerFilter({
     id: 'bg', label: '배경', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: true,
+    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
     apply: applyQaBg, randomize: randomizeBg, populate: populate_bg
   });
   EP.registerFilter({ id: 'translate', label: '번역', commonEffect: true,
@@ -678,4 +711,5 @@
   EP.setActiveFilterMenu = setActiveFilterMenu;
   EP.qaDetails = qaDetails;
   EP.qaFilterSelect = qaFilterSelect;
+  EP.isTableRelatedTarget = isTableRelatedTarget;
 })();

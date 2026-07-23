@@ -37,6 +37,7 @@ button,input,select{font-family:inherit;}
 .btn:hover{background:#f4f7fa;border-color:#c9d2dc;}
 .btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .btn.icon{padding:7px 9px;}
+#eyedropperPickBtn.active{box-shadow:0 0 0 2px var(--accent) inset;}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
 .btn.primary:hover{background:var(--accent-dark);}
 .btn.danger{color:var(--danger);}
@@ -100,6 +101,22 @@ button,input,select{font-family:inherit;}
 .side-btn{flex:1;padding:4px 0;cursor:pointer;font-size:11px;background:#f4f6f8;border:none;font-weight:700;color:#75808f;}
 .side-btn.active{background:#e67e22;color:#fff;}
 .side-btn+.side-btn{border-left:1px solid var(--line);}
+
+/* ---------- 디자인 통일하기 / 부분통일하기 / 모든 디자인 저장하기 (흰색, 아이콘 없음) ---------- */
+.design-unify-actions{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+.design-action-btn{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 6px;
+  font-size:12px;font-weight:700;letter-spacing:.01em;color:var(--ink);cursor:pointer;
+  background:#fff;transition:.12s;
+}
+.design-action-btn:hover{background:#f4f7fa;border-color:#c9d2dc;}
+.design-action-btn:active{background:#eef1f5;}
+.design-action-btn:disabled{opacity:.6;cursor:default;background:#fff;}
+.design-group-input{
+  width:100%;padding:4px 6px;border:1px dashed #c7cedb;border-radius:5px;margin-top:2px;
+  font-size:11px;text-align:center;color:#5b6472;background:#fafbfc;
+}
+.design-group-input:focus{outline:none;border-color:var(--accent);background:#fff;color:var(--ink);}
 
 /* ---------- 캔버스 영역 ---------- */
 .canvas-wrap{
@@ -182,6 +199,105 @@ button,input,select{font-family:inherit;}
 }
 .qa-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .qa-btn:hover{background:#f2f6fa;border-color:#c9d2dc;}
+
+/* ---------- P버튼(텍스트/공통 필터) 팝업 — 연한 파스텔 주황 톤 ---------- */
+#qaPopover{
+  background:#FDF1E7;border-color:#F3D3B3;
+}
+#qaPopover select{
+  border-color:#F3D3B3;background:#FFF8F1;color:#7A4A1F;
+}
+#qaPopover select:focus{border-color:#E8A868;}
+#qaPopover .qa-btn{
+  background:#FFF8F1;border-color:#F3D3B3;color:#7A4A1F;
+}
+#qaPopover .qa-btn:hover{
+  background:#FBE3CC;border-color:#EBB57C;
+}
+#qaPopover .qa-btn.on{
+  background:#E8A868;border-color:#E8A868;color:#fff;
+}
+#qaPopover #qaDiceBtn{
+  background:#FBE3CC;border-color:#EBB57C;color:#7A4A1F;
+}
+#qaPopover #qaDiceBtn:hover{
+  background:#F7D3AC;
+}
+#qaPopover #qaRollCounter{
+  color:#B87A3D;
+}
+#qaPopover input[type="range"]{
+  accent-color:#E8A868;
+}
+#qaPopover .font-popover-close{
+  color:#A8632B;
+}
+#qaPopover .font-popover-close:hover{
+  background:#FBE3CC;
+}
+
+/* ---------- J버튼(도형 공통필터) 팝업 — 연보라 톤 ---------- */
+#qaJPopover{
+  background:#F2EEFB;border-color:#D6C9F0;
+}
+#qaJPopover select{
+  border-color:#D6C9F0;background:#F9F6FD;color:#4A3B70;
+}
+#qaJPopover select:focus{border-color:#A98FDE;}
+#qaJPopover .qa-btn{
+  background:#F9F6FD;border-color:#D6C9F0;color:#4A3B70;
+}
+#qaJPopover .qa-btn:hover{
+  background:#E6DCF7;border-color:#B79EE8;
+}
+#qaJPopover .qa-btn.on{
+  background:#9B7FD4;border-color:#9B7FD4;color:#fff;
+}
+#qaJPopover input[type="range"]{
+  accent-color:#9B7FD4;
+}
+#qaJPopover .font-popover-close{
+  color:#5B4494;
+}
+#qaJPopover .font-popover-close:hover{
+  background:#E6DCF7;
+}
+
+/* ---------- M버튼(도형 모양필터) 팝업 — 파스텔 초록 톤 ---------- */
+#qaMPopover{
+  background:#EAF7ED;border-color:#BEE6C6;
+}
+#qaMPopover select{
+  border-color:#BEE6C6;background:#F5FBF6;color:#2F5C3A;
+}
+#qaMPopover select:focus{border-color:#7FCB8E;}
+#qaMPopover .qa-btn{
+  background:#F5FBF6;border-color:#BEE6C6;color:#2F5C3A;
+}
+#qaMPopover .qa-btn:hover{
+  background:#DCF3E0;border-color:#8FD79E;
+}
+#qaMPopover .qa-btn.on{
+  background:#6FC983;border-color:#6FC983;color:#fff;
+}
+#qaMPopover #qaMDiceBtn{
+  background:#DCF3E0;border-color:#8FD79E;color:#2F5C3A;
+}
+#qaMPopover #qaMDiceBtn:hover{
+  background:#C9EBCF;
+}
+#qaMPopover #qaMRollCounter{
+  color:#4C9159;
+}
+#qaMPopover input[type="range"]{
+  accent-color:#6FC983;
+}
+#qaMPopover .font-popover-close{
+  color:#3E7A4A;
+}
+#qaMPopover .font-popover-close:hover{
+  background:#DCF3E0;
+}
 
 /* ---------- 텍스트 선택 시 뜨는 T버튼 → 글꼴/투명도 플로팅 패널 ---------- */
 .font-popover{
@@ -315,15 +431,103 @@ button,input,select{font-family:inherit;}
 .small-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 input[type=file]{display:none;}
 
+/* ---------- 모바일 전용 UI 부품 (PC에서는 항상 숨김) ---------- */
+.mobile-overlay{display:none;position:fixed;inset:0;background:rgba(15,18,24,.45);z-index:39;}
+.mobile-overlay.show{display:block;}
+.drawer-close{display:none;}
+
 /* ============================================================
    반응형 (모바일)
+   설계 방향:
+   - 상단 툴바: 여러 줄로 뭉쳐 보이던 것을 "한 줄 가로 스크롤 바"로 재편 (좌우로 쓸어넘기며 탐색)
+   - 메가메뉴(드롭다운): 화면 밖으로 잘리던 문제를 없애기 위해 하단 시트(바텀시트)로 재편
+   - 좌/우 패널(디자인목록·속성패널): 폭을 넉넉히 + 뒤에 어두운 오버레이 + 닫기(✕) 버튼으로 진입/탈출을 명확하게
+   - 표/지도/로고/메뉴판 입력창 등 고정폭 요소: 화면폭에 맞춰 줄어들도록 재조정
 ============================================================ */
 @media (max-width:900px){
-  .side-panel{position:fixed;right:0;top:0;bottom:0;transform:translateX(100%);transition:.2s;z-index:40;box-shadow:-6px 0 20px rgba(0,0,0,.15);}
-  .side-panel.open{transform:translateX(0);}
-  .tab-sidebar{position:fixed;left:0;top:0;bottom:0;width:150px;transform:translateX(-100%);transition:.2s;z-index:40;box-shadow:6px 0 20px rgba(0,0,0,.15);}
-  .tab-sidebar.open{transform:translateX(0);}
-  .toolbar{padding:8px;}
+
+  /* ---------- 상단 툴바: 가로 스크롤 한 줄로 재편 ---------- */
+  .toolbar{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    padding:8px 10px;
+    gap:4px;
+    scrollbar-width:none; /* Firefox */
+  }
+  .toolbar::-webkit-scrollbar{display:none;} /* Chrome/Safari: 스크롤바 숨겨서 깔끔하게 */
+  .toolbar-group{
+    flex-shrink:0; /* 그룹이 찌그러지지 않고 원래 크기로 옆으로 나열됨 */
+    padding-right:8px;
+    gap:5px;
+  }
+  .btn{padding:8px 10px;font-size:12.5px;}
+  .btn.icon{padding:8px 9px;min-width:38px;justify-content:center;}
+  .zoom-label{min-width:34px;font-size:11.5px;}
   .brand{display:none;}
+
+  /* ---------- 메가메뉴(드롭다운): 화면 밖으로 잘리지 않게 하단 시트로 재편 ---------- */
+  .dropdown-menu{
+    position:fixed;
+    left:10px;right:10px;top:auto;bottom:10px;
+    width:auto;min-width:0;max-height:65vh;overflow-y:auto;
+    border-radius:16px;padding:8px;
+    box-shadow:0 -10px 34px rgba(0,0,0,.28);
+  }
+  .dropdown-menu button,
+  .dropdown-menu label.dropdown-item{
+    padding:13px 12px;font-size:14.5px; /* 터치하기 편하게 항목을 더 크게 */
+  }
+
+  /* ---------- 상태바 ---------- */
   .status-bar{font-size:11.5px;padding:6px 10px;}
+
+  /* ---------- 좌측: 디자인 목록 패널 ---------- */
+  .tab-sidebar{
+    position:fixed;left:0;top:0;bottom:0;
+    width:min(78vw,240px);
+    padding:44px 12px 12px;
+    transform:translateX(-100%);transition:.22s;z-index:40;
+    box-shadow:6px 0 24px rgba(0,0,0,.18);
+  }
+  .tab-sidebar.open{transform:translateX(0);}
+
+  /* ---------- 우측: 속성 패널 ---------- */
+  .side-panel{
+    position:fixed;right:0;top:0;bottom:0;
+    width:min(88vw,320px);
+    padding:44px 16px 16px;
+    transform:translateX(100%);transition:.22s;z-index:40;
+    box-shadow:-6px 0 24px rgba(0,0,0,.18);
+  }
+  .side-panel.open{transform:translateX(0);}
+
+  /* ---------- 좌/우 패널 공통: 닫기(✕) 버튼 + 뒤 배경 오버레이 ---------- */
+  .drawer-close{
+    display:flex;align-items:center;justify-content:center;
+    position:absolute;top:8px;right:8px;width:32px;height:32px;
+    border:none;border-radius:50%;background:#f2f4f7;color:#5b6472;
+    font-size:14px;cursor:pointer;z-index:2;
+  }
+  .drawer-close:hover{background:#e6e9ee;color:var(--ink);}
+
+  /* ---------- 표/지도/로고/메뉴판 만들기: 고정폭 입력창이 화면 밖으로 삐져나가지 않게 ---------- */
+  .crop-toolbar{
+    max-width:calc(100vw - 20px);
+    flex-wrap:wrap;justify-content:center;text-align:center;
+  }
+  .crop-toolbar-hint{white-space:normal;text-align:center;}
+  .table-toolbar-row{justify-content:center;}
+  #tableInputArea,#menuInputArea{width:100% !important;max-width:100%;box-sizing:border-box;}
+  #mapAddressInput,#logoNameInput{width:100% !important;max-width:100%;box-sizing:border-box;}
+
+  /* ---------- 필터(🎲/P)·글꼴(T) 플로팅 패널: 화면폭 안으로 제한 ---------- */
+  .qa-popover,.font-popover{max-width:calc(100vw - 16px);}
+}
+
+/* 더 좁은 화면(작은 폰)에서는 속성 패널을 사실상 전체화면처럼 넓게 */
+@media (max-width:420px){
+  .side-panel{width:92vw;}
+  .tab-sidebar{width:80vw;}
 }

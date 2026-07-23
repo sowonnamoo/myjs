@@ -1,6 +1,11 @@
 (function(){
   "use strict";
 
+  // 캔버스를 90도씩 회전(rotateCanvas90)시킨 누적 각도(0/90/180/270).
+  // 오브젝트 선택 시 뜨는 P/T 미니버튼과 그 버튼을 눌러 여는 팝업창들이 이 값만큼 함께 회전 표시됨.
+  window.EP = window.EP || {};
+  EP.canvasRotationDeg = EP.canvasRotationDeg || 0;
+
   /* ============================================================
      1. URL 쿼리 파라미터 읽기
      예) editor.html?count=3&width=90&height=50&type=양면인쇄
@@ -34,7 +39,8 @@
     width: CANVAS_W,
     height: CANVAS_H,
     backgroundColor: '#ffffff',
-    preserveObjectStacking: true
+    preserveObjectStacking: true,
+    perPixelTargetFind: false // 투명한 부분(예: 자동누끼로 지운 배경)을 클릭해도 바운딩박스 기준으로 선택되게 함
   });
 
   /* ============================================================
@@ -121,6 +127,7 @@
       }
       ctx.save();
       ctx.translate(left, top);
+      ctx.rotate(fabric.util.degreesToRadians(EP.canvasRotationDeg || 0));
       ctx.beginPath();
       ctx.arc(0, 0, 14, 0, Math.PI * 2);
       ctx.fillStyle = '#6c3ce0';
@@ -157,24 +164,65 @@
     fabric.Group.prototype.controls = Object.assign({}, fabric.Group.prototype.controls, { tFont: tControl });
   })();
 
+  /* ============================================================
+     회전 가능한 플로팅 팝업(T 글꼴창 / P 필터창) 공용 유틸
+     - 캔버스를 90도 회전(rotateCanvas90)시키면 이 팝업들도 같은 각도로 함께 회전 표시됨
+     - 90/270도로 회전하면 화면에 실제로 보이는 가로·세로가 서로 뒤바뀌므로,
+       화면 밖으로 나가지 않게 클램프할 땐 "회전된 뒤의 크기" 기준으로 계산해야 함
+       (중심점은 회전해도 움직이지 않으므로, 중심점 기준으로 클램프한 뒤 좌상단 좌표로 환산)
+  ============================================================ */
+  function clampPopoverCenter(cx, cy, pw, ph, rotDeg){
+    const d = ((rotDeg || 0) % 360 + 360) % 360;
+    const vw = (d === 90 || d === 270) ? ph : pw; // 화면상 실제 가로폭
+    const vh = (d === 90 || d === 270) ? pw : ph; // 화면상 실제 세로높이
+    return {
+      cx: Math.min(Math.max(vw / 2 + 8, cx), window.innerWidth - vw / 2 - 8),
+      cy: Math.min(Math.max(vh / 2 + 8, cy), window.innerHeight - vh / 2 - 8)
+    };
+  }
+  function clampPopoverRect(left, top, pw, ph, rotDeg){
+    const c = clampPopoverCenter(left + pw / 2, top + ph / 2, pw, ph, rotDeg);
+    return { left: c.cx - pw / 2, top: c.cy - ph / 2 };
+  }
+  function applyPopoverRotationStyle(el){
+    el.style.transform = EP.canvasRotationDeg ? ('rotate(' + EP.canvasRotationDeg + 'deg)') : '';
+  }
+  EP.clampPopoverCenter = clampPopoverCenter;
+  EP.clampPopoverRect = clampPopoverRect;
+  EP.applyPopoverRotationStyle = applyPopoverRotationStyle;
+  EP.rotatablePopovers = EP.rotatablePopovers || [];
+  EP.registerRotatablePopover = function(el){ EP.rotatablePopovers.push(el); };
+  // 캔버스 회전 버튼을 누른 그 순간, 지금 열려있는 팝업(들)도 즉시 같은 각도로 재배치
+  EP.refreshRotatablePopovers = function(){
+    EP.rotatablePopovers.forEach(function(el){
+      if (!el) return;
+      if (el.classList.contains('hidden')) { el.style.transform = ''; return; }
+      const pw = el.offsetWidth, ph = el.offsetHeight;
+      const curLeft = parseFloat(el.style.left) || 0;
+      const curTop = parseFloat(el.style.top) || 0;
+      const r = clampPopoverRect(curLeft, curTop, pw, ph, EP.canvasRotationDeg);
+      el.style.left = r.left + 'px';
+      el.style.top = r.top + 'px';
+      applyPopoverRotationStyle(el);
+    });
+  };
+
   function makeDraggablePopover(el){
-    let dragging = false, dx = 0, dy = 0;
+    let dragging = false, dcx = 0, dcy = 0; // 마우스 시작점 → 박스 "중심"까지의 오프셋(회전은 중심 기준이라 이렇게 재면 회전 상태에서도 어긋나지 않음)
     el.addEventListener('mousedown', (e) => {
       if (e.target.closest('select, input, button, .cmyk-picker, .cmyk-popover')) return;
       dragging = true;
-      const r = el.getBoundingClientRect();
-      dx = e.clientX - r.left;
-      dy = e.clientY - r.top;
+      const r = el.getBoundingClientRect(); // 회전이 적용된 실제 화면상 사각형 기준
+      dcx = e.clientX - (r.left + r.width / 2);
+      dcy = e.clientY - (r.top + r.height / 2);
       e.preventDefault();
     });
     document.addEventListener('mousemove', (e) => {
       if (!dragging) return;
       const pw = el.offsetWidth, ph = el.offsetHeight;
-      let left = e.clientX - dx, top = e.clientY - dy;
-      left = Math.min(Math.max(8, left), window.innerWidth - pw - 8);
-      top = Math.min(Math.max(8, top), window.innerHeight - ph - 8);
-      el.style.left = left + 'px';
-      el.style.top = top + 'px';
+      const c = clampPopoverCenter(e.clientX - dcx, e.clientY - dcy, pw, ph, EP.canvasRotationDeg);
+      el.style.left = (c.cx - pw / 2) + 'px';
+      el.style.top = (c.cy - ph / 2) + 'px';
     });
     document.addEventListener('mouseup', () => { dragging = false; });
   }
@@ -245,10 +293,10 @@
         top = qRect.bottom + 12;
         if (top + ph > window.innerHeight - 8) top = qRect.top - ph - 12;
       }
-      left = Math.min(Math.max(8, left), window.innerWidth - pw - 8);
-      top = Math.min(Math.max(8, top), window.innerHeight - ph - 8);
-      fontPopover.style.left = left + 'px';
-      fontPopover.style.top = top + 'px';
+      const r1 = clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
+      fontPopover.style.left = r1.left + 'px';
+      fontPopover.style.top = r1.top + 'px';
+      applyPopoverRotationStyle(fontPopover);
       return;
     }
 
@@ -266,11 +314,10 @@
     let left = objLeft + objW / 2 - pw / 2;
     let top = objTop + objH + 14;
     if (top + ph > window.innerHeight - 8) top = objTop - ph - 14; // 아래 공간 부족하면 위쪽에 표시
-    left = Math.min(Math.max(8, left), window.innerWidth - pw - 8);
-    top = Math.min(Math.max(8, top), window.innerHeight - ph - 8);
-
-    fontPopover.style.left = left + 'px';
-    fontPopover.style.top = top + 'px';
+    const r2 = clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
+    fontPopover.style.left = r2.left + 'px';
+    fontPopover.style.top = r2.top + 'px';
+    applyPopoverRotationStyle(fontPopover);
   }
 
   // 더보기 펼침/접기로 창 높이가 바뀔 때: 텍스트 아래(6시 방향)로 재배치하지 않고,
@@ -280,10 +327,9 @@
     const ph = fontPopover.offsetHeight || 110;
     const curLeft = parseFloat(fontPopover.style.left) || 0;
     const curTop = parseFloat(fontPopover.style.top) || 0;
-    const left = Math.min(Math.max(8, curLeft), window.innerWidth - pw - 8);
-    const top = Math.min(Math.max(8, curTop), window.innerHeight - ph - 8);
-    fontPopover.style.left = left + 'px';
-    fontPopover.style.top = top + 'px';
+    const r = clampPopoverRect(curLeft, curTop, pw, ph, EP.canvasRotationDeg);
+    fontPopover.style.left = r.left + 'px';
+    fontPopover.style.top = r.top + 'px';
   }
 
   // 게이지 맨 좌측(0%): 흰색 → 빨강(M100 Y100) → 노랑(Y100) → 흰색(얇게)
@@ -404,13 +450,16 @@
   floatingFontSizeInput.addEventListener('input', () => {
     const boxes = fontPopoverTargets.filter(isTextObject);
     if (!boxes.length) return;
-    const v = parseInt(floatingFontSizeInput.value, 10) || 1;
+    const v = Math.max(10, parseInt(floatingFontSizeInput.value, 10) || 10);
     boxes.forEach(o => o.set('fontSize', v));
     const active = canvas.getActiveObject();
     if (active && isTextObject(active)) fontSizeInput.value = v;
     canvas.requestRenderAll();
   });
-  floatingFontSizeInput.addEventListener('change', () => pushHistory());
+  floatingFontSizeInput.addEventListener('change', () => {
+    floatingFontSizeInput.value = Math.max(10, parseInt(floatingFontSizeInput.value, 10) || 10);
+    pushHistory();
+  });
 
   floatingOpacityInput.addEventListener('input', () => {
     const boxes = fontPopoverTargets;
@@ -649,7 +698,23 @@
      3. 안내선(붉은 재단선 + 회색 여유선)
      - 항상 canvas 맨 위에 떠 있고, 선택/저장 대상에서는 제외됨
   ============================================================ */
-  let guideRect, outerGuideRect, guidesVisible = true;
+  let guideRect, outerGuideRect, gridGuide, guideState = 0; // 0=붉은 박스만, 1=붉은 박스+모눈, 2=숨김
+  const GRID_SPACING = 5; // 모눈 간격(px)
+
+  function buildGridGuide(){
+    const padding = CANVAS_W * 0.02;
+    const gw = CANVAS_W - padding * 2, gh = CANVAS_H - padding * 2;
+    let d = '';
+    for (let x = 0; x <= gw; x += GRID_SPACING) d += 'M' + x + ',0 L' + x + ',' + gh + ' ';
+    for (let y = 0; y <= gh; y += GRID_SPACING) d += 'M0,' + y + ' L' + gw + ',' + y + ' ';
+    gridGuide = new fabric.Path(d, {
+      left: padding, top: padding,
+      fill: '', stroke: 'rgba(255,0,0,0.28)', strokeWidth: 0.5,
+      selectable: false, evented: false, visible: guideState === 1
+    });
+    gridGuide.isGuide = true;
+    canvas.add(gridGuide);
+  }
 
   function buildGuides(){
     const padding = CANVAS_W * 0.02;
@@ -657,7 +722,7 @@
       left: padding, top: padding,
       width: CANVAS_W - padding * 2, height: CANVAS_H - padding * 2,
       fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
-      selectable: false, evented: false, visible: guidesVisible
+      selectable: false, evented: false, visible: guideState !== 2
     });
     guideRect.isGuide = true;
 
@@ -665,22 +730,27 @@
       left: 0, top: 0,
       width: CANVAS_W, height: CANVAS_H,
       fill: 'transparent', stroke: '#999999', strokeWidth: 2,
-      selectable: false, evented: false, visible: guidesVisible
+      selectable: false, evented: false, visible: guideState !== 2
     });
     outerGuideRect.isGuide = true;
 
     canvas.add(guideRect, outerGuideRect);
+    buildGridGuide();
   }
   function bringGuideToFront(){
     if (guideRect) canvas.bringToFront(guideRect);
     if (outerGuideRect) canvas.bringToFront(outerGuideRect);
+    if (gridGuide) canvas.bringToFront(gridGuide);
   }
   buildGuides();
 
   document.getElementById('guideToggleBtn').addEventListener('click', () => {
-    guidesVisible = !guidesVisible;
-    guideRect.visible = guidesVisible;
-    outerGuideRect.visible = guidesVisible;
+    // 1번째: 붉은 재단선 박스만 표시 → 2번째: 그 안에 5px 간격 모눈까지 표시 → 3번째: 전부 숨김
+    guideState = (guideState + 1) % 3;
+    const boxVisible = guideState !== 2;
+    guideRect.visible = boxVisible;
+    outerGuideRect.visible = boxVisible;
+    gridGuide.visible = guideState === 1;
     canvas.renderAll();
   });
 
@@ -709,8 +779,13 @@
     CANVAS_H = oldW;
     const tmpRatio = ratioW; ratioW = ratioH; ratioH = tmpRatio;
 
-    // 안내선(붉은선/회색선)을 새 크기에 맞게 다시 생성
-    canvas.remove(guideRect, outerGuideRect);
+    // 캔버스 회전 누적 각도 갱신 → 다음 렌더부터 P/T 미니버튼이 이 각도만큼 회전되어 그려짐,
+    // 그리고 지금 이미 열려있는 T/P 팝업창이 있다면 즉시 같은 각도로 회전·재배치함
+    EP.canvasRotationDeg = ((EP.canvasRotationDeg || 0) + dir * 90 + 360) % 360;
+    EP.refreshRotatablePopovers();
+
+    // 안내선(붉은선/회색선/모눈)을 새 크기에 맞게 다시 생성
+    canvas.remove(guideRect, outerGuideRect, gridGuide);
     buildGuides();
 
     // 현재 줌 배율을 유지한 채 캔버스 엘리먼트 크기 갱신
@@ -724,6 +799,23 @@
 
   document.getElementById('rotateCanvasLeftBtn').addEventListener('click', () => rotateCanvas90(-1));
   document.getElementById('rotateCanvasRightBtn').addEventListener('click', () => rotateCanvas90(1));
+
+  // 캔버스 전체가 아니라, 지금 선택한 모양/텍스트 오브젝트 하나만 90도 회전·좌우반전
+  document.getElementById('rotateObjectBtn').addEventListener('click', () => {
+    const o = canvas.getActiveObject();
+    if (!o) return;
+    o.set('angle', ((o.angle || 0) + 90) % 360);
+    o.setCoords();
+    canvas.requestRenderAll();
+    pushHistory();
+  });
+  document.getElementById('flipObjectXBtn').addEventListener('click', () => {
+    const o = canvas.getActiveObject();
+    if (!o) return;
+    o.set('flipX', !o.flipX);
+    canvas.requestRenderAll();
+    pushHistory();
+  });
 
   /* ============================================================
      3c. 메가메뉴(드롭다운) 공통 동작
@@ -762,6 +854,7 @@
   ============================================================ */
   const designData = Array.from({ length: count }, () => ({ front: null, back: null }));
   const designNames = Array.from({ length: count }, () => '');
+  const designGroups = Array.from({ length: count }, () => ''); // 부분통일하기용 그룹 지정값
   let currentIdx = 0;
   let currentSide = 'front';
 
@@ -769,7 +862,7 @@
   function serializeCurrentCanvas(){
     const objs = canvas.getObjects().filter(o => !o.isGuide);
     return {
-      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
+      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
       background: canvas.backgroundColor || '#ffffff'
     };
   }
@@ -782,7 +875,7 @@
       background: (data && data.background) || '#ffffff'
     };
     canvas.loadFromJSON(payload, () => {
-      canvas.add(guideRect, outerGuideRect);
+      canvas.add(guideRect, outerGuideRect, gridGuide);
       bringGuideToFront();
       if (EP.reapplyCircularTextPatches) EP.reapplyCircularTextPatches();
       canvas.discardActiveObject();
@@ -845,13 +938,246 @@
         group.appendChild(sw);
       }
 
+      // 부분통일하기용 그룹 지정란: 같은 값을 적어넣은 디자인끼리 하나로 묶여서,
+      // "부분통일하기" 버튼을 누르면 그 그룹 안에서 가장 앞 번호 디자인 내용으로 통일됨
+      if (count > 1) {
+        const groupInput = document.createElement('input');
+        groupInput.type = 'text';
+        groupInput.className = 'design-group-input';
+        groupInput.placeholder = '그룹';
+        groupInput.value = designGroups[i] || '';
+        groupInput.title = '같은 값을 입력한 디자인끼리 묶입니다. "부분통일하기"를 누르면 그룹 안에서 가장 번호가 앞선 디자인 내용으로 통일됩니다.';
+        groupInput.addEventListener('click', (e) => e.stopPropagation());
+        groupInput.addEventListener('input', () => { designGroups[i] = groupInput.value; });
+        group.appendChild(groupInput);
+      }
+
       tabList.appendChild(group);
     }
   }
   renderTabs();
 
+  // 디자인 통일하기: 디자인 1(앞/뒤)의 내용을 그대로 복사해서 나머지 모든 디자인에 똑같이 적용
+  function unifyDesigns(){
+    if (count <= 1) {
+      alert('디자인이 1개뿐이라 통일할 필요가 없습니다.');
+      return;
+    }
+    const ok = confirm(
+      `디자인 1${isDouble ? '(앞/뒤)' : ''}을 기준으로 전체 ${count}개 디자인을 모두 똑같이 통일합니다.\n` +
+      `디자인 2 ~ ${count}에 있던 기존 내용은 모두 사라집니다.\n` +
+      `이 작업은 실행취소(Ctrl+Z)로 되돌릴 수 없으니, 계속하시겠습니까?`
+    );
+    if (!ok) return;
+
+    // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영 (디자인1을 보는 중이었다면 최신 내용까지 반영)
+    if (designData[currentIdx]) {
+      designData[currentIdx][currentSide] = serializeCurrentCanvas();
+    }
+
+    const sourceFront = designData[0] ? designData[0].front : null;
+    const sourceBack = designData[0] ? designData[0].back : null;
+
+    for (let i = 1; i < count; i++) {
+      designData[i] = {
+        front: sourceFront ? JSON.parse(JSON.stringify(sourceFront)) : null,
+        back: (isDouble && sourceBack) ? JSON.parse(JSON.stringify(sourceBack)) : null
+      };
+    }
+
+    // 지금 보고 있는 화면도 통일된 최신 내용으로 다시 불러옴
+    loadCanvasObjects(designData[currentIdx][currentSide], () => {
+      resetHistory();
+      renderTabs();
+    });
+  }
+  document.getElementById('unifyDesignBtn').addEventListener('click', unifyDesigns);
+
+  // 부분통일하기: designGroups에서 같은 값이 적힌 디자인들끼리 묶어서,
+  // 각 그룹 안에서 가장 번호가 앞선 디자인 내용으로 나머지를 통일함
+  function partialUnifyDesigns(){
+    if (count <= 1) {
+      alert('디자인이 1개뿐이라 통일할 필요가 없습니다.');
+      return;
+    }
+
+    // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영
+    if (designData[currentIdx]) {
+      designData[currentIdx][currentSide] = serializeCurrentCanvas();
+    }
+
+    // 그룹값(빈 값 제외)별로 디자인 번호를 모음
+    const groupMap = new Map();
+    for (let i = 0; i < count; i++) {
+      const key = (designGroups[i] || '').trim();
+      if (!key) continue; // 그룹을 지정하지 않은 디자인은 건너뜀
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key).push(i);
+    }
+
+    // 실제로 2개 이상 묶인 그룹만 의미가 있음
+    const groups = Array.from(groupMap.entries()).filter(([, idxs]) => idxs.length > 1);
+    if (groups.length === 0) {
+      alert('묶인 그룹이 없습니다. 통일하고 싶은 디자인들의 "그룹" 칸에 같은 값을 입력한 뒤 다시 눌러주세요.');
+      return;
+    }
+
+    const summary = groups.map(([key, idxs]) =>
+      `- "${key}" 그룹: 디자인 ${idxs.map(i => i + 1).join(', ')} → 디자인 ${idxs[0] + 1} 내용으로 통일`
+    ).join('\n');
+    const ok = confirm(
+      `아래 그룹별로 부분통일을 진행합니다.\n\n${summary}\n\n` +
+      `각 그룹에서 가장 앞 번호 디자인을 기준으로 나머지 디자인 내용은 모두 사라집니다.\n` +
+      `이 작업은 실행취소(Ctrl+Z)로 되돌릴 수 없으니, 계속하시겠습니까?`
+    );
+    if (!ok) return;
+
+    groups.forEach(([, idxs]) => {
+      const sourceIdx = idxs[0];
+      const sourceFront = designData[sourceIdx] ? designData[sourceIdx].front : null;
+      const sourceBack = designData[sourceIdx] ? designData[sourceIdx].back : null;
+      for (let k = 1; k < idxs.length; k++) {
+        const targetIdx = idxs[k];
+        designData[targetIdx] = {
+          front: sourceFront ? JSON.parse(JSON.stringify(sourceFront)) : null,
+          back: (isDouble && sourceBack) ? JSON.parse(JSON.stringify(sourceBack)) : null
+        };
+      }
+    });
+
+    // 지금 보고 있는 화면도 통일된 최신 내용으로 다시 불러옴
+    loadCanvasObjects(designData[currentIdx][currentSide], () => {
+      resetHistory();
+      renderTabs();
+    });
+  }
+  document.getElementById('partialUnifyBtn').addEventListener('click', partialUnifyDesigns);
+
+  // 모든 디자인 저장하기: 디자인마다 완전히 독립된 프로젝트 파일(json)로 각각 저장해 압축(zip)함
+  // — 나중에 한두 건만 따로 불러와도 건수(count)가 안 맞아 생기는 오류 없이 바로 열림.
+  function buildSingleDesignProjectFile(idx){
+    if (idx === currentIdx && designData[currentIdx]) {
+      designData[currentIdx][currentSide] = serializeCurrentCanvas();
+    }
+    const entry = designData[idx] || { front: null, back: null };
+    return {
+      type: 'svg-editor-project',
+      version: 1,
+      savedAt: new Date().toISOString(),
+      orderData,
+      count: 1,
+      isDouble,
+      ratioW, ratioH,
+      canvasWidth: CANVAS_W,
+      canvasHeight: CANVAS_H,
+      designNames: [designNames[idx] || ''],
+      // 참고용 메타데이터 — 실제 동작(불러오기 등)에는 영향을 주지 않음
+      originalDesignNumber: idx + 1,
+      designData: [{ front: entry.front, back: entry.back }]
+    };
+  }
+
+  document.getElementById('saveAllZipBtn').addEventListener('click', async () => {
+    if (typeof JSZip === 'undefined') {
+      alert('압축 기능을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침해서 다시 시도해주세요.');
+      return;
+    }
+
+    const zipBtn = document.getElementById('saveAllZipBtn');
+    const originalLabel = zipBtn.textContent;
+    zipBtn.disabled = true;
+    zipBtn.textContent = '저장 중...';
+
+    try {
+      // 지금 화면에 보이는 캔버스 내용도 먼저 데이터에 반영
+      if (designData[currentIdx]) {
+        designData[currentIdx][currentSide] = serializeCurrentCanvas();
+      }
+
+      function sanitizeFileName(name){
+        return String(name || '').replace(/[\\/:*?"<>|]/g, '').trim();
+      }
+
+      const zip = new JSZip();
+      const usedNames = new Set();
+      for (let i = 0; i < count; i++) {
+        const singleProject = buildSingleDesignProjectFile(i);
+        let fileName = sanitizeFileName(designNames[i]) || `디자인${i + 1}`;
+        if (usedNames.has(fileName)) {
+          let n = 2;
+          while (usedNames.has(`${fileName}(${n})`)) n++;
+          fileName = `${fileName}(${n})`;
+        }
+        usedNames.add(fileName);
+        zip.file(`${fileName}.json`, JSON.stringify(singleProject));
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const zipName = `designs-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = zipName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('디자인을 저장하는 중 문제가 발생했습니다.');
+    } finally {
+      zipBtn.disabled = false;
+      zipBtn.textContent = originalLabel;
+    }
+  });
+
+  /* ============================================================
+     모바일: 좌(디자인목록)/우(속성패널) 패널 공용 컨트롤러
+     - 하나를 열면 다른 하나는 자동으로 닫음(겹치지 않게)
+     - 열려있는 동안 배경을 어둡게 오버레이 처리, 오버레이를 탭하면 닫힘
+     - 각 패널 우상단 ✕ 버튼으로도 닫을 수 있음
+  ============================================================ */
+  const mobileOverlayEl = document.getElementById('mobileOverlay');
+  const tabSidebarEl = document.getElementById('tabSidebar');
+  const sidePanelElForDrawer = document.getElementById('sidePanel');
+
+  function isMobileLayout(){
+    return window.matchMedia('(max-width:900px)').matches;
+  }
+  function updateMobileOverlay(){
+    const anyOpen = tabSidebarEl.classList.contains('open') || sidePanelElForDrawer.classList.contains('open');
+    mobileOverlayEl.classList.toggle('show', isMobileLayout() && anyOpen);
+  }
+  function openTabSidebar(){
+    sidePanelElForDrawer.classList.remove('open');
+    tabSidebarEl.classList.add('open');
+    updateMobileOverlay();
+  }
+  function closeTabSidebar(){
+    tabSidebarEl.classList.remove('open');
+    updateMobileOverlay();
+  }
+  function openSidePanelDrawer(){
+    tabSidebarEl.classList.remove('open');
+    sidePanelElForDrawer.classList.add('open');
+    updateMobileOverlay();
+  }
+  function closeSidePanelDrawer(){
+    sidePanelElForDrawer.classList.remove('open');
+    updateMobileOverlay();
+  }
+  mobileOverlayEl.addEventListener('click', () => {
+    closeTabSidebar();
+    closeSidePanelDrawer();
+  });
+  document.getElementById('tabSidebarCloseBtn').addEventListener('click', closeTabSidebar);
+  document.getElementById('sidePanelCloseBtn').addEventListener('click', closeSidePanelDrawer);
+
   document.getElementById('tabToggleBtn').addEventListener('click', () => {
-    document.getElementById('tabSidebar').classList.toggle('open');
+    if (tabSidebarEl.classList.contains('open')) closeTabSidebar();
+    else openTabSidebar();
   });
 
   /* ============================================================
@@ -865,7 +1191,7 @@
   let saveTimer = null;
 
   function snapshot(){
-    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText']));
+    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText']));
   }
   function pushHistory(){
     if (restoring || cropState) return; // 자르기 모드 중 임시 사각형은 실행취소 기록에서 제외
@@ -1318,47 +1644,202 @@
   ============================================================ */
   document.getElementById('selectToolBtn').addEventListener('click', () => {
     if (penActive) setPenMode(false);
+    if (textToolActive) setTextToolMode(false);
+    if (EP.exitImageToolModes) EP.exitImageToolModes(); // 자동누끼/영역지우기 도구가 켜진 채로 남아있으면 여기서 확실히 끔
+    if (EP.exitEyedropperModes) EP.exitEyedropperModes(); // 스포이드 도구가 켜진 채로 남아있으면 여기서 확실히 끔
     canvas.isDrawingMode = false;
     canvas.selection = true;
+    canvas.skipTargetFind = false;
+    canvas.defaultCursor = 'default';
+    canvas.hoverCursor = 'move';
     canvas.forEachObject(o => { if (!o.isGuide) o.selectable = true; });
   });
 
-  document.getElementById('addTextBtn').addEventListener('click', () => {
+  // ---- 텍스트 도구(포토샵 방식): 버튼을 누르면 커서가 I자(텍스트) 모양으로 바뀌는 "무장" 상태가
+  //      되고, 캔버스를 클릭한 그 자리에 빈 텍스트 오브젝트가 생기며 바로 깜빡이는 커서와 함께
+  //      입력할 수 있게 편집모드로 들어감(입력 즉시 시작 가능, 별도 확인 없이 한 번 클릭으로 끝) ----
+  const addTextBtn = document.getElementById('addTextBtn');
+  let textToolActive = false;
+
+  function setTextToolMode(active){
+    textToolActive = active;
+    addTextBtn.classList.toggle('active', active);
+    document.getElementById('selectToolBtn').classList.toggle('active', !active);
+    canvas.selection = !active;
+    canvas.skipTargetFind = active;
+    canvas.discardActiveObject();
+    canvas.defaultCursor = active ? 'text' : 'default';
+    canvas.hoverCursor = active ? 'text' : 'move';
+    canvas.renderAll();
+  }
+
+  addTextBtn.addEventListener('click', () => {
     if (penActive) setPenMode(false);
-    const t = new fabric.IText('텍스트를 입력하세요', {
-      left: CANVAS_W / 2, top: CANVAS_H / 2,
-      originX: 'center', originY: 'center',
+    setTextToolMode(!textToolActive);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && textToolActive) setTextToolMode(false);
+  });
+
+  canvas.on('mouse:down', (opt) => {
+    if (!textToolActive) return;
+    const p = canvas.getPointer(opt.e);
+    const t = new fabric.IText('', {
+      left: p.x, top: p.y,
+      originX: 'left', originY: 'top',
       fontFamily: 'Pretendard', fontSize: 40, fill: '#222222'
     });
-    canvas.add(t); bringGuideToFront(); canvas.setActiveObject(t); canvas.renderAll();
+    canvas.add(t);
+    bringGuideToFront();
+    setTextToolMode(false); // 한 번 클릭해서 만들면 바로 선택 도구로 돌아옴(포토샵과 동일)
+    canvas.setActiveObject(t);
+    t.enterEditing();
+    canvas.requestRenderAll();
   });
 
-  document.getElementById('addRectBtn').addEventListener('click', () => {
-    if (penActive) setPenMode(false);
-    const r = new fabric.Rect({
-      left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
-      width: 180, height: 120, fill: '#3498db', stroke: '', strokeWidth: 0
+  // ---- 글자모양교정: 가로/세로로 눌리거나 늘어난 글자(scaleX ≠ scaleY)를 정비율로 되돌림 ----
+  //   - 옆으로 늘어난 경우(scaleX > scaleY): 세로도 그만큼 늘려서 맞춤(scaleY를 scaleX에 맞춤)
+  //   - 세로로 길쭉하게 늘어난 경우(scaleY > scaleX): 자간을 기존의 절반으로 줄이고,
+  //     세로 크기도 scaleX에 맞게 줄여서 정비율로 만듦
+  document.getElementById('fixTextShapeBtn').addEventListener('click', () => {
+    const active = canvas.getActiveObject();
+    if (!active) return;
+    const targets = (active.type === 'activeSelection' || active.type === 'group')
+      ? active.getObjects().filter(o => isTextObject(o))
+      : (isTextObject(active) ? [active] : []);
+    if (!targets.length) return;
+
+    targets.forEach(t => {
+      const sx = t.scaleX || 1, sy = t.scaleY || 1;
+      if (Math.abs(sx - sy) < 0.001) return; // 이미 정비율이면 그대로 둠
+      if (sx > sy) {
+        // 옆으로 늘어남 → 세로를 가로만큼 늘려서 맞춤
+        t.set('scaleY', sx);
+      } else {
+        // 세로로 늘어남 → 세로를 가로에 맞게 줄이고, 자간도 절반으로 줄임
+        t.set('scaleY', sx);
+        t.set('charSpacing', (t.charSpacing || 0) / 2);
+      }
+      t.setCoords();
     });
-    canvas.add(r); bringGuideToFront(); canvas.setActiveObject(r); canvas.renderAll();
+    canvas.requestRenderAll();
+    pushHistory();
   });
 
-  document.getElementById('addCircleBtn').addEventListener('click', () => {
-    if (penActive) setPenMode(false);
-    const c = new fabric.Circle({
-      left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
-      radius: 80, fill: '#e67e22', stroke: '', strokeWidth: 0
-    });
-    canvas.add(c); bringGuideToFront(); canvas.setActiveObject(c); canvas.renderAll();
-  });
+  // ---- 모양 만들기: "◆ 모양 만들기"를 누르면 캔버스 정가운데에 모양 선택 목록이 뜨고,
+  //      그중 하나를 클릭하면 즉시 그 모양이 만들어짐(사각형/둥근사각형/원/삼각형/별/하트) ----
+  (function(){
+    const shapePickerModal = document.getElementById('shapePickerModal');
+    const shapePickerModalCloseBtn = document.getElementById('shapePickerModalCloseBtn');
+    const shapePickerGridView = document.getElementById('shapePickerGridView');
+    const shapePickerRoundRectView = document.getElementById('shapePickerRoundRectView');
+    const roundRectWidthInput = document.getElementById('roundRectWidthInput');
+    const roundRectHeightInput = document.getElementById('roundRectHeightInput');
+    const roundRectRadiusInput = document.getElementById('roundRectRadiusInput');
+    const roundRectCreateBtn = document.getElementById('roundRectCreateBtn');
+    const roundRectBackBtn = document.getElementById('roundRectBackBtn');
 
-  document.getElementById('addTriangleBtn').addEventListener('click', () => {
-    if (penActive) setPenMode(false);
-    const t = new fabric.Triangle({
-      left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
-      width: 160, height: 140, fill: '#9b59b6', stroke: '', strokeWidth: 0
+    function showGridView(){
+      shapePickerGridView.classList.remove('hidden');
+      shapePickerRoundRectView.classList.add('hidden');
+    }
+    function showRoundRectView(){
+      shapePickerGridView.classList.add('hidden');
+      shapePickerRoundRectView.classList.remove('hidden');
+      roundRectWidthInput.value = 180;
+      roundRectHeightInput.value = 120;
+      roundRectRadiusInput.value = 20;
+    }
+
+    function positionShapePickerModal(){
+      shapePickerModal.classList.remove('hidden');
+      const mw = shapePickerModal.offsetWidth || 220;
+      const mh = shapePickerModal.offsetHeight || 200;
+      const canvasRect = canvas.upperCanvasEl.getBoundingClientRect();
+      const left = canvasRect.left + canvasRect.width / 2 - mw / 2;
+      const top = canvasRect.top + canvasRect.height / 2 - mh / 2;
+      const r = EP.clampPopoverRect ? EP.clampPopoverRect(left, top, mw, mh, EP.canvasRotationDeg) : { left, top };
+      shapePickerModal.style.left = r.left + 'px';
+      shapePickerModal.style.top = r.top + 'px';
+      if (EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(shapePickerModal);
+    }
+    function hideShapePickerModal(){ shapePickerModal.classList.add('hidden'); showGridView(); }
+
+    document.getElementById('openShapePickerBtn').addEventListener('click', () => {
+      if (penActive) setPenMode(false);
+      if (textToolActive) setTextToolMode(false);
+      showGridView(); // 매번 새로 열 때는 항상 목록부터 보여줌
+      positionShapePickerModal();
     });
-    canvas.add(t); bringGuideToFront(); canvas.setActiveObject(t); canvas.renderAll();
-  });
+    shapePickerModalCloseBtn.addEventListener('click', hideShapePickerModal);
+
+    function addShapeObject(obj){
+      canvas.add(obj); bringGuideToFront(); canvas.setActiveObject(obj); canvas.renderAll();
+      hideShapePickerModal();
+    }
+
+    document.getElementById('pickRectBtn').addEventListener('click', () => {
+      addShapeObject(new fabric.Rect({
+        left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+        width: 180, height: 120, fill: '#3498db', stroke: '', strokeWidth: 0
+      }));
+    });
+
+    // 둥근사각형: 바로 만들지 않고, 아까 만들었던 "둥근 정도" 숫자 입력 단계로 먼저 감
+    document.getElementById('pickRoundRectBtn').addEventListener('click', () => {
+      showRoundRectView();
+    });
+    roundRectBackBtn.addEventListener('click', showGridView);
+    roundRectCreateBtn.addEventListener('click', () => {
+      // 가로/세로를 사용자가 직접 입력한 값으로 생성 — 나중에 늘려서 비율을 맞추다가
+      // 모서리 radius가 타원형으로 찌그러지는 문제를 애초에 만들 때 원하는 비율로 잡아서 방지함
+      const w = Math.max(10, Math.min(parseFloat(roundRectWidthInput.value) || 180, 2000));
+      const h = Math.max(10, Math.min(parseFloat(roundRectHeightInput.value) || 120, 2000));
+      // 입력값이 클수록 둥근 강도(모서리 반경)도 커짐 — 사각형 짧은 변의 절반을 넘지 않게 막아서
+      // 값이 너무 크면 알약(캡슐) 모양까지만 되고 찌그러지지 않게 함
+      const radius = Math.max(0, Math.min(parseFloat(roundRectRadiusInput.value) || 0, Math.min(w, h) / 2));
+      addShapeObject(new fabric.Rect({
+        left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+        width: w, height: h, rx: radius, ry: radius, fill: '#3498db', stroke: '', strokeWidth: 0
+      }));
+    });
+
+    document.getElementById('pickCircleBtn').addEventListener('click', () => {
+      addShapeObject(new fabric.Circle({
+        left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+        radius: 80, fill: '#e67e22', stroke: '', strokeWidth: 0
+      }));
+    });
+
+    document.getElementById('pickTriangleBtn').addEventListener('click', () => {
+      addShapeObject(new fabric.Triangle({
+        left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+        width: 160, height: 140, fill: '#9b59b6', stroke: '', strokeWidth: 0
+      }));
+    });
+
+    document.getElementById('pickStarBtn').addEventListener('click', () => {
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * (Math.PI / 5);
+        const rad = i % 2 === 0 ? 80 : 32;
+        pts.push({ x: Math.cos(a) * rad, y: Math.sin(a) * rad });
+      }
+      addShapeObject(new fabric.Polygon(pts, {
+        left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+        fill: '#f1c40f', stroke: '', strokeWidth: 0
+      }));
+    });
+
+    document.getElementById('pickHeartBtn').addEventListener('click', () => {
+      const d = 'M0,25 C-40,-5 -70,-45 -35,-65 C-10,-80 0,-50 0,-40 C0,-50 10,-80 35,-65 C70,-45 40,-5 0,25 Z';
+      addShapeObject(new fabric.Path(d, {
+        left: CANVAS_W / 2, top: CANVAS_H / 2, originX: 'center', originY: 'center',
+        fill: '#e74c3c', stroke: '', strokeWidth: 0
+      }));
+    });
+  })();
 
   /* ============================================================
      8b. 펜 도구 (일러스트레이터 방식)
@@ -1375,6 +1856,16 @@
   let penPreviewObjects = [];
   const PEN_CLOSE_TOLERANCE = 10; // 시작점 닫기 판정 (화면 픽셀 기준)
 
+  // 포토샵 펜툴처럼 생긴 커서(닙 모양) — SVG를 데이터 URI로 만들어 커서로 씀.
+  // 핫스팟(클릭 포인트)은 닙 끝부분(왼쪽 아래)에 맞춤. 혹시 브라우저가 커스텀 커서를 못 읽으면
+  // crosshair로 자동 대체됨(cursor 속성의 콤마 뒤 fallback).
+  const PEN_CURSOR_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>" +
+    "<line x1='21' y1='3' x2='8' y2='16' stroke='black' stroke-width='3' stroke-linecap='square'/>" +
+    "<line x1='21' y1='3' x2='8' y2='16' stroke='white' stroke-width='1' stroke-linecap='square'/>" +
+    "<path d='M8 16 L4 21 L2 19 Z' fill='black' stroke='white' stroke-width='0.5' stroke-linejoin='round'/>" +
+    "</svg>";
+  const PEN_CURSOR = 'url("data:image/svg+xml,' + encodeURIComponent(PEN_CURSOR_SVG) + '") 2 21, crosshair';
+
   function setPenMode(active){
     penActive = active;
     penToolBtn.classList.toggle('active', active);
@@ -1382,8 +1873,8 @@
     canvas.selection = !active;
     canvas.skipTargetFind = active;
     canvas.discardActiveObject();
-    canvas.defaultCursor = active ? 'crosshair' : 'default';
-    canvas.hoverCursor = active ? 'crosshair' : 'move';
+    canvas.defaultCursor = active ? PEN_CURSOR : 'default';
+    canvas.hoverCursor = active ? PEN_CURSOR : 'move';
     if (!active) {
       penPoints = [];
       penDragging = false;
@@ -1393,6 +1884,7 @@
   }
 
   penToolBtn.addEventListener('click', () => {
+    if (textToolActive) setTextToolMode(false);
     if (penActive) {
       finishPenPath(false);
       setPenMode(false);
@@ -1769,9 +2261,9 @@
     } else if (target && !target.isGuide) {
       if (target.imageLocked) {
         addCtxItem('🔓 잠금 해제', () => unlockImage(target));
-        addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
+        if (isImageObject(target)) addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
         addCtxDivider();
-        addCtxItem('🗑 이미지 삭제', () => { canvas.remove(target); canvas.discardActiveObject(); canvas.renderAll(); pushHistory(); }, true);
+        addCtxItem('🗑 삭제', () => { canvas.remove(target); canvas.discardActiveObject(); canvas.renderAll(); pushHistory(); }, true);
       } else {
         if (canvas.getActiveObject() !== target) {
           canvas.setActiveObject(target);
@@ -1783,11 +2275,15 @@
         addCtxItem('↶ 실행 취소', () => undoBtn.click());
         addCtxItem('↷ 다시 실행', () => redoBtn.click());
         addCtxDivider();
+        addCtxItem('⬆ 레이어 앞으로', () => { canvas.bringToFront(target); bringGuideToFront(); canvas.renderAll(); pushHistory(); });
+        addCtxItem('⬇ 레이어 뒤로', () => { canvas.sendToBack(target); canvas.renderAll(); pushHistory(); });
+        addCtxDivider();
         if (isImageObject(target)) {
           addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
           addCtxItem('🔒 이미지 잠금', () => lockImage(target));
           addCtxItem('🗑 이미지 삭제', () => deleteSelected(), true);
         } else {
+          addCtxItem('🔒 잠금', () => lockImage(target));
           addCtxItem('🗑 삭제', () => deleteSelected(), true);
         }
       }
@@ -1846,9 +2342,6 @@
   document.getElementById('layerForwardBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { canvas.bringForward(o); bringGuideToFront(); canvas.renderAll(); } });
   document.getElementById('layerBackwardBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { canvas.sendBackwards(o); canvas.renderAll(); } });
 
-  document.getElementById('flipXBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { o.set('flipX', !o.flipX); canvas.renderAll(); pushHistory(); } });
-  document.getElementById('flipYBtn').addEventListener('click', () => { const o = canvas.getActiveObject(); if (o) { o.set('flipY', !o.flipY); canvas.renderAll(); pushHistory(); } });
-
   /* ============================================================
      12. 내보내기 (PNG / JPG / SVG) — 안내선은 항상 제외
   ============================================================ */
@@ -1891,8 +2384,8 @@
     const type = e.target.getAttribute('data-export');
     if (!type) return;
     canvas.discardActiveObject();
-    const wasVisible = guidesVisible;
-    guideRect.visible = false; outerGuideRect.visible = false;
+    const wasBoxVisible = guideRect.visible, wasGridVisible = gridGuide.visible;
+    guideRect.visible = false; outerGuideRect.visible = false; gridGuide.visible = false;
     canvas.renderAll();
     const multiplier = 1 / zoom;
 
@@ -1910,7 +2403,7 @@
       flattened.dispose();
       exportBtn.disabled = false;
     }
-    guideRect.visible = wasVisible; outerGuideRect.visible = wasVisible;
+    guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
     canvas.renderAll();
   });
 
@@ -2043,8 +2536,6 @@
   const imgBrightnessInput = document.getElementById('imgBrightnessInput');
   const imgContrastInput = document.getElementById('imgContrastInput');
   const imgSaturationInput = document.getElementById('imgSaturationInput');
-  const imgGrayscaleBtn = document.getElementById('imgGrayscaleBtn');
-  const imgAdjustResetBtn = document.getElementById('imgAdjustResetBtn');
 
   /* ============================================================
      14b. CMYK 색상 선택기
@@ -2430,7 +2921,6 @@
       imgBrightnessInput.value = Math.round(getImageFilterValue(obj, 'Brightness', 'brightness') * 100);
       imgContrastInput.value = Math.round(getImageFilterValue(obj, 'Contrast', 'contrast') * 100);
       imgSaturationInput.value = Math.round(getImageFilterValue(obj, 'Saturation', 'saturation') * 100);
-      imgGrayscaleBtn.classList.toggle('on', hasGrayscaleFilter(obj));
     }
 
     opacityInput.value = obj.opacity != null ? obj.opacity : 1;
@@ -2477,7 +2967,8 @@
 
   textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));
   fontFamilySelect.addEventListener('change', () => withActive(o => o.set('fontFamily', fontFamilySelect.value)));
-  fontSizeInput.addEventListener('input', () => withActive(o => o.set('fontSize', parseInt(fontSizeInput.value, 10) || 1)));
+  fontSizeInput.addEventListener('input', () => withActive(o => o.set('fontSize', Math.max(10, parseInt(fontSizeInput.value, 10) || 10))));
+  fontSizeInput.addEventListener('change', () => { fontSizeInput.value = Math.max(10, parseInt(fontSizeInput.value, 10) || 10); });
   textColorInput.addEventListener('input', () => withActive(o => o.set('fill', textColorInput.value)));
 
   boldBtn.addEventListener('click', () => withActive(o => { o.set('fontWeight', (o.fontWeight === 'bold' || o.fontWeight >= 700) ? 'normal' : 'bold'); updateSelectionPanel(); }));
@@ -2507,30 +2998,13 @@
   imgContrastInput.addEventListener('change', () => pushHistory());
   imgSaturationInput.addEventListener('input', () => withActive(o => applyImageAdjustments(o, { saturation: (parseInt(imgSaturationInput.value, 10) || 0) / 100 })));
   imgSaturationInput.addEventListener('change', () => pushHistory());
-  imgGrayscaleBtn.addEventListener('click', () => withActive(o => {
-    if (!isImageObject(o)) return;
-    const turningOn = !hasGrayscaleFilter(o);
-    applyImageAdjustments(o, { grayscale: turningOn });
-    imgGrayscaleBtn.classList.toggle('on', turningOn);
-    pushHistory();
-  }));
-  imgAdjustResetBtn.addEventListener('click', () => withActive(o => {
-    if (!isImageObject(o)) return;
-    o.filters = [];
-    o.applyFilters();
-    canvas.requestRenderAll();
-    imgBrightnessInput.value = 0;
-    imgContrastInput.value = 0;
-    imgSaturationInput.value = 0;
-    imgGrayscaleBtn.classList.remove('on');
-    pushHistory();
-  }));
 
   /* ============================================================
      15. 모바일: 패널 토글
   ============================================================ */
   document.getElementById('panelToggleBtn').addEventListener('click', () => {
-    document.getElementById('sidePanel').classList.toggle('open');
+    if (sidePanelElForDrawer.classList.contains('open')) closeSidePanelDrawer();
+    else openSidePanelDrawer();
   });
 
   /* ============================================================
@@ -2567,6 +3041,14 @@
   EP.pushHistory = pushHistory;
   EP.refreshEmptyHint = refreshEmptyHint;
   EP.bringGuideToFront = bringGuideToFront;
+  // 다른 파일(예: ecopro3menu.js)에서 캔버스 여백을 계산할 때 쓸 "1 단위가 몇 px인지"를 노출함.
+  // 쿼리로 들어오는 width/height(ratioW/ratioH)는 실제 mm/cm 같은 물리 단위가 아니라 그냥
+  // 가로세로 비율을 나타내는 순수 숫자라서(예: 16, 8), cm 변환 없이 그 숫자 자체를 격자 단위로
+  // 취급함 — 예: ratioW=16이면 캔버스 가로폭이 "16단위"라고 보고, 그 1단위가 몇 px인지를 반환.
+  // CANVAS_W/ratioW는 회전하면 같이 바뀌는 값들이라(rotateCanvas90 참고), 여기서 스냅샷을 미리
+  // 저장해두지 않고 "호출될 때마다" 그 시점의 최신 값을 읽어서 계산함 — 그래서 캔버스를 회전
+  // 하거나 다른 사이즈로 바꾼 뒤에 호출해도 항상 정확함.
+  EP.getPxPerUnit = function(){ return CANVAS_W / ratioW; };
   EP.importSvgIntoCanvas = importSvgIntoCanvas;
   EP.isTextObject = isTextObject;
   EP.isShapeObject = isShapeObject;
@@ -2580,5 +3062,6 @@
   EP.customFontNames = customFontNames;
   EP.hexToRgb = hexToRgb;
   EP.fontPopover = fontPopover;
+  EP.registerRotatablePopover(fontPopover);
 
 })();

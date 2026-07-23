@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SVG · 이미지 편집기</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- 임시로 걷어냄(로컬 로딩 느려서) — 다시 켜려면 이 주석 해제
 <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Nanum+Gothic:wght@400;700;800&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Gowun+Dodum&family=Roboto:wght@400;500;700;900&family=Montserrat:wght@400;600;800&family=Playfair+Display:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -44,14 +48,25 @@
     <div class="toolbar-group dropdown megamenu">
       <button type="button" class="btn" id="shapeMenuBtn">🅣 텍스트모양 ▾</button>
       <div class="dropdown-menu hidden" id="shapeMenu">
+        <label class="dropdown-item" for="imageInput" style="cursor:pointer;">🖼 이미지 불러오기</label>
+        <button type="button" class="dropdown-item" id="quickMarqueeEraseBtn" title="이미지를 선택한 상태에서 누르면, 지우고 싶은 영역을 드래그로 지정해서 워터마크나 글씨를 지울 수 있어요">🧹 워터마크, 글씨영역 삭제하기</button>
         <button type="button" class="dropdown-item" id="addTextBtn">🅣 텍스트</button>
-        <button type="button" class="dropdown-item" id="addRectBtn">▭ 사각형</button>
-        <button type="button" class="dropdown-item" id="addCircleBtn">◯ 원</button>
-        <button type="button" class="dropdown-item" id="addTriangleBtn">△ 삼각형</button>
+        <button type="button" class="dropdown-item" id="fixTextShapeBtn" title="가로로 늘어난 글자는 세로도 그만큼 늘리고, 세로로 늘어난 글자는 자간을 절반으로 줄이고 세로 크기도 줄여서 정비율로 바로잡아요">🔧 글자모양교정</button>
+        <button type="button" class="dropdown-item" id="openShapePickerBtn" title="사각형·원·삼각형·별·하트 등 원하는 모양을 골라 만들어요">◆ 모양 만들기</button>
+        <button type="button" class="dropdown-item" id="addRandomShapeBtn" title="다양한 모양 중 하나를 랜덤 색상으로 만들어요">🎲 랜덤모양 생성</button>
         <button type="button" class="dropdown-item" id="penToolBtn" title="펜 도구 — 클릭으로 점 추가, 드래그하면 곡선 핸들 생성 (더블클릭/Enter: 완료, 시작점 클릭: 닫힌 도형, Esc: 취소)">✒ 펜 도구</button>
         <button type="button" class="dropdown-item" id="addTableBtn" title="표를 만들어요 — 기본/랜덤/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
         <button type="button" class="dropdown-item" id="addMapBtn" title="주소를 입력하면 그 위치의 지도 이미지가 캔버스에 들어와요">🗺 지도 만들기</button>
+        <button type="button" class="dropdown-item" id="addLogoBtn" title="한글 이름을 입력하면 영문 이니셜로 로고를 만들어줘요 (예: 대신 일렉트로닉스 → DI)">🔤 로고 만들기</button>
+        <button type="button" class="dropdown-item" id="addMenuBtn" title="메뉴 이름과 가격을 붙여넣으면 정렬된 메뉴판을 만들어줘요">🧾 메뉴판 만들기</button>
+        <button type="button" class="dropdown-item" id="addBgFillBtn" title="캔버스 전체를 채우는 배경을 만들어요">🎨 바탕 채우기</button>
       </div>
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn icon" id="eyedropperPickBtn" title="스포이드 — 먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 이 버튼을 누르고, 색을 따올 다른 오브젝트를 클릭하면 그 색이 그대로 적용돼요">
+        <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3 L21 7 L11 17 L7 17 L7 13 Z" fill="currentColor"/><rect x="4.6" y="17.6" width="3.6" height="3.6" transform="rotate(45 6.4 19.4)" fill="currentColor"/></svg>
+      </button>
     </div>
 
     <div class="toolbar-group dropdown megamenu">
@@ -59,6 +74,8 @@
       <div class="dropdown-menu hidden" id="rotateMenu">
         <button type="button" class="dropdown-item" id="rotateCanvasRightBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전)">↻ 캔버스 90도 회전</button>
         <button type="button" class="dropdown-item" id="rotateCanvasLeftBtn" title="캔버스 전체를 반시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전)">↺ 반대 90도 회전</button>
+        <button type="button" class="dropdown-item" id="rotateObjectBtn" title="선택한 모양이나 텍스트만 시계 방향으로 90도 회전합니다">↻ 90도 회전</button>
+        <button type="button" class="dropdown-item" id="flipObjectXBtn" title="선택한 모양이나 텍스트를 좌우로 뒤집습니다">↔ 좌우반전</button>
       </div>
     </div>
 
@@ -105,10 +122,19 @@
   <!-- ============ MAIN ============ -->
   <div class="main">
 
+    <!-- ============ 모바일: 좌/우 패널 열렸을 때 배경 어둡게 + 탭하면 닫힘 ============ -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
     <!-- ============ 좌측: 디자인 / 앞뒤 탭 ============ -->
     <div class="tab-sidebar" id="tabSidebar">
+      <button type="button" class="drawer-close" id="tabSidebarCloseBtn" title="닫기">✕</button>
       <h4>디자인 목록</h4>
+      <div class="design-unify-actions">
+        <button type="button" id="unifyDesignBtn" class="design-action-btn" title="디자인 1(앞/뒤)의 내용을 전체 디자인에 똑같이 복사합니다">디자인 통일하기</button>
+        <button type="button" id="partialUnifyBtn" class="design-action-btn" title="각 디자인의 '그룹' 칸에 같은 값을 입력해서 묶은 뒤 누르면, 그룹 안에서 가장 앞 번호 디자인 내용으로 통일됩니다">부분통일하기</button>
+      </div>
       <div id="tabList"></div>
+      <button type="button" id="saveAllZipBtn" class="design-action-btn" title="디자인마다 각각 독립된 프로젝트 파일(json)로 저장해 압축(zip)합니다">모든 디자인 저장하기</button>
     </div>
 
     <div class="canvas-wrap" id="canvasWrap">
@@ -151,10 +177,40 @@
           <button type="button" class="btn" id="cancelMapBtn">✕ 닫기</button>
         </div>
       </div>
+      <div class="crop-toolbar table-toolbar hidden" id="logoInputToolbar">
+        <span class="crop-toolbar-hint" id="logoInputToolbarHint">한글 이름을 입력하세요 — 띄어쓰기로 단어를 나누면 그 앞글자들로 이니셜을 만들어요 (예: 대신 일렉트로닉스 → DI)</span>
+        <div class="table-toolbar-row">
+          <input type="text" id="logoNameInput" style="width:340px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;" placeholder="예: 대신 일렉트로닉스" maxlength="40">
+        </div>
+        <div class="table-toolbar-row">
+          <button type="button" class="btn primary" id="applyLogoBtn" disabled>🔤 로고 만들기</button>
+          <button type="button" class="btn" id="randomLogoBtn" disabled title="큰 이니셜 뒤에 금속(메탈) 그라디언트 원형 배지를 무작위 색상으로 넣어서 만들어요">🎲 랜덤 로고 만들기</button>
+          <button type="button" class="btn" id="cancelLogoBtn">✕ 닫기</button>
+        </div>
+      </div>
+      <div class="crop-toolbar table-toolbar hidden" id="menuInputToolbar">
+        <span class="crop-toolbar-hint" id="menuInputToolbarHint">품목과 가격을 쉼표(,)로 구분해 한 줄씩 입력하세요. 쉼표 없는 줄은 구간 제목이 돼요. "정메뉴 만들기"에서는 ~ = 아랫줄 메뉴, / = 열바꿈으로 써요.</span>
+        <div class="table-toolbar-row">
+          <textarea id="menuInputArea" rows="10" style="width:420px;font-size:13px;padding:8px;" placeholder="~ = 아랫줄메뉴 / = 열바꿈 , = 간격&#10;예)&#10;커피&#10;아메리카노, 4500&#10;카페라떼, 5000&#10;~&#10;디저트&#10;크루아상, 4500&#10;치즈케이크, 5000&#10;/&#10;모카&#10;모카아메리카노, 4500&#10;모카라떼, 5000&#10;~&#10;디저트2&#10;크루아상, 4500&#10;치즈케이크, 5000"></textarea>
+        </div>
+        <div class="table-toolbar-row">
+          <label class="btn" for="menuExcelInput" title="엑셀(.xlsx)의 카테고리명·품목명·가격 3칸만 채우면 돼요. 빈 줄 하나는 열바꿈(/), 같은 열 안에서 카테고리명이 또 나오면 자동으로 서브블록(~)이 돼요.">📊 엑셀로 불러오기</label>
+          <input type="file" id="menuExcelInput" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+          <button type="button" class="btn" id="menuExcelTemplateBtn" title="카테고리명·품목명·가격 3칸짜리 빈 엑셀 양식(.xlsx)을 내려받아요">📥 엑셀 양식 받기</button>
+          <span class="crop-toolbar-hint" id="menuExcelHint" style="margin-left:4px;"></span>
+        </div>
+        <div class="table-toolbar-row">
+          <button type="button" class="btn primary" id="applyMenuBtn" disabled>🧾 메뉴판 만들기</button>
+          <button type="button" class="btn" id="randomMenuBtn" disabled title="미니멀/손글씨/컬러 일러스트 등 여러 메뉴판 스타일 중 하나를 무작위로 골라 만들어요">🎲 랜덤 메뉴판 만들기</button>
+          <button type="button" class="btn" id="applyStandardMenuBtn" disabled title="'/'만 쓰면 새 열(좌·중·우로 옆에), '~'만 쓰면 지금 열 안에서 아래로 이어붙여요 — '~'로 한 열이 길어져도 다른 열은 그대로 맨 위에서 나란히 배치돼요">📐 정메뉴 만들기</button>
+          <button type="button" class="btn" id="cancelMenuBtn">✕ 닫기</button>
+        </div>
+      </div>
     </div>
 
     <!-- ============ 우측: 속성 패널 ============ -->
     <div class="side-panel" id="sidePanel">
+      <button type="button" class="drawer-close" id="sidePanelCloseBtn" title="닫기">✕</button>
 
       <div class="panel-section" id="noSelectionSection">
         <div class="no-select-msg">오브젝트를 선택하면<br>여기서 속성을 편집할 수 있어요</div>
@@ -187,7 +243,7 @@
           </div>
           <div class="row">
             <label>크기</label>
-            <input type="number" id="fontSizeInput" min="4" max="600">
+            <input type="number" id="fontSizeInput" min="10" max="600">
             <label style="width:44px;">색상</label>
             <div class="cmyk-picker" id="textColorInput" title="CMYK 색상 선택"></div>
           </div>
@@ -228,8 +284,23 @@
             <input type="range" id="imgSaturationInput" min="-100" max="100" step="1" value="0">
           </div>
           <div class="row grid2" style="margin-bottom:0;">
-            <button type="button" class="small-btn" id="imgGrayscaleBtn" title="흑백으로 전환/해제">⚫ 흑백</button>
-            <button type="button" class="small-btn" id="imgAdjustResetBtn" title="밝기·대비·채도·흑백 보정을 모두 원래대로">↺ 보정 초기화</button>
+            <button type="button" class="small-btn" id="magicWandToggleBtn" title="비슷한 색상 영역을 클릭 한 번으로 자동 선택해서 투명하게 만듭니다 (자동 누끼)">🪄 자동누끼</button>
+            <button type="button" class="small-btn" id="marqueeEraseToggleBtn" title="지우고 싶은 영역을 드래그로 선택한 뒤 지우면, 그 부분만 주변 색으로 채워 자연스럽게 지워집니다 (글씨·워터마크 제거용)">▭ 영역 지우기</button>
+          </div>
+          <div class="row" id="magicWandToleranceRow">
+            <label>허용오차</label>
+            <input type="range" id="magicWandToleranceInput" min="0" max="100" step="1" value="30">
+          </div>
+          <div class="row grid2" style="margin-bottom:0;">
+            <button type="button" class="small-btn" id="edgeBlurBtn" title="사진 가장자리로 갈수록 선택한 색으로 점점 부드럽게 흐려지며 사라지게 만듭니다 (중심은 선명하게 유지)">🌫 가장자리블러</button>
+          </div>
+          <div class="row">
+            <label>번짐 색상</label>
+            <div class="cmyk-picker mini" id="edgeBlurColorInput" title="가장자리에 뿌려질 색상"></div>
+          </div>
+          <div class="row">
+            <label>블러 정도</label>
+            <input type="range" id="edgeBlurAmount" min="1" max="10" step="1" value="5">
           </div>
         </div>
 
@@ -256,10 +327,6 @@
           <div class="row">
             <label>회전</label>
             <input type="number" id="angleInput" min="-360" max="360">
-          </div>
-          <div class="row grid2" style="margin-bottom:10px;">
-            <button type="button" class="small-btn" id="flipXBtn">↔ 좌우반전</button>
-            <button type="button" class="small-btn" id="flipYBtn">↕ 상하반전</button>
           </div>
         </div>
 
@@ -294,17 +361,21 @@
   <button type="button" class="qa-btn" id="qaDiceBtn" title="랜덤으로 필터 1~5개 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
   <div class="row hidden" id="qaRollNav" style="align-items:center;gap:6px;">
     <button type="button" class="qa-btn" id="qaRollPrevBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">◀</button>
-    <span id="qaRollCounter" style="flex:1;text-align:center;font-size:12px;color:#8a93a3;">1/3</span>
+    <span id="qaRollCounter" style="flex:1;text-align:center;font-size:12px;color:#B87A3D;">1/3</span>
     <button type="button" class="qa-btn" id="qaRollNextBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">▶</button>
   </div>
   <select id="qaFilterSelect">
     <option value="" disabled selected>필터 선택...</option>
-    <option value="shadow">그림자</option>
-    <option value="glow">외부광선</option>
+    <optgroup label="공통 효과 (직접 선택만 가능 · 랜덤 미적용)">
+      <option value="shadow">그림자</option>
+      <option value="glow">외부광선</option>
+      <option value="gradient">그라디언트</option>
+      <option value="emboss">경사와 엠보스</option>
+      <option value="outline">테두리</option>
+      <option value="bg">배경</option>
+    </optgroup>
+    <optgroup label="장식 효과">
     <option value="light">광원 효과 (태양광/스크린)</option>
-    <option value="gradient">그라디언트</option>
-    <option value="emboss">경사와 엠보스</option>
-    <option value="outline">테두리</option>
     <option value="doubleOutline">이중테두리</option>
     <option value="glitch">글리치</option>
     <option value="tear">잘게 자르기</option>
@@ -342,6 +413,16 @@
     <option value="magazine">잡지 오려붙인 효과</option>
     <option value="puzzle">퍼즐 효과</option>
     <option value="sky">하늘 위 구름 효과</option>
+    <option value="jump">바운스(통통 튀는) 효과</option>
+    <option value="pulse">두근두근(심장박동) 효과</option>
+    <option value="sway">살랑살랑(흔들림) 효과</option>
+    <option value="waddle">아장아장(뒤뚱뒤뚱) 효과</option>
+    <option value="popcorn">콩닥콩닥(팝콘) 효과</option>
+    <option value="hiccup">딸꾹질 효과</option>
+    <option value="breathe">숨쉬기(브리딩) 효과</option>
+    <option value="flicker">깜빡깜빡(플리커) 효과</option>
+    <option value="chatter">재잘재잘(수다) 효과</option>
+    <option value="walk">성큼성큼(걷기) 효과</option>
     <option value="shy">수줍수줍 효과</option>
     <option value="chalk">칠판 글씨 효과</option>
     <option value="grass">휘날리는 풀밭 효과</option>
@@ -368,8 +449,8 @@
     <option value="zebra">얼룩말 무늬</option>
     <option value="translate">번역(영/중/일)</option>
     <option value="typo">맞춤법 검사</option>
-    <option value="bg">배경</option>
     <option value="bubble">말풍선 배경</option>
+    </optgroup>
   </select>
 
   <div class="qa-filter-detail hidden" id="qaDetailShadow">
@@ -380,6 +461,10 @@
     <div class="row">
       <label>거리</label>
       <input type="range" id="qaShadowDist" min="0" max="40" step="1">
+    </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaShadowOpacity" min="0" max="100" step="1">
     </div>
     <div class="row">
       <label>색상</label>
@@ -1027,6 +1112,156 @@
     </div>
   </div>
 
+  <div class="qa-filter-detail hidden" id="qaDetailJump">
+    <div class="row">
+      <label>튀는 높이</label>
+      <input type="range" id="qaJumpP1" min="0" max="100" step="1" title="글자가 튀어오르는 최대 높이">
+    </div>
+    <div class="row">
+      <label>리듬</label>
+      <input type="range" id="qaJumpP2" min="0" max="100" step="1" title="튀는 물결이 텍스트를 몇 번 훑는지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaJumpShuffleBtn" style="flex:1;">🎲 다시 튀기기</button>
+      <button type="button" class="qa-btn" id="qaJumpOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailPulse">
+    <div class="row">
+      <label>맥박 세기</label>
+      <input type="range" id="qaPulseP1" min="0" max="100" step="1" title="커졌다 작아지는 폭">
+    </div>
+    <div class="row">
+      <label>리듬</label>
+      <input type="range" id="qaPulseP2" min="0" max="100" step="1" title="파동이 몇 번 오가는지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaPulseShuffleBtn" style="flex:1;">🎲 다시 뛰기</button>
+      <button type="button" class="qa-btn" id="qaPulseOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailSway">
+    <div class="row">
+      <label>흔들림</label>
+      <input type="range" id="qaSwayP1" min="0" max="100" step="1" title="좌우로 밀리는 폭">
+    </div>
+    <div class="row">
+      <label>리듬</label>
+      <input type="range" id="qaSwayP2" min="0" max="100" step="1" title="흔들림 물결이 몇 번 굽이치는지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaSwayShuffleBtn" style="flex:1;">🎲 다시 흔들기</button>
+      <button type="button" class="qa-btn" id="qaSwayOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailWaddle">
+    <div class="row">
+      <label>뒤뚱임</label>
+      <input type="range" id="qaWaddleP1" min="0" max="100" step="1" title="기울고 들리는 정도">
+    </div>
+    <div class="row">
+      <label>리듬</label>
+      <input type="range" id="qaWaddleP2" min="0" max="100" step="1" title="옆 글자와 다른 타이밍처럼 보이는 정도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaWaddleShuffleBtn" style="flex:1;">🎲 다시 뒤뚱거리기</button>
+      <button type="button" class="qa-btn" id="qaWaddleOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailPopcorn">
+    <div class="row">
+      <label>튀는 정도</label>
+      <input type="range" id="qaPopcornP1" min="0" max="100" step="1" title="튀어 오르는 최대 높이">
+    </div>
+    <div class="row">
+      <label>빈도</label>
+      <input type="range" id="qaPopcornP2" min="0" max="100" step="1" title="높이 튀는 글자가 얼마나 많은지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaPopcornShuffleBtn" style="flex:1;">🎲 다시 튀기기</button>
+      <button type="button" class="qa-btn" id="qaPopcornOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailHiccup">
+    <div class="row">
+      <label>세기</label>
+      <input type="range" id="qaHiccupP1" min="0" max="100" step="1" title="딸꾹질할 때 튀는 정도">
+    </div>
+    <div class="row">
+      <label>빈도</label>
+      <input type="range" id="qaHiccupP2" min="0" max="100" step="1" title="딸꾹질하는 글자가 얼마나 자주 나오는지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaHiccupShuffleBtn" style="flex:1;">🎲 다시 딸꾹거리기</button>
+      <button type="button" class="qa-btn" id="qaHiccupOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailBreathe">
+    <div class="row">
+      <label>숨쉬는 세기</label>
+      <input type="range" id="qaBreatheP1" min="0" max="100" step="1" title="커졌다 작아지는 폭">
+    </div>
+    <div class="row">
+      <label>밝기 변화</label>
+      <input type="range" id="qaBreatheP2" min="0" max="100" step="1" title="흐려지는 정도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaBreatheShuffleBtn" style="flex:1;">🎲 다시 숨쉬기</button>
+      <button type="button" class="qa-btn" id="qaBreatheOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailFlicker">
+    <div class="row">
+      <label>흐려지는 정도</label>
+      <input type="range" id="qaFlickerP1" min="0" max="100" step="1" title="깜빡일 때 흐려지는 정도">
+    </div>
+    <div class="row">
+      <label>불규칙함</label>
+      <input type="range" id="qaFlickerP2" min="0" max="100" step="1" title="깜빡이는 글자가 얼마나 많은지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaFlickerShuffleBtn" style="flex:1;">🎲 다시 깜빡이기</button>
+      <button type="button" class="qa-btn" id="qaFlickerOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailChatter">
+    <div class="row">
+      <label>흔들림</label>
+      <input type="range" id="qaChatterP1" min="0" max="100" step="1" title="잘게 흔들리는 폭">
+    </div>
+    <div class="row">
+      <label>빠르기</label>
+      <input type="range" id="qaChatterP2" min="0" max="100" step="1" title="흔들림이 얼마나 잦고 격렬해 보이는지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaChatterShuffleBtn" style="flex:1;">🎲 다시 재잘거리기</button>
+      <button type="button" class="qa-btn" id="qaChatterOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailWalk">
+    <div class="row">
+      <label>보폭</label>
+      <input type="range" id="qaWalkP1" min="0" max="100" step="1" title="발을 내딛을 때 떠오르는 높이">
+    </div>
+    <div class="row">
+      <label>리듬</label>
+      <input type="range" id="qaWalkP2" min="0" max="100" step="1" title="걸음 물결이 얼마나 촘촘한지">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaWalkShuffleBtn" style="flex:1;">🎲 다시 걷기</button>
+      <button type="button" class="qa-btn" id="qaWalkOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
   <div class="qa-filter-detail hidden" id="qaDetailShy">
     <div class="row">
       <label>강도</label>
@@ -1488,6 +1723,245 @@
   </div>
 </div>
 
+<!-- 도형(모양) 전용 M버튼 팝업 — qaPopover(P)와 동일한 구조. 등록된 모양 전용 필터를 하나씩
+     <option>과 qa-filter-detail로 추가해나감 -->
+<div class="qa-popover hidden" id="qaMPopover">
+  <button type="button" class="font-popover-close" id="qaMPopoverCloseBtn" title="닫기">✕</button>
+  <button type="button" class="qa-btn" id="qaMDiceBtn" title="모양필터 1~3개를 랜덤으로 겹쳐 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <select id="qaMFilterSelect">
+    <option value="" disabled selected>모양 필터 선택...</option>
+    <option value="banknote">지폐/상품권 그물무늬</option>
+    <option value="geoMosaic">기하학 큐브 모자이크</option>
+    <option value="edgeWave">가장자리 물결무늬</option>
+    <option value="orbScatter">가장자리 원형 장식</option>
+  </select>
+
+  <div class="row hidden" id="qaMRollNav" style="align-items:center;gap:6px;">
+    <button type="button" class="qa-btn" id="qaMRollPrevBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">◀</button>
+    <span id="qaMRollCounter" style="flex:1;text-align:center;font-size:12px;color:#8a93a3;">1/3</span>
+    <button type="button" class="qa-btn" id="qaMRollNextBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">▶</button>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailOrbScatter">
+    <div class="row">
+      <label>장식 밀도</label>
+      <input type="range" id="qaOrbScatterIntensity" min="0" max="100" step="1" title="모서리 쪽 원·사각 장식의 개수/진하기(가운데는 항상 비워둠)">
+    </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaOrbScatterOpacity" min="0" max="100" step="1" title="이 필터 레이어의 투명도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaOrbScatterShuffleBtn" style="flex:1;">🎲 다시 뽑기 (색상·배치 새로고침)</button>
+      <button type="button" class="qa-btn" id="qaOrbScatterOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailEdgeWave">
+    <div class="row">
+      <label>선명도</label>
+      <input type="range" id="qaEdgeWaveIntensity" min="0" max="100" step="1" title="가장자리 물결선이 얼마나 두껍고 진하게 보일지(가운데는 항상 비워둠)">
+    </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaEdgeWaveOpacity" min="0" max="100" step="1" title="이 필터 레이어의 투명도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaEdgeWaveShuffleBtn" style="flex:1;">🎲 다시 뽑기 (색상·무늬 새로고침)</button>
+      <button type="button" class="qa-btn" id="qaEdgeWaveOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailGeoMosaic">
+    <div class="row">
+      <label>선명도</label>
+      <input type="range" id="qaGeoMosaicIntensity" min="0" max="100" step="1" title="무늬가 배경에 얼마나 은은하게/뚜렷하게 보일지(항상 수수한 톤 안에서 조절됨)">
+    </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaGeoMosaicOpacity" min="0" max="100" step="1" title="이 필터 레이어의 투명도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaGeoMosaicShuffleBtn" style="flex:1;">🎲 다시 뽑기 (색상 조합 새로고침)</button>
+      <button type="button" class="qa-btn" id="qaGeoMosaicOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaDetailBanknote">
+    <div class="row">
+      <label>촘촘함</label>
+      <input type="range" id="qaBanknoteDensity" min="0" max="100" step="1" title="그물 선의 촘촘한 정도(선 굵기는 항상 매우 얇게 고정)">
+    </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaBanknoteOpacity" min="0" max="100" step="1" title="이 필터 레이어의 투명도">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaBanknoteShuffleBtn" style="flex:1;">🎲 다시 뽑기 (색상·무늬 새로고침)</button>
+      <button type="button" class="qa-btn" id="qaBanknoteOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 도형 전용 J버튼 팝업 — P의 공통필터(그림자/외부광선/그라디언트/엠보스/테두리/배경) 6개만
+     골라 도형에 적용하는 창. 인터페이스는 P와 비슷하지만 랜덤(주사위) 기능은 없음. -->
+<div class="qa-popover hidden" id="qaJPopover">
+  <button type="button" class="font-popover-close" id="qaJPopoverCloseBtn" title="닫기">✕</button>
+  <select id="qaJFilterSelect">
+    <option value="" disabled selected>공통필터 선택...</option>
+    <option value="shadow">그림자</option>
+    <option value="glow">외부광선</option>
+    <option value="gradient">그라디언트</option>
+    <option value="emboss">경사와 엠보스</option>
+    <option value="outline">테두리</option>
+    <option value="bg">배경</option>
+  </select>
+
+  <div class="qa-filter-detail hidden" id="qaJDetailShadow">
+    <div class="row">
+      <label>흐림</label>
+      <input type="range" id="qaJShadowBlur" min="0" max="40" step="1">
+    </div>
+    <div class="row">
+      <label>거리</label>
+      <input type="range" id="qaJShadowDist" min="0" max="40" step="1">
+    </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaJShadowOpacity" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaJShadowColor" title="그림자 색상"></div>
+      <button type="button" class="qa-btn" id="qaJShadowOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaJDetailGlow">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaJGlowBlur" min="0" max="50" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaJGlowColor" title="외부광선 색상"></div>
+      <button type="button" class="qa-btn" id="qaJGlowOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaJDetailGradient">
+    <div class="row">
+      <label>색상1</label>
+      <div class="cmyk-picker mini" id="qaJGradColor1" title="그라디언트 시작 색상"></div>
+      <label style="width:auto;margin-left:6px;">색상2</label>
+      <div class="cmyk-picker mini" id="qaJGradColor2" title="그라디언트 끝 색상"></div>
+    </div>
+    <div class="row">
+      <label>각도</label>
+      <input type="range" id="qaJGradAngle" min="0" max="360" step="1">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaJGradOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaJDetailEmboss">
+    <div class="row">
+      <label>깊이</label>
+      <input type="range" id="qaJEmbossDepth" min="0" max="20" step="0.5">
+    </div>
+    <div class="row">
+      <label>각도</label>
+      <input type="range" id="qaJEmbossAngle" min="0" max="360" step="1">
+    </div>
+    <div class="row">
+      <label>밝은면</label>
+      <div class="cmyk-picker mini" id="qaJEmbossHighlight" title="하이라이트(밝은 쪽) 색상"></div>
+      <label style="width:auto;margin-left:6px;">어두운면</label>
+      <div class="cmyk-picker mini" id="qaJEmbossShadow" title="그림자(어두운 쪽) 색상"></div>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaJEmbossOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaJDetailOutline">
+    <div class="row">
+      <label>두께</label>
+      <input type="range" id="qaJOutlineWidth" min="0" max="20" step="0.5">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaJOutlineColor" title="테두리 색상"></div>
+      <button type="button" class="qa-btn" id="qaJOutlineOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaJDetailBg">
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaJBgColor" title="배경(채우기) 색상"></div>
+      <button type="button" class="qa-btn" id="qaJBgOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 캔버스 전체를 채우는 배경 만들기 모달 — 캔버스 정가운데에 뜸 -->
+<div class="qa-popover hidden" id="bgFillModal" style="width:220px;">
+  <button type="button" class="font-popover-close" id="bgFillModalCloseBtn" title="닫기">✕</button>
+  <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 2px;">캔버스 바탕 만들기</div>
+  <button type="button" class="qa-btn" id="bgFillWhiteBtn" style="padding:10px 6px;">⬜ 바탕생성 (흰 바탕)</button>
+  <button type="button" class="qa-btn" id="bgFillRandomBtn" style="padding:10px 6px;">🎲 랜덤 바탕생성</button>
+  <button type="button" class="qa-btn" id="bgFillRandomColorBtn" style="padding:10px 6px;">🌈 랜덤 색상 생성</button>
+  <div style="text-align:center;font-size:11px;color:#8a93a3;">랜덤은 누를 때마다 새로 바뀌어요</div>
+</div>
+
+<!-- 둥근 사각형 만들기 모달 — 캔버스 정가운데에 뜸 -->
+<!-- 모양 만들기 모달 — 캔버스 정가운데에 뜸. 사각형/둥근사각형/원/삼각형/별/하트 중 골라서 클릭 즉시 생성 -->
+<div class="qa-popover hidden" id="shapePickerModal" style="width:220px;cursor:default;">
+  <button type="button" class="font-popover-close" id="shapePickerModalCloseBtn" title="닫기">✕</button>
+
+  <div id="shapePickerGridView">
+    <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 8px;">모양 만들기</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button type="button" class="qa-btn" id="pickRectBtn" style="padding:14px 6px;line-height:1.6;">▭<br>사각형</button>
+      <button type="button" class="qa-btn" id="pickRoundRectBtn" style="padding:14px 6px;line-height:1.6;">▢<br>둥근사각형</button>
+      <button type="button" class="qa-btn" id="pickCircleBtn" style="padding:14px 6px;line-height:1.6;">◯<br>원</button>
+      <button type="button" class="qa-btn" id="pickTriangleBtn" style="padding:14px 6px;line-height:1.6;">△<br>삼각형</button>
+      <button type="button" class="qa-btn" id="pickStarBtn" style="padding:14px 6px;line-height:1.6;">★<br>별</button>
+      <button type="button" class="qa-btn" id="pickHeartBtn" style="padding:14px 6px;line-height:1.6;">♥<br>하트</button>
+    </div>
+  </div>
+
+  <div id="shapePickerRoundRectView" class="hidden">
+    <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 8px;">둥근 사각형 만들기</div>
+    <div class="row">
+      <label>가로 길이</label>
+      <input type="number" id="roundRectWidthInput" min="10" max="2000" step="1" value="180">
+    </div>
+    <div class="row">
+      <label>세로 길이</label>
+      <input type="number" id="roundRectHeightInput" min="10" max="2000" step="1" value="120">
+    </div>
+    <div class="row">
+      <label>둥근 정도</label>
+      <input type="number" id="roundRectRadiusInput" min="0" max="300" step="1" value="20">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="roundRectBackBtn" style="flex:0 0 auto;width:auto;padding:8px 10px;">◀ 뒤로</button>
+      <button type="button" class="qa-btn" id="roundRectCreateBtn" style="flex:1;">✓ 생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- 랜덤모양 생성 모달 — 캔버스 정가운데에 뜸 -->
+<div class="qa-popover hidden" id="randomShapeModal" style="width:200px;">
+  <button type="button" class="font-popover-close" id="randomShapeModalCloseBtn" title="닫기">✕</button>
+  <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 2px;">랜덤모양 생성</div>
+  <button type="button" class="qa-btn" id="randomShapeGenBtn" style="padding:10px 6px;">🎲 랜덤생성</button>
+  <div style="text-align:center;font-size:11px;color:#8a93a3;">누를 때마다 새 모양·색상으로 바뀌어요</div>
+</div>
+
 <div class="font-popover hidden" id="fontPopover">
   <button type="button" class="font-popover-close" id="fontPopoverCloseBtn" title="닫기">✕</button>
   <div class="font-popover-top-row">
@@ -1509,7 +1983,7 @@
     <option value="Arial">Arial</option>
   </select>
   <div class="row" style="gap:8px;">
-    <input type="number" id="floatingFontSizeInput" min="4" max="600" step="1" title="글자 크기" style="width:52px;flex:0 0 52px;">
+    <input type="number" id="floatingFontSizeInput" min="10" max="600" step="1" title="글자 크기" style="width:52px;flex:0 0 52px;">
     <input type="range" id="floatingOpacityInput" class="opacity-gauge" min="0" max="1" step="0.02" title="투명도" style="flex:1;margin:0;">
   </div>
 
@@ -1547,8 +2021,16 @@
 <script src="ecopro3.js" defer></script>
 <script src="ecopro3table.js" defer></script>
 <script src="ecopro3c.js" defer></script>
+<script src="ecopro3m.js" defer></script>
+<script src="ecopro3j.js" defer></script>
+<script src="ecopro3bg.js" defer></script>
+<script src="ecopro3shape.js" defer></script>
+<script src="ecopro3imgtool.js" defer></script>
+<script src="ecopro3eyedrop.js" defer></script>
 <script src="ecopro3text.js" defer></script>
 <script src="ecopro3map.js" defer></script>
+<script src="ecopro3logo.js" defer></script>
+<script src="ecopro3menu.js" defer></script>
 <script src="ecopro3l.js" defer></script>
 </body>
 </html>
