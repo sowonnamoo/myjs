@@ -101,8 +101,8 @@
     const cu = fabric.controlsUtils || {};
     fabric.Object.prototype.controls.mtr = new fabric.Control({
       x: 0,
-      y: -0.5,
-      offsetY: -36,
+      y: 0.5,
+      offsetY: 36,
       withConnection: true,
       cursorStyle: 'grab',
       cursorStyleHandler: cu.rotationStyleHandler,
@@ -150,7 +150,9 @@
       render: renderTButton,
       mouseUpHandler: function(eventData, transformData){
         const target = transformData && transformData.target;
-        if (target) openFontPopover(target);
+        if (!target) return true;
+        if (!fontPopover.classList.contains('hidden')) { hideFontPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
+        openFontPopover(target);
         return true;
       }
     });
@@ -192,6 +194,36 @@
   EP.applyPopoverRotationStyle = applyPopoverRotationStyle;
   EP.rotatablePopovers = EP.rotatablePopovers || [];
   EP.registerRotatablePopover = function(el){ EP.rotatablePopovers.push(el); };
+
+  /* ============================================================
+     여러 필터 팝업(T 글꼴 / P 텍스트필터 / M 도형필터 / J 공통필터 / Z 이미지블렌드필터)이
+     동시에 열려있을 때 서로 겹쳐서 뒤에 있는 창을 가리지 않도록, "이미 열려있는 다른 팝업과
+     겹치면 그 옆으로 밀어서" 위치를 잡아주는 범용 유틸. 각 팝업 파일에서
+     EP.registerFilterPopover(el)로 자기 팝업 엘리먼트를 등록해두면, 위치를 잡을 때
+     EP.findNonOverlappingPosition(el, left, top, pw, ph)를 불러써서 자동으로 피해감.
+  ============================================================ */
+  EP.filterPopovers = EP.filterPopovers || [];
+  EP.registerFilterPopover = function(el){ EP.filterPopovers.push(el); };
+  EP.findNonOverlappingPosition = function(popoverEl, left, top, pw, ph){
+    const others = EP.filterPopovers.filter(function(p){ return p && p !== popoverEl && !p.classList.contains('hidden'); });
+    if (!others.length) return { left, top };
+    function collidesWithAny(l, t){
+      return others.some(function(o){
+        const r = o.getBoundingClientRect();
+        return !(l + pw <= r.left || l >= r.right || t + ph <= r.top || t >= r.bottom);
+      });
+    }
+    if (!collidesWithAny(left, top)) return { left, top };
+    // 겹치면: 지금 열려있는 다른 팝업들 중 가장 오른쪽 끝 바로 옆으로 붙여서 다시 시도.
+    // 그래도 겹치면(팝업이 3개 이상 겹쳐있는 경우 등) 한 번 더 오른쪽으로 밀어서 재시도.
+    for (let attempt = 0; attempt < others.length + 1; attempt++) {
+      const rightmost = others.reduce(function(acc, o){ return Math.max(acc, o.getBoundingClientRect().right); }, left);
+      left = rightmost + 12;
+      if (!collidesWithAny(left, top)) break;
+    }
+    return { left, top };
+  };
+
   // 캔버스 회전 버튼을 누른 그 순간, 지금 열려있는 팝업(들)도 즉시 같은 각도로 재배치
   EP.refreshRotatablePopovers = function(){
     EP.rotatablePopovers.forEach(function(el){
@@ -282,24 +314,6 @@
     const pw = fontPopover.offsetWidth || 210;
     const ph = fontPopover.offsetHeight || 110;
 
-    // P(필터) 창이 먼저 열려있으면: 그 왼쪽에 나란히 붙이고,
-    // 왼쪽 공간이 부족하면 바로 아래로, 그마저 부족하면 위로 배치 (드래그해서 옮긴 위치 기준)
-    if (EP.qaPopover && !EP.qaPopover.classList.contains('hidden')) {
-      const qRect = EP.qaPopover.getBoundingClientRect();
-      let left = qRect.left - pw - 12;
-      let top = qRect.top;
-      if (left < 8) {
-        left = qRect.left;
-        top = qRect.bottom + 12;
-        if (top + ph > window.innerHeight - 8) top = qRect.top - ph - 12;
-      }
-      const r1 = clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-      fontPopover.style.left = r1.left + 'px';
-      fontPopover.style.top = r1.top + 'px';
-      applyPopoverRotationStyle(fontPopover);
-      return;
-    }
-
     const br = target.getBoundingRect(true, true); // 캔버스 논리좌표(줌 반영 전)
     const canvasRect = canvas.upperCanvasEl.getBoundingClientRect();
     const scaleX = canvasRect.width / canvas.getWidth();
@@ -314,6 +328,11 @@
     let left = objLeft + objW / 2 - pw / 2;
     let top = objTop + objH + 14;
     if (top + ph > window.innerHeight - 8) top = objTop - ph - 14; // 아래 공간 부족하면 위쪽에 표시
+
+    // P/M/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
+    const avoided = EP.findNonOverlappingPosition(fontPopover, left, top, pw, ph);
+    left = avoided.left; top = avoided.top;
+
     const r2 = clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     fontPopover.style.left = r2.left + 'px';
     fontPopover.style.top = r2.top + 'px';
@@ -699,7 +718,7 @@
      - 항상 canvas 맨 위에 떠 있고, 선택/저장 대상에서는 제외됨
   ============================================================ */
   let guideRect, outerGuideRect, gridGuide, guideState = 0; // 0=붉은 박스만, 1=붉은 박스+모눈, 2=숨김
-  const GRID_SPACING = 5; // 모눈 간격(px)
+  const GRID_SPACING = 10; // 모눈 간격(px) — 요청대로 기존(5)의 2배로 넓힘
 
   function buildGridGuide(){
     const padding = CANVAS_W * 0.02;
@@ -709,7 +728,7 @@
     for (let y = 0; y <= gh; y += GRID_SPACING) d += 'M0,' + y + ' L' + gw + ',' + y + ' ';
     gridGuide = new fabric.Path(d, {
       left: padding, top: padding,
-      fill: '', stroke: 'rgba(255,0,0,0.28)', strokeWidth: 0.5,
+      fill: '', stroke: 'rgba(62,214,163,0.4)', strokeWidth: 0.5, // 민트색 격자
       selectable: false, evented: false, visible: guideState === 1
     });
     gridGuide.isGuide = true;
@@ -1317,11 +1336,18 @@
       grayscale: hasGrayscaleFilter(obj)
     };
     const next = Object.assign(cur, opts);
+    // Z버튼(이미지 전용 블렌드/투과 필터)이 이미 걸려있다면 배열을 통째로 새로 만들 때 같이
+    // 사라지지 않도록 미리 챙겨뒀다가 맨 뒤에 다시 넣어줌. RemoveColor는 흰색투과·지정색투과가
+    // 각각 별개 인스턴스로 동시에 걸려있을 수 있어서 전부(배열로) 챙김.
+    const blendColorFilter = obj.filters && obj.filters.find(f => f && f.type === 'BlendColor');
+    const removeColorFilters = (obj.filters && obj.filters.filter(f => f && f.type === 'RemoveColor')) || [];
     const filters = [];
     if (next.grayscale) filters.push(new fabric.Image.filters.Grayscale());
     if (next.brightness) filters.push(new fabric.Image.filters.Brightness({ brightness: next.brightness }));
     if (next.contrast) filters.push(new fabric.Image.filters.Contrast({ contrast: next.contrast }));
     if (next.saturation) filters.push(new fabric.Image.filters.Saturation({ saturation: next.saturation }));
+    if (blendColorFilter) filters.push(blendColorFilter);
+    filters.push(...removeColorFilters);
     obj.filters = filters;
     obj.applyFilters();
     canvas.requestRenderAll();
@@ -1664,7 +1690,6 @@
   function setTextToolMode(active){
     textToolActive = active;
     addTextBtn.classList.toggle('active', active);
-    document.getElementById('selectToolBtn').classList.toggle('active', !active);
     canvas.selection = !active;
     canvas.skipTargetFind = active;
     canvas.discardActiveObject();
@@ -1752,19 +1777,29 @@
       roundRectRadiusInput.value = 20;
     }
 
+    // 모양은 항상 캔버스 정가운데(CANVAS_W/2, CANVAS_H/2)에 만들어지므로, 모달을 그 왼쪽에
+    // 자리잡게 함(요청대로). 처음 열 때만 이 위치로 잡아주고, 그 뒤로는 사용자가 마우스로
+    // 드래그해서 옮긴 위치를 그대로 유지함(다른 팝업들과 동일한 관례).
     function positionShapePickerModal(){
       shapePickerModal.classList.remove('hidden');
       const mw = shapePickerModal.offsetWidth || 220;
       const mh = shapePickerModal.offsetHeight || 200;
       const canvasRect = canvas.upperCanvasEl.getBoundingClientRect();
-      const left = canvasRect.left + canvasRect.width / 2 - mw / 2;
-      const top = canvasRect.top + canvasRect.height / 2 - mh / 2;
+      const centerLeft = canvasRect.left + canvasRect.width / 2;
+      const centerTop = canvasRect.top + canvasRect.height / 2;
+      let left = centerLeft - mw - 16; // 정가운데(=모양이 생길 자리) 왼쪽에 여백을 두고 배치
+      let top = centerTop - mh / 2;
+      if (left < 8) left = centerLeft + 16; // 화면이 좁아서 왼쪽 공간이 부족하면 오른쪽으로 대체
       const r = EP.clampPopoverRect ? EP.clampPopoverRect(left, top, mw, mh, EP.canvasRotationDeg) : { left, top };
       shapePickerModal.style.left = r.left + 'px';
       shapePickerModal.style.top = r.top + 'px';
       if (EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(shapePickerModal);
     }
     function hideShapePickerModal(){ shapePickerModal.classList.add('hidden'); showGridView(); }
+
+    // 마우스로 클릭+드래그해서 모달창을 원하는 위치로 옮길 수 있게 함(다른 팝업들과 동일)
+    if (EP.makeDraggablePopover) EP.makeDraggablePopover(shapePickerModal);
+    if (EP.registerRotatablePopover) EP.registerRotatablePopover(shapePickerModal);
 
     document.getElementById('openShapePickerBtn').addEventListener('click', () => {
       if (penActive) setPenMode(false);
@@ -1776,7 +1811,10 @@
 
     function addShapeObject(obj){
       canvas.add(obj); bringGuideToFront(); canvas.setActiveObject(obj); canvas.renderAll();
-      hideShapePickerModal();
+      // (예전엔 여기서 모양을 만들 때마다 hideShapePickerModal()로 창을 자동으로 닫았는데,
+      // 계속 열어둔 채로 여러 모양을 연달아 만들 수 있게 요청대로 제거함 — 닫는 건 모달의
+      // ✕ 버튼(shapePickerModalCloseBtn)을 직접 눌러야만 닫히도록 함. history는
+      // canvas.on('object:added', pushHistory)에서 이미 자동으로 기록되므로 따로 안 부름)
     }
 
     document.getElementById('pickRectBtn').addEventListener('click', () => {
@@ -1869,7 +1907,6 @@
   function setPenMode(active){
     penActive = active;
     penToolBtn.classList.toggle('active', active);
-    document.getElementById('selectToolBtn').classList.toggle('active', !active);
     canvas.selection = !active;
     canvas.skipTargetFind = active;
     canvas.discardActiveObject();
@@ -2478,6 +2515,26 @@
     saveBtn.textContent = originalLabel;
   });
 
+  // 프로젝트 JSON(파일로 직접 열었든, URL 쿼리로 가져왔든)을 캔버스에 적용하는 공용 로직.
+  // ※ project.designData 안의 각 항목은 loadCanvasObjects가 기대하는 { objects, background }
+  //   형태여야 함(저장 시 saveProjectBtn이 만드는 포맷과 동일).
+  function applyProjectData(project, onDone){
+    if (project && project.designData) {
+      for (let i = 0; i < Math.min(count, project.designData.length); i++) {
+        designData[i] = project.designData[i];
+        if (project.designNames && project.designNames[i] != null) {
+          designNames[i] = project.designNames[i];
+        }
+      }
+    }
+    currentIdx = 0; currentSide = 'front';
+    loadCanvasObjects(designData[currentIdx][currentSide], () => {
+      resetHistory();
+      renderTabs();
+      if (onDone) onDone();
+    });
+  }
+
   document.getElementById('projectInput').addEventListener('change', function(e){
     const file = e.target.files[0];
     if (!file) return;
@@ -2485,19 +2542,7 @@
     reader.onload = function(ev){
       try {
         const project = JSON.parse(ev.target.result);
-        if (project.designData) {
-          for (let i = 0; i < Math.min(count, project.designData.length); i++) {
-            designData[i] = project.designData[i];
-            if (project.designNames && project.designNames[i] != null) {
-              designNames[i] = project.designNames[i];
-            }
-          }
-        }
-        currentIdx = 0; currentSide = 'front';
-        loadCanvasObjects(designData[currentIdx][currentSide], () => {
-          resetHistory();
-          renderTabs();
-        });
+        applyProjectData(project);
       } catch (err) {
         alert('프로젝트 파일을 여는 중 문제가 발생했습니다. 파일 형식을 확인해주세요.');
       }
@@ -2507,13 +2552,39 @@
   });
 
   /* ============================================================
+     13-1. URL 쿼리로 프로젝트 JSON을 지정해서 시작 시 자동으로 불러오기
+     예) editor.html?project=https://example.com/mymy.json
+     - "project" 쿼리에 JSON 파일의 URL을 넣어두면, 편집기가 열리자마자 그 파일을 fetch해서
+       그대로 편집 상태로 올려놓음. 에디터 소스 자체에는 어떤 프로젝트 데이터도 들어있지 않고
+       매번 그 URL의 최신 내용을 받아오므로, 편집기 파일 용량은 그대로 작게 유지하면서
+       쿼리의 project 값만 바꿔서 서로 다른 저장물을 열 수 있음.
+     - project JSON을 올려두는 서버(또는 스토리지)가 CORS(Access-Control-Allow-Origin)를
+       허용해야 브라우저에서 fetch가 성공함. 같은 도메인에 두거나, CORS를 허용하는 스토리지
+       (예: 대부분의 공개 오브젝트 스토리지·CDN)를 쓰면 됨.
+  ============================================================ */
+  if (orderData.project) {
+    fetch(orderData.project)
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(project => applyProjectData(project))
+      .catch(err => {
+        console.error('프로젝트 자동 불러오기 실패:', err);
+        alert('URL로 지정된 프로젝트 파일을 불러오지 못했습니다.\n(' + (err && err.message ? err.message : err) + ')');
+      });
+  }
+
+  /* ============================================================
      14. 속성 패널 — 선택 오브젝트에 따라 표시 전환
   ============================================================ */
   const sidePanelEl = document.getElementById('sidePanel');
   const noSelectionSection = document.getElementById('noSelectionSection');
   const selectionSections = document.getElementById('selectionSections');
+  const selectToolBtn = document.getElementById('selectToolBtn');
   const textSection = document.getElementById('textSection');
   const shapeSection = document.getElementById('shapeSection');
+  const fillColorRow = document.getElementById('fillColorRow');
   const imageSection = document.getElementById('imageSection');
 
   const textContentInput = document.getElementById('textContentInput');
@@ -2606,6 +2677,30 @@
       if (h < 0) h += 360;
     }
     return { h, s, v };
+  }
+
+  // CMYK 컬러 팝오버가 화면(뷰포트) 밖으로 벗어나지 않게 좌우/상하 위치를 보정함.
+  // - 가로: 오른쪽으로 넘치면 스와치 오른쪽 끝에 맞춰 왼쪽으로 당기고, 그래도 넘치면 화면 안쪽으로 클램프
+  // - 세로: 스와치 아래쪽에 붙일 공간이 부족하면 스와치 위쪽으로 띄우고, 그래도 부족하면 화면 안쪽으로 클램프
+  function positionCmykPopover(popover, anchorEl){
+    const margin = 8;
+    const r = anchorEl.getBoundingClientRect();
+    const pw = popover.offsetWidth || 210;
+    const ph = popover.offsetHeight || 320;
+
+    let left = r.left;
+    if (left + pw > window.innerWidth - margin) left = r.right - pw;
+    left = Math.min(Math.max(left, margin), Math.max(margin, window.innerWidth - pw - margin));
+
+    let top = r.bottom + 6;
+    if (top + ph > window.innerHeight - margin) {
+      const above = r.top - 6 - ph;
+      top = above >= margin ? above : (r.bottom + 6); // 위쪽도 부족하면 일단 아래쪽 기준으로 두고 다음 줄에서 최종 클램프
+    }
+    top = Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - ph - margin));
+
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
   }
 
   function initCmykPicker(el){
@@ -2831,15 +2926,13 @@
       document.querySelectorAll('.cmyk-popover').forEach(p => { if (p !== popover) p.classList.add('hidden'); });
       const willOpen = popover.classList.contains('hidden');
       if (willOpen) {
-        const r = swatch.getBoundingClientRect();
-        let left = r.left;
-        if (left + 216 > window.innerWidth - 8) left = window.innerWidth - 224;
-        popover.style.left = Math.max(8, left) + 'px';
-        popover.style.top = (r.bottom + 6) + 'px';
+        popover.classList.remove('hidden'); // 실제 크기를 재려면 먼저 보이는 상태여야 함(가려진 채로는 0으로 측정됨)
         drawHueStrip();
         drawSvSquare();
+        positionCmykPopover(popover, swatch);
+      } else {
+        popover.classList.add('hidden');
       }
-      popover.classList.toggle('hidden');
     });
     popover.addEventListener('click', (e) => e.stopPropagation());
     document.addEventListener('click', () => popover.classList.add('hidden'));
@@ -2886,30 +2979,45 @@
       noSelectionSection.classList.remove('hidden');
       selectionSections.classList.add('hidden');
       deleteBtn.disabled = true;
+      selectToolBtn.classList.remove('sel-active'); // 우측 패널이 "선택 안 함" 상태 -> 흰색
       return;
     }
     panelUpdating = true;
     noSelectionSection.classList.add('hidden');
     selectionSections.classList.remove('hidden');
     deleteBtn.disabled = false;
+    selectToolBtn.classList.add('sel-active'); // 우측 패널에 오브젝트 속성이 뜸 = 선택 활성화 -> 회색
 
-    const textLike = isTextObject(obj);
+    // 드래그로 여러 오브젝트를 묶어 선택(activeSelection)했거나 "묶기"로 그룹화한 경우,
+    // 그 안이 전부 텍스트라면 우측 패널도 "텍스트" 취급해서 뜨게 함(색상·폰트 등을 한 번에
+    // 공통 적용할 수 있도록). 섞여있으면(텍스트+도형 등) 기존처럼 도형 패널을 보여줌.
+    const isGroupLike = obj.type === 'activeSelection' || obj.type === 'group';
+    const groupChildren = isGroupLike ? obj.getObjects().filter(o => !o.isGuide) : [];
+    const isMultiTextSelection = isGroupLike && groupChildren.length > 0 && groupChildren.every(isTextObject);
+    const textAnchor = isMultiTextSelection ? groupChildren[0] : obj; // 표시값은 첫 번째 선택된 텍스트 기준
+
+    const textLike = isTextObject(obj) || isMultiTextSelection;
     const imageLike = isImageObject(obj);
     textSection.classList.toggle('hidden', !textLike);
     shapeSection.classList.toggle('hidden', textLike);
     imageSection.classList.toggle('hidden', !imageLike);
+    fillColorRow.classList.toggle('hidden', imageLike); // 이미지는 채우기색이 의미 없으므로 숨김(테두리는 계속 노출)
 
     if (textLike) {
-      textContentInput.value = obj.text || '';
-      fontFamilySelect.value = obj.fontFamily || 'Pretendard';
-      fontSizeInput.value = Math.round(obj.fontSize || 40);
-      textColorInput.value = toHex(obj.fill) || '#222222';
-      boldBtn.classList.toggle('on', obj.fontWeight === 'bold' || obj.fontWeight >= 700);
-      italicBtn.classList.toggle('on', obj.fontStyle === 'italic');
-      underlineBtn.classList.toggle('on', !!obj.underline);
+      // "내용"은 텍스트마다 다른 게 당연하므로, 여러 개를 한꺼번에 선택했을 땐 편집을 막음
+      // (그대로 두면 입력한 글자로 선택된 텍스트 전부가 똑같이 덮어써지는 문제가 생김)
+      textContentInput.disabled = isMultiTextSelection;
+      textContentInput.value = isMultiTextSelection ? '' : (textAnchor.text || '');
+      textContentInput.placeholder = isMultiTextSelection ? '텍스트를 여러 개 선택 중 (내용은 개별 수정)' : '더블클릭으로도 수정 가능';
+      fontFamilySelect.value = textAnchor.fontFamily || 'Pretendard';
+      fontSizeInput.value = Math.round(textAnchor.fontSize || 40);
+      textColorInput.value = toHex(textAnchor.fill) || '#222222';
+      boldBtn.classList.toggle('on', textAnchor.fontWeight === 'bold' || textAnchor.fontWeight >= 700);
+      italicBtn.classList.toggle('on', textAnchor.fontStyle === 'italic');
+      underlineBtn.classList.toggle('on', !!textAnchor.underline);
       [alignLeftBtn, alignCenterBtn, alignRightBtn].forEach(b => b.classList.remove('on'));
-      if (obj.textAlign === 'center') alignCenterBtn.classList.add('on');
-      else if (obj.textAlign === 'right') alignRightBtn.classList.add('on');
+      if (textAnchor.textAlign === 'center') alignCenterBtn.classList.add('on');
+      else if (textAnchor.textAlign === 'right') alignRightBtn.classList.add('on');
       else alignLeftBtn.classList.add('on');
     } else {
       fillColorInput.value = toHex(obj.fill) || '#3498db';
@@ -2961,23 +3069,33 @@
     if (panelUpdating) return;
     const obj = canvas.getActiveObject();
     if (!obj || obj.isGuide) return;
-    fn(obj);
+    if (obj.type === 'activeSelection' || obj.type === 'group') {
+      // fabric의 Group/ActiveSelection은 set()을 호출해도 자식 오브젝트에 전파되지 않으므로
+      // (그룹 자체에만 값이 설정돼서 실제로는 아무 변화가 없음), 안의 오브젝트 하나하나에
+      // 직접 적용해야 함 — 이렇게 해야 여러 개 선택한 상태에서 색상/폰트 등이 공통 적용됨
+      obj.getObjects().forEach(o => { if (!o.isGuide) fn(o); });
+    } else {
+      fn(obj);
+    }
     canvas.renderAll();
   }
 
   textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));
-  fontFamilySelect.addEventListener('change', () => withActive(o => o.set('fontFamily', fontFamilySelect.value)));
-  fontSizeInput.addEventListener('input', () => withActive(o => o.set('fontSize', Math.max(10, parseInt(fontSizeInput.value, 10) || 10))));
+  fontFamilySelect.addEventListener('change', () => withActive(o => { if (isTextObject(o)) o.set('fontFamily', fontFamilySelect.value); }));
+  fontSizeInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('fontSize', Math.max(10, parseInt(fontSizeInput.value, 10) || 10)); }));
   fontSizeInput.addEventListener('change', () => { fontSizeInput.value = Math.max(10, parseInt(fontSizeInput.value, 10) || 10); });
-  textColorInput.addEventListener('input', () => withActive(o => o.set('fill', textColorInput.value)));
+  textColorInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('fill', textColorInput.value); }));
 
-  boldBtn.addEventListener('click', () => withActive(o => { o.set('fontWeight', (o.fontWeight === 'bold' || o.fontWeight >= 700) ? 'normal' : 'bold'); updateSelectionPanel(); }));
-  italicBtn.addEventListener('click', () => withActive(o => { o.set('fontStyle', o.fontStyle === 'italic' ? 'normal' : 'italic'); updateSelectionPanel(); }));
-  underlineBtn.addEventListener('click', () => withActive(o => { o.set('underline', !o.underline); updateSelectionPanel(); }));
+  boldBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; o.set('fontWeight', (o.fontWeight === 'bold' || o.fontWeight >= 700) ? 'normal' : 'bold'); }));
+  italicBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; o.set('fontStyle', o.fontStyle === 'italic' ? 'normal' : 'italic'); }));
+  underlineBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; o.set('underline', !o.underline); }));
 
-  alignLeftBtn.addEventListener('click', () => withActive(o => { o.set('textAlign', 'left'); updateSelectionPanel(); }));
-  alignCenterBtn.addEventListener('click', () => withActive(o => { o.set('textAlign', 'center'); updateSelectionPanel(); }));
-  alignRightBtn.addEventListener('click', () => withActive(o => { o.set('textAlign', 'right'); updateSelectionPanel(); }));
+  alignLeftBtn.addEventListener('click', () => withActive(o => { if (isTextObject(o)) o.set('textAlign', 'left'); }));
+  alignCenterBtn.addEventListener('click', () => withActive(o => { if (isTextObject(o)) o.set('textAlign', 'center'); }));
+  alignRightBtn.addEventListener('click', () => withActive(o => { if (isTextObject(o)) o.set('textAlign', 'right'); }));
+  [boldBtn, italicBtn, underlineBtn, alignLeftBtn, alignCenterBtn, alignRightBtn].forEach(b => {
+    b.addEventListener('click', updateSelectionPanel); // 버튼 눌린(on) 표시가 최신 상태를 반영하도록
+  });
 
   fillColorInput.addEventListener('input', () => withActive(o => o.set('fill', fillColorInput.value)));
   strokeColorInput.addEventListener('input', () => withActive(o => o.set('stroke', strokeColorInput.value)));
@@ -3052,6 +3170,7 @@
   EP.importSvgIntoCanvas = importSvgIntoCanvas;
   EP.isTextObject = isTextObject;
   EP.isShapeObject = isShapeObject;
+  EP.isImageObject = isImageObject;
   EP.textBoxesFromTarget = textBoxesFromTarget;
   EP.qaTargetsFromTarget = qaTargetsFromTarget;
   EP.toHex = toHex;
@@ -3063,5 +3182,6 @@
   EP.hexToRgb = hexToRgb;
   EP.fontPopover = fontPopover;
   EP.registerRotatablePopover(fontPopover);
+  EP.registerFilterPopover(fontPopover);
 
 })();

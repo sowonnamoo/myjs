@@ -3,16 +3,18 @@
    P(텍스트 전용 큰 필터 목록)·M(도형/텍스트 모양필터)과 완전히 별개의 컨트롤/팝업/상태를 가짐.
    인터페이스 구조(닫기버튼 + 드롭다운 + 상세조절 + 끄기버튼, 드래그·회전 가능한 팝업)는 P와
    비슷하지만, 이 버튼은 "랜덤 적용(주사위)" 기능이 없음 — 사용자가 직접 하나씩 골라 적용함.
-   도형(사각형/원/삼각형/펜도구 패스)과 텍스트 오브젝트 둘 다에 붙음 — 도형에선 M 버튼과,
-   텍스트에선 P 버튼과 같은 줄에 나란히 뜸(둘 다 P/M 자리 바로 왼쪽인 -46 위치). */
+   도형(사각형/원/삼각형/펜도구 패스)·텍스트·이미지 세 종류 모두에 붙음 — 도형에선 M 버튼과,
+   텍스트에선 P 버튼과, 이미지에선 Z 버튼(ecopro3z.js, 이미지 전용 블렌드필터)과 같은 줄에
+   나란히 뜸(모두 P/M 자리 바로 왼쪽인 -46 위치). */
 (function(){
   "use strict";
   var EP = window.EP = window.EP || {};
   EP.qaJTargets = [];
 
   var isShapeObject = EP.isShapeObject;
-  // J버튼이 이제 도형뿐 아니라 텍스트 오브젝트에도 붙으므로, 대상 판별을 도형|텍스트 둘 다로 넓힘
-  function isShapeOrText(o){ return isShapeObject(o) || (EP.isTextObject && EP.isTextObject(o)); }
+  var isImageObject = EP.isImageObject || function(o){ return !!o && o.type === 'image'; };
+  // J버튼이 도형·텍스트뿐 아니라 이미지 오브젝트에도 붙으므로, 대상 판별을 셋 다로 넓힘
+  function isShapeOrText(o){ return isShapeObject(o) || isImageObject(o) || (EP.isTextObject && EP.isTextObject(o)); }
   var isTableRelatedTarget = EP.isTableRelatedTarget || function(){ return false; };
 
   /* ============================================================
@@ -49,7 +51,9 @@
     render: renderJButton,
     mouseUpHandler: function(eventData, transformData){
       const target = transformData && transformData.target;
-      if (target && !isTableRelatedTarget(target)) openQaJPopover(target);
+      if (!target || isTableRelatedTarget(target)) return true;
+      if (!qaJPopover.classList.contains('hidden')) { hideQaJPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
+      openQaJPopover(target);
       return true;
     }
   });
@@ -61,6 +65,8 @@
   fabric.Path.prototype.controls = Object.assign({}, fabric.Path.prototype.controls, { qj: jControl });
   // 텍스트 오브젝트에도 동일한 컨트롤을 붙임 — P가 -14 자리를 쓰므로 J는 그대로 -46(같은 위치 규칙)이라 안 겹침
   fabric.IText.prototype.controls = Object.assign({}, fabric.IText.prototype.controls, { qj: jControl });
+  // 이미지 오브젝트에도 붙임(요청: 불러온 이미지도 다른 오브젝트처럼 공통필터 J 버튼을 쓸 수 있게)
+  fabric.Image.prototype.controls = Object.assign({}, fabric.Image.prototype.controls, { qj: jControl });
 
   /* ============================================================
      J 팝업 — P와 비슷한 구조(드롭다운으로 필터 선택 → 상세조절 표시)지만 주사위(랜덤) 없음.
@@ -81,6 +87,7 @@
   qaJFilterSelect.addEventListener('change', function(){ setActiveJFilterMenu(qaJFilterSelect.value); });
 
   function hideQaJPopover(){ qaJPopover.classList.add('hidden'); EP.qaJTargets = []; }
+  if (EP.registerFilterPopover) EP.registerFilterPopover(qaJPopover);
 
   function positionQaJPopover(target){
     qaJPopover.classList.remove('hidden');
@@ -102,6 +109,12 @@
     let top = objTop + objH + 14;
     if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
 
+    // T/P/M/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
+    if (EP.findNonOverlappingPosition) {
+      const avoided = EP.findNonOverlappingPosition(qaJPopover, left, top, pw, ph);
+      left = avoided.left; top = avoided.top;
+    }
+
     const r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaJPopover.style.left = r.left + 'px';
     qaJPopover.style.top = r.top + 'px';
@@ -118,9 +131,16 @@
     qaJPopover.style.top = r.top + 'px';
   }
 
+  // P(텍스트)/M(도형) 전용인 EP.qaTargetsFromTarget은 단일 오브젝트가 텍스트|도형일 때만 대상으로
+  // 인정해서(이미지는 제외) 재사용하면 이미지 단일 선택 시 J팝업이 못 열림 -> J는 이미지도 포함하도록
+  // 자체적으로 판별함. 그룹/활성선택(activeSelection)은 원래 로직과 동일하게 안의 오브젝트들을 그대로 씀.
   function jTargetsFromTarget(target){
-    const boxes = EP.qaTargetsFromTarget ? EP.qaTargetsFromTarget(target) : [];
-    return boxes.filter(isShapeOrText);
+    if (!target) return [];
+    if (target.type === 'activeSelection' || target.type === 'group') {
+      return target.getObjects().filter(function(o){ return !o.isGuide; }).filter(isShapeOrText);
+    }
+    if (target.isGuide) return [];
+    return isShapeOrText(target) ? [target] : [];
   }
 
   const qaJPopulators = []; // openQaJPopover에서 전부 호출해서 현재 값 표시

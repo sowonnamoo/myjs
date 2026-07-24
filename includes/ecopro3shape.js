@@ -3,10 +3,10 @@
 
    동작: 툴바의 "🎲 랜덤모양 생성"을 누르면 캔버스 정가운데에 작은 모달이 뜨고, 그 안의
    "🎲 랜덤생성" 버튼을 누를 때마다:
-     - 이 기능으로 이전에 만들어둔 모양(있다면)을 지움 (bgFill 기능과 동일한 방식)
+     - 이 기능으로 이전에 만들어둔 모양(있다면)을 지움
      - 정다각형/별/버스트(뱃지)/기어/꽃잎/화살표/쉐브런/십자가/다이아몬드/사다리꼴/블롭 +
        손으로 그린 하트·물방울·초승달·구름·말풍선·방패·배너·번개·아치·링 등 약 100종 중
-       하나를 무작위로 골라 무작위 색상으로 만듦
+       하나를 무작위로 골라 무작위 색상으로 캔버스 정가운데에 새로 만듦
      - 크기는 항상 일정함(모양마다 자연 크기가 달라도 마지막에 동일한 기준 크기로 맞춤) */
 (function(){
   "use strict";
@@ -186,11 +186,6 @@
   /* ============================================================
      생성 로직
   ============================================================ */
-  function removeExistingRandomShape(){
-    var objs = EP.canvas.getObjects().filter(function(o){ return o && o.isRandomShapeGen; });
-    objs.forEach(function(o){ EP.canvas.remove(o); });
-  }
-
   function randomVividColor(){
     var hue = Math.floor(Math.random() * 360);
     var sat = Math.round(55 + Math.random() * 35);
@@ -203,6 +198,11 @@
     var w = obj.width || 1, h = obj.height || 1;
     var scale = TARGET_SIZE / Math.max(w, h);
     obj.scale(scale);
+  }
+
+  function removeExistingRandomShape(){
+    var objs = EP.canvas.getObjects().filter(function(o){ return o && o.isRandomShapeGen; });
+    objs.forEach(function(o){ EP.canvas.remove(o); });
   }
 
   randomShapeGenBtn.addEventListener('click', function(){

@@ -42,7 +42,7 @@
     </div>
 
     <div class="toolbar-group">
-      <button type="button" class="btn active" id="selectToolBtn" title="선택 도구 (V)">↖ 선택</button>
+      <button type="button" class="btn" id="selectToolBtn" title="선택 도구 (V)">↖ 선택</button>
     </div>
 
     <div class="toolbar-group dropdown megamenu">
@@ -67,6 +67,7 @@
       <button type="button" class="btn icon" id="eyedropperPickBtn" title="스포이드 — 먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 이 버튼을 누르고, 색을 따올 다른 오브젝트를 클릭하면 그 색이 그대로 적용돼요">
         <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3 L21 7 L11 17 L7 17 L7 13 Z" fill="currentColor"/><rect x="4.6" y="17.6" width="3.6" height="3.6" transform="rotate(45 6.4 19.4)" fill="currentColor"/></svg>
       </button>
+      <div class="eyedrop-preview-swatch" id="eyedropPreviewSwatch" title="스포이드가 지금 가리키고 있는 색 실시간 미리보기"></div>
     </div>
 
     <div class="toolbar-group dropdown megamenu">
@@ -244,7 +245,7 @@
           <div class="row">
             <label>크기</label>
             <input type="number" id="fontSizeInput" min="10" max="600">
-            <label style="width:44px;">색상</label>
+            <label>색상</label>
             <div class="cmyk-picker" id="textColorInput" title="CMYK 색상 선택"></div>
           </div>
           <div class="row">
@@ -267,49 +268,92 @@
 
         <div class="panel-section hidden" id="imageSection">
           <h4>이미지</h4>
-          <div class="row grid2" style="margin-bottom:0;">
+          <div class="row" style="margin-bottom:0;">
+            <button type="button" class="small-btn tone-erase" id="marqueeEraseToggleBtn" title="지우고 싶은 영역을 드래그로 선택한 뒤 지우면, 그 부분만 골라둔 방식으로 채워 자연스럽게 지워집니다 (글씨·워터마크 제거용)">▭ 글씨 워터마크삭제</button>
+          </div>
+          <div class="row">
+            <label class="tone-erase-label">지우기 강도</label>
+            <input type="range" class="tone-erase-gauge" id="marqueeEraseStrengthInput" min="10" max="150" step="5" value="60" title="숫자가 클수록 주변 색과 더 부드럽게 섞여요(자동 모드일 때만 영향)">
+          </div>
+          <div class="row">
+            <label class="tone-erase-label">덮는 색상</label>
+            <div class="seg" id="marqueeEraseColorModeSeg">
+              <button type="button" class="on" id="marqueeEraseAutoModeBtn" title="지운 자리를 주변 색으로 자동으로 자연스럽게 채워요">자동(주변색)</button>
+              <button type="button" id="marqueeEraseCustomModeBtn" title="지운 자리를 직접 고른 색으로 덮어요">지정색</button>
+            </div>
+          </div>
+          <div class="row hidden" id="marqueeEraseCustomColorRow">
+            <label class="tone-erase-label">덮을 색상</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div class="cmyk-picker mini tone-erase" id="marqueeEraseCustomColorInput" title="영역을 덮을 색상"></div>
+              <button type="button" class="mini-eyedrop-btn" id="marqueeEraseCustomColorEyedropBtn" title="캔버스에서 색 뽑아오기">
+                <svg width="12" height="12" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3 L21 7 L11 17 L7 17 L7 13 Z" fill="currentColor"/><rect x="4.6" y="17.6" width="3.6" height="3.6" transform="rotate(45 6.4 19.4)" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:0;">
             <button type="button" class="small-btn" id="startCropBtn">✂ 자르기</button>
-            <button type="button" class="small-btn" id="resetCropBtn">↺ 원본으로</button>
+            <button type="button" class="small-btn hidden" id="resetCropBtn">↺ 원본으로</button>
+          </div>
+          <div class="row" style="margin-bottom:0;">
+            <button type="button" class="small-btn tone-eraser" id="eraseBrushToggleBtn" title="브러시로 문지른 부분이 투명하게 지워집니다. 다시 누르면 꺼집니다">🧽 이미지 지우기</button>
           </div>
           <div class="row">
+            <label class="tone-eraser-label">브러시 크기</label>
+            <input type="range" class="tone-eraser-gauge" id="eraseBrushSizeInput" min="4" max="150" step="1" value="30">
+          </div>
+          <div class="row row-inline-gauge">
             <label>밝기</label>
-            <input type="range" id="imgBrightnessInput" min="-100" max="100" step="1" value="0">
+            <input type="range" class="gauge-half" id="imgBrightnessInput" min="-100" max="100" step="1" value="0">
           </div>
-          <div class="row">
+          <div class="row row-inline-gauge">
             <label>대비</label>
-            <input type="range" id="imgContrastInput" min="-100" max="100" step="1" value="0">
+            <input type="range" class="gauge-half" id="imgContrastInput" min="-100" max="100" step="1" value="0">
           </div>
-          <div class="row">
+          <div class="row row-inline-gauge">
             <label>채도</label>
-            <input type="range" id="imgSaturationInput" min="-100" max="100" step="1" value="0">
+            <input type="range" class="gauge-half" id="imgSaturationInput" min="-100" max="100" step="1" value="0">
           </div>
-          <div class="row grid2" style="margin-bottom:0;">
-            <button type="button" class="small-btn" id="magicWandToggleBtn" title="비슷한 색상 영역을 클릭 한 번으로 자동 선택해서 투명하게 만듭니다 (자동 누끼)">🪄 자동누끼</button>
-            <button type="button" class="small-btn" id="marqueeEraseToggleBtn" title="지우고 싶은 영역을 드래그로 선택한 뒤 지우면, 그 부분만 주변 색으로 채워 자연스럽게 지워집니다 (글씨·워터마크 제거용)">▭ 영역 지우기</button>
+          <div class="row row-inline-gauge label-wide">
+            <label class="tone-sketch-label">스케치 강도</label>
+            <input type="range" class="gauge-half tone-sketch-gauge" id="imgSketchAmount" min="1" max="10" step="1" value="4">
+          </div>
+          <div class="row" style="margin-bottom:0;">
+            <button type="button" class="small-btn tone-sketch" id="imgSketchBtn" title="사진을 연필로 그린 듯한 흑백 스케치 느낌으로 바꿉니다">✏️ 스케치 효과</button>
+          </div>
+          <div class="row" style="margin-bottom:0;">
+            <button type="button" class="small-btn tone-magic" id="magicWandToggleBtn" title="비슷한 색상 영역을 클릭 한 번으로 자동 선택해서 투명하게 만듭니다 (자동 누끼)">🪄 자동누끼</button>
           </div>
           <div class="row" id="magicWandToleranceRow">
-            <label>허용오차</label>
-            <input type="range" id="magicWandToleranceInput" min="0" max="100" step="1" value="30">
-          </div>
-          <div class="row grid2" style="margin-bottom:0;">
-            <button type="button" class="small-btn" id="edgeBlurBtn" title="사진 가장자리로 갈수록 선택한 색으로 점점 부드럽게 흐려지며 사라지게 만듭니다 (중심은 선명하게 유지)">🌫 가장자리블러</button>
+            <label class="tone-magic-label">허용오차</label>
+            <input type="range" class="tone-magic-gauge" id="magicWandToleranceInput" min="0" max="100" step="1" value="30">
           </div>
           <div class="row">
-            <label>번짐 색상</label>
-            <div class="cmyk-picker mini" id="edgeBlurColorInput" title="가장자리에 뿌려질 색상"></div>
+            <label class="tone-blur-label">블러 정도</label>
+            <input type="range" class="tone-blur-gauge" id="edgeBlurAmount" min="1" max="10" step="1" value="5">
           </div>
           <div class="row">
-            <label>블러 정도</label>
-            <input type="range" id="edgeBlurAmount" min="1" max="10" step="1" value="5">
+            <label class="tone-blur-label">번짐 색상</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div class="cmyk-picker mini tone-blur" id="edgeBlurColorInput" title="가장자리에 뿌려질 색상"></div>
+              <button type="button" class="mini-eyedrop-btn" id="edgeBlurColorEyedropBtn" title="캔버스에서 색 뽑아오기">
+                <svg width="12" height="12" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3 L21 7 L11 17 L7 17 L7 13 Z" fill="currentColor"/><rect x="4.6" y="17.6" width="3.6" height="3.6" transform="rotate(45 6.4 19.4)" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:0;">
+            <button type="button" class="small-btn tone-blur" id="edgeBlurBtn" title="사진 가장자리로 갈수록 선택한 색으로 점점 부드럽게 흐려지며 사라지게 만듭니다 (중심은 선명하게 유지)">🌫 가장자리블러</button>
           </div>
         </div>
 
         <div class="panel-section" id="shapeSection">
           <h4>채우기 · 테두리</h4>
-          <div class="row">
+          <div class="row" id="fillColorRow">
             <label>채우기</label>
             <div class="cmyk-picker" id="fillColorInput" title="CMYK 색상 선택"></div>
-            <label style="width:44px;">테두리</label>
+          </div>
+          <div class="row">
+            <label>테두리</label>
             <div class="cmyk-picker" id="strokeColorInput" title="CMYK 색상 선택"></div>
           </div>
           <div class="row">
@@ -1906,6 +1950,137 @@
   </div>
 </div>
 
+<!-- 이미지 전용 Z버튼 팝업 — J/P와 인터페이스(드롭다운으로 선택 → 상세조절 → 끄기버튼,
+     드래그·회전 가능한 팝업)는 동일하지만, 안에 들어가는 필터는 완전히 다름: 포토샵의
+     곱하기/색상번/선형번/스크린 블렌드(합성) 모드 4종. 이미지에만 붙는 버튼임. -->
+<div class="qa-popover hidden" id="qaZPopover">
+  <button type="button" class="font-popover-close" id="qaZPopoverCloseBtn" title="닫기">✕</button>
+  <select id="qaZFilterSelect">
+    <option value="" disabled selected>이미지 블렌드 필터 선택...</option>
+    <option value="multiply">곱하기</option>
+    <option value="colorBurn">색상번</option>
+    <option value="linearBurn">선형번</option>
+    <option value="screen">스크린</option>
+    <option value="whiteTransparent">흰색 투과</option>
+    <option value="customColorTransparent">지정색 투과</option>
+  </select>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailMultiply">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaZMultiplyAmount" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaZMultiplyColor" title="곱하기(Multiply)에 쓸 색상"></div>
+      <button type="button" class="qa-btn" id="qaZMultiplyOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailColorBurn">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaZColorBurnAmount" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaZColorBurnColor" title="색상번(Color Burn)에 쓸 색상"></div>
+      <button type="button" class="qa-btn" id="qaZColorBurnOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailLinearBurn">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaZLinearBurnAmount" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaZLinearBurnColor" title="선형번(Linear Burn)에 쓸 색상"></div>
+      <button type="button" class="qa-btn" id="qaZLinearBurnOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailScreen">
+    <div class="row">
+      <label>강도</label>
+      <input type="range" id="qaZScreenAmount" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <label>색상</label>
+      <div class="cmyk-picker mini" id="qaZScreenColor" title="스크린(Screen)에 쓸 색상"></div>
+      <button type="button" class="qa-btn" id="qaZScreenOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailWhiteTransparent">
+    <div class="row">
+      <label>허용범위</label>
+      <input type="range" id="qaZWhiteTransparentAmount" min="0" max="100" step="1">
+    </div>
+    <div class="row">
+      <span style="font-size:11px;color:#8a93a3;line-height:1.4;">사진에서 흰색(과 흰색에 가까운 밝은 색)만 투명해져서 뒤 레이어가 비쳐 보여요. 값이 클수록 더 넓은 범위의 밝은 색까지 투명해져요.</span>
+      <button type="button" class="qa-btn" id="qaZWhiteTransparentOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailCustomColorTransparent">
+    <div class="row">
+      <span style="font-size:11px;color:#8a93a3;line-height:1.4;">직접 고른 색과 비슷한 색만 투명해져서 뒤 레이어가 비쳐 보여요. 슬라이더를 움직이면 다음 색상 칸이 자동으로 나타나서 최대 10개까지 색을 겹쳐(중복) 지울 수 있어요.</span>
+    </div>
+    <div class="row qa-z-custom-row" id="qaZCustomRow0" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor0" title="투명하게 만들 색상 1"></div>
+      <input type="range" id="qaZCustomAmount0" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn0" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow1" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor1" title="투명하게 만들 색상 2"></div>
+      <input type="range" id="qaZCustomAmount1" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn1" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow2" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor2" title="투명하게 만들 색상 3"></div>
+      <input type="range" id="qaZCustomAmount2" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn2" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow3" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor3" title="투명하게 만들 색상 4"></div>
+      <input type="range" id="qaZCustomAmount3" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn3" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow4" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor4" title="투명하게 만들 색상 5"></div>
+      <input type="range" id="qaZCustomAmount4" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn4" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow5" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor5" title="투명하게 만들 색상 6"></div>
+      <input type="range" id="qaZCustomAmount5" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn5" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow6" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor6" title="투명하게 만들 색상 7"></div>
+      <input type="range" id="qaZCustomAmount6" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn6" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow7" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor7" title="투명하게 만들 색상 8"></div>
+      <input type="range" id="qaZCustomAmount7" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn7" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow8" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor8" title="투명하게 만들 색상 9"></div>
+      <input type="range" id="qaZCustomAmount8" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn8" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+    <div class="row qa-z-custom-row hidden" id="qaZCustomRow9" style="gap:4px;">
+      <div class="cmyk-picker mini" id="qaZCustomColor9" title="투명하게 만들 색상 10"></div>
+      <input type="range" id="qaZCustomAmount9" min="0" max="100" step="1" style="flex:1;">
+      <button type="button" class="qa-btn" id="qaZCustomOffBtn9" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
+    </div>
+  </div>
+</div>
+
 <!-- 캔버스 전체를 채우는 배경 만들기 모달 — 캔버스 정가운데에 뜸 -->
 <div class="qa-popover hidden" id="bgFillModal" style="width:220px;">
   <button type="button" class="font-popover-close" id="bgFillModalCloseBtn" title="닫기">✕</button>
@@ -2023,6 +2198,7 @@
 <script src="ecopro3c.js" defer></script>
 <script src="ecopro3m.js" defer></script>
 <script src="ecopro3j.js" defer></script>
+<script src="ecopro3z.js" defer></script>
 <script src="ecopro3bg.js" defer></script>
 <script src="ecopro3shape.js" defer></script>
 <script src="ecopro3imgtool.js" defer></script>

@@ -50,7 +50,9 @@
     render: renderMButton,
     mouseUpHandler: function(eventData, transformData){
       const target = transformData && transformData.target;
-      if (target && !isTableRelatedTarget(target)) openQaMPopover(target);
+      if (!target || isTableRelatedTarget(target)) return true;
+      if (!qaMPopover.classList.contains('hidden')) { hideQaMPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
+      openQaMPopover(target);
       return true;
     }
   });
@@ -215,9 +217,9 @@
   qaMFilterSelect.addEventListener('change', () => setActiveShapeFilterMenu(qaMFilterSelect.value));
 
   function hideQaMPopover(){ qaMPopover.classList.add('hidden'); EP.qaShapeTargets = []; }
+  if (EP.registerFilterPopover) EP.registerFilterPopover(qaMPopover);
 
   // P의 positionQaPopover와 동일한 방식(대상 중앙 아래쪽, 공간 부족하면 위쪽).
-  // 도형은 T(글꼴) 팝업 대상이 아니므로 P처럼 T와 나란히 배치하는 분기는 필요 없음.
   function positionQaMPopover(target){
     qaMPopover.classList.remove('hidden');
     const pw = qaMPopover.offsetWidth || 200;
@@ -237,6 +239,12 @@
     let left = objLeft + objW / 2 - pw / 2;
     let top = objTop + objH + 14;
     if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
+
+    // T/P/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
+    if (EP.findNonOverlappingPosition) {
+      const avoided = EP.findNonOverlappingPosition(qaMPopover, left, top, pw, ph);
+      left = avoided.left; top = avoided.top;
+    }
 
     const r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaMPopover.style.left = r.left + 'px';

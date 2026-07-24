@@ -37,7 +37,24 @@ button,input,select{font-family:inherit;}
 .btn:hover{background:#f4f7fa;border-color:#c9d2dc;}
 .btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .btn.icon{padding:7px 9px;}
+
+/* "선택" 도구 버튼: 기본은 흰색(브라우저 기본 파란 포커스 테두리도 제거). 오른쪽 오브젝트
+   속성 패널이 실제로 떠서(=오브젝트를 선택한 상태) 있을 때만 회색으로 바뀜 — "지금 뭔가
+   선택돼 있다"는 걸 파란색(다른 도구들의 활성 표시 색)과 구분되게 알려주기 위함. */
+#selectToolBtn{outline:none;}
+#selectToolBtn.sel-active{background:#e3e6ea;border-color:#c9d2dc;color:var(--ink);}
 #eyedropperPickBtn.active{box-shadow:0 0 0 2px var(--accent) inset;}
+
+/* 스포이드 실시간 미리보기용 세모 컬러박스 — 스포이드가 무장(active) 상태로 캔버스 위를 움직이는
+   동안 커서 아래 색이 실시간으로 여기 채워짐. 클릭해서 실제 적용하기 전까지는 미리보기 용도. */
+.eyedrop-preview-swatch{
+  width:0;height:0;flex-shrink:0;
+  border-left:9px solid transparent;
+  border-right:9px solid transparent;
+  border-bottom:16px solid #d8dde3; /* 기본(선택 전) 색 — 스포이드를 아직 안 써봤을 때 */
+  filter:drop-shadow(0 0 0 1px var(--line)) drop-shadow(0 1px 2px rgba(0,0,0,.15));
+  transition:border-bottom-color .04s linear;
+}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
 .btn.primary:hover{background:var(--accent-dark);}
 .btn.danger{color:var(--danger);}
@@ -372,11 +389,11 @@ button,input,select{font-family:inherit;}
 
 /* ---------- 우측 속성 패널 ---------- */
 .side-panel{
-  width:280px;background:var(--panel);border-left:1px solid var(--line);
-  padding:16px;overflow-y:auto;flex-shrink:0;
+  width:140px;background:var(--panel);border-left:1px solid var(--line);
+  padding:8px;overflow-y:auto;flex-shrink:0;
 }
-.side-panel h4{margin:0 0 10px;font-size:12px;letter-spacing:.03em;color:#8a93a3;text-transform:uppercase;font-weight:700;}
-.panel-section{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--line);}
+.side-panel h4{margin:0 0 6px;font-size:10px;letter-spacing:.02em;color:#8a93a3;text-transform:uppercase;font-weight:700;}
+.panel-section{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line);}
 .panel-section:last-child{border-bottom:none;}
 .row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .row label{font-size:12.5px;color:#5b6472;width:64px;flex-shrink:0;}
@@ -386,12 +403,29 @@ button,input,select{font-family:inherit;}
 .row input[type=range]{flex:1;min-width:0;}
 .row input[type=color]{width:36px;height:30px;border:1px solid var(--line);border-radius:6px;padding:2px;background:#fff;cursor:pointer;}
 
+/* ---------- 우측 속성 패널(side-panel) 전용: 폭이 절반으로 줄어든 만큼 라벨/입력을 위아래로 쌓는 전용 레이아웃 ---------- */
+.side-panel .row{display:flex;flex-direction:column;align-items:stretch;gap:3px;margin-bottom:6px;}
+.side-panel .row label{font-size:10.5px;color:#5b6472;width:auto;flex-shrink:0;}
+.side-panel .row input[type=text],.side-panel .row select,.side-panel .row input[type=number]{
+  width:100%;flex:none;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:11.5px;color:var(--ink);background:#fff;min-width:0;box-sizing:border-box;
+}
+.side-panel .row input[type=range]{width:100%;flex:none;}
+.side-panel .row input[type=color]{width:100%;height:24px;border:1px solid var(--line);border-radius:6px;padding:2px;background:#fff;cursor:pointer;}
+
+/* 밝기/대비/채도 전용: 라벨과 게이지를 한 줄(가로)에 나란히 놓고, 게이지 폭은 절반으로 줄임 */
+.side-panel .row.row-inline-gauge{flex-direction:row;align-items:center;gap:6px;}
+.side-panel .row.row-inline-gauge label{width:28px;flex-shrink:0;}
+.side-panel .row input[type=range].gauge-half{width:50%;flex:none;}
+/* "스케치 강도"처럼 라벨 글자가 길 때: 라벨 폭을 넉넉히 늘리고 그만큼 게이지 폭은 줄여서 겹치지 않게 함 */
+.side-panel .row.row-inline-gauge.label-wide label{width:52px;font-size:9.5px;}
+.side-panel .row.row-inline-gauge.label-wide input[type=range].gauge-half{width:38%;}
+
 /* ---------- CMYK 색상 선택기 (RGB 대신 CMYK 값으로 색을 지정) ---------- */
-.cmyk-picker{position:relative;width:36px;height:30px;flex-shrink:0;}
+.cmyk-picker{position:relative;width:100%;height:24px;flex-shrink:0;}
 .cmyk-picker.mini{width:22px;height:22px;}
 .cmyk-picker.mini .cmyk-swatch{width:22px;height:22px;border-radius:6px;}
 .cmyk-swatch{
-  width:36px;height:30px;border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  width:100%;height:24px;border:1px solid var(--line);border-radius:6px;cursor:pointer;
   background:#000;box-sizing:border-box;background-image:
     linear-gradient(45deg,#ccc 25%,transparent 25%),linear-gradient(-45deg,#ccc 25%,transparent 25%),
     linear-gradient(45deg,transparent 75%,#ccc 75%),linear-gradient(-45deg,transparent 75%,#ccc 75%);
@@ -427,6 +461,59 @@ button,input,select{font-family:inherit;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .no-select-msg{color:#9aa4b2;font-size:13px;text-align:center;padding:30px 6px;line-height:1.6;}
 .small-btn{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink);}
+
+/* ---------- 우측 속성 패널(side-panel) 전용 축소 버전: 폭이 절반(140px)으로 줄어든 만큼
+   세그먼트버튼/그리드버튼/일반버튼도 같이 절반 수준으로 다이어트. 다른 팝오버에서 쓰는
+   .seg/.grid2/.small-btn은 위 기본 스타일을 그대로 쓰므로 영향 없음. ---------- */
+.side-panel .seg{border-radius:6px;flex:none;width:100%;}
+.side-panel .seg button{padding:4px 0;font-size:9.5px;}
+.side-panel .grid2{gap:4px;}
+.side-panel .no-select-msg{font-size:11px;padding:16px 4px;line-height:1.5;}
+.side-panel .small-btn{padding:6px 2px;border-radius:6px;font-size:9.5px;line-height:1.3;word-break:keep-all;}
+
+/* ---------- 이미지 패널: 버튼과 그 아래 게이지(슬라이더) 색을 맞춰서 같은 기능 묶음임을 한눈에 알게 함 ----------
+   - 🪄 자동누끼 ↔ 허용오차 슬라이더 : 보라색 톤
+   - 🌫 가장자리블러 ↔ 번짐 색상 스와치 · 블러 정도 슬라이더 : 청록색 톤 */
+.side-panel .small-btn.tone-magic{color:#8e44ad;border-color:#8e44ad;}
+.side-panel .small-btn.tone-magic:hover{background:#f6effa;}
+.side-panel .small-btn.tone-magic.on{background:#8e44ad;border-color:#8e44ad;color:#fff;}
+.side-panel .tone-magic-label{color:#8e44ad;font-weight:700;}
+.side-panel input.tone-magic-gauge{accent-color:#8e44ad;}
+
+.side-panel .small-btn.tone-blur{color:#16a085;border-color:#16a085;}
+.side-panel .small-btn.tone-blur:hover{background:#eafaf6;}
+.side-panel .small-btn.tone-blur.on{background:#16a085;border-color:#16a085;color:#fff;}
+.side-panel .tone-blur-label{color:#16a085;font-weight:700;}
+.side-panel input.tone-blur-gauge{accent-color:#16a085;}
+.cmyk-picker.tone-blur .cmyk-swatch{border-color:#16a085;border-width:2px;}
+
+.side-panel .small-btn.tone-sketch{color:#e67e22;border-color:#e67e22;}
+.side-panel .small-btn.tone-sketch:hover{background:#fef3e9;}
+.side-panel .small-btn.tone-sketch:disabled{opacity:.6;cursor:wait;}
+.side-panel .tone-sketch-label{color:#e67e22;font-weight:700;}
+.side-panel input.tone-sketch-gauge{accent-color:#e67e22;}
+
+.side-panel .small-btn.tone-erase{color:#34495e;border-color:#34495e;}
+.side-panel .small-btn.tone-erase:hover{background:#eaeef1;}
+.side-panel .tone-erase-label{color:#34495e;font-weight:700;}
+.side-panel input.tone-erase-gauge{accent-color:#34495e;}
+.cmyk-picker.tone-erase .cmyk-swatch{border-color:#34495e;border-width:2px;}
+.side-panel #marqueeEraseColorModeSeg button.on{background:#34495e;border-color:#34495e;}
+
+.side-panel .small-btn.tone-eraser{color:#7f8c8d;border-color:#7f8c8d;}
+.side-panel .small-btn.tone-eraser:hover{background:#f1f2f3;}
+.side-panel .small-btn.tone-eraser.on{background:#7f8c8d;border-color:#7f8c8d;color:#fff;}
+.side-panel .tone-eraser-label{color:#7f8c8d;font-weight:700;}
+.side-panel input.tone-eraser-gauge{accent-color:#7f8c8d;}
+
+/* 색상 스와치 옆의 작은 스포이드 버튼 — 상단 메인 스포이드처럼 캔버스에서 색을 뽑아
+   바로 이 색상칸에 넣어줌(오브젝트 fill이 아니라 이 입력값 자체를 바꾸는 용도) */
+.mini-eyedrop-btn{
+  width:22px;height:22px;flex-shrink:0;border:1px solid var(--line);border-radius:6px;
+  background:#fff;color:#5b6472;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+}
+.mini-eyedrop-btn:hover{background:#f4f7fa;border-color:#c9d2dc;}
+.mini-eyedrop-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .small-btn:hover{background:#f4f7fa;}
 .small-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 input[type=file]{display:none;}

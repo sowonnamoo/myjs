@@ -59,7 +59,9 @@
       render: renderPButton,
       mouseUpHandler: function(eventData, transformData){
         const target = transformData && transformData.target;
-        if (target && !isTableRelatedTarget(target)) openQaPopover(target);
+        if (!target || isTableRelatedTarget(target)) return true;
+        if (!qaPopover.classList.contains('hidden')) { hideQaPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
+        openQaPopover(target);
         return true;
       }
     });
@@ -76,6 +78,7 @@
   // EP.qaTargets 는 파일 상단에서 이미 초기화됨 (T버튼과 동일한 방식: 창을 여는 시점의 대상을 그대로 붙잡아둠)
 
   function hideQaPopover(){ qaPopover.classList.add('hidden'); EP.qaTargets = []; }
+  if (EP.registerFilterPopover) EP.registerFilterPopover(qaPopover);
 
   // T버튼 팝오버와 동일한 방식: 오브젝트 중앙 아래쪽에 표시 (공간 부족하면 위쪽)
   function positionQaPopover(target){
@@ -83,25 +86,6 @@
     const pw = qaPopover.offsetWidth || 200;
     const ph = qaPopover.offsetHeight || 140;
 
-    // T(글꼴) 창이 같이 열려있으면: 그 오른쪽에 나란히 붙이고,
-    // 오른쪽 공간이 부족하면 바로 아래로, 그마저 부족하면 위로 배치 (드래그해서 옮긴 위치 기준)
-    if (!EP.fontPopover.classList.contains('hidden')) {
-      const tRect = EP.fontPopover.getBoundingClientRect();
-      let left = tRect.right + 12;
-      let top = tRect.top;
-      if (left + pw > window.innerWidth - 8) {
-        left = tRect.left;
-        top = tRect.bottom + 12;
-        if (top + ph > window.innerHeight - 8) top = tRect.top - ph - 12;
-      }
-      const r1 = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-      qaPopover.style.left = r1.left + 'px';
-      qaPopover.style.top = r1.top + 'px';
-      EP.applyPopoverRotationStyle(qaPopover);
-      return;
-    }
-
-    // T가 열려있지 않으면: 기존처럼 오브젝트 중앙 아래쪽(공간 부족하면 위쪽)
     const br = target.getBoundingRect(true, true); // 캔버스 논리좌표(줌 반영 전)
     const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
     const scaleX = canvasRect.width / EP.canvas.getWidth();
@@ -116,6 +100,12 @@
     let left = objLeft + objW / 2 - pw / 2;
     let top = objTop + objH + 14;
     if (top + ph > window.innerHeight - 8) top = objTop - ph - 14; // 아래 공간 부족하면 위쪽에 표시
+
+    // T/M/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
+    if (EP.findNonOverlappingPosition) {
+      const avoided = EP.findNonOverlappingPosition(qaPopover, left, top, pw, ph);
+      left = avoided.left; top = avoided.top;
+    }
 
     const r2 = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaPopover.style.left = r2.left + 'px';
