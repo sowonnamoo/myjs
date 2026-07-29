@@ -191,25 +191,34 @@
     transform:none;
   }
 
-  .slot-cart{
-    flex: 1;
+  .global-cart-btn{
+    display:block;
+    width:100%;
+    margin: 24px 0 20px;
     font-family:'Space Grotesk', sans-serif;
-    font-size:14px;
+    font-size:16px;
     font-weight:700;
     color: #FFFFFF;
     background: #2563EB;
     border: 1px solid #2563EB;
-    border-radius: 8px;
-    padding: 11px 16px;
+    border-radius: 10px;
+    padding: 16px;
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(37,99,235,0.4);
-    transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease, opacity .15s ease;
   }
-  .slot-cart:hover{
+  .global-cart-btn:hover:not(:disabled){
     background: #1D4ED8;
     border-color:#1D4ED8;
     box-shadow: 0 4px 14px rgba(37,99,235,0.5);
     transform: translateY(-1px);
+  }
+  .global-cart-btn:disabled{
+    background: #C7CAD0;
+    border-color:#C7CAD0;
+    color:#8A8F98;
+    cursor:not-allowed;
+    box-shadow:none;
   }
 
   .dropzone{ display:none; }
@@ -409,6 +418,8 @@
 
   <div id="slotsContainer"></div>
 
+  <button type="button" id="globalCartBtn" class="global-cart-btn" disabled>시안확인/장바구니 담기</button>
+
   <!-- Legacy free-upload elements kept only because createRow()/processFile
        share code paths with them; not shown (see .dropzone / .results above). -->
   <div class="dropzone" id="dropzone">
@@ -491,6 +502,26 @@ function collectPreviewDesigns(){
   return designs;
 }
 
+// Tracks each slot's pass/fail so the single global cart button knows when
+// every required design/side has been accepted.
+const slotPassState = {};
+
+function getExpectedSlotIds(){
+  const ids = [];
+  for(let i = 0; i < designCount; i++){
+    const sides = isDouble ? ['front', 'back'] : ['front'];
+    sides.forEach(sideKey => ids.push(`d${i}-${sideKey}`));
+  }
+  return ids;
+}
+
+function updateGlobalCartButton(){
+  const btn = document.getElementById('globalCartBtn');
+  if(!btn) return;
+  const allPassed = getExpectedSlotIds().every(id => slotPassState[id] === true);
+  btn.disabled = !allPassed;
+}
+
 function renderSlots(){
   const container = document.getElementById('slotsContainer');
   container.innerHTML = '';
@@ -531,6 +562,8 @@ function renderSlots(){
 }
 
 function renderSlotDropzone(slotId){
+  slotPassState[slotId] = false;
+  updateGlobalCartButton();
   const body = document.getElementById('slotBody-' + slotId);
   body.innerHTML = `
     <div class="mini-dropzone" tabindex="0">
@@ -572,6 +605,19 @@ const JPEG_PNG_UPLOAD_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/eco
 const SIAN_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/sian';
 const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
 
+document.getElementById('globalCartBtn').addEventListener('click', () => {
+  const designs = collectPreviewDesigns();
+  try{
+    sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(designs));
+  }catch(e){
+    console.error('시안 이미지 저장 실패:', e);
+    alert('미리보기 이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.');
+    return;
+  }
+  // 접수 시 사용한 쿼리(count/width/height 등)를 그대로 이어서 전달
+  window.location.href = SIAN_PAGE_URL + window.location.search;
+});
+
 async function processSlotFile(file, slotId){
   const body = document.getElementById('slotBody-' + slotId);
   const row = createRow(file.name);
@@ -605,25 +651,13 @@ async function processSlotFile(file, slotId){
       window.location.href = JPEG_PNG_UPLOAD_PAGE_URL + window.location.search;
     });
     btnRow.appendChild(sianBtn);
-  } else if(row.el.classList.contains('pass')){
-    const cartBtn = document.createElement('button');
-    cartBtn.type = 'button';
-    cartBtn.className = 'slot-cart';
-    cartBtn.textContent = '시안확인/장바구니 담기';
-    cartBtn.addEventListener('click', () => {
-      const designs = collectPreviewDesigns();
-      try{
-        sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(designs));
-      }catch(e){
-        console.error('시안 이미지 저장 실패:', e);
-        alert('미리보기 이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.');
-        return;
-      }
-      // 접수 시 사용한 쿼리(count/width/height 등)를 그대로 이어서 전달
-      window.location.href = SIAN_PAGE_URL + window.location.search;
-    });
-    btnRow.appendChild(cartBtn);
   }
+
+  // Track this slot's pass/fail so the single global cart button (below all
+  // slots) can enable itself once every required slot has passed — instead
+  // of showing a separate cart button per slot.
+  slotPassState[slotId] = row.el.classList.contains('pass');
+  updateGlobalCartButton();
 }
 
 /* =========================================================================
