@@ -188,6 +188,35 @@
   }
 
   /* 하단 액션 버튼 영역 */
+  .agree-wrap{
+    position:relative;
+    z-index:1;
+    display:flex;
+    justify-content:center;
+    padding: 0 20px 16px;
+  }
+  .agree-label{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:#eee;
+    cursor:pointer;
+    user-select:none;
+  }
+  .agree-label input[type=checkbox]{
+    width:18px;
+    height:18px;
+    accent-color:#2f7fc9;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  @media print{
+    .agree-wrap{ display:none !important; }
+  }
+
   .action-wrap{
     position:relative;
     z-index:1;
@@ -374,11 +403,18 @@
 </div>
 
 <div class="print-notice">
-  <strong>※ 인쇄 전 주의사항 (문구 확인 후 이미지 파일로 교체 예정)</strong>
+  <strong>※ 인쇄 전 주의사항</strong>
   ※ 본 시안은 모니터 환경에 따라 실제 인쇄물과 색상 차이가 있을 수 있습니다.<br>
   ※ 결제 완료 시 별도 확인 절차 없이 즉시 인쇄가 진행되며, 이후에는 수정 및 취소가 불가합니다.<br>
   ※ 문구, 이미지, 레이아웃 등 시안 내용을 꼼꼼히 확인 후 결제해 주세요.<br>
   ※ 인쇄 진행 후 발생하는 오탈자 및 디자인 오류에 대한 책임은 고객에게 있습니다.
+</div>
+
+<div class="agree-wrap">
+  <label class="agree-label">
+    <input type="checkbox" id="agreeCheckbox">
+    주의사항을 확인했으며 동의합니다.
+  </label>
 </div>
 
 <div class="action-wrap">
@@ -857,7 +893,14 @@ function closePrintNoticeModal(){
 }
 
 // 장바구니담기 버튼: 먼저 인쇄 주의사항 확인 모달을 띄운다
+const agreeCheckbox = document.getElementById('agreeCheckbox');
+
 cartCheckoutBtn.addEventListener('click', () => {
+  if(!agreeCheckbox.checked){
+    alert('주의사항을 확인했으며 동의합니다 체크박스에 동의해주셔야 진행할 수 있습니다.');
+    agreeCheckbox.focus();
+    return;
+  }
   openPrintNoticeModal();
 });
 
