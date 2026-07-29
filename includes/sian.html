@@ -697,6 +697,20 @@ function generateUniqueFileName(prefix, i, ext) {
     return Array.from(document.querySelectorAll('.photo-frame img')).map(img => img.src);
   }
 
+  // 에디터(ecopro3.js)의 "상품담기/구입" 버튼이 세션 스토리지에 남겨둔 원본 SVG /
+  // 고해상도 PNG를 읽어옴. 이 페이지를 에디터를 거치지 않고 단독으로 열었거나
+  // 간단 업로드(ecopro1) 경로로 왔을 때는 비어있는 게 정상.
+  const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';
+  const ORIGINAL_PNG_KEY = 'ecogr_original_pngs';
+  function loadOriginalAssetsFromSession(key){
+    try{
+      const raw = sessionStorage.getItem(key);
+      if(!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    }catch(e){ return []; }
+  }
+
 async function buildUploadManifest(){
     // 1. 기존처럼 URL 리스트를 가져옵니다.
     const originalUrls = getOriginalImageUrls();
@@ -706,6 +720,22 @@ async function buildUploadManifest(){
       sourceUrl: url,
       filename: generateUniqueFileName('original', i, getExtFromUrl(url, 'jpg'))
     }));
+
+    // 2b. 에디터(ecopro3)에서 넘어온 원본 SVG / 고해상도 PNG가 있으면 원본 목록에 추가
+    loadOriginalAssetsFromSession(ORIGINAL_SVG_KEY).forEach((item, i) => {
+      if(!item || !item.svg) return;
+      originals.push({
+        sourceUrl: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(item.svg),
+        filename: generateUniqueFileName('original-svg', i, 'svg')
+      });
+    });
+    loadOriginalAssetsFromSession(ORIGINAL_PNG_KEY).forEach((item, i) => {
+      if(!item || !item.dataUrl) return;
+      originals.push({
+        sourceUrl: item.dataUrl,
+        filename: generateUniqueFileName('original-hires', i, 'png')
+      });
+    });
 
     // 3. 합성 시안모음 생성
     const compositeCanvas = await buildCompositeCanvas();
@@ -740,7 +770,7 @@ async function buildUploadManifest(){
   // ---- Cloudflare Worker를 통한 실제 R2 업로드 ----
   const R2_WORKER_URL = 'https://r2.ecogr.workers.dev/';
   const R2_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
-  const R2_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const R2_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
 
   function getExtFromFilename(filename, fallback){
     const ext = (filename.split('.').pop() || '').toLowerCase();

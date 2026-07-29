@@ -115,6 +115,10 @@
 
         <input type="file" id="file-input" accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf,.pdf" style="display:none;">
 
+        <button id="edit-btn" class="btn btn-save" style="background:linear-gradient(135deg, #8e6fd6, #6c4bc4);">
+            편집하기
+        </button>
+
         <button id="save-btn" class="btn btn-save">
             전체저장
         </button>
@@ -148,6 +152,12 @@
     const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
     // 시안보기 페이지 경로 (같은 폴더에 있다고 가정, 실제 배포 경로에 맞게 수정하세요)
     const PREVIEW_PAGE_URL = '/myjs/includes/sian.html';
+
+    // "편집하기" 버튼으로 고급 에디터(ecopro3)에 현재 첨부 이미지를 넘길 때 쓰는
+    // 세션 스토리지 키 / 실제 에디터 페이지 주소. ecopro3.js가 시작할 때 이 키를
+    // 읽어서 각 디자인(idx)/면(side)에 맞는 이미지를 캔버스에 자동으로 올려줍니다.
+    const EDITOR_IMPORT_KEY = 'ecogr_editor_import_images';
+    const EDITOR_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/ecopro3';
 
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -386,6 +396,73 @@ canvas.on('mouse:down', (e) => {
     });
 
 
+
+document.getElementById('edit-btn').addEventListener('click', async () => {
+
+    const editBtn = document.getElementById('edit-btn');
+    const originalBtnText = editBtn.textContent;
+    editBtn.disabled = true;
+    editBtn.textContent = '이동 준비 중...';
+
+    // 원래 보고 있던 디자인/사이드를 기억해뒀다가 작업 끝나면 복원
+    const originalIdx = currentIdx;
+    const originalSide = currentSide;
+
+    try {
+        const importImages = [];
+
+        // 이미지가 올라와 있는 디자인/면만 순회하며 캔버스에 잠깐씩 올려 내보냄
+        for (let i = 0; i < count; i++) {
+            const sides = isDouble ? ['front', 'back'] : ['front'];
+            for (const side of sides) {
+                if (!designData[i][side]) continue; // 아직 안 올린 자리는 건너뜀
+
+                currentIdx = i;
+                currentSide = side;
+                updateView();
+
+                // 가이드(빨간 박스/안내문구)는 내보낼 이미지에서 제외
+                canvas.remove(guideRect);
+                canvas.remove(guideText);
+                canvas.remove(guideCornerText);
+                canvas.renderAll();
+
+                // 편집기에서 원본으로 쓸 것이므로 고화질(PNG)로 내보냄
+                const dataUrl = canvas.toDataURL({
+                    format: 'png',
+                    multiplier: 2
+                });
+
+                importImages.push({ idx: i, side, dataUrl });
+            }
+        }
+
+        if (importImages.length === 0) {
+            alert('편집기로 넘길 이미지가 없습니다. 먼저 사진을 업로드해주세요.');
+            return;
+        }
+
+        // 세션 스토리지에 담아서 편집기(ecopro3) 페이지로 전달
+        try {
+            sessionStorage.setItem(EDITOR_IMPORT_KEY, JSON.stringify(importImages));
+        } catch (storageErr) {
+            console.error(storageErr);
+            alert('이미지 용량이 너무 커서 편집기로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
+            return;
+        }
+
+        // 현재 쿼리(건수/사이즈 등)를 그대로 이어서 편집기로 이동
+        window.location.href = EDITOR_PAGE_URL + window.location.search;
+
+    } finally {
+        // 페이지 이동이 실패한 경우를 대비해 원래 화면으로 복원
+        currentIdx = originalIdx;
+        currentSide = originalSide;
+        updateView();
+        editBtn.disabled = false;
+        editBtn.textContent = originalBtnText;
+    }
+});
 
 document.getElementById('save-btn').addEventListener('click', async () => {
 

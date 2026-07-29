@@ -984,6 +984,62 @@
   }
   renderTabs();
 
+  /* ============================================================
+     4b. ecopro1(간단 업로드 페이지)의 "편집하기" 버튼에서 넘어온 첨부 이미지를
+     세션 스토리지에서 읽어와 각 디자인(idx)/면(side)에 맞게 자동으로 캔버스에
+     올려줌. ecopro1이 sessionStorage의 'ecogr_editor_import_images' 키에
+     [{idx, side, dataUrl}, ...] 형태로 저장해두고 같은 쿼리를 그대로 이어서
+     이 페이지로 이동시킴 — 그래서 count/width/height 등은 이미 URL 쿼리로
+     맞춰져 있고, 여기서는 이미지 내용만 채워 넣으면 됨.
+  ============================================================ */
+  const EDITOR_IMPORT_KEY = 'ecogr_editor_import_images';
+
+  function importImagesFromEcopro1(){
+    let raw;
+    try { raw = sessionStorage.getItem(EDITOR_IMPORT_KEY); } catch (e) { return; }
+    if (!raw) return;
+
+    let items;
+    try { items = JSON.parse(raw); } catch (e) { return; }
+    if (!Array.isArray(items) || !items.length) return;
+
+    try { sessionStorage.removeItem(EDITOR_IMPORT_KEY); } catch (e) {}
+
+    let chain = Promise.resolve();
+    items.forEach((item) => {
+      if (!item || !item.dataUrl) return;
+      const idx = Math.min(Math.max(parseInt(item.idx, 10) || 0, 0), count - 1);
+      const side = item.side === 'back' ? 'back' : 'front';
+
+      chain = chain.then(() => new Promise((resolve) => {
+        loadCanvasObjects(designData[idx][side], () => {
+          fabric.Image.fromURL(item.dataUrl, (img) => {
+            const maxDim = Math.min(CANVAS_W, CANVAS_H) * 0.95;
+            const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+            img.set({
+              left: CANVAS_W / 2, top: CANVAS_H / 2,
+              originX: 'center', originY: 'center',
+              scaleX: scale, scaleY: scale
+            });
+            canvas.add(img);
+            canvas.sendToBack(img);
+            bringGuideToFront();
+            canvas.renderAll();
+            designData[idx][side] = serializeCurrentCanvas();
+            resolve();
+          }, { crossOrigin: 'anonymous' });
+        });
+      }));
+    });
+
+    chain.then(() => {
+      // 다 채워 넣은 뒤엔 사용자가 처음 보는 화면이 항상 디자인 1 앞면이 되도록 정리
+      switchTo(0, 'front');
+      resetHistory();
+    });
+  }
+  importImagesFromEcopro1();
+
   // 디자인 통일하기: 디자인 1(앞/뒤)의 내용을 그대로 복사해서 나머지 모든 디자인에 똑같이 적용
   function unifyDesigns(){
     if (count <= 1) {
@@ -2562,6 +2618,101 @@
     canvas.renderAll();
   }
   document.querySelectorAll('#fileMenu [data-export]').forEach(btn => btn.addEventListener('click', handleExportClick));
+
+  /* ============================================================
+     12b. "상품담기/구입" (플로팅 바 우측 버튼)
+     - 모든 디자인(양면이면 앞/뒤 각각)을 순회하며 세 가지를 뽑아냄:
+       1) 시안 이미지 (일반 해상도 JPEG) — sian.html 보드에 그대로 표시됨
+       2) 원본 SVG (업로드한 임시 폰트는 이미지로 바꿔 어디서나 동일하게 보이도록)
+       3) 고해상도 원본 PNG (인쇄/다운로드용)
+     - 세 가지 모두 세션 스토리지에 담아 시안보기 페이지(sian.html)로 넘기고,
+       현재 쿼리(count/width/height 등)도 그대로 이어서 전달함.
+  ============================================================ */
+  const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';       // sian.html이 그대로 읽는 키(포맷 동일: [{label, dataUrl}])
+  const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';            // [{label, svg}]
+  const ORIGINAL_PNG_KEY = 'ecogr_original_pngs';            // [{label, dataUrl}] (고해상도)
+  const SIAN_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/sian';
+
+  // switchTo()와 달리 히스토리 리셋 등 부수효과 없이, 내보내기 목적으로만 조용히 화면을 바꿔줌
+  function loadDesignForExport(idx, side){
+    return new Promise((resolve) => {
+      loadCanvasObjects(designData[idx][side], () => {
+        guideRect.visible = false; outerGuideRect.visible = false; gridGuide.visible = false;
+        canvas.discardActiveObject();
+        canvas.renderAll();
+        resolve();
+      });
+    });
+  }
+
+  const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+  floatingSaveBtn.addEventListener('click', async () => {
+    if (designData[currentIdx]) designData[currentIdx][currentSide] = serializeCurrentCanvas();
+
+    const originalBtnText = floatingSaveBtn.textContent;
+    floatingSaveBtn.disabled = true;
+
+    const originalIdx = currentIdx;
+    const originalSide = currentSide;
+    const wasBoxVisible = guideRect.visible, wasGridVisible = gridGuide.visible;
+
+    const previews = [];
+    const svgs = [];
+    const highResPngs = [];
+
+    try {
+      const sides = isDouble ? ['front', 'back'] : ['front'];
+      for (let i = 0; i < count; i++) {
+        for (const side of sides) {
+          floatingSaveBtn.textContent = `디자인 ${i + 1}${isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : ''} 준비 중...`;
+          await loadDesignForExport(i, side);
+
+          const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
+          const multiplier = 1 / zoom;
+
+          // 1) 시안 이미지 — 용량 고려해 JPEG, 일반 해상도
+          const previewDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.9, multiplier });
+          previews.push({ label, dataUrl: previewDataUrl });
+
+          // 2) 고해상도 원본 PNG — 인쇄/다운로드용으로 배율을 넉넉히 줌
+          const highResDataUrl = canvas.toDataURL({ format: 'png', multiplier: Math.max(multiplier, 4) });
+          highResPngs.push({ label, dataUrl: highResDataUrl });
+
+          // 3) 원본 SVG — PNG/JPG 내보내기와 동일하게 임시 폰트만 이미지로 바꿔서 뽑음
+          const flattened = await buildFontFlattenedClone();
+          const svgString = flattened.toSVG();
+          flattened.dispose();
+          svgs.push({ label, svg: svgString });
+        }
+      }
+
+      // 원래 보고 있던 디자인/면으로 복원
+      await loadDesignForExport(originalIdx, originalSide);
+      guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
+      canvas.renderAll();
+      renderTabs();
+
+      try {
+        sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(previews));
+        sessionStorage.setItem(ORIGINAL_SVG_KEY, JSON.stringify(svgs));
+        sessionStorage.setItem(ORIGINAL_PNG_KEY, JSON.stringify(highResPngs));
+      } catch (storageErr) {
+        console.error('시안 데이터 저장 실패:', storageErr);
+        alert('이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
+        return;
+      }
+
+      // 현재 쿼리(count/width/height 등)를 그대로 이어서 시안보기 페이지로 이동
+      window.location.href = SIAN_PAGE_URL + window.location.search;
+
+    } catch (err) {
+      console.error(err);
+      alert('시안 생성 중 오류가 발생했습니다.');
+    } finally {
+      floatingSaveBtn.disabled = false;
+      floatingSaveBtn.textContent = originalBtnText;
+    }
+  });
 
   /* ============================================================
      13. 프로젝트 저장 / 불러오기
