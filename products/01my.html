@@ -177,6 +177,54 @@
         padding: 5.4px 8px;
         font-size: 11px;
     }
+
+    /* 6. 수량/건수 줄: 좁은 화면에서 컨트롤이 잘리지 않도록 필요시 두 번째 줄로 자연스럽게 줄바꿈 */
+    #qtyOptionRow {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+    #qtyOptionRow .qty-controls {
+        flex-wrap: wrap;
+        row-gap: 6px;
+        width: 100%;
+    }
+    #qtyModeSelect {
+        flex: 1 1 110px;
+        width: auto !important;
+        min-width: 100px;
+    }
+    #qtySelect {
+        flex: 1 1 90px;
+        min-width: 70px;
+    }
+
+    /* 7. 무게,컬러 안내문구: 줄바꿈 허용해서 옆으로 삐져나가지 않게 */
+    #weightColorRow {
+        flex-wrap: wrap;
+        row-gap: 2px;
+    }
+    #weightColorRow .fixed-option {
+        flex-basis: 100%;
+        line-height: 1.4;
+    }
+
+    /* 8. 견적서출력 버튼 + 총 결제액: 좌우로 붙어있으면 잘리므로 세로로 쌓아서 정렬 */
+    .total-price {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px;
+    }
+    .total-price > div:last-child {
+        text-align: right !important;
+    }
+    #selectedOptionsSummary {
+        white-space: normal !important;
+        word-break: keep-all;
+        line-height: 1.5;
+    }
+    #printQuoteBtn {
+        width: 100%;
+    }
 }
 
 /* 후가공 서브옵션(색상 등) select를 감싸는 모바일피커 래퍼: 메인 select의 flex:1과
@@ -330,16 +378,14 @@
 
 
         <!-- 수량 옆에 건수 박스를 한 줄에 나란히 배치 (크기 축소) -->
-        <div class="option-row">
+        <div class="option-row" id="qtyOptionRow">
             <div class="label">수량/건수</div>
-            <div style="display: flex; gap: 5px; align-items: center; flex: 1;">
-               <select id="qtySelect" onchange="updatePrice()" style="flex:1;">
-
-
-
-</select>
-
-
+            <div class="qty-controls" style="display: flex; gap: 5px; align-items: center; flex: 1;">
+               <select id="qtyModeSelect" onchange="handleQtyModeChange()" style="width:120px;">
+                   <!-- 최소매수 옵션 / 수량 직접입력 옵션이 JS로 채워집니다 -->
+               </select>
+               <input type="number" id="qtySelect" placeholder="구입희망 매수 입력" min="1" step="1" oninput="updatePrice()" onchange="updatePrice()" disabled style="flex:1; min-width:0; padding:4px; text-align:center;">
+               <span style="font-size: 14px;">매</span>
 
                 <span style="font-size: 14px; font-weight: bold; margin: 0 2px;">x</span>
                 <input type="number" id="setCountInput" value="1" min="1" max="50" onchange="updatePrice()" style="width: 45px; padding: 4px; text-align: center;"> 
@@ -387,7 +433,7 @@
             </div>
         </div>
 
-        <div class="option-row">
+        <div class="option-row" id="weightColorRow">
             <div class="label">무게, 컬러</div>
             <span style="margin-right:2px; font-size:13px; color:#666;">약</span>
             <span id="weightDisplay" style="margin-right:10px; font-size:13px; color:#666;">0kg</span>
@@ -864,27 +910,88 @@ window.enableMobileCustomPicker = function(selectEl) {
         setTimeout(() => { window.isOpening = false; }, 500);
     }
 
-    // ---- ③ 매수/배수 (options00) ----
-    function loadQtySelect() {
-        const qtySelect = document.getElementById("qtySelect");
-        qtySelect.innerHTML = "";
+    // ---- ③ 매수/배수 (options00) : 구입희망 매수를 직접 입력받고, 등록된 구간별 배수를 적용합니다 ----
+    // 파이어베이스(options00.quantities / options00.multipliers)에 등록된 "매수-배수" 구간은
+    // 관리자 화면에서 계속 자유롭게 추가/수정하면 되고, 여기서는 그 구간을 그대로 읽어와
+    // 아래 규칙으로 가격을 매깁니다.
+    //   - 입력 매수가 등록된 최소 구간(예: 200매) 이하이면 -> 그 최소 구간의 배수를 그대로 적용
+    //   - 입력 매수가 두 구간 사이(예: 201~300매, 300매가 다음 구간)이면 -> "다음 구간"인 300매의 배수를 그대로 적용
+    //     (구간 안에서는 매수가 몇 장이든 같은 구간 가격으로 계산됩니다. 실제 매수만 무게 계산 등에 그대로 쓰입니다)
+    //   - 등록된 가장 큰 구간보다 많이 입력하면 -> 마지막 두 구간의 증가율(기울기)로 선형 연장해서 배수를 계산합니다.
+    //     (구간을 촘촘히 등록해둘수록 이 케이스는 거의 발생하지 않습니다)
+    function getQtySortedTiers() {
         const q = qtyConfig();
-        if (q && Array.isArray(q.quantities) && q.quantities.length) {
-            q.quantities.forEach((qty, i) => {
-                const el = document.createElement("option");
-                el.value = qty;
-                el.textContent = `${qty}매`;
-                el.dataset.multi = q.multipliers && q.multipliers[i] !== undefined ? q.multipliers[i] : 1;
-                qtySelect.appendChild(el);
-            });
-        } else {
-            const el = document.createElement("option");
-            el.value = 500;
-            el.textContent = "500매";
-            el.dataset.multi = 1;
-            qtySelect.appendChild(el);
-        }
+        const quantities = (q && Array.isArray(q.quantities)) ? q.quantities : [];
+        const multipliers = (q && Array.isArray(q.multipliers)) ? q.multipliers : [];
+        return quantities
+            .map((qty, i) => ({ qty: parseFloat(qty), multi: parseFloat(multipliers[i]) }))
+            .filter(t => !isNaN(t.qty) && t.qty > 0 && !isNaN(t.multi))
+            .sort((a, b) => a.qty - b.qty);
     }
+
+    function getQtyPricing(enteredQty) {
+        const tiers = getQtySortedTiers();
+        if (!tiers.length) return { multi: 1, tierQty: enteredQty };
+
+        // 입력 매수 이상인 첫 구간을 찾아 그 구간의 배수를 그대로 적용
+        const matched = tiers.find(t => enteredQty <= t.qty);
+        if (matched) return matched;
+
+        // 등록된 최대 구간보다 많이 입력한 경우: 마지막 두 구간의 증가율로 선형 연장
+        const last = tiers[tiers.length - 1];
+        if (tiers.length >= 2) {
+            const prev = tiers[tiers.length - 2];
+            const qtyDiff = last.qty - prev.qty;
+            const multiDiff = last.multi - prev.multi;
+            const rate = qtyDiff > 0 ? multiDiff / qtyDiff : 0;
+            const extraQty = enteredQty - last.qty;
+            return { multi: last.multi + rate * extraQty, tierQty: enteredQty };
+        }
+        return { multi: last.multi, tierQty: enteredQty };
+    }
+
+    // 페이지 진입시: 매수 모드 셀렉트에 "최소구간매수" / "수량 직접입력" 두 옵션을 채우고,
+    // 기본은 "최소구간매수"로 선택해둡니다. (총 결제액이 0원으로 뜨지 않도록 -> 검색엔진 노출에 불리하지 않게)
+    function initQtyInputDefault() {
+        const modeSelect = document.getElementById("qtyModeSelect");
+        const qtyInput = document.getElementById("qtySelect");
+        const tiers = getQtySortedTiers();
+        const minQty = tiers.length ? tiers[0].qty : 500;
+
+        modeSelect.innerHTML = "";
+        const minOpt = document.createElement("option");
+        minOpt.value = "min";
+        minOpt.textContent = `${minQty}매`;
+        modeSelect.appendChild(minOpt);
+
+        const customOpt = document.createElement("option");
+        customOpt.value = "custom";
+        customOpt.textContent = "수량 직접입력";
+        modeSelect.appendChild(customOpt);
+
+        modeSelect.value = "min";
+        qtyInput.value = minQty;
+        qtyInput.disabled = true;
+    }
+
+    // 매수 모드 셀렉트 전환: "최소구간매수"를 고르면 입력창을 최소구간 매수로 고정하고 비활성화,
+    // "수량 직접입력"을 고르면 입력창을 비우고 활성화해 사용자가 원하는 매수를 직접 입력하게 합니다.
+    window.handleQtyModeChange = function () {
+        const mode = document.getElementById("qtyModeSelect").value;
+        const qtyInput = document.getElementById("qtySelect");
+        const tiers = getQtySortedTiers();
+        const minQty = tiers.length ? tiers[0].qty : 500;
+
+        if (mode === "custom") {
+            qtyInput.disabled = false;
+            qtyInput.value = "";
+            qtyInput.focus();
+        } else {
+            qtyInput.disabled = true;
+            qtyInput.value = minQty;
+        }
+        updatePrice();
+    };
 
     // ---- ④ 비규격 설정 (options01) : 사이즈 입력 범위에 반영 ----
     function applyCustomConfigToInputs() {
@@ -929,9 +1036,10 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     // ---- ⑤ 가격/무게/납기 계산 ----
     function updatePrice() {
-        const qtySelect = document.getElementById("qtySelect");
-        const qtyOpt = qtySelect.options[qtySelect.selectedIndex];
-        const qtyFactor = qtyOpt ? (parseFloat(qtyOpt.dataset.multi) || 1) : 1;
+      try {
+        const qtySelect = document.getElementById("qtySelect"); // 구입희망 매수 입력창 (input[type=number])
+        const enteredQty = Math.max(1, parseInt(qtySelect.value) || 0);
+        const qtyFactor = getQtyPricing(enteredQty).multi;
         const count = parseInt(document.getElementById("setCountInput").value) || 1;
 
         const sizeType = document.getElementById("sizeType").value;
@@ -1039,14 +1147,14 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 무게 표시 (면적 × 평량 × 매수 × 건수)
         const weightDisplay = document.getElementById("weightDisplay");
         if (totalWeight > 0) {
-            const totalWeightKg = ((w * h) / 1000000) * (totalWeight / 1000) * (parseInt(qtySelect.value) || 0) * count;
+            const totalWeightKg = ((w * h) / 1000000) * (totalWeight / 1000) * enteredQty * count;
             weightDisplay.textContent = totalWeightKg < 1 ? Math.round(totalWeightKg * 1000) + "g" : totalWeightKg.toFixed(2) + "kg";
         } else {
             weightDisplay.textContent = "0kg";
         }
 
         summary.push(`가로 ${w}mm × 세로 ${h}mm`);
-        summary.push(`${qtySelect.value || 0}매`);
+        summary.push(`${enteredQty}매`);
         summary.push(`${count}건`);
         summaryEl.textContent = summary.filter(Boolean).join(" + ");
 
@@ -1056,6 +1164,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         document.getElementById("priceDisplay").textContent = finalPrice.toLocaleString() + "원";
 
         updateDeliveryDisplayFromDays(totalDeliveryDays);
+      } catch (err) {
+        console.error("[01my] updatePrice() 오류:", err);
+        const priceEl = document.getElementById("priceDisplay");
+        if (priceEl) { priceEl.textContent = "가격 계산 오류"; priceEl.style.color = "red"; }
+      }
     }
     window.updatePrice = updatePrice;
 
@@ -1126,33 +1239,71 @@ window.enableMobileCustomPicker = function(selectEl) {
     });
     document.getElementById("setCountInput").addEventListener("input", updatePrice);
 
+    // ---- 매수 입력: 파이어베이스에 등록된 최대 매수(등록된 구간 중 가장 큰 매수)를 넘으면
+    // 경고창을 띄우고 최대 매수로 되돌립니다. (더 필요하면 "건수"를 늘려서 구매하도록 안내)
+    function validateQtyMax() {
+        const qtyInput = document.getElementById("qtySelect");
+        if (qtyInput.disabled) return; // "최소구간매수" 모드에서는 사용자가 값을 직접 바꿀 수 없으므로 검사 불필요
+        const tiers = getQtySortedTiers();
+        if (!tiers.length) return;
+        const maxQty = tiers[tiers.length - 1].qty;
+        const enteredQty = parseInt(qtyInput.value) || 0;
+        if (enteredQty > maxQty) {
+            alert(`한 번에 주문 가능한 최대 매수는 ${maxQty.toLocaleString()}매입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
+            qtyInput.value = maxQty;
+            updatePrice();
+        }
+    }
+    document.getElementById("qtySelect").addEventListener("blur", () => {
+        setTimeout(validateQtyMax, 100);
+    });
+
     // ---- 초기 로드: Firestore에서 01my 문서를 딱 1번만 불러옵니다 (SEO/상세내용도 이 문서 안에 함께 있음) ----
     async function loadProductAndInit() {
-        const snap = await getDoc(doc(db, "products", PRODUCT_ID));
-        productData = snap.exists() ? snap.data() : { productId: PRODUCT_ID, options: [] };
-        if (!Array.isArray(productData.options)) productData.options = [];
+        try {
+            const snap = await getDoc(doc(db, "products", PRODUCT_ID));
+            productData = snap.exists() ? snap.data() : { productId: PRODUCT_ID, options: [] };
+            if (!Array.isArray(productData.options)) productData.options = [];
 
-        renderOptionGroups();
+            console.log("[01my] Firestore 상품 데이터 로드 완료:", productData);
 
-        // 첫 옵션(그룹)의 첫 제품 이미지를 기본값(맨 밑 배경)으로 바로 반영
-        const firstSelect = document.querySelector("#dynamicOptionsContainer select");
-        if (firstSelect && firstSelect.options.length > 0) {
-            const firstOpt = firstSelect.options[0];
-            if (firstOpt.dataset.imageUrl) updateMainImage(firstOpt.dataset.imageUrl);
+            renderOptionGroups();
+
+            // 첫 옵션(그룹)의 첫 제품 이미지를 기본값(맨 밑 배경)으로 바로 반영
+            const firstSelect = document.querySelector("#dynamicOptionsContainer select");
+            if (firstSelect && firstSelect.options.length > 0) {
+                const firstOpt = firstSelect.options[0];
+                if (firstOpt.dataset.imageUrl) updateMainImage(firstOpt.dataset.imageUrl);
+            }
+
+            initQtyInputDefault();
+            console.log("[01my] 매수 기본값 세팅 완료. qtySelect.value =", document.getElementById("qtySelect").value);
+
+            applyCustomConfigToInputs();
+            loadSizeList();
+            loadFinishingOptions(document.querySelector(".finishing-select"));
+            setupFinishingListener(document.querySelector(".finishing-select"));
+
+            updateSizeMode();
+            updatePrice();
+            console.log("[01my] 초기 가격 계산 완료. priceDisplay =", document.getElementById("priceDisplay").textContent);
+
+            window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
+            window.enableMobileCustomPicker(document.getElementById("sizeList"));
+            window.enableMobileCustomPicker(document.querySelector(".finishing-select"));
+        } catch (err) {
+            // 초기화 중 어디서든 에러가 나면 조용히 0원으로 남지 않고, 콘솔 + 화면에 바로 표시합니다.
+            console.error("[01my] 초기화 중 오류가 발생했습니다:", err);
+            const priceEl = document.getElementById("priceDisplay");
+            if (priceEl) {
+                priceEl.textContent = "가격 계산 오류";
+                priceEl.style.color = "red";
+            }
+            const summaryEl = document.getElementById("selectedOptionsSummary");
+            if (summaryEl) {
+                summaryEl.innerHTML = `<span style="color:red;">초기화 오류: ${(err && err.message) ? err.message : err} (F12 콘솔 확인)</span>`;
+            }
         }
-
-        loadQtySelect();
-        applyCustomConfigToInputs();
-        loadSizeList();
-        loadFinishingOptions(document.querySelector(".finishing-select"));
-        setupFinishingListener(document.querySelector(".finishing-select"));
-
-        updateSizeMode();
-        updatePrice();
-
-        window.enableMobileCustomPicker(document.getElementById("qtySelect"));
-        window.enableMobileCustomPicker(document.getElementById("sizeList"));
-        window.enableMobileCustomPicker(document.querySelector(".finishing-select"));
     }
 
     loadProductAndInit();
@@ -1273,7 +1424,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 // 새창 사이즈: 관리자에서 입력한 값이 있으면 그 값을, 없으면 기본값(900x1000)을 사용합니다.
                 const w = parseInt(finalNewWindowW, 10) || 900;
                 const h = parseInt(finalNewWindowH, 10) || 1000;
-                window.open(targetUrl, "_blank", `width=${w},height=${h}`);
+                // "_blank" 대신 고정된 창 이름을 써서, "구입하기"를 여러 번 눌러도
+                // 새 창이 계속 늘어나지 않고 이미 열려있는 같은 창을 재사용(새로고침)하도록 합니다.
+                window.open(targetUrl, "orderCartWindow", `width=${w},height=${h}`);
             } else {
                 window.location.href = targetUrl;
             }

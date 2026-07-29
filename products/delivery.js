@@ -8,6 +8,13 @@ function calculateDeliveryDate(daysToAdd) {
         "2026-10-03", "2026-10-09", "2026-12-25"
     ];
     let date = new Date();
+
+    // 오후 4시(16:00) 이후 주문이면 하루 추가
+    const CUTOFF_HOUR = 16;
+    if (date.getHours() >= CUTOFF_HOUR) {
+        daysToAdd += 1;
+    }
+
     let added = 0;
     while (added < daysToAdd) {
         date.setDate(date.getDate() + 1);
@@ -18,5 +25,5 @@ function calculateDeliveryDate(daysToAdd) {
             added++;
         }
     }
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate() + 1}일`;
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
