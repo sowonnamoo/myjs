@@ -715,7 +715,7 @@ async function tryRenderThumbnail(arrayBuffer, enforceLiveTextCheck){
     const hasLiveText = opList.fnArray.some(code => TEXT_SHOW_OPS.has(code));
 
     const baseViewport = page.getViewport({ scale: 1 });
-    const target = 900; // render high-res so the lightbox zoom stays sharp
+    const target = 2000; // render high-res — feeds both the lightbox zoom and the sian.html preview board
     const scale = target / Math.max(baseViewport.width, baseViewport.height);
     const viewport = page.getViewport({ scale });
 
@@ -750,7 +750,7 @@ async function tryRenderThumbnail(arrayBuffer, enforceLiveTextCheck){
       stampLiveTextWarning(cropCtx, cropCanvas.width, cropCanvas.height);
     }
 
-    return { dataUrl: cropCanvas.toDataURL('image/png'), hasLiveText, renderIssue };
+    return { dataUrl: cropCanvas.toDataURL('image/jpeg', 0.92), hasLiveText, renderIssue };
   }catch(err){
     return null;
   }
