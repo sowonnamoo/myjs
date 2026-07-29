@@ -626,6 +626,25 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         }
     }
 
+    // 브라우저 창 가로 폭이 바뀌면(늘리거나 줄이거나 둘 다) 자동으로 새로고침해서
+    // 캔버스가 새 컨테이너 크기에 맞게 다시 계산되도록 함. 드래그하는 동안 계속
+    // 리로드되지 않도록 리사이즈가 멈추고 잠깐(400ms) 지난 뒤 한 번만 실행함.
+    (function(){
+        let lastWidth = window.innerWidth;
+        let resizeTimer = null;
+        window.addEventListener('resize', function(){
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function(){
+                const newWidth = window.innerWidth;
+                if(newWidth !== lastWidth){
+                    window.location.reload();
+                    return;
+                }
+                lastWidth = newWidth;
+            }, 400);
+        });
+    })();
+
 
 /*
 canvas.on('selection:created', (e) => {});
