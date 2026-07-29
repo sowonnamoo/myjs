@@ -225,6 +225,11 @@
     #printQuoteBtn {
         width: 100%;
     }
+    #printCutlineBtn {
+        width: 100%;
+        margin-left: 0 !important;
+        margin-top: 8px;
+    }
 }
 
 /* 후가공 서브옵션(색상 등) select를 감싸는 모바일피커 래퍼: 메인 select의 flex:1과
@@ -362,6 +367,7 @@
 </style>
 <script src="delivery.js"></script>
 <script src="quote.js"></script>
+<script src="cutline.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
@@ -450,6 +456,11 @@
     <!-- 견적서 버튼: height를 명시하고 flex-shrink를 0으로 설정 -->
   <button type="button" id="printQuoteBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
     견적서 출력
+</button>
+
+    <!-- 작업선(칼선) 버튼: 지금 선택된 사이즈(규격/비규격 상관없이)에 맞춰 PDF 칼선을 바로 다운로드 -->
+  <button type="button" id="printCutlineBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap; margin-left: 8px;">
+    작업선
 </button>
 
     <!-- 우측: 총 결제액 영역 -->
