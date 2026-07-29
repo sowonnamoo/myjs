@@ -78,20 +78,20 @@
 }
 
 .btn-upload{
-    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
+    background: linear-gradient(135deg, #97a1ac, #767f89);
 }
 .btn-upload:hover{
-    background: linear-gradient(135deg, #3f97d6, #2569ad);
+    background: linear-gradient(135deg, #878f99, #666e77);
 }
 
 .btn-save{
-    background: linear-gradient(135deg, #97a1ac, #767f89);
+    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
 }
 .btn-save:hover{
-    background: linear-gradient(135deg, #878f99, #666e77);
+    background: linear-gradient(135deg, #3f97d6, #2569ad);
 }
 .btn-save:disabled:hover{
-    background: linear-gradient(135deg, #97a1ac, #767f89);
+    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
 }
     </style>
 </head>
@@ -115,12 +115,12 @@
 
         <input type="file" id="file-input" accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf,.pdf" style="display:none;">
 
-        <button id="edit-btn" class="btn btn-save" style="background:linear-gradient(135deg, #8e6fd6, #6c4bc4);">
+        <button id="edit-btn" class="btn btn-upload">
             편집하기
         </button>
 
         <button id="save-btn" class="btn btn-save">
-            전체저장
+            시안보기/장바구니담기
         </button>
 
     </div>
@@ -235,7 +235,9 @@ canvas.on('mouse:down', (e) => {
         canvas.add(guideRect);
 
         guideText = new fabric.Text("파일을 업로드하세요.(jpg, jpeg, png)", {
-            fontSize: 20, fill: '#e74c3c', textAlign: 'center', originX: 'center', originY: 'center',
+            fontSize: 20, fontWeight: '700', fill: '#e74c3c',
+            stroke: '#ffffff', strokeWidth: 4, paintFirst: 'stroke',
+            textAlign: 'center', originX: 'center', originY: 'center',
             left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
         });
         canvas.add(guideText);
@@ -244,7 +246,9 @@ canvas.on('mouse:down', (e) => {
         guideCornerText = new fabric.Text(
             "붉은선은 실출력시 보이지 않습니다.\n이 선 밖으로 테두리나 글씨가 넘어가면 실 출력시 잘릴 수 있습니다.",
             {
-                fontSize: Math.max(10, canvas.width * 0.012), fill: '#ff0000', textAlign: 'right',
+                fontSize: Math.max(10, canvas.width * 0.012), fontWeight: '700', fill: '#ff0000',
+                stroke: '#ffffff', strokeWidth: 3, paintFirst: 'stroke',
+                textAlign: 'right',
                 originX: 'right', originY: 'bottom',
                 left: padding + (canvas.width - padding * 2) - 6,
                 top: padding + (canvas.height - padding * 2) - 6,
@@ -545,6 +549,17 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     try {
         const exportedDesigns = [];
 
+        // 이미지 오브젝트가 캔버스 전체(붉은선 바깥 회색박스, 즉 도련까지)를 덮고 있는지 확인
+        function isImageFullyFilled(){
+            const img = designData[currentIdx][currentSide];
+            if (!img) return false;
+            const r = img.getBoundingRect(true, true);
+            const tol = 1; // 부동소수점 오차 허용
+            return r.left <= tol && r.top <= tol &&
+                (r.left + r.width) >= (canvas.width - tol) &&
+                (r.top + r.height) >= (canvas.height - tol);
+        }
+
         // 모든 디자인(양면이면 앞/뒤 각각)을 순회하며 캔버스에 잠깐씩 올려 내보냄
         for (let i = 0; i < count; i++) {
             const sides = isDouble ? ['front', 'back'] : ['front'];
@@ -552,6 +567,11 @@ document.getElementById('save-btn').addEventListener('click', async () => {
                 currentIdx = i;
                 currentSide = side;
                 updateView();
+
+                if (!isImageFullyFilled()) {
+                    alert('붉은선 밖 회색박스까지 이미지를 채워주세요.\n(이미지 수정시 편집하기 클릭후 셀프 편집 추천)');
+                    return;
+                }
 
                 // 가이드(빨간 박스/안내문구)는 저장 이미지에서 제외
                 canvas.remove(guideRect);
