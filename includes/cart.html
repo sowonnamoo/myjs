@@ -479,6 +479,50 @@
 </div>
 
 <script>
+// 장바구니(cart) 저장소 — 원래 localStorage를 썼는데, 도메인당 5~10MB 한도라
+// 아직 R2에 안 올라간 원본 이미지(SVG/고해상도 JPEG data URL)를 여러 개 담으면
+// 금방 한도를 넘겨버려서 "용량이 너무 커서 저장 실패" 오류가 났음. 한도가 훨씬
+// 넉넉한 IndexedDB로 교체함 (sian.html이 장바구니에 담을 때 쓰는 것과 동일한
+// DB/스토어 이름을 써야 서로 읽고 쓸 수 있음).
+const HANDOFF_DB_NAME = 'ecogrHandoff';
+const HANDOFF_STORE_NAME = 'kv';
+const CART_KEY = 'ecogr_cart';
+function openHandoffDB(){
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+        req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbSet(key, value){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+        tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+async function idbGet(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, 'readonly');
+        const req = tx.objectStore(HANDOFF_STORE_NAME).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbDelete(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+        tx.objectStore(HANDOFF_STORE_NAME).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
 // 각 결제 수단별 독립적인 Worker 주소
 const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/"; 
 const WORKER_PAYPAL = "";
@@ -560,10 +604,10 @@ async function uploadRemainingOriginals(onProgress){
         delete item.originalImages; // 업로드가 끝난 원본 데이터(용량이 큰 data URL)는 더 이상 들고 있지 않는다.
     }
 
-    localStorage.setItem("cart", JSON.stringify(cart));
+    await idbSet(CART_KEY, cart);
 }
 
-let cart = JSON.parse(localStorage.getItem("cart")) || [];
+let cart = [];
 let total = 0;
 
 // ---- 다음(카카오) 우편번호 서비스로 주소 검색 ----
@@ -668,9 +712,9 @@ function render(){
     document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
 }
 
-window.deleteItem = function(index){
+window.deleteItem = async function(index){
     cart.splice(index,1);
-    localStorage.setItem("cart",JSON.stringify(cart));
+    await idbSet(CART_KEY, cart);
     render();
 };
 
@@ -767,7 +811,7 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
         if(response.code != null){ alert("결제 실패: " + response.message); return; }
 
         await saveOrderToFirestore(orderData);
-        localStorage.removeItem("cart");
+        await idbDelete(CART_KEY);
         location.href = "success.html";
     } catch(error) {
         console.error(error);
@@ -801,7 +845,7 @@ window.goBankTransfer = async function(){
         const orderId = "BANK_" + Date.now();
         const orderData = saveOrder("무통장입금", orderId);
         await saveOrderToFirestore(orderData);
-        localStorage.removeItem("cart");
+        await idbDelete(CART_KEY);
         location.href = "/myjs/success2";
     } catch(e) {
         console.error(e);
@@ -815,7 +859,15 @@ document.addEventListener('keydown', (e) => {
     if(e.key === 'Escape') window.closeCompositeModal();
 });
 
-render();
+(async function(){
+    try {
+        cart = (await idbGet(CART_KEY)) || [];
+    } catch (e) {
+        console.error('장바구니를 불러오지 못했습니다:', e);
+        cart = [];
+    }
+    render();
+})();
 </script>
 
 </body>

@@ -459,6 +459,19 @@
       req.onerror = () => reject(req.error);
     });
   }
+  async function idbSet(key, value){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+      tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  // cart.html과 공유하는 장바구니 저장 키 (localStorage 대신 IndexedDB에 저장 —
+  // 아직 R2에 안 올라간 원본 이미지 data URL을 여러 개 담으면 localStorage의
+  // 5~10MB 한도를 쉽게 넘겨버려서 "저장 실패" 오류가 났었음)
+  const CART_KEY = 'ecogr_cart';
 
   // ---- 디자인 에디터에서 넘어온 시안 이미지를 동적으로 채워 넣기 ----
   const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
@@ -916,20 +929,20 @@ const runCartCheckout = withButtonLoading(cartCheckoutBtn, '담는 중...', asyn
         originalImages                  // 원본 이미지 목록 (카드결제 시점에 R2 업로드 예정)
     };
 
-    // 6. localStorage에 저장 → 장바구니 페이지(cart.html)에서 그대로 읽어간다.
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    // 6. IndexedDB에 저장 → 장바구니 페이지(cart.html)에서 그대로 읽어간다.
+    let cart = (await idbGet(CART_KEY)) || [];
     cart.push(newItem);
     try {
-      localStorage.setItem("cart", JSON.stringify(cart));
+      await idbSet(CART_KEY, cart);
     } catch(e) {
       console.error('장바구니 저장 실패:', e);
-      alert('장바구니 저장에 실패했습니다. 원본 이미지 용량이 너무 클 수 있습니다.');
+      alert('장바구니 저장에 실패했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.');
       return;
     }
 
     // 7. 완료 알림 및 장바구니 페이지로 이동
     alert('장바구니에 담겼습니다.');
-    window.location.href = '/myjs/includes/cart.html';
+    window.location.href = 'cart.html';
 });
 
 // ---- 인쇄 주의사항 확인 모달 ----
