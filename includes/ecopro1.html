@@ -154,10 +154,42 @@
     const PREVIEW_PAGE_URL = '/myjs/includes/sian.html';
 
     // "편집하기" 버튼으로 고급 에디터(ecopro3)에 현재 첨부 이미지를 넘길 때 쓰는
-    // 세션 스토리지 키 / 실제 에디터 페이지 주소. ecopro3.js가 시작할 때 이 키를
+    // IndexedDB 키 / 실제 에디터 페이지 주소. ecopro3.js가 시작할 때 이 키를
     // 읽어서 각 디자인(idx)/면(side)에 맞는 이미지를 캔버스에 자동으로 올려줍니다.
+    // (sessionStorage는 도메인당 5~10MB 한도라 고화질 이미지 여러 장엔 부족해서
+    // 한도가 훨씬 넉넉한 IndexedDB를 씀 — ecopro3.js와 DB/스토어 이름이 같아야 함)
     const EDITOR_IMPORT_KEY = 'ecogr_editor_import_images';
     const EDITOR_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/ecopro3';
+
+    const HANDOFF_DB_NAME = 'ecogrHandoff';
+    const HANDOFF_STORE_NAME = 'kv';
+    function openHandoffDB(){
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+            req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function idbSet(key, value){
+        const db = await openHandoffDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+            tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    // data URL(base64) 문자열 길이로 대략적인 바이트 수를 추정 (R2 업로드 한도인
+    // 500MB와 동일한 기준으로, 넘기기 전에 미리 걸러내기 위함)
+    const MAX_TRANSFER_BYTES = 500 * 1024 * 1024; // 500MB
+    function estimateDataUrlBytes(dataUrl){
+        if (!dataUrl) return 0;
+        const commaIdx = dataUrl.indexOf(',');
+        const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+        return Math.floor(base64.length * 3 / 4);
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -442,12 +474,19 @@ document.getElementById('edit-btn').addEventListener('click', async () => {
             return;
         }
 
-        // 세션 스토리지에 담아서 편집기(ecopro3) 페이지로 전달
+        // 넘길 데이터 총량이 500MB를 넘지 않는지 확인 (R2 업로드 한도와 동일하게 맞춤)
+        const totalBytes = importImages.reduce((sum, item) => sum + estimateDataUrlBytes(item.dataUrl), 0);
+        if (totalBytes > MAX_TRANSFER_BYTES) {
+            alert('전달할 이미지 용량이 500MB를 초과합니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요. (현재 약 ' + (totalBytes / 1024 / 1024).toFixed(0) + 'MB)');
+            return;
+        }
+
+        // IndexedDB에 담아서 편집기(ecopro3) 페이지로 전달
         try {
-            sessionStorage.setItem(EDITOR_IMPORT_KEY, JSON.stringify(importImages));
+            await idbSet(EDITOR_IMPORT_KEY, importImages);
         } catch (storageErr) {
             console.error(storageErr);
-            alert('이미지 용량이 너무 커서 편집기로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
+            alert('이미지를 편집기로 전달하지 못했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.');
             return;
         }
 

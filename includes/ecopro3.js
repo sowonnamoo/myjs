@@ -985,25 +985,75 @@
   renderTabs();
 
   /* ============================================================
+     IndexedDB 핸드오프 저장소 — ecopro1 ↔ ecopro3 ↔ sian.html 사이에서 이미지/SVG
+     데이터를 주고받을 때 씀. sessionStorage(도메인당 5~10MB)로는 고화질 이미지
+     여러 장을 담기 부족해서 한도가 훨씬 넉넉한 IndexedDB로 통일함. 세 페이지
+     모두 이 DB/스토어 이름을 그대로 써야 서로 읽고 쓸 수 있음.
+  ============================================================ */
+  const HANDOFF_DB_NAME = 'ecogrHandoff';
+  const HANDOFF_STORE_NAME = 'kv';
+  function openHandoffDB(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSet(key, value){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+      tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function idbGet(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HANDOFF_STORE_NAME, 'readonly');
+      const req = tx.objectStore(HANDOFF_STORE_NAME).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbDelete(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+      tx.objectStore(HANDOFF_STORE_NAME).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  // data URL(base64) 문자열 길이로 대략적인 바이트 수를 추정 (R2 업로드 한도인
+  // 500MB와 동일한 기준으로, IndexedDB에 넘기기 전에 미리 걸러내기 위함)
+  const MAX_TRANSFER_BYTES = 500 * 1024 * 1024; // 500MB
+  function estimateDataUrlBytes(dataUrl){
+    if (!dataUrl) return 0;
+    const commaIdx = dataUrl.indexOf(',');
+    const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+    return Math.floor(base64.length * 3 / 4);
+  }
+
+  /* ============================================================
      4b. ecopro1(간단 업로드 페이지)의 "편집하기" 버튼에서 넘어온 첨부 이미지를
-     세션 스토리지에서 읽어와 각 디자인(idx)/면(side)에 맞게 자동으로 캔버스에
-     올려줌. ecopro1이 sessionStorage의 'ecogr_editor_import_images' 키에
+     IndexedDB에서 읽어와 각 디자인(idx)/면(side)에 맞게 자동으로 캔버스에
+     올려줌. ecopro1이 IndexedDB의 'ecogr_editor_import_images' 키에
      [{idx, side, dataUrl}, ...] 형태로 저장해두고 같은 쿼리를 그대로 이어서
      이 페이지로 이동시킴 — 그래서 count/width/height 등은 이미 URL 쿼리로
      맞춰져 있고, 여기서는 이미지 내용만 채워 넣으면 됨.
   ============================================================ */
   const EDITOR_IMPORT_KEY = 'ecogr_editor_import_images';
 
-  function importImagesFromEcopro1(){
-    let raw;
-    try { raw = sessionStorage.getItem(EDITOR_IMPORT_KEY); } catch (e) { return; }
-    if (!raw) return;
-
+  async function importImagesFromEcopro1(){
     let items;
-    try { items = JSON.parse(raw); } catch (e) { return; }
+    try { items = await idbGet(EDITOR_IMPORT_KEY); } catch (e) { return; }
     if (!Array.isArray(items) || !items.length) return;
 
-    try { sessionStorage.removeItem(EDITOR_IMPORT_KEY); } catch (e) {}
+    try { await idbDelete(EDITOR_IMPORT_KEY); } catch (e) {}
 
     let chain = Promise.resolve();
     items.forEach((item) => {
@@ -2625,8 +2675,11 @@
        1) 시안 이미지 (일반 해상도 JPEG) — sian.html 보드에 그대로 표시됨
        2) 원본 SVG (업로드한 임시 폰트는 이미지로 바꿔 어디서나 동일하게 보이도록)
        3) 고해상도 원본 PNG (인쇄/다운로드용)
-     - 세 가지 모두 세션 스토리지에 담아 시안보기 페이지(sian.html)로 넘기고,
-       현재 쿼리(count/width/height 등)도 그대로 이어서 전달함.
+     - 세 가지 모두 IndexedDB에 담아 시안보기 페이지(sian.html)로 넘기고,
+       현재 쿼리(count/width/height 등)도 그대로 이어서 전달함. (sessionStorage는
+       도메인당 5~10MB로 한도가 낮아 고해상도 이미지 여러 장을 담기엔 부족해서,
+       한도가 훨씬 넉넉한 IndexedDB로 교체함 — 같은 브라우저의 같은 사이트끼리는
+       페이지를 이동해도 그대로 읽을 수 있음)
   ============================================================ */
   const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';       // sian.html이 그대로 읽는 키(포맷 동일: [{label, dataUrl}])
   const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';            // [{label, svg}]
@@ -2648,6 +2701,23 @@
   floatingSaveBtn.addEventListener('click', async () => {
     if (designData[currentIdx]) designData[currentIdx][currentSide] = serializeCurrentCanvas();
 
+    // 1) 건수/앞뒤면 누락 검사 — 캔버스를 건드리기 전에 저장된 데이터만으로 빠르게 확인
+    const sidesToCheck = isDouble ? ['front', 'back'] : ['front'];
+    const missingLabels = [];
+    for (let i = 0; i < count; i++) {
+      for (const side of sidesToCheck) {
+        const data = designData[i][side];
+        const hasContent = data && Array.isArray(data.objects) && data.objects.length > 0;
+        if (!hasContent) {
+          missingLabels.push(`디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : ''));
+        }
+      }
+    }
+    if (missingLabels.length > 0) {
+      alert('아직 작업되지 않은 디자인이 있습니다.\n\n' + missingLabels.join('\n') + '\n\n모든 디자인을 작업해주세요.');
+      return;
+    }
+
     const originalBtnText = floatingSaveBtn.textContent;
     floatingSaveBtn.disabled = true;
 
@@ -2658,14 +2728,37 @@
     const previews = [];
     const svgs = [];
 
+    // 오브젝트 하나가 캔버스 전체(붉은선 바깥 회색선, 즉 도련까지)를 덮고 있는지 확인
+    function isFullyBled(){
+      const tol = 1; // 부동소수점 오차 허용
+      return canvas.getObjects().some((o) => {
+        if (o.isGuide) return false;
+        const r = o.getBoundingRect(true, true);
+        return r.left <= tol && r.top <= tol &&
+          (r.left + r.width) >= (CANVAS_W - tol) &&
+          (r.top + r.height) >= (CANVAS_H - tol);
+      });
+    }
+
     try {
       const sides = isDouble ? ['front', 'back'] : ['front'];
       for (let i = 0; i < count; i++) {
         for (const side of sides) {
-          floatingSaveBtn.textContent = `디자인 ${i + 1}${isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : ''} 준비 중...`;
+          const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
+          floatingSaveBtn.textContent = `${label} 확인 중...`;
           await loadDesignForExport(i, side);
 
-          const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
+          // 2) 회색선(도련)까지 이미지가 채워졌는지 검사
+          if (!isFullyBled()) {
+            alert(`${label} — 붉은선 밖 회색선까지 이미지를 채워주세요.`);
+            await loadDesignForExport(originalIdx, originalSide);
+            guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
+            canvas.renderAll();
+            renderTabs();
+            return;
+          }
+
+          floatingSaveBtn.textContent = `${label} 준비 중...`;
           const multiplier = Math.max(1 / zoom, 4);
 
           // 1) 고해상도 JPEG — 시안 미리보기와 인쇄용 원본을 겸함 (PNG는 무손실이라
@@ -2673,7 +2766,7 @@
           const jpegDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.95, multiplier });
           previews.push({ label, dataUrl: jpegDataUrl });
 
-          // 2) 원본 SVG — PNG/JPG 내보내기와 동일하게 임시 폰트만 이미지로 바꿔서 뽑음
+          // 3) 원본 SVG — PNG/JPG 내보내기와 동일하게 임시 폰트만 이미지로 바꿔서 뽑음
           const flattened = await buildFontFlattenedClone();
           const svgString = flattened.toSVG();
           flattened.dispose();
@@ -2687,12 +2780,21 @@
       canvas.renderAll();
       renderTabs();
 
+      // 넘길 데이터 총량이 500MB를 넘지 않는지 확인 (R2 업로드 한도와 동일하게 맞춤)
+      const totalBytes =
+        previews.reduce((sum, item) => sum + estimateDataUrlBytes(item.dataUrl), 0) +
+        svgs.reduce((sum, item) => sum + (item.svg ? item.svg.length : 0), 0);
+      if (totalBytes > MAX_TRANSFER_BYTES) {
+        alert('전달할 시안 데이터 용량이 500MB를 초과합니다.\n디자인 수를 줄이거나 이미지를 단순화해서 다시 시도해주세요. (현재 약 ' + (totalBytes / 1024 / 1024).toFixed(0) + 'MB)');
+        return;
+      }
+
       try {
-        sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(previews));
-        sessionStorage.setItem(ORIGINAL_SVG_KEY, JSON.stringify(svgs));
+        await idbSet(PREVIEW_STORAGE_KEY, previews);
+        await idbSet(ORIGINAL_SVG_KEY, svgs);
       } catch (storageErr) {
         console.error('시안 데이터 저장 실패:', storageErr);
-        alert('이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
+        alert('시안 데이터를 저장하지 못했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.');
         return;
       }
 
