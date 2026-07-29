@@ -436,6 +436,30 @@
 </div>
 
 <script>
+  // ---- 디자인 에디터(ecopro3)/간단 업로드(ecopro1)에서 넘어온 데이터를 읽어오는
+  //      IndexedDB 핸드오프 저장소 (sessionStorage는 도메인당 5~10MB로 한도가
+  //      낮아 고화질 이미지 여러 장엔 부족해서 한도가 훨씬 넉넉한 IndexedDB를 씀 —
+  //      ecopro1.html / ecopro3.js와 DB/스토어 이름이 반드시 같아야 함) ----
+  const HANDOFF_DB_NAME = 'ecogrHandoff';
+  const HANDOFF_STORE_NAME = 'kv';
+  function openHandoffDB(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbGet(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(HANDOFF_STORE_NAME, 'readonly');
+      const req = tx.objectStore(HANDOFF_STORE_NAME).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   // ---- 디자인 에디터에서 넘어온 시안 이미지를 동적으로 채워 넣기 ----
   const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
   // 01my.html → 에코프로1 로 전달됐던 주문정보(용지/편집/수량/사이즈/가격 등) 쿼리를
@@ -476,11 +500,9 @@
     return frame;
   }
 
-  function loadDesignsFromSession(){
+  async function loadDesignsFromSession(){
     try{
-      const raw = sessionStorage.getItem(PREVIEW_STORAGE_KEY);
-      if(!raw) return null;
-      const parsed = JSON.parse(raw);
+      const parsed = await idbGet(PREVIEW_STORAGE_KEY);
       if(Array.isArray(parsed) && parsed.length > 0) return parsed;
       return null;
     }catch(e){
@@ -489,12 +511,12 @@
     }
   }
 
-  function renderBoard(){
+  async function renderBoard(){
     const board = document.getElementById('board');
     const overlay = document.getElementById('loadingOverlay');
     const barFill = document.getElementById('loadingBarFill');
     const loadingText = document.getElementById('loadingText');
-    const designs = loadDesignsFromSession() || FALLBACK_DESIGNS;
+    const designs = (await loadDesignsFromSession()) || FALLBACK_DESIGNS;
 
     const total = designs.length;
     let loaded = 0;
@@ -629,7 +651,7 @@
     canvas.height = Math.round(totalHeight);
 
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#efeee9';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let y = COMPOSITE_GAP;
@@ -639,6 +661,14 @@
       y += it.destH + COMPOSITE_GAP;
     });
     ctx.filter = 'none';
+
+    // 위 아래(그리고 사진 사이) 여백은 화면 확인용일 뿐 실제 인쇄에는 포함되지
+    // 않는다는 걸 명시적으로 안내 — 우측 하단에 작게 표기
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('위 아래 여백은 인쇄되지 않습니다.', canvas.width - 14, canvas.height - 12);
 
     return canvas;
   }
@@ -697,15 +727,13 @@ function generateUniqueFileName(prefix, i, ext) {
     return Array.from(document.querySelectorAll('.photo-frame img')).map(img => img.src);
   }
 
-  // 에디터(ecopro3.js)의 "상품담기/구입" 버튼이 세션 스토리지에 남겨둔 원본 SVG를
+  // 에디터(ecopro3.js)의 "상품담기/구입" 버튼이 IndexedDB에 남겨둔 원본 SVG를
   // 읽어옴. 이 페이지를 에디터를 거치지 않고 단독으로 열었거나 간단 업로드(ecopro1)
   // 경로로 왔을 때는 비어있는 게 정상.
   const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';
-  function loadOriginalAssetsFromSession(key){
+  async function loadOriginalAssetsFromSession(key){
     try{
-      const raw = sessionStorage.getItem(key);
-      if(!raw) return [];
-      const parsed = JSON.parse(raw);
+      const parsed = await idbGet(key);
       return Array.isArray(parsed) ? parsed : [];
     }catch(e){ return []; }
   }
@@ -722,7 +750,8 @@ async function buildUploadManifest(){
     }));
 
     // 2b. 에디터(ecopro3)에서 넘어온 원본 SVG가 있으면 원본 목록에 추가
-    loadOriginalAssetsFromSession(ORIGINAL_SVG_KEY).forEach((item, i) => {
+    const svgAssets = await loadOriginalAssetsFromSession(ORIGINAL_SVG_KEY);
+    svgAssets.forEach((item, i) => {
       if(!item || !item.svg) return;
       originals.push({
         sourceUrl: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(item.svg),
