@@ -36,23 +36,27 @@
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px Arial, sans-serif';
+    ctx.font = '14px Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('M', 0, 1);
+    ctx.fillText('🎲', 0, 1); // 주사위 아이콘 — 누르면 곧바로 랜덤 모양필터가 적용됨
     ctx.restore();
   }
 
   const mControl = new fabric.Control({
-    x: 0.5, y: -0.5,
-    offsetX: -14, offsetY: -36, // T버튼 바로 왼쪽, P버튼과 같은 자리(도형은 P 대신 M만 뜸)
+    x: -0.5, y: -0.5,
+    offsetX: -20, offsetY: -36, // 좌측 상단 모서리(P버튼과 같은 자리) — 오른쪽 툴박스와 겹치지 않고 위치도 안정적
     cursorStyle: 'pointer',
     render: renderMButton,
     mouseUpHandler: function(eventData, transformData){
       const target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
-      if (!qaMPopover.classList.contains('hidden')) { hideQaMPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
-      openQaMPopover(target);
+      // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 랜덤 모양필터를 다시 뽑음(토글로
+      // 닫히던 예전 동작은 제거) — 팝업이 이미 열려있으면 위치는 그대로 두고(드래그해둔 자리
+      // 유지), 처음 여는 거면 도형 바로 아래에 새로 자리잡음. 그 안의 게이지들로 세부 조절 가능.
+      const alreadyOpen = !qaMPopover.classList.contains('hidden');
+      openQaMPopover(target, { reposition: !alreadyOpen });
+      rollShapeDice(target);
       return true;
     }
   });
@@ -151,6 +155,34 @@
     updateMRollNavUI();
   }
 
+  // "상세조정하기"를 펼쳤을 때 ◀1/3▶ 바로 아래 드롭다운에는 82개(도형은 그보다 적은 전체
+  // 목록) 대신 "지금 이 도형에 실제로 랜덤 적용된 필터들"만 좁혀서 보여줌. P쪽의
+  // EP.applyFilteredFilterDropdown과 동일한 역할.
+  var qaMFilterSelectOriginalHTML = qaMFilterSelect.innerHTML;
+  function applyFilteredShapeFilterDropdown(anchor){
+    var ids = anchor && anchor._comboLayers ? anchor._comboLayers.map(function(l){ return l.id; }) : null;
+    if (!ids || !ids.length) {
+      qaMFilterSelect.innerHTML = qaMFilterSelectOriginalHTML;
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    var placeholder = document.createElement('option');
+    placeholder.value = ''; placeholder.disabled = true;
+    placeholder.textContent = '이번에 적용된 필터 (' + ids.length + '개)';
+    frag.appendChild(placeholder);
+    ids.forEach(function(id){
+      var def = EP.shapeFilterRegistry.filter(function(f){ return f.id === id; })[0];
+      if (!def) return;
+      var opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = def.label || id;
+      frag.appendChild(opt);
+    });
+    qaMFilterSelect.innerHTML = '';
+    qaMFilterSelect.appendChild(frag);
+    qaMFilterSelect.value = ids[0];
+  }
+
   function rollShapeDice(target){
     const boxes = (EP.qaTargetsFromTarget ? EP.qaTargetsFromTarget(target) : []).filter(isShapeObject);
     if (!boxes.length) return;
@@ -192,8 +224,20 @@
 
     mRollState.ids = chosen.map(function(d){ return d.id; });
     mRollState.index = 0;
+    var comboAnchor = boxes[0];
+    applyFilteredShapeFilterDropdown(comboAnchor); // 팝오버가 이미 열려있었다면(재굴림) 드롭다운도 새 조합으로 갱신
     showCurrentMRollFilter();
   }
+
+  // P쪽의 EP.refreshTextRollNav와 동일한 역할. 도형은 t._comboLayers 안에 이미 각 레이어의
+  // id가 저장돼있으므로(rollShapeDice에서 만듦) 별도 프로퍼티 없이 그대로 재사용함.
+  EP.refreshShapeRollNav = function(target){
+    if (!target || !target._comboLayers || !target._comboLayers.length) return false;
+    mRollState.ids = target._comboLayers.map(function(l){ return l.id; });
+    mRollState.index = 0;
+    showCurrentMRollFilter();
+    return true;
+  };
 
   qaMDiceBtn.addEventListener('click', function(){
     const active = EP.canvas && EP.canvas.getActiveObject();
@@ -216,8 +260,20 @@
   }
   qaMFilterSelect.addEventListener('change', () => setActiveShapeFilterMenu(qaMFilterSelect.value));
 
-  function hideQaMPopover(){ qaMPopover.classList.add('hidden'); EP.qaShapeTargets = []; }
+  function hideQaMPopover(){ qaMPopover.classList.add('hidden'); EP.qaShapeTargets = []; setQaMDetailExpanded(false); }
   if (EP.registerFilterPopover) EP.registerFilterPopover(qaMPopover);
+
+  // "상세조정하기" 접기/펼치기 — P팝업과 동일한 방식. 주사위(M버튼)로 랜덤 모양필터를 적용한
+  // 직후에는 ◀1/3▶ 이동과 필터 게이지들을 다 숨기고 이 버튼 하나만 도형 아래에 보이게 함.
+  const qaMDetailToggleBtn = document.getElementById('qaMDetailToggleBtn');
+  function setQaMDetailExpanded(expanded){
+    qaMPopover.classList.toggle('qa-expanded', expanded);
+    qaMDetailToggleBtn.textContent = expanded ? '접기 ▴' : '상세조정하기 ▾';
+    qaMDetailToggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+  qaMDetailToggleBtn.addEventListener('click', () => {
+    setQaMDetailExpanded(!qaMPopover.classList.contains('qa-expanded'));
+  });
 
   // P의 positionQaPopover와 동일한 방식(대상 중앙 아래쪽, 공간 부족하면 위쪽).
   function positionQaMPopover(target){
@@ -279,10 +335,14 @@
     EP.shapeFilterRegistry.forEach(function(def){
       if (def.populate) { try { def.populate(anchor); } catch(e) { console.error('shape populate error:', def.id, e); } }
     });
+    applyFilteredShapeFilterDropdown(anchor); // 드롭다운을 이 도형의 랜덤 적용 이력에 맞춰 좁힘(이력 없으면 전체 목록)
 
     if (wasHidden) {
       qaMFilterSelect.value = '';
       Object.values(qaShapeDetails).forEach(function(d){ d.classList.add('hidden'); });
+      setQaMDetailExpanded(false); // 새로 열 때는 항상 접힌 상태로 시작(주사위 결과만 캔버스에서 바로 보이게)
+      // 이 도형에 이미 적용돼있는 필터 목록(◀1/N▶)을 즉시 복원해둠 — P와 동일한 이유.
+      if (EP.refreshShapeRollNav) EP.refreshShapeRollNav(anchor);
     }
 
     var reposition = !opts || opts.reposition !== false;
@@ -310,6 +370,22 @@
   }
   EP.canvas.on('selection:created', syncQaMPopoverToSelection);
   EP.canvas.on('selection:updated', syncQaMPopoverToSelection);
+
+  // P쪽과 동일한 이유: 이미 모양필터가 적용돼있는 도형을 선택하면 M버튼(주사위)을 따로 안
+  // 눌러도 자동으로 "상세조정하기" 팝업이 (접힌 상태로) 뜨게 함.
+  function autoOpenQaMPopoverIfHasEffect(){
+    if (EP.rollAllInProgress) return; // "전체 랜덤 적용" 배치가 진행 중이면 자동으로 안 뜨게 함
+    if (!qaMPopover.classList.contains('hidden')) return;
+    const active = EP.canvas.getActiveObject();
+    if (!active || isTableRelatedTarget(active)) return;
+    const boxes = shapeTargetsFromTarget(active);
+    if (!boxes.length) return;
+    const hasEffect = boxes.some(o => o && o._comboLayers && o._comboLayers.length);
+    if (!hasEffect) return;
+    openQaMPopover(active);
+  }
+  EP.canvas.on('selection:created', autoOpenQaMPopoverIfHasEffect);
+  EP.canvas.on('selection:updated', autoOpenQaMPopoverIfHasEffect);
 
   EP.makeDraggablePopover(qaMPopover);
   EP.registerRotatablePopover(qaMPopover);
@@ -1351,6 +1427,16 @@
   registerSimpleShapeFilter('terrazzo', '테라조 알갱이 무늬', buildTerrazzoSVG, { tileSize: 15 });
 
   EP.openQaMPopover = openQaMPopover;
+  // 실행취소/다시실행(loadFromJSON)으로 도형이 통째로 새로 만들어지면, _comboLayers 같은
+  // "정보"는 그대로 복원되지만 실제 화면에 보이는 패턴 채우기(fill)는 오프스크린 캔버스로
+  // 그려서 만든 fabric.Pattern이라 JSON 직렬화로는 다시 안 살아남아서 흰색(또는 채우기 없음)
+  // 으로 보이는 문제가 있었음. 그래서 복원 직후 이 함수로 모든 도형의 패턴을 다시 그려줌
+  // (P쪽의 EP.reapplyCircularTextPatches와 동일한 역할, 도형 버전).
+  EP.reapplyShapeComboPatches = function(){
+    EP.canvas.getObjects().forEach(function(o){
+      if (o && o._comboLayers && o._comboLayers.length) renderShapeCombo(o);
+    });
+  };
   EP.hideQaMPopover = hideQaMPopover;
   EP.setActiveShapeFilterMenu = setActiveShapeFilterMenu;
   EP.qaShapeDetails = qaShapeDetails;

@@ -2090,7 +2090,8 @@
       for (let i = 0; i < count; i++) {
         const px = (pseudoRandom(seed + i * 11.3 + 10) - 0.5) * 2 * rangeX;
         const py = (pseudoRandom(seed + i * 7.7 + 60) - 0.5) * 2 * rangeY;
-        const size = fontSize * ((opts.minSize != null ? opts.minSize : 0.3) + pseudoRandom(seed + i * 13.9 + 110) * (opts.sizeRange != null ? opts.sizeRange : 0.4));
+        const sizeScale = cfg.sizeScale != null ? cfg.sizeScale : 1; // 크기 슬라이더가 있는 효과(예: 나비)만 이 값을 씀, 없으면 1(기본 크기 그대로)
+        const size = fontSize * ((opts.minSize != null ? opts.minSize : 0.3) + pseudoRandom(seed + i * 13.9 + 110) * (opts.sizeRange != null ? opts.sizeRange : 0.4)) * sizeScale;
         const rot = opts.randomRotation === false ? 0 : pseudoRandom(seed + i * 17.1 + 160) * Math.PI * 2;
         const fnIdx = Math.floor(pseudoRandom(seed + i * 23.7 + 210) * shapeFns.length) % shapeFns.length;
         const itemSeed = seed + i * 41.7 + 500;
@@ -2193,26 +2194,30 @@
     withPalette(drawDoodleHeart, DOODLE_PALETTE)
   ], { minSize: 0.35, sizeRange: 0.35 });
 
-  // ---- ③ 나비 효과: 좌우 대칭 날개 + 몸통 + 더듬이의 팔랑이는 나비 ----
-  var BUTTERFLY_PALETTE = ['#e67e9e', '#f0a93a', '#7b5ce6', '#3aa0e6', '#e64545'];
+  // ---- ③ 나비 효과: 좌우 대칭의 통통하고 단순한 실루엣 나비(참고 이미지 스타일) ----
+  var BUTTERFLY_PALETTE = ['#e67e9e', '#f0a93a', '#7b5ce6', '#3aa0e6', '#e64545', '#2ecc71', '#ff6ec7', '#00c2a8', '#ffd166', '#8bc34a', '#ff8a65'];
   function drawButterflyShape(ctx, size, color){
+    color = color || BUTTERFLY_PALETTE[0];
     ctx.save();
     ctx.fillStyle = color;
+    // 날개 한 쌍(좌/우) — 위쪽은 통통하게 부풀고 아래로 갈수록 뾰족해지는 단순한 물방울/하트
+    // 모양 하나로만 이루어짐(이중날개·무늬·더듬이 없이 깔끔한 실루엣 스타일)
+    [-1, 1].forEach(sx => {
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.06);
+      ctx.bezierCurveTo(sx * size * 0.18, -size * 0.5, sx * size * 0.82, -size * 0.46, sx * size * 0.78, -size * 0.02);
+      ctx.bezierCurveTo(sx * size * 0.74, size * 0.34, sx * size * 0.32, size * 0.5, sx * size * 0.1, size * 0.42);
+      ctx.bezierCurveTo(sx * size * 0.02, size * 0.38, 0, size * 0.2, 0, -size * 0.06);
+      ctx.closePath();
+      ctx.fill();
+    });
+    // 얇은 몸통선(눈에 띄지 않을 정도로만) — 두 날개가 만나는 중심을 자연스럽게 이어줌
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(0.8, size * 0.045);
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(-size * 0.7, -size * 0.6, -size * 0.75, size * 0.1, -size * 0.1, size * 0.15);
-    ctx.bezierCurveTo(-size * 0.5, size * 0.35, -size * 0.35, size * 0.65, 0, size * 0.3);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(size * 0.7, -size * 0.6, size * 0.75, size * 0.1, size * 0.1, size * 0.15);
-    ctx.bezierCurveTo(size * 0.5, size * 0.35, size * 0.35, size * 0.65, 0, size * 0.3);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = Math.max(1, size * 0.06);
-    ctx.beginPath(); ctx.moveTo(0, -size * 0.15); ctx.lineTo(0, size * 0.35); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, -size * 0.15); ctx.lineTo(-size * 0.15, -size * 0.4);
-    ctx.moveTo(0, -size * 0.15); ctx.lineTo(size * 0.15, -size * 0.4);
+    ctx.moveTo(0, -size * 0.16);
+    ctx.lineTo(0, size * 0.3);
     ctx.stroke();
     ctx.restore();
   }
@@ -2654,9 +2659,6 @@
     ctx.restore();
   }
 
-  function randomTypoFontPool(){
-    return RANDOM_TYPO_BASE_FONTS.concat(Array.from(EP.customFontNames));
-  }
   function randomVividColor(){
     const h = Math.random() * 360;
     const rgb = EP.hsvToRgb(h, 0.7 + Math.random() * 0.3, 0.75 + Math.random() * 0.25);
@@ -2664,9 +2666,9 @@
   }
   function generateRandomTypoChars(text, intensityPct){
     const amp = Math.max(0, Math.min(100, intensityPct)) / 100;
-    const pool = randomTypoFontPool();
+    // 폰트는 글자마다 다르게 뽑지 않고 오브젝트에 지정된 폰트 하나로 통일함(글꼴 드롭다운에서
+    // 고른 그대로) — 대신 색상은 계속 글자마다 뒤죽박죽 다른 원색으로 랜덤하게 나옴
     return text.split('').map(() => ({
-      font: pool[Math.floor(Math.random() * pool.length)],
       color: randomVividColor(),
       scale: 1 + (Math.random() * 2 - 1) * 0.4 * amp,
       rot: (Math.random() * 2 - 1) * 25 * amp,
@@ -2933,6 +2935,7 @@
     const hasTear = !!(this.tearText && this.tearText.strips > 0 && this.tearText.gap > 0);
     const hasBubble = !!this.bubbleText;
     const hasZebra = !!this.zebraText;
+    const hasTote = !!this.toteText;
     const hasSpeed = !!(this.speedText && this.speedText.intensity > 0);
     const hasReflection = !!(this.reflectionText && this.reflectionText.intensity > 0);
     const hasCrack = !!(this.crackText && this.crackText.intensity > 0);
@@ -2970,7 +2973,7 @@
     const hasGem = !!this.gemText;
     const hasTropical = !!this.tropicalText;
     const hasCandy = !!this.candyText;
-    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasSpeed && !hasReflection && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasSeafood && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang && !hasEvent && !hasGolf && !hasChristmas && !hasAutumn && !hasSpace && !hasDoodle && !hasButterfly && !hasSoapbubble && !hasLightning && !hasHalloween && !hasMusicnote && !hasGem && !hasTropical && !hasCandy) { origItextRender.call(this, ctx); return; }
+    if (!hasLayout && !has3D && !hasMetal && !hasPopArt && !hasFire && !hasDbl && !hasGlitch && !hasMelt && !hasTear && !hasBubble && !hasZebra && !hasTote && !hasSpeed && !hasReflection && !hasCrack && !hasTile && !hasFootprint && !hasAnimal && !hasSeafood && !hasFruitVeg && !hasHeart && !hasCoffee && !hasSports && !hasClub && !hasSnow && !hasRain && !hasSplash && !hasInkTrap && !hasLeafVine && !hasSakura && !hasShy && !hasLight && !hasGrass && !hasBigbang && !hasEvent && !hasGolf && !hasChristmas && !hasAutumn && !hasSpace && !hasDoodle && !hasButterfly && !hasSoapbubble && !hasLightning && !hasHalloween && !hasMusicnote && !hasGem && !hasTropical && !hasCandy) { origItextRender.call(this, ctx); return; }
 
     // 말풍선 배경/구름 배경/풀밭 배경/빅뱅 배경/축포 배경/골프 배경/크리스마스 배경/가을 배경/
     // 우주·낙서·나비·비눗방울·번개·할로윈·음표·보석·열대·사탕 배경/수줍수줍 배경은 항상 맨 먼저(가장 뒤에)
@@ -3083,6 +3086,16 @@
       baseFill = mainColor;
       baseStroke = '#111111';
       baseStrokeWidth = Math.max(1, fontSize * (0.05 + amt * 0.04));
+      this.fill = baseFill; this.stroke = baseStroke; this.strokeWidth = baseStrokeWidth;
+    }
+
+    // 토트 무늬: 글자를 토트백에서 흔히 보는 깅엄 체크무늬로 채움. 테두리는 없이 무늬만으로
+    // 글자 실루엣을 채우고, 무늬의 색상·칸 크기는 필터를 다시 뽑을 때마다 랜덤으로 정해짐
+    if (hasTote) {
+      const cfg = this.toteText;
+      baseFill = makeGinghamPattern(cfg.color || '#e74c3c', cfg.bgColor || '#ffffff', Math.max(6, cfg.size || 22));
+      baseStroke = null;
+      baseStrokeWidth = 0;
       this.fill = baseFill; this.stroke = baseStroke; this.strokeWidth = baseStrokeWidth;
     }
 
@@ -3904,6 +3917,9 @@
     const fontSize = this.fontSize || 40;
     const op = this.opacity != null ? this.opacity : 1;
     const crackColor = cfg.crackColor || '#ffffff';
+    // 깨짐무늬(균열 선)와 유리부분(파편)을 따로 진하기 조절할 수 있음 — 0이면 그 부분만 안 보이게 됨
+    const lineOp = op * (cfg.lineOpacity != null ? cfg.lineOpacity : 100) / 100;
+    const glassOp = op * (cfg.glassOpacity != null ? cfg.glassOpacity : 100) / 100;
     const origFill = this.fill, origStroke = this.stroke, origStrokeWidth = this.strokeWidth;
     const self = this;
 
@@ -3937,7 +3953,7 @@
         if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
       });
       ctx.closePath();
-      ctx.globalAlpha = op * 0.4;
+      ctx.globalAlpha = glassOp * 0.4;
       ctx.fillStyle = shadowColor || '#000000';
       ctx.fill();
       ctx.restore();
@@ -3948,7 +3964,7 @@
       target.forEach((p, i) => { if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
       ctx.closePath();
       ctx.clip();
-      ctx.globalAlpha = op;
+      ctx.globalAlpha = glassOp;
       ctx.translate(dx, dy);
       ctx.rotate(rot);
       self.fill = origFill; self.stroke = origStroke; self.strokeWidth = origStrokeWidth;
@@ -3960,7 +3976,7 @@
       ctx.beginPath();
       target.forEach((p, i) => { if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
       ctx.closePath();
-      ctx.globalAlpha = op * 0.65;
+      ctx.globalAlpha = glassOp * 0.65;
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       ctx.lineWidth = Math.max(0.6, fontSize * 0.012);
       ctx.stroke();
@@ -4018,9 +4034,11 @@
 
     this.fill = origFill; this.stroke = origStroke; this.strokeWidth = origStrokeWidth;
 
-    // 3) 금(균열) 선 — 충격 지점에서 뻗어나가는 삐뚤빼뚤한 방사형 선 + 그 사이를 잇는 보조 균열
+    // 3) 금(균열) 선 — 충격 지점에서 뻗어나가는 삐뚤빼뚤한 방사형 선(스포크) + 그 사이를
+    // 여러 겹으로 잇는 동심원 연결선(거미줄의 가로 실처럼)을 같이 그려서 실제 거미줄에
+    // 더 가깝게 보이게 함
     ctx.save();
-    ctx.globalAlpha = op;
+    ctx.globalAlpha = lineOp;
     ctx.strokeStyle = crackColor;
     ctx.lineWidth = Math.max(0.8, fontSize * 0.012);
     ctx.lineJoin = 'round';
@@ -4040,8 +4058,34 @@
       }
       ctx.stroke();
     });
-    // 보조 균열 — 인접한 금끼리 잇는 짧은 선을 몇 개 랜덤으로 추가해 거미줄처럼 보이게 함
-    const secCount = Math.round(amt * rayCount * 0.7);
+    // 거미줄의 가로 실(동심원 연결선) — 충격 지점에서부터 30%/55%/80% 되는 지점마다 인접한
+    // 스포크끼리 한 바퀴씩 이어서, 진짜 거미줄처럼 여러 겹의 고리가 겹쳐 보이게 함
+    const webRingT = [0.3, 0.55, 0.8];
+    webRingT.forEach((baseT, ringIdx) => {
+      ctx.lineWidth = Math.max(0.6, fontSize * 0.012) * (1 - ringIdx * 0.15); // 바깥 고리일수록 살짝 더 얇게
+      for (let i = 0; i < rayCount; i++) {
+        const rj = (i + 1) % rayCount;
+        const jitterT = (pseudoRandom(seed + i * 19 + ringIdx * 97 + 3200) * 2 - 1) * 0.06;
+        const t0 = Math.max(0.08, Math.min(0.95, baseT + jitterT));
+        const t1 = Math.max(0.08, Math.min(0.95, baseT + jitterT + (pseudoRandom(seed + i * 23 + ringIdx * 61 + 3400) * 2 - 1) * 0.05));
+        const x0 = impactX + Math.cos(angles[i]) * rayLens[i] * t0;
+        const y0 = impactY + Math.sin(angles[i]) * rayLens[i] * t0;
+        const x1 = impactX + Math.cos(angles[rj]) * rayLens[rj] * t1;
+        const y1 = impactY + Math.sin(angles[rj]) * rayLens[rj] * t1;
+        // 살짝 바깥으로 휜 곡선으로 이어서 각지지 않고 거미줄 특유의 둥근 느낌을 냄
+        const midAng = (angles[i] + angles[rj]) / 2;
+        const midR = (rayLens[i] * t0 + rayLens[rj] * t1) / 2 * 1.04;
+        const mx = impactX + Math.cos(midAng) * midR;
+        const my = impactY + Math.sin(midAng) * midR;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.quadraticCurveTo(mx, my, x1, y1);
+        ctx.stroke();
+      }
+    });
+    // 추가 보조 균열 — 강도가 높을수록 무작위로 몇 개 더 섞어서 불규칙함을 더함
+    const secCount = Math.round(amt * rayCount * 0.4);
+    ctx.lineWidth = Math.max(0.6, fontSize * 0.01);
     for (let i = 0; i < secCount; i++) {
       const ri = Math.floor(pseudoRandom(seed + i * 41 + 2500) * rayCount) % rayCount;
       const rj = (ri + 1) % rayCount;
@@ -4196,7 +4240,7 @@
     ctx.closePath();
     ctx.fill();
   }
-  function drawButterflyShape(ctx, size){
+  function drawButterflyShapeSimple(ctx, size){
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
       ctx.save();
       ctx.rotate(sx * 0.3);
@@ -4230,7 +4274,7 @@
     { shapes: [drawStarShape, drawMoonShape] }, // 별과 달
     { shapes: [drawFishShape, drawTurtleShape] }, // 생선과 거북이(수족관)
     { shapes: [drawLeafShape] },              // 휘날리는 나뭇잎
-    { shapes: [drawButterflyShape] },         // 나비
+    { shapes: [drawButterflyShapeSimple] },   // 나비
     { shapes: [drawFlowerShape] }             // 꽃
   ];
 
@@ -5091,12 +5135,13 @@
   // 클럽 조명/실루엣용 네온 컬러 팔레트
   const CLUB_COLORS = ['#ff2e63', '#a52eff', '#2ee6ff', '#ff6ec7', '#7b2ff7', '#ffea00'];
 
-  // 클럽 분위기 효과: 글자 옆(좌/우 중 seed로 골라진 한쪽)에 사람들이 와르르 몰려있는 무리를
-  // 그림. 인원 수는 강도와 무관하게 seed로 완전히 랜덤(대략 6~40명)하게 정해지고, 각 사람은
-  // 중심에 몰리도록(가장자리보다 중심 쪽에 확률이 높게) 배치해서 빽빽하게 뭉친 느낌을 냄.
-  // 일부는 양팔을 번쩍 든 신난 포즈로 섞여 나오고, 네온 색상 + 은은한 발광으로 클럽 조명 아래
-  // 있는 듯한 느낌을 주며, 그 뒤로 위에서 무리 쪽을 향해 쏟아지는 스포트라이트 빛줄기도 함께
-  // 그림. 배치/인원수/포즈/색상은 모두 seed로 고정 — "다시 모으기"를 눌러야 새로 바뀜
+  // 클럽 분위기 효과: 글자 중심을 기준으로 중간~아래쪽 부근에 사람들이 산발적으로(뭉치지
+  // 않고) 흩어져 있는 모습을 그림. 인원 수는 강도와 무관하게 seed로 완전히 랜덤(대략
+  // 6~40명)하게 정해지고, 각 사람은 한쪽에 몰리지 않도록 넓은 범위에 고르게(오히려 중심을
+  // 살짝 비워서) 배치함. 일부는 양팔을 번쩍 든 신난 포즈로 섞여 나오고, 네온 색상 + 은은한
+  // 발광으로 클럽 조명 아래 있는 듯한 느낌을 주며, 그 위로 넓게 퍼진 스포트라이트 빛줄기
+  // 여러 개도 함께 그림(이것도 한 곳에 뭉치지 않고 폭 전체에 걸쳐 흩어지게). 배치/인원수/
+  // 포즈/색상은 모두 seed로 고정 — "다시 모으기"를 눌러야 새로 바뀜
   function drawClubPass(ctx){
     const cfg = this.clubText;
     if (!cfg) return;
@@ -5106,43 +5151,52 @@
     const w = this.width || 100, h = this.height || (this.fontSize || 40) * 1.2;
     const fontSize = this.fontSize || 40;
     const op = this.opacity != null ? this.opacity : 1;
+    const personSizePct = Math.max(20, Math.min(100, cfg.personSize != null ? cfg.personSize : 60)) / 100;
 
     // 사람 수는 강도와 무관하게 seed로 완전 랜덤(강도는 대략적인 범위에만 영향)
     const count = 6 + Math.floor(pseudoRandom(seed + 9999) * (10 + amt * 24));
-    const baseSize = fontSize * (0.4 + amt * 0.25);
+    const baseSize = fontSize * (0.35 + amt * 0.2) * personSizePct;
 
-    // 무리 중심 — 글자 좌/우 중 한쪽에 뭉쳐있는 느낌
-    const clusterSide = pseudoRandom(seed + 111) < 0.5 ? -1 : 1;
-    const clusterCx = clusterSide * (w / 2 + fontSize * 0.9);
-    const clusterCy = (pseudoRandom(seed + 222) - 0.5) * h * 0.6;
-    const maxRadius = fontSize * (1.1 + amt * 1.3);
+    // 흩어지는 범위 — 글자 중심(0,0) 기준으로 가로는 글자 폭보다 넓게, 세로는 "중간~아래쪽"
+    // 쪽으로 치우치게(중심을 위로 살짝 올려서 사람들이 주로 그 아래에 놓이도록 함)
+    const scatterCx = 0;
+    const scatterCy = h * 0.15; // 살짝 아래로 치우친 중심 — "글씨 중간 아랫쪽 부근"
+    const scatterRx = w * 0.62 + fontSize * 0.6;
+    const scatterRy = h * 0.55 + fontSize * 0.7;
 
-    // 스포트라이트 빛줄기 — 무리 위쪽에서 쏟아지는 은은한 조명(먼저 그려서 사람들 뒤에 깔림)
+    // 스포트라이트 빛줄기 — 무리 위쪽 폭 전체에 걸쳐 여러 개가 흩어져서 쏟아지는 은은한 조명
+    // (한 곳에 뭉치지 않도록 x 위치를 넓은 범위에 고르게 분산시킴)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (let b = 0; b < 3; b++) {
-      const topX = clusterCx + (pseudoRandom(seed + b * 19.3 + 401) - 0.5) * maxRadius * 1.4;
-      const topY = clusterCy - maxRadius * 1.6;
-      const spread = maxRadius * (0.3 + pseudoRandom(seed + b * 7.1 + 451) * 0.25);
+    const beamCount = 4 + Math.floor(amt * 3); // 4~7개
+    for (let b = 0; b < beamCount; b++) {
+      const baseX = (b / (beamCount - 1 || 1) - 0.5) * scatterRx * 2.1; // 폭 전체에 고르게 나눠 배치
+      const jitterX = (pseudoRandom(seed + b * 19.3 + 401) - 0.5) * fontSize * 0.7;
+      const topX = scatterCx + baseX + jitterX;
+      const topY = scatterCy - scatterRy * 1.3;
+      const bottomX = scatterCx + baseX * 0.8 + (pseudoRandom(seed + b * 8.7 + 601) - 0.5) * fontSize;
+      const bottomY = scatterCy + (pseudoRandom(seed + b * 6.3 + 611) - 0.5) * scatterRy * 0.6;
+      const spread = fontSize * (0.35 + pseudoRandom(seed + b * 7.1 + 451) * 0.3);
       const beamColor = CLUB_COLORS[Math.floor(pseudoRandom(seed + b * 13.3 + 501) * CLUB_COLORS.length) % CLUB_COLORS.length];
-      ctx.globalAlpha = op * 0.18;
+      ctx.globalAlpha = op * 0.16;
       ctx.fillStyle = beamColor;
       ctx.beginPath();
       ctx.moveTo(topX, topY);
-      ctx.lineTo(clusterCx - spread, clusterCy);
-      ctx.lineTo(clusterCx + spread, clusterCy);
+      ctx.lineTo(bottomX - spread, bottomY);
+      ctx.lineTo(bottomX + spread, bottomY);
       ctx.closePath();
       ctx.fill();
     }
     ctx.restore();
 
-    // 사람들 — 중심에 몰리도록 반지름을 지수적으로 눌러서(pow 0.65) 빽빽하게 뭉친 느낌을 냄
+    // 사람들 — pow(1.15)로 반지름을 오히려 살짝 밀어내서(1보다 큰 지수는 중심 쪽 밀도를
+    // 낮춤) 한 곳에 몰리지 않고 산발적으로 고르게 흩어진 느낌을 냄
     ctx.save();
     for (let i = 0; i < count; i++) {
       const ang = pseudoRandom(seed + i * 13.1 + 1) * Math.PI * 2;
-      const rad = maxRadius * Math.pow(pseudoRandom(seed + i * 9.7 + 51), 0.65);
-      const px = clusterCx + Math.cos(ang) * rad;
-      const py = clusterCy + Math.sin(ang) * rad * 0.7; // 세로는 살짝 눌러서 바닥에 선 무리처럼 보이게 함
+      const rad = Math.pow(pseudoRandom(seed + i * 9.7 + 51), 1.15);
+      const px = scatterCx + Math.cos(ang) * rad * scatterRx;
+      const py = scatterCy + Math.sin(ang) * rad * scatterRy * 0.75; // 세로는 살짝 눌러서 바닥에 선 느낌
       const size = baseSize * (0.65 + pseudoRandom(seed + i * 11.3 + 101) * 0.55);
       const armsUp = pseudoRandom(seed + i * 17.9 + 151) < 0.35;
       const color = CLUB_COLORS[Math.floor(pseudoRandom(seed + i * 23.3 + 201) * CLUB_COLORS.length) % CLUB_COLORS.length];
@@ -5720,7 +5774,7 @@
   }
 
   function hasAnyRenderEffect(t){
-    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.postalText || t.jumpText || t.pulseText || t.swayText || t.waddleText || t.popcornText || t.hiccupText || t.breatheText || t.flickerText || t.chatterText || t.walkText || t.grassText || t.bigbangText || t.eventText || t.golfText || t.christmasText || t.autumnText || t.spaceText || t.doodleText || t.butterflyText || t.soapbubbleText || t.lightningText || t.halloweenText || t.musicnoteText || t.gemText || t.tropicalText || t.candyText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.seafoodText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
+    return !!(t.circularText || t.verticalText || t.puffyText || t.vineText || t.rollText || t.perspectiveText || t.curveText || t.waveText || t.trainText || t.tiredText || t.spiralText || t.magazineText || t.puzzleText || t.skyText || t.chalkText || t.postalText || t.jumpText || t.pulseText || t.swayText || t.waddleText || t.popcornText || t.hiccupText || t.breatheText || t.flickerText || t.chatterText || t.walkText || t.grassText || t.bigbangText || t.eventText || t.golfText || t.christmasText || t.autumnText || t.spaceText || t.doodleText || t.butterflyText || t.soapbubbleText || t.lightningText || t.halloweenText || t.musicnoteText || t.gemText || t.tropicalText || t.candyText || t.doubleOutline || t.threeDText || t.metalText || t.popArtText || t.inkTrapText || t.leafVineText || t.sakuraText || t.shyText || t.fireText || t.meltText || t.bubbleText || t.zebraText || t.toteText || t.speedText || t.reflectionText || t.crackText || t.tileText || t.footprintText || t.animalText || t.seafoodText || t.fruitVegText || t.heartText || t.coffeeText || t.sportsText || t.clubText || t.snowText || t.rainText || t.splashText || t.glitchText || t.tearText || t.lightText || (t.randomTypo && t.randomTypo.chars && t.randomTypo.chars.length));
   }
   // 효과를 하나라도 켜면 이 통합 _render로 바꿔치기하고, objectCaching을 꺼서
   // (렌더 방식이 계속 바뀌는 오브젝트라 fabric의 캐시 비트맵이 못 따라와 지저분한 잔상이
@@ -6009,6 +6063,8 @@
   // ---- 유리 깨짐 효과 ---- (방사형 균열 + 어긋난 파편, 배치는 seed로 고정 — "다시 깨기"로 재배치)
   const qaCrackIntensity = document.getElementById('qaCrackIntensity');
   const qaCrackColor = document.getElementById('qaCrackColor');
+  const qaCrackLineOpacity = document.getElementById('qaCrackLineOpacity');
+  const qaCrackGlassOpacity = document.getElementById('qaCrackGlassOpacity');
   function applyQaCrack(regenerateSeed){
     const boxes = EP.qaTargets.filter(EP.isTextObject);
     if (!boxes.length) return;
@@ -6016,9 +6072,11 @@
     if (intensity <= 0) {
       boxes.forEach(t => { t.crackText = null; t.dirty = true; maybeUnpatchRender(t); });
     } else {
+      const lineOpacity = qaCrackLineOpacity.value === '' ? 100 : (parseFloat(qaCrackLineOpacity.value) || 0);
+      const glassOpacity = qaCrackGlassOpacity.value === '' ? 100 : (parseFloat(qaCrackGlassOpacity.value) || 0);
       boxes.forEach(t => {
         const seed = (regenerateSeed || !t.crackText) ? Math.floor(Math.random() * 100000) : t.crackText.seed;
-        t.crackText = { intensity, crackColor: qaCrackColor.value || '#ffffff', seed };
+        t.crackText = { intensity, crackColor: qaCrackColor.value || '#ffffff', seed, lineOpacity, glassOpacity };
         patchUnifiedRender(t);
         t.dirty = true;
       });
@@ -6027,7 +6085,11 @@
   }
   qaCrackIntensity.addEventListener('input', () => applyQaCrack(false));
   qaCrackColor.addEventListener('input', () => applyQaCrack(false));
+  qaCrackLineOpacity.addEventListener('input', () => applyQaCrack(false));
+  qaCrackGlassOpacity.addEventListener('input', () => applyQaCrack(false));
   qaCrackIntensity.addEventListener('change', () => EP.pushHistory());
+  qaCrackLineOpacity.addEventListener('change', () => EP.pushHistory());
+  qaCrackGlassOpacity.addEventListener('change', () => EP.pushHistory());
   document.getElementById('qaCrackShuffleBtn').addEventListener('click', () => {
     if ((parseFloat(qaCrackIntensity.value) || 0) <= 0) qaCrackIntensity.value = 55;
     applyQaCrack(true);
@@ -6289,6 +6351,7 @@
 
   // ---- 클럽 분위기 효과 ---- (글자 옆에 사람들이 와르르 몰려있는 무리 + 스포트라이트, 인원수는 seed로 완전 랜덤)
   const qaClubIntensity = document.getElementById('qaClubIntensity');
+  const qaClubPersonSize = document.getElementById('qaClubPersonSize');
   function applyQaClub(regenerateSeed){
     const boxes = EP.qaTargets.filter(EP.isTextObject);
     if (!boxes.length) return;
@@ -6296,9 +6359,10 @@
     if (intensity <= 0) {
       boxes.forEach(t => { t.clubText = null; t.dirty = true; maybeUnpatchRender(t); });
     } else {
+      const personSize = parseFloat(qaClubPersonSize.value) || 60;
       boxes.forEach(t => {
         const seed = (regenerateSeed || !t.clubText) ? Math.floor(Math.random() * 100000) : t.clubText.seed;
-        t.clubText = { intensity, seed };
+        t.clubText = { intensity, seed, personSize };
         patchUnifiedRender(t);
         t.dirty = true;
       });
@@ -6307,6 +6371,8 @@
   }
   qaClubIntensity.addEventListener('input', () => applyQaClub(false));
   qaClubIntensity.addEventListener('change', () => EP.pushHistory());
+  qaClubPersonSize.addEventListener('input', () => applyQaClub(false));
+  qaClubPersonSize.addEventListener('change', () => EP.pushHistory());
   document.getElementById('qaClubShuffleBtn').addEventListener('click', () => {
     if ((parseFloat(qaClubIntensity.value) || 0) <= 0) qaClubIntensity.value = 55;
     applyQaClub(true);
@@ -6473,6 +6539,25 @@
         { offset: 1, color: darkColor }
       ]
     });
+  }
+  // 토트(가방)에서 흔히 보이는 깅엄 체크무늬를 만듦 — 흰 바탕에 가로띠·세로띠를 반투명으로
+  // 겹쳐 그리면, 둘 다 겹치는 칸만 자동으로 색이 진해지는 3단 톤(흰색/중간톤/진한톤) 체크
+  // 무늬가 만들어짐(실제 깅엄천 짜임과 같은 원리). 이 작은 타일을 반복(fabric.Pattern)시켜서
+  // 텍스트의 fill로 그대로 씀 — 텍스트 렌더링 자체가 글자 실루엣 안에서만 칠해주므로,
+  // 별도 클리핑 없이도 "글자가 체크무늬로 변한" 모양이 자연스럽게 나옴
+  function makeGinghamPattern(color, bgColor, size){
+    const tile = document.createElement('canvas');
+    tile.width = size; tile.height = size;
+    const tctx = tile.getContext('2d');
+    tctx.fillStyle = bgColor || '#ffffff';
+    tctx.fillRect(0, 0, size, size);
+    const band = size / 2;
+    tctx.globalAlpha = 0.55;
+    tctx.fillStyle = color;
+    tctx.fillRect(0, 0, size, band); // 가로띠(위쪽 절반)
+    tctx.fillRect(0, 0, band, size); // 세로띠(왼쪽 절반) — 위쪽 절반과 겹치는 좌상단 칸이 자동으로 진해짐
+    tctx.globalAlpha = 1;
+    return new fabric.Pattern({ source: tile, repeat: 'repeat' });
   }
   function applyQaMetal(){
     const boxes = EP.qaTargets.filter(EP.isTextObject);
@@ -7613,6 +7698,7 @@
   function setupScatterFilterUI(prefix, cfgKey){
     const densityEl = document.getElementById('qa' + prefix + 'Density');
     const spreadEl = document.getElementById('qa' + prefix + 'Spread');
+    const sizeEl = document.getElementById('qa' + prefix + 'Size'); // 나비처럼 크기 슬라이더가 따로 있는 효과만 존재(없으면 null)
     function apply(regenerateSeed){
       const boxes = EP.qaTargets.filter(EP.isTextObject);
       if (!boxes.length) return;
@@ -7622,9 +7708,10 @@
       } else {
         const density = parseFloat(densityEl.value) || 55;
         const spread = parseFloat(spreadEl.value) || 55;
+        const sizeScale = sizeEl ? (parseFloat(sizeEl.value) || 60) / 60 : 1; // 60(기본값)일 때 1배(원래 크기)가 되도록 정규화
         boxes.forEach(t => {
           const seed = (regenerateSeed || !t[cfgKey]) ? Math.floor(Math.random() * 100000) : t[cfgKey].seed;
-          t[cfgKey] = { density, spread, seed };
+          t[cfgKey] = sizeEl ? { density, spread, seed, sizeScale } : { density, spread, seed };
           patchUnifiedRender(t);
           t.dirty = true;
         });
@@ -7636,11 +7723,16 @@
       densityEl.value = cfg ? (cfg.density != null ? cfg.density : 55) : 55;
       spreadEl.value = cfg ? (cfg.spread != null ? cfg.spread : 55) : 55;
       densityEl.dataset.on = cfg ? '1' : '0';
+      if (sizeEl) sizeEl.value = cfg && cfg.sizeScale != null ? Math.round(cfg.sizeScale * 60) : 60;
     }
     densityEl.addEventListener('input', () => { densityEl.dataset.on = '1'; apply(false); });
     spreadEl.addEventListener('input', () => { densityEl.dataset.on = '1'; apply(false); });
     densityEl.addEventListener('change', () => EP.pushHistory());
     spreadEl.addEventListener('change', () => EP.pushHistory());
+    if (sizeEl) {
+      sizeEl.addEventListener('input', () => { densityEl.dataset.on = '1'; apply(false); });
+      sizeEl.addEventListener('change', () => EP.pushHistory());
+    }
     const shuffleBtn = document.getElementById('qa' + prefix + 'ShuffleBtn');
     if (shuffleBtn) shuffleBtn.addEventListener('click', () => { densityEl.dataset.on = '1'; apply(true); EP.pushHistory(); });
     const offBtn = document.getElementById('qa' + prefix + 'OffBtn');
@@ -7747,6 +7839,58 @@
   });
 
 
+  // ---- 토트 무늬 ---- (글자를 토트백 특유의 체크/깅엄 무늬로 채움 — 배경색·무늬색·칸 크기 모두 직접 조절 또는 랜덤 가능)
+  const qaToteSize = document.getElementById('qaToteSize');
+  const qaToteColor = document.getElementById('qaToteColor');
+  const qaToteBgColor = document.getElementById('qaToteBgColor');
+  function randomToteColor(){
+    const hue = Math.floor(Math.random() * 360);
+    const rgb = EP.hsvToRgb(hue, 0.55 + Math.random() * 0.35, 0.55 + Math.random() * 0.3);
+    return EP.rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
+  // 배경색도 흰색 고정이 아니라 다양하게 나오도록, 무늬색과는 다른 색상(hue를 어긋나게)으로
+  // 채도는 낮고 밝기는 높게 뽑아서 무늬가 튀지 않고 은은한 바탕이 되게 함
+  function randomToteBgColor(){
+    const hue = Math.floor(Math.random() * 360);
+    const rgb = EP.hsvToRgb(hue, 0.12 + Math.random() * 0.25, 0.85 + Math.random() * 0.15);
+    return EP.rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
+  function applyQaTote(){
+    const boxes = EP.qaTargets.filter(EP.isTextObject);
+    if (!boxes.length) return;
+    const on = qaToteSize.dataset.on === '1';
+    if (!on) {
+      boxes.forEach(t => { t.toteText = null; t.dirty = true; maybeUnpatchRender(t); });
+    } else {
+      const size = parseFloat(qaToteSize.value) || 22;
+      const color = qaToteColor.value || '#e74c3c';
+      const bgColor = qaToteBgColor.value || '#ffffff';
+      boxes.forEach(t => {
+        t.toteText = { size, color, bgColor };
+        patchUnifiedRender(t);
+        t.dirty = true;
+      });
+    }
+    EP.canvas.requestRenderAll();
+  }
+  qaToteSize.addEventListener('input', () => { qaToteSize.dataset.on = '1'; applyQaTote(); });
+  qaToteSize.addEventListener('change', () => EP.pushHistory());
+  qaToteColor.addEventListener('input', () => { qaToteSize.dataset.on = '1'; applyQaTote(); EP.pushHistory(); });
+  qaToteBgColor.addEventListener('input', () => { qaToteSize.dataset.on = '1'; applyQaTote(); EP.pushHistory(); });
+  document.getElementById('qaToteShuffleBtn').addEventListener('click', () => {
+    qaToteSize.dataset.on = '1';
+    qaToteSize.value = 6 + Math.floor(Math.random() * 45); // "토트 무늬 크기 랜덤"
+    qaToteColor.value = randomToteColor();
+    qaToteBgColor.value = randomToteBgColor(); // 배경색도 흰색 고정이 아니라 매번 다양하게
+    applyQaTote();
+    EP.pushHistory();
+  });
+  document.getElementById('qaToteOffBtn').addEventListener('click', () => {
+    qaToteSize.dataset.on = '0';
+    applyQaTote(); EP.pushHistory();
+  });
+
+
 
   // ---- 게이지 되돌리기(populate) 함수들 ----
   function populate_light(anchor){
@@ -7800,6 +7944,8 @@
         const crack = anchor.crackText;
         qaCrackIntensity.value = crack ? (crack.intensity || 0) : 0;
         qaCrackColor.value = crack ? (EP.toHex(crack.crackColor) || '#ffffff') : '#ffffff';
+        qaCrackLineOpacity.value = crack && crack.lineOpacity != null ? crack.lineOpacity : 100;
+        qaCrackGlassOpacity.value = crack && crack.glassOpacity != null ? crack.glassOpacity : 100;
   }
   function populate_tile(anchor){
         const tile = anchor.tileText;
@@ -7836,6 +7982,7 @@
   function populate_club(anchor){
         const club = anchor.clubText;
         qaClubIntensity.value = club ? (club.intensity || 0) : 0;
+        qaClubPersonSize.value = club && club.personSize != null ? club.personSize : 60;
   }
   function populate_snow(anchor){
         const snow = anchor.snowText;
@@ -8050,6 +8197,13 @@
         qaZebraMaxThickness.value = zebra ? (zebra.maxThickness != null ? zebra.maxThickness : 6) : 6;
         qaZebraColorA.value = zebra ? (EP.toHex(zebra.colorA) || '#111111') : '#111111';
         qaZebraColorB.value = zebra ? (EP.toHex(zebra.colorB) || '#ffffff') : '#ffffff';
+  }
+  function populate_tote(anchor){
+        const tote = anchor.toteText;
+        qaToteSize.value = tote ? (tote.size || 22) : 22;
+        qaToteColor.value = tote ? (tote.color || '#e74c3c') : '#e74c3c';
+        qaToteBgColor.value = tote ? (tote.bgColor || '#ffffff') : '#ffffff';
+        qaToteSize.dataset.on = tote ? '1' : '0';
   }
 
   // ---- 필터 레지스트리 등록 ----
@@ -8426,8 +8580,15 @@
     appliesTo: ['text'], group: null, includeInRandom: true,
     apply: applyQaZebra, randomize: function(){ var b=document.getElementById('qaZebraShuffleBtn'); if(b) b.click(); }, populate: populate_zebra
   });
+  EP.registerFilter({
+    id: 'tote', label: '토트 무늬', commonEffect: false,
+    appliesTo: ['text'], group: null, includeInRandom: true, randomWeight: 3, // 예쁘다고 해서 다른 필터보다 3배 더 자주 뽑히게 함
+    apply: applyQaTote, randomize: function(){ var b=document.getElementById('qaToteShuffleBtn'); if(b) b.click(); }, populate: populate_tote
+  });
 
   // ---- CMYK 색상 선택기 초기화 (core.js의 initCmykPicker 재사용) ----
+  EP.initCmykPicker(qaToteColor);
+  EP.initCmykPicker(qaToteBgColor);
   EP.initCmykPicker(qaDblInnerColor);
   EP.initCmykPicker(qaDblOuterColor);
   EP.initCmykPicker(qa3DColor);
@@ -8458,4 +8619,5 @@
   EP.initCmykPicker(qaCrackColor);
 
   EP.reapplyCircularTextPatches = reapplyCircularTextPatches;
+  EP.hasAnyRenderEffect = hasAnyRenderEffect;
 })();

@@ -21,7 +21,7 @@
     spiral:'qaSpiralOffBtn', magazine:'qaMagazineOffBtn', puzzle:'qaPuzzleOffBtn', sky:'qaSkyOffBtn', train:'qaTrainOffBtn',
     shy:'qaShyOffBtn', chalk:'qaChalkOffBtn', grass:'qaGrassOffBtn', bigbang:'qaBigbangOffBtn', event:'qaEventOffBtn', golf:'qaGolfOffBtn', christmas:'qaChristmasOffBtn', autumn:'qaAutumnOffBtn',
     space:'qaSpaceOffBtn', doodle:'qaDoodleOffBtn', butterfly:'qaButterflyOffBtn', soapbubble:'qaSoapbubbleOffBtn', lightning:'qaLightningOffBtn', halloween:'qaHalloweenOffBtn', musicnote:'qaMusicnoteOffBtn', gem:'qaGemOffBtn', tropical:'qaTropicalOffBtn', candy:'qaCandyOffBtn',
-    bg:'qaBgOffBtn', bubble:'qaBubbleOffBtn', zebra:'qaZebraOffBtn'
+    bg:'qaBgOffBtn', bubble:'qaBubbleOffBtn', zebra:'qaZebraOffBtn', tote:'qaToteOffBtn'
   };
 
   var rollState = { ids: [], index: 0 };
@@ -57,6 +57,18 @@
     }
   }
 
+  // 특정 필터를 "몇 배 더 자주 뽑히게" 하고 싶을 때 쓰는 가중치. randomWeight:3이면 풀 안에
+  // 사본을 3개 넣어서 뽑힐 확률을 3배로 높임(그래도 실제로 같은 필터가 한 콤보에 중복으로
+  // 뽑히진 않음 — drawFrom이 이미 뽑힌 id는 건너뛰기 때문).
+  function applyRandomWeights(list){
+    var out = [];
+    list.forEach(function(f){
+      var w = f.randomWeight || 1;
+      for (var i = 0; i < w; i++) out.push(f);
+    });
+    return out;
+  }
+
   // types: ['text'] | ['shape'] | ['text','shape'] — 표처럼 텍스트와 도형(셀 박스)이 섞여있으면
   // 텍스트 전용 필터 + 공통(텍스트/도형 겸용) 필터를 함께 후보 풀에 넣어서 뽑음
   // isTable: true면 텍스트 전용 필터는 TABLE_TEXT_FILTER_WHITELIST에 있는 것만 후보로 남김.
@@ -66,13 +78,20 @@
       if (isTable && !f.commonEffect && TABLE_TEXT_FILTER_WHITELIST.indexOf(f.id) === -1) return false;
       return f.appliesTo.some(function(t){ return types.indexOf(t) !== -1; });
     });
-    var specificPool = pool.filter(function(f){ return !f.commonEffect; });
+    var specificPool = applyRandomWeights(pool.filter(function(f){ return !f.commonEffect; }));
     var commonPool = pool.filter(function(f){ return f.commonEffect; });
 
     // 도형만 있고(표 셀 박스 등) 텍스트 전용 필터가 뽑힐 게 없으면(specificPool 비어있음)
     // 공통 필터 쪽에서 좀 더 넉넉히 뽑아 밋밋해지지 않게 함
+    var isPureText = types.indexOf('text') !== -1 && types.indexOf('shape') === -1; // 도형이 안 섞인 순수 텍스트 뽑기
     var specificCount = specificPool.length ? 1 + Math.floor(Math.random() * 3) : 0; // 1~3
-    var commonCount = specificPool.length ? Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 2); // 0~2 또는 1~2
+    var commonCount;
+    if (specificPool.length) {
+      // 텍스트만 있을 땐 공통필터가 너무 많이 겹치면 지저분해 보여서 0~1개로 더 절제되게 뽑음
+      commonCount = isPureText ? Math.floor(Math.random() * 2) : Math.floor(Math.random() * 3); // 텍스트: 0~1, 그 외(도형 등): 0~2
+    } else {
+      commonCount = 1 + Math.floor(Math.random() * 2); // 1~2
+    }
 
     var chosen = [], usedGroups = {}, usedIds = {};
     drawFrom(specificPool, specificCount, chosen, usedGroups, usedIds);
@@ -126,6 +145,9 @@
     var boxes = EP.qaTargetsFromTarget(target);
     if (!boxes.length) return;
     EP.qaTargets = boxes;
+    // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로(텍스트 오브젝트는 편집 중엔 모든
+    // 커스텀 필터 렌더를 건너뜀) 확실히 빠져나오게 함
+    boxes.forEach(function(o){ if (o.isEditing) o.exitEditing(); });
 
     // 1) 재클릭 시 완전 초기화(요청사항): 등록된 모든 필터를 끔
     resetAllFilters();
@@ -145,14 +167,58 @@
     var combo = pickCombo(types, isTable);
     combo.forEach(function(def){ try { def.randomize(); } catch (e) { console.error('randomize error:', def.id, e); } });
 
+    // 텍스트에는 필터와 함께 폰트도 매번 랜덤으로 하나 골라(오브젝트 전체에 똑같이) 적용함.
+    // 단, "랜덤 타이포"(글자마다 각자 다른 폰트를 쓰는 필터)가 이번에 뽑혔다면, 그건 이미
+    // 자기 나름대로 글자마다 다른 폰트를 쓰고 있으니 여기서 통일된 폰트로 덮어쓰지 않고 그대로 둠.
+    var pickedRandomTypo = combo.some(function(def){ return def.id === 'randomTypo'; });
+    if (!pickedRandomTypo) {
+      var fontSelectEl = document.getElementById('fontFamilySelect');
+      var fontOptions = fontSelectEl ? Array.prototype.map.call(fontSelectEl.options, function(o){ return o.value; }) : [];
+      var textBoxes = boxes.filter(EP.isTextObject);
+      if (fontOptions.length && textBoxes.length) {
+        var randomFont = fontOptions[Math.floor(Math.random() * fontOptions.length)];
+        textBoxes.forEach(function(o){
+          if (EP.clearPerCharStyleOverrides) EP.clearPerCharStyleOverrides(o, ['fontFamily', 'fontWeight']);
+          o.set('fontFamily', randomFont);
+        });
+        if (EP.forceFontReloadRedraw) EP.forceFontReloadRedraw(textBoxes, randomFont);
+      }
+    }
+
     if (EP.canvas) EP.canvas.requestRenderAll();
     if (EP.pushHistory) EP.pushHistory();
 
     // 4) 패널에 순환 표시 준비 (◀ 이전 · 숫자 · 다음 ▶)
     rollState.ids = combo.map(function(f){ return f.id; });
     rollState.index = 0;
+    // 이 오브젝트 자체에도 조합을 저장해둠 — 나중에 다른 오브젝트를 롤한 뒤(rollState가
+    // 그쪽으로 덮어써진 뒤) 이 오브젝트를 다시 선택해도, EP.refreshTextRollNav로 이 오브젝트
+    // 고유의 목록을 정확히 복원할 수 있게 하기 위함(안 이러면 "1"번이 안 뜨고 2·3번으로
+    // 넘어가야만 그제서야 맞는 내용이 보이는 문제가 생김).
+    target._lastRollComboIds = rollState.ids.slice();
+    if (EP.applyFilteredFilterDropdown) EP.applyFilteredFilterDropdown(target); // 팝오버가 이미 열려있었다면(재굴림) 드롭다운도 새 조합으로 갱신
     showCurrentRollFilter();
+
+    // 토트무늬는 예쁘다고 일부러 더 자주 뽑히게 해뒀는데, 뽑히고도 상세조정 패널이 접혀있으면
+    // 바로 안 보여서 아쉬우니 이번 조합에 토트무늬가 있으면 패널을 자동으로 펼쳐서 보여줌
+    if (rollState.ids.indexOf('tote') !== -1 && EP.setActiveFilterMenu && EP.qaFilterSelect) {
+      EP.qaFilterSelect.value = 'tote';
+      EP.setActiveFilterMenu('tote');
+      if (EP.setQaDetailExpanded) EP.setQaDetailExpanded(true);
+    }
   }
+
+  // 이미 필터가 적용돼있는 텍스트를 선택만 했을 때(주사위를 새로 굴리지 않고) 상세조정하기를
+  // 펼치면, 그 오브젝트 고유의 필터 목록(◀1/N▶)과 "1번" 내용이 곧바로 정확히 표시되도록
+  // rollState를 다시 채워줌. target에 저장해둔 게 없으면(예: 필터가 하나도 없는 오브젝트)
+  // 아무것도 안 하고 false를 반환함.
+  EP.refreshTextRollNav = function(target){
+    if (!target || !target._lastRollComboIds || !target._lastRollComboIds.length) return false;
+    rollState.ids = target._lastRollComboIds.slice();
+    rollState.index = 0;
+    showCurrentRollFilter();
+    return true;
+  };
 
   document.getElementById('qaDiceBtn').addEventListener('click', function(){
     var active = EP.canvas && EP.canvas.getActiveObject();
@@ -171,4 +237,84 @@
   });
 
   EP.rollDice = rollDice;
+
+  /* ============================================================
+     화면 상단 "🎲 전체 랜덤 적용" 버튼
+     — 캔버스 위 잠금(imageLocked) 안 된 모든 텍스트·모양 오브젝트를 하나씩 순서대로 훑으면서,
+       텍스트는 텍스트용 랜덤필터(rollDice), 모양은 모양용 랜덤필터(rollShapeDice)를 각각
+       자동으로 적용함. 오브젝트를 하나씩 잠깐 선택했다가(선택 테두리가 보임) 적용되면 바로
+       선택을 풀고 다음으로 넘어가는 방식이라, 눈으로 진행 상황을 볼 수 있음.
+       P/M버튼과 달리 상세조절(게이지) 팝업은 절대 띄우지 않음 — 오브젝트를 개별로 따로
+       선택했을 때(P/M 주사위를 직접 눌렀을 때)만 그 팝업이 뜨는 기존 동작은 그대로 유지됨.
+  ============================================================ */
+  var rollAllBtn = document.getElementById('rollAllBtn');
+  if (rollAllBtn) {
+    rollAllBtn.addEventListener('click', function(){
+      if (rollAllBtn.disabled || !EP.canvas) return;
+      var canvas = EP.canvas;
+      var qaPopoverEl = document.getElementById('qaPopover');
+      var qaMPopoverEl = document.getElementById('qaMPopover');
+
+      var objs = canvas.getObjects().filter(function(o){
+        return o && !o.isGuide && !o.imageLocked && (EP.isTextObject(o) || EP.isShapeObject(o));
+      });
+      if (!objs.length) {
+        alert('랜덤 필터를 적용할, 잠금 안 된 텍스트나 모양이 캔버스에 없습니다.');
+        return;
+      }
+
+      // 이 버튼으로는 상세조절 팝업이 절대 안 뜨게, 혹시 열려있던 게 있으면 미리 닫아둠
+      if (qaPopoverEl) qaPopoverEl.classList.add('hidden');
+      if (qaMPopoverEl) qaMPopoverEl.classList.add('hidden');
+
+      // 배치가 진행되는 동안은 캔버스 선택/클릭을 잠가서(다른 도구들과 동일한 "모드" 방식),
+      // 사용자가 중간에 다른 오브젝트를 클릭해 진행 중인 순서와 상태가 서로 꼬이지 않게 함.
+      // 이래야 배치가 끝난 뒤 개별 오브젝트를 눌렀을 때 상세조정하기 버튼이 항상 깨끗하게 뜸.
+      var prevSelection = canvas.selection, prevSkipTargetFind = canvas.skipTargetFind;
+      canvas.discardActiveObject();
+      canvas.selection = false;
+      canvas.skipTargetFind = true;
+      canvas.requestRenderAll();
+
+      // 배치 중엔 canvas.setActiveObject()를 코드로 계속 호출하는데(오브젝트가 잠깐 선택된 채로
+      // 보이게 하려고), 이게 selection:created/updated 이벤트를 그대로 발생시킴. 이미 필터가
+      // 걸려있는 오브젝트(예: 재클릭해서 다시 돌리는 경우 이전 결과가 남아있는 오브젝트)를
+      // 건드리는 순간 "상세조정하기 자동 열기" 로직이 반응해서 팝업이 튀어나오던 게 진짜 원인
+      // -> 배치가 진행되는 동안엔 이 플래그로 그 자동 열기를 확실히 막아둠.
+      EP.rollAllInProgress = true;
+
+      rollAllBtn.disabled = true;
+      var originalLabel = rollAllBtn.textContent;
+      var idx = 0;
+
+      function step(){
+        if (idx >= objs.length) {
+          canvas.discardActiveObject();
+          canvas.selection = prevSelection;
+          canvas.skipTargetFind = prevSkipTargetFind;
+          EP.rollAllInProgress = false;
+          canvas.requestRenderAll();
+          rollAllBtn.disabled = false;
+          rollAllBtn.textContent = originalLabel;
+          return;
+        }
+        var o = objs[idx];
+        rollAllBtn.textContent = '적용 중... (' + (idx + 1) + '/' + objs.length + ')';
+        canvas.setActiveObject(o); // 지금 처리 중인 오브젝트가 잠깐 선택된 채로 보임(클릭은 잠겨있어 방해 안 됨)
+        canvas.requestRenderAll();
+        setTimeout(function(){
+          if (EP.isTextObject(o)) { if (EP.rollDice) EP.rollDice(o); }
+          else if (EP.isShapeObject(o)) { if (EP.rollShapeDice) EP.rollShapeDice(o); }
+          canvas.requestRenderAll();
+          setTimeout(function(){
+            canvas.discardActiveObject(); // 적용이 끝나면 선택을 풀고 다음 오브젝트로
+            canvas.requestRenderAll();
+            idx++;
+            step();
+          }, 90);
+        }, 90);
+      }
+      step();
+    });
+  }
 })();

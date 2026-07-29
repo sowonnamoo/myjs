@@ -21,6 +21,15 @@
     return false;
   }
 
+  // 테두리·엠보스는 "장식 효과 있는지" 판단하는 hasAnyRenderEffect 목록에 안 들어있어서,
+  // 낙서·우주·해산물·보석 등 다른 특수효과가 이미 켜져있는 오브젝트에 테두리/엠보스를
+  // 얹을 때 objectCaching이 확실히 계속 꺼진 채로 유지되도록 이 함수에서 명시적으로 맞춰줌
+  // (켜진 채로 있으면 fabric이 원래 글자 크기 기준 캐시 캔버스를 만들어서, 그 바깥으로 퍼지는
+  // 장식들이 잘려 보이는 문제가 있었음). 다른 특수효과가 하나도 없으면 정상적으로 다시 켬(성능).
+  function syncObjectCachingForCommonEffect(t){
+    t.objectCaching = EP.hasAnyRenderEffect ? !EP.hasAnyRenderEffect(t) : true;
+  }
+
   /* ============================================================
      2c-2. T버튼 좌측 "P" 버튼 컨트롤 → 필터(그림자/외곽선/배경) 메뉴
      - T와 동일한 크기·구조의 원형 버튼을 T 바로 왼쪽에 배치
@@ -45,23 +54,28 @@
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 15px Arial, sans-serif';
+      ctx.font = '14px Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('P', 0, 1);
+      ctx.fillText('🎲', 0, 1); // 주사위 아이콘 — 누르면 곧바로 랜덤 필터가 적용됨
       ctx.restore();
     }
 
     const pControl = new fabric.Control({
-      x: 0.5, y: -0.5,
-      offsetX: -14, offsetY: -36, // T버튼(offsetX:20) 바로 왼쪽, 같은 줄
+      x: -0.5, y: -0.5,
+      offsetX: -20, offsetY: -36, // 좌측 상단 모서리 바로 위 — 글자가 커져도(오른쪽으로만 넓어짐) 위치가 안 흔들려서 연속 클릭하기 편함
       cursorStyle: 'pointer',
       render: renderPButton,
       mouseUpHandler: function(eventData, transformData){
         const target = transformData && transformData.target;
         if (!target || isTableRelatedTarget(target)) return true;
-        if (!qaPopover.classList.contains('hidden')) { hideQaPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
-        openQaPopover(target);
+        if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
+        // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 랜덤 필터를 다시 뽑음(토글로 닫히던
+        // 예전 동작은 제거) — 팝업이 이미 열려있으면 위치는 그대로 두고(드래그해둔 자리 유지),
+        // 처음 여는 거면 글자 바로 아래에 새로 자리잡음. 그 안의 게이지들로 계속 세부 조절 가능.
+        const alreadyOpen = !qaPopover.classList.contains('hidden');
+        openQaPopover(target, { reposition: !alreadyOpen });
+        if (EP.rollDice) EP.rollDice(target);
         return true;
       }
     });
@@ -77,8 +91,25 @@
   const qaPopover = document.getElementById('qaPopover');
   // EP.qaTargets 는 파일 상단에서 이미 초기화됨 (T버튼과 동일한 방식: 창을 여는 시점의 대상을 그대로 붙잡아둠)
 
-  function hideQaPopover(){ qaPopover.classList.add('hidden'); EP.qaTargets = []; }
+  function hideQaPopover(){
+    qaPopover.classList.add('hidden');
+    EP.qaTargets = [];
+    setQaDetailExpanded(false);
+  }
   if (EP.registerFilterPopover) EP.registerFilterPopover(qaPopover);
+
+  // "상세조정하기" 접기/펼치기 — 주사위(P버튼)를 눌러 랜덤 필터를 적용한 직후에는
+  // ◀1/3▶ 이동과 필터 게이지들을 다 숨기고 이 버튼 하나만 글자 아래에 보이게 함.
+  // 조절하고 싶을 때만 눌러서 펼치면 그제서야 게이지들이 나타남.
+  const qaDetailToggleBtn = document.getElementById('qaDetailToggleBtn');
+  function setQaDetailExpanded(expanded){
+    qaPopover.classList.toggle('qa-expanded', expanded);
+    qaDetailToggleBtn.textContent = expanded ? '접기 ▴' : '상세조정하기 ▾';
+    qaDetailToggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+  qaDetailToggleBtn.addEventListener('click', () => {
+    setQaDetailExpanded(!qaPopover.classList.contains('qa-expanded'));
+  });
 
   // T버튼 팝오버와 동일한 방식: 오브젝트 중앙 아래쪽에 표시 (공간 부족하면 위쪽)
   function positionQaPopover(target){
@@ -194,6 +225,7 @@
     sakura: document.getElementById('qaDetailSakura'),
     randomTypo: document.getElementById('qaDetailRandomTypo'),
     zebra: document.getElementById('qaDetailZebra'),
+    tote: document.getElementById('qaDetailTote'),
     translate: document.getElementById('qaDetailTranslate'),
     typo: document.getElementById('qaDetailTypo'),
     bg: document.getElementById('qaDetailBg'),
@@ -329,7 +361,7 @@
     if (!boxes.length) return;
     const depth = parseFloat(qaEmbossDepth.value) || 0;
     if (depth <= 0) {
-      boxes.forEach(t => t.set({ shadow: null, stroke: null, strokeWidth: 0, paintFirst: 'fill' }));
+      boxes.forEach(t => { t.set({ shadow: null, stroke: null, strokeWidth: 0, paintFirst: 'fill' }); syncObjectCachingForCommonEffect(t); });
     } else {
       const angle = parseFloat(qaEmbossAngle.value) || 135;
       const rad = angle * Math.PI / 180;
@@ -350,6 +382,7 @@
             strokeWidth: Math.max(0.5, depth * 0.15) * 2
           });
         }
+        syncObjectCachingForCommonEffect(t);
       });
     }
     EP.canvas.requestRenderAll();
@@ -379,7 +412,7 @@
     if (!boxes.length) return;
     const w = parseFloat(qaOutlineWidth.value) || 0;
     if (w <= 0) {
-      boxes.forEach(t => t.set({ stroke: null, strokeWidth: 0, paintFirst: 'fill' }));
+      boxes.forEach(t => { t.set({ stroke: null, strokeWidth: 0, paintFirst: 'fill' }); syncObjectCachingForCommonEffect(t); });
     } else {
       boxes.forEach(t => {
         if (isShapeObject(t)) {
@@ -391,6 +424,7 @@
             strokeWidth: w * 2
           });
         }
+        syncObjectCachingForCommonEffect(t);
       });
     }
     EP.canvas.requestRenderAll();
@@ -475,22 +509,38 @@
 
   // ---- 배경 ---- (텍스트는 글자 뒤 배경색, 도형은 채우기색 자체를 바꿈)
   const qaBgColor = document.getElementById('qaBgColor');
+  const qaBgOpacity = document.getElementById('qaBgOpacity');
+  // 그림자와 달리 배경색은 캔버스에서 진짜 알파(rgba)가 안정적으로 잘 렌더링되므로,
+  // "흰색으로 섞기"가 아니라 실제 반투명(뒤가 비쳐보이는) 방식으로 구현함
+  function hexToRgbaStr(hex, opacityPct){
+    const rgb = EP.hexToRgb(hex || '#cccccc') || { r: 204, g: 204, b: 204 };
+    const a = Math.max(0, Math.min(100, opacityPct)) / 100;
+    return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + a + ')';
+  }
   function applyQaBg(){
     const targets = EP.qaTargets.filter(isTextOrShape);
     if (!targets.length) return;
+    const opacity = qaBgOpacity.value === '' ? 100 : (parseFloat(qaBgOpacity.value) || 0);
+    const colorStr = hexToRgbaStr(qaBgColor.value, opacity);
     targets.forEach(t => {
-      if (isTextObject(t)) t.set('textBackgroundColor', qaBgColor.value || '');
-      else t.set('fill', qaBgColor.value || '#ffffff');
+      if (isTextObject(t)) t.set('textBackgroundColor', qaBgColor.value ? colorStr : '');
+      else t.set('fill', colorStr);
+      t.bgOpacityValue = opacity; // populate 시 정확히 되읽기 위해 원본 값을 따로 저장해둠
+      t.bgBaseColorValue = qaBgColor.value || '#cccccc';
     });
     EP.canvas.requestRenderAll();
   }
   qaBgColor.addEventListener('input', () => { applyQaBg(); EP.pushHistory(); });
+  qaBgOpacity.addEventListener('input', applyQaBg);
+  qaBgOpacity.addEventListener('change', () => EP.pushHistory());
   document.getElementById('qaBgOffBtn').addEventListener('click', () => {
     const targets = EP.qaTargets.filter(isTextOrShape);
     if (!targets.length) return;
     targets.forEach(t => {
       if (isTextObject(t)) t.set('textBackgroundColor', '');
       else t.set('fill', '#ffffff');
+      t.bgOpacityValue = null;
+      t.bgBaseColorValue = null;
     });
     EP.canvas.requestRenderAll(); EP.pushHistory();
   });
@@ -507,10 +557,15 @@
     EP.filterRegistry.forEach(function(def){
       if (def.populate) { try { def.populate(anchor); } catch(e) { console.error('populate error:', def.id, e); } }
     });
+    if (EP.applyFilteredFilterDropdown) EP.applyFilteredFilterDropdown(anchor); // 드롭다운을 이 오브젝트의 랜덤 적용 이력에 맞춰 좁힘(이력 없으면 전체 목록)
 
     if (wasHidden) {
       qaFilterSelect.value = '';
       Object.values(qaDetails).forEach(function(d){ d.classList.add('hidden'); });
+      setQaDetailExpanded(false); // 새로 열 때는 항상 접힌 상태로 시작(주사위 결과만 캔버스에서 바로 보이게)
+      // 이 오브젝트에 이미 적용돼있는 필터 목록(◀1/N▶)을 즉시 복원해둠 — 이렇게 안 하면
+      // 펼쳤을 때 "1"번 내용이 안 뜨고, ◀▶로 2·3번을 거쳐야만 그제서야 표시되는 문제가 있었음.
+      if (EP.refreshTextRollNav) EP.refreshTextRollNav(anchor);
     }
 
     var reposition = !opts || opts.reposition !== false;
@@ -548,6 +603,24 @@
   }
   EP.canvas.on('selection:created', syncQaPopoverToSelection);
   EP.canvas.on('selection:updated', syncQaPopoverToSelection);
+
+  // 이미 필터가 적용돼있는 텍스트(예: "전체 랜덤 적용" 직후)를 선택하면, 굳이 P버튼(주사위)을
+  // 따로 안 눌러도 자동으로 "상세조정하기" 팝업이 (접힌 상태로) 뜨게 함 — 새로 랜덤을 뽑지는
+  // 않고, 지금 적용된 필터를 조정할 수 있는 진입점만 바로 보여줌. 필터가 없는 텍스트를
+  // 선택했을 땐(아직 아무것도 적용 안 한 새 텍스트 등) 평소처럼 아무것도 안 뜸.
+  function autoOpenQaPopoverIfHasEffect(){
+    if (EP.rollAllInProgress) return; // "전체 랜덤 적용" 배치가 진행 중이면 자동으로 안 뜨게 함
+    if (!qaPopover.classList.contains('hidden')) return; // 이미 열려있으면 위 syncQaPopoverToSelection이 처리하므로 손 안 댐
+    const active = EP.canvas.getActiveObject();
+    if (!active || isTableRelatedTarget(active)) return;
+    const boxes = EP.qaTargetsFromTarget(active).filter(isTextObject);
+    if (!boxes.length) return;
+    const hasEffect = boxes.some(o => EP.hasAnyRenderEffect && EP.hasAnyRenderEffect(o));
+    if (!hasEffect) return;
+    openQaPopover(active);
+  }
+  EP.canvas.on('selection:created', autoOpenQaPopoverIfHasEffect);
+  EP.canvas.on('selection:updated', autoOpenQaPopoverIfHasEffect);
 
   // 패널을 자유롭게 드래그로 이동 (드롭다운/게이지/스와치/닫기버튼 위에서는 드래그 시작 안 함)
 
@@ -598,11 +671,9 @@
         qaOutlineColor.value = EP.toHex(anchor.stroke) || '#000000';
   }
   function populate_bg(anchor){
-        if (isTextObject(anchor)) {
-          qaBgColor.value = EP.toHex(anchor.textBackgroundColor) || '#cccccc';
-        } else {
-          qaBgColor.value = EP.toHex(anchor.fill) || '#cccccc';
-        }
+        const hasBg = isTextObject(anchor) ? !!anchor.textBackgroundColor : (anchor.bgBaseColorValue != null);
+        qaBgColor.value = hasBg ? (anchor.bgBaseColorValue || '#cccccc') : '#cccccc';
+        qaBgOpacity.value = hasBg && anchor.bgOpacityValue != null ? anchor.bgOpacityValue : 100;
   }
 
   // ---- 공통필터 6개는 "다시 그리기" 버튼이 아직 없어서, 주사위용으로 최소한의
@@ -642,42 +713,44 @@
   }
   function randomizeBg(){
     qaBgColor.value = randHex();
+    qaBgOpacity.value = Math.round(50 + Math.random() * 50);
     applyQaBg(); pushHistory();
   }
 
   // ---- 필터 레지스트리 등록 ----
   // 그림자~배경 6개는 도형(shape)에도 적용 가능한 "공통 효과"라 appliesTo에 shape를 함께 넣음.
   // (번역/맞춤법검사는 텍스트 전용이라 그대로 text만 유지)
-  // includeInRandom:false — 이 6개는 "🎲 랜덤 적용"으로 무작위로 뽑히지 않음(직접 골라서만 적용).
-  // 드롭다운 목록에서도 <optgroup>으로 나머지 장식 효과들과 분리해서 보여줌.
+  // 이 6개도 다른 필터들과 마찬가지로 "🎲 랜덤 적용"의 후보로 포함됨(ecopro3l.js의 pickCombo가
+  // 공통필터 몫으로 별도 개수를 뽑음). 드롭다운 목록에서도 <optgroup>으로 나머지 장식 효과들과
+  // 분리해서 보여줌.
   EP.registerFilter({
     id: 'shadow', label: '그림자', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
+    appliesTo: ['text', 'shape'], group: null,
     apply: applyQaShadow, randomize: randomizeShadow, populate: populate_shadow
   });
   EP.registerFilter({
     id: 'glow', label: '외부광선', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
+    appliesTo: ['text', 'shape'], group: null,
     apply: applyQaGlow, randomize: randomizeGlow, populate: populate_glow
   });
   EP.registerFilter({
     id: 'gradient', label: '그라디언트', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
+    appliesTo: ['text', 'shape'], group: null,
     apply: applyQaGradient, randomize: randomizeGradient, populate: populate_gradient
   });
   EP.registerFilter({
-    id: 'emboss', label: '경사와 엠보스', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
+    id: 'emboss', label: '경사와 엠보스', commonEffect: true, includeInRandom: false,
+    appliesTo: ['text', 'shape'], group: null,
     apply: applyQaEmboss, randomize: randomizeEmboss, populate: populate_emboss
   });
   EP.registerFilter({
-    id: 'outline', label: '테두리', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
+    id: 'outline', label: '테두리', commonEffect: true, includeInRandom: false,
+    appliesTo: ['text', 'shape'], group: null,
     apply: applyQaOutline, randomize: randomizeOutline, populate: populate_outline
   });
   EP.registerFilter({
     id: 'bg', label: '배경', commonEffect: true,
-    appliesTo: ['text', 'shape'], group: null, includeInRandom: false,
+    appliesTo: ['text', 'shape'], group: null,
     apply: applyQaBg, randomize: randomizeBg, populate: populate_bg
   });
   EP.registerFilter({ id: 'translate', label: '번역', commonEffect: true,
@@ -698,8 +771,42 @@
   EP.initCmykPicker(qaBgColor);
 
   EP.openQaPopover = openQaPopover;
+  EP.hideQaPopover = hideQaPopover;
   EP.setActiveFilterMenu = setActiveFilterMenu;
+  EP.setQaDetailExpanded = setQaDetailExpanded;
   EP.qaDetails = qaDetails;
   EP.qaFilterSelect = qaFilterSelect;
   EP.isTableRelatedTarget = isTableRelatedTarget;
+
+  /* ============================================================
+     "상세조정하기"를 펼쳤을 때, ◀1/3▶ 바로 아래 필터 선택 드롭다운에는 82개 전체
+     대신 "지금 이 오브젝트에 실제로 랜덤 적용된 필터들"만 좁혀서 보여줌 — 그래야
+     이번에 뭐가 뽑혔는지 목록으로 바로 보고 골라서 수정할 수 있음.
+     (적용 이력이 없는 오브젝트라면 평소처럼 전체 82개 목록을 그대로 보여줌)
+  ============================================================ */
+  var qaFilterSelectOriginalHTML = qaFilterSelect.innerHTML;
+
+  EP.applyFilteredFilterDropdown = function(anchor){
+    var ids = anchor && anchor._lastRollComboIds;
+    if (!ids || !ids.length) {
+      qaFilterSelect.innerHTML = qaFilterSelectOriginalHTML; // 이력 없으면 전체 목록 그대로
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    var placeholder = document.createElement('option');
+    placeholder.value = ''; placeholder.disabled = true;
+    placeholder.textContent = '이번에 적용된 필터 (' + ids.length + '개)';
+    frag.appendChild(placeholder);
+    ids.forEach(function(id){
+      var def = EP.filterRegistry.filter(function(f){ return f.id === id; })[0];
+      if (!def) return;
+      var opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = def.label || id;
+      frag.appendChild(opt);
+    });
+    qaFilterSelect.innerHTML = '';
+    qaFilterSelect.appendChild(frag);
+    qaFilterSelect.value = ids[0];
+  };
 })();

@@ -3,10 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<script>
+  // 모바일 브라우저로 접속하면 이 데스크톱용 에디터 대신 모바일 전용 페이지로 자동 이동시킴.
+  // (CSS/JS 로딩 전에 최대한 빨리 판단하도록 head 맨 앞에 둠 — 화면 깜빡임 최소화)
+  // 쿼리스트링(?a=b 같은 것들)과 해시(#...)는 그대로 들고 넘어감.
+  // "?desktop=1"을 붙이면 모바일에서도 이 데스크톱 버전을 계속 볼 수 있게 예외를 둠(테스트/파워유저용).
+  (function(){
+    var params = new URLSearchParams(location.search);
+    if (params.get('desktop') === '1') return; // 강제로 데스크톱 버전 보기 원할 때 탈출구
+    var ua = navigator.userAgent || '';
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    if (isMobile) {
+      location.replace('ecopro3-mobile.html' + location.search + location.hash);
+    }
+  })();
+</script>
 <title>SVG · 이미지 편집기</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 <!-- 임시로 걷어냄(로컬 로딩 느려서) — 다시 켜려면 이 주석 해제
 <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 -->
@@ -29,31 +46,32 @@
       <button type="button" class="btn" id="fileMenuBtn">🖼 이미지 ▾</button>
       <div class="dropdown-menu hidden" id="fileMenu">
         <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기 (JPG·PNG)</label>
-        <label class="dropdown-item" for="svgInput">📄 SVG 불러오기</label>
+        <label class="dropdown-item hidden" for="svgInput">📄 SVG 불러오기</label>
         <label class="dropdown-item" for="fontInput">Aa 폰트 불러오기</label>
         <label class="dropdown-item" for="projectInput">📂 프로젝트 불러오기</label>
         <button type="button" class="dropdown-item" id="saveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
+        <button type="button" class="dropdown-item" id="autoSaveToggleBtn" title="켜두면 10초마다 한 번씩, 처음 고른 파일에 지금까지 작업 내용을 조용히 덮어써서 저장해둬요(저장됐다는 표시는 따로 안 뜸)">🔄 자동저장</button>
+        <div class="dropdown-divider"></div>
+        <button type="button" class="dropdown-item" data-export="png">🖼 PNG로 저장</button>
+        <button type="button" class="dropdown-item" data-export="jpg">🖼 JPG로 저장</button>
+        <button type="button" class="dropdown-item" data-export="svg">📄 SVG로 저장</button>
+        <button type="button" class="dropdown-item" data-export="svg-vector" title="업로드한 폰트를 이미지로 바꾸는 과정 없이, 글자·도형 전부 래스터화(이미지화) 없이 벡터 그대로 저장합니다. 단, 업로드한 임시 폰트를 쓴 글자가 있으면 그 폰트가 없는 환경(다른 컴퓨터·프로그램)에서는 다른 글꼴로 보일 수 있어요.">📄 SVG로 저장 (벡터 원본)</button>
       </div>
       <input type="file" id="imageInput" accept="image/jpeg,image/png,image/jpg">
-      <input type="file" id="svgInput" accept="image/svg+xml,.svg">
+      <input type="file" id="svgInput" accept=".svg,image/svg+xml">
       <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2">
       <input type="file" id="projectInput" accept="application/json,.json">
       <input type="file" id="replaceImageInput" accept="image/jpeg,image/png,image/jpg">
     </div>
 
-    <div class="toolbar-group">
-      <button type="button" class="btn" id="selectToolBtn" title="선택 도구 (V)">↖ 선택</button>
-    </div>
-
     <div class="toolbar-group dropdown megamenu">
-      <button type="button" class="btn" id="shapeMenuBtn">🅣 텍스트모양 ▾</button>
+      <button type="button" class="btn" id="shapeMenuBtn">✏️ 편집하기 ▾</button>
       <div class="dropdown-menu hidden" id="shapeMenu">
-        <label class="dropdown-item" for="imageInput" style="cursor:pointer;">🖼 이미지 불러오기</label>
-        <button type="button" class="dropdown-item" id="quickMarqueeEraseBtn" title="이미지를 선택한 상태에서 누르면, 지우고 싶은 영역을 드래그로 지정해서 워터마크나 글씨를 지울 수 있어요">🧹 워터마크, 글씨영역 삭제하기</button>
+        <label class="dropdown-item hidden" for="imageInput" style="cursor:pointer;">🖼 이미지 불러오기</label>
+        <button type="button" class="dropdown-item hidden" id="quickMarqueeEraseBtn" title="이미지를 선택한 상태에서 누르면, 지우고 싶은 영역을 드래그로 지정해서 워터마크나 글씨를 지울 수 있어요">🧹 워터마크, 글씨영역 삭제하기</button>
         <button type="button" class="dropdown-item" id="addTextBtn">🅣 텍스트</button>
-        <button type="button" class="dropdown-item" id="fixTextShapeBtn" title="가로로 늘어난 글자는 세로도 그만큼 늘리고, 세로로 늘어난 글자는 자간을 절반으로 줄이고 세로 크기도 줄여서 정비율로 바로잡아요">🔧 글자모양교정</button>
+        <button type="button" class="dropdown-item" id="fixTextShapeBtn" title="가로로 늘어난 글자는 세로도 그만큼 늘리고, 세로로 늘어난 글자는 자간을 절반으로 줄이고 세로 크기도 줄여서 정비율로 바로잡아요">🔧 늘어진글자교정</button>
         <button type="button" class="dropdown-item" id="openShapePickerBtn" title="사각형·원·삼각형·별·하트 등 원하는 모양을 골라 만들어요">◆ 모양 만들기</button>
-        <button type="button" class="dropdown-item" id="addRandomShapeBtn" title="다양한 모양 중 하나를 랜덤 색상으로 만들어요">🎲 랜덤모양 생성</button>
         <button type="button" class="dropdown-item" id="penToolBtn" title="펜 도구 — 클릭으로 점 추가, 드래그하면 곡선 핸들 생성 (더블클릭/Enter: 완료, 시작점 클릭: 닫힌 도형, Esc: 취소)">✒ 펜 도구</button>
         <button type="button" class="dropdown-item" id="addTableBtn" title="표를 만들어요 — 기본/랜덤/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
         <button type="button" class="dropdown-item" id="addMapBtn" title="주소를 입력하면 그 위치의 지도 이미지가 캔버스에 들어와요">🗺 지도 만들기</button>
@@ -64,10 +82,18 @@
     </div>
 
     <div class="toolbar-group">
+      <button type="button" class="btn" id="selectToolBtn" title="선택 도구 (V)">↖ 선택</button>
+    </div>
+
+    <div class="toolbar-group">
       <button type="button" class="btn icon" id="eyedropperPickBtn" title="스포이드 — 먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 이 버튼을 누르고, 색을 따올 다른 오브젝트를 클릭하면 그 색이 그대로 적용돼요">
         <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3 L21 7 L11 17 L7 17 L7 13 Z" fill="currentColor"/><rect x="4.6" y="17.6" width="3.6" height="3.6" transform="rotate(45 6.4 19.4)" fill="currentColor"/></svg>
       </button>
       <div class="eyedrop-preview-swatch" id="eyedropPreviewSwatch" title="스포이드가 지금 가리키고 있는 색 실시간 미리보기"></div>
+    </div>
+
+    <div class="toolbar-group">
+      <button type="button" class="btn" id="rollAllBtn" title="잠금 안 된 모든 텍스트·모양에 랜덤 필터를 한 번에 적용합니다 (텍스트는 텍스트용, 모양은 모양용 필터가 각각 적용됨)">🎲 전체 랜덤 적용</button>
     </div>
 
     <div class="toolbar-group dropdown megamenu">
@@ -86,24 +112,22 @@
       <button type="button" class="btn icon danger" id="deleteBtn" title="선택 삭제 (Delete)" disabled>🗑</button>
     </div>
 
-    <div class="toolbar-group">
-      <button type="button" class="btn icon" id="zoomOutBtn">－</button>
-      <span class="zoom-label" id="zoomLabel">100%</span>
-      <button type="button" class="btn icon" id="zoomInBtn">＋</button>
-      <button type="button" class="btn" id="zoomResetBtn">100%</button>
+    <div class="toolbar-group dropdown megamenu">
+      <button type="button" class="btn" id="zoomMenuBtn" title="화면 확대/축소">🔍 <span id="zoomMenuBtnLabel">100%</span> ▾</button>
+      <div class="dropdown-menu hidden" id="zoomMenu">
+        <button type="button" class="dropdown-item" data-zoom="25">25%</button>
+        <button type="button" class="dropdown-item" data-zoom="50">50%</button>
+        <button type="button" class="dropdown-item" data-zoom="75">75%</button>
+        <button type="button" class="dropdown-item" data-zoom="100">100%</button>
+        <button type="button" class="dropdown-item" data-zoom="125">125%</button>
+        <button type="button" class="dropdown-item" data-zoom="150">150%</button>
+        <button type="button" class="dropdown-item" data-zoom="200">200%</button>
+        <button type="button" class="dropdown-item" data-zoom="300">300%</button>
+      </div>
     </div>
 
     <div class="toolbar-group">
       <button type="button" class="btn icon" id="guideToggleBtn" title="붉은선(재단선) / 회색 여유선 표시 켜기·끄기">▦ 안내선</button>
-    </div>
-
-    <div class="toolbar-group dropdown megamenu">
-      <button type="button" class="btn primary" id="exportBtn">⬇ 내보내기</button>
-      <div class="dropdown-menu hidden" id="exportMenu">
-        <button type="button" class="dropdown-item" data-export="png">PNG로 저장 (현재 화면)</button>
-        <button type="button" class="dropdown-item" data-export="jpg">JPG로 저장 (현재 화면)</button>
-        <button type="button" class="dropdown-item" data-export="svg">SVG로 저장 (현재 화면)</button>
-      </div>
     </div>
 
     <div class="toolbar-group" style="border-right:none;">
@@ -117,7 +141,7 @@
   <div class="status-bar">
     <span>작업 규격: <b id="sizeLabel">-</b></span>
     <span class="status-chip" id="sideChip">단면</span>
-    <span id="orderInfoLabel" style="color:#9aa4b2;"></span>
+    <span id="orderInfoLabel" class="hidden" style="color:#9aa4b2;"></span>
   </div>
 
   <!-- ============ MAIN ============ -->
@@ -131,15 +155,20 @@
       <button type="button" class="drawer-close" id="tabSidebarCloseBtn" title="닫기">✕</button>
       <h4>디자인 목록</h4>
       <div class="design-unify-actions">
-        <button type="button" id="unifyDesignBtn" class="design-action-btn" title="디자인 1(앞/뒤)의 내용을 전체 디자인에 똑같이 복사합니다">디자인 통일하기</button>
-        <button type="button" id="partialUnifyBtn" class="design-action-btn" title="각 디자인의 '그룹' 칸에 같은 값을 입력해서 묶은 뒤 누르면, 그룹 안에서 가장 앞 번호 디자인 내용으로 통일됩니다">부분통일하기</button>
+        <button type="button" id="unifyDesignBtn" class="design-action-btn" title="디자인 1(앞/뒤)의 내용을 전체 디자인에 똑같이 복사합니다">디자인공통적용</button>
+        <button type="button" id="partialUnifyBtn" class="design-action-btn" title="각 디자인의 '그룹' 칸에 같은 값을 입력해서 묶은 뒤 누르면, 그룹 안에서 가장 앞 번호 디자인 내용으로 통일됩니다">부분적용</button>
       </div>
       <div id="tabList"></div>
-      <button type="button" id="saveAllZipBtn" class="design-action-btn" title="디자인마다 각각 독립된 프로젝트 파일(json)로 저장해 압축(zip)합니다">모든 디자인 저장하기</button>
+      <button type="button" id="saveAllZipBtn" class="design-action-btn" title="디자인마다 각각 독립된 프로젝트 파일(json)로 저장해 압축(zip)합니다">모두저장</button>
     </div>
 
     <div class="canvas-wrap" id="canvasWrap">
-      <div class="empty-hint" id="emptyHint">위 <b>이미지</b> 또는 <b>SVG</b> 버튼으로 파일을 불러오세요<br>SVG를 불러오면 안의 글씨를 더블클릭해서 바로 수정할 수 있어요</div>
+      <!-- 가끔(대략 20분에 한 번꼴로) 캔버스 뒤쪽(투명한 여백 부분)을 지나가는 고양이
+           이스터에그 — 실제 디자인과는 무관한 순수 장식용이라 저장/선택/내보내기에 전혀
+           영향 없음(클릭도 안 되고 오브젝트도 아님). canvas-shell보다 먼저 나와있어서
+           자연스럽게 그 뒤쪽에 깔림 -> 불투명한 캔버스 부분을 지나갈 땐 가려지고,
+           캔버스 바깥 여백(체크무늬)에서만 보임 -->
+      <div class="easter-egg-cat" id="easterEggCat" aria-hidden="true">🐈</div>
       <div class="canvas-shell">
         <canvas id="mainCanvas"></canvas>
         <div class="crop-toolbar hidden" id="tableEditToolbar">
@@ -228,25 +257,143 @@
           <div class="row">
             <label>글꼴</label>
             <select id="fontFamilySelect">
-              <option value="Pretendard">Pretendard</option>
-              <option value="Noto Sans KR">Noto Sans KR</option>
-              <option value="Nanum Gothic">나눔고딕</option>
-              <option value="Black Han Sans">Black Han Sans</option>
-              <option value="Do Hyeon">Do Hyeon</option>
-              <option value="Jua">Jua</option>
-              <option value="Gowun Dodum">고운돋움</option>
-              <option value="Roboto">Roboto</option>
-              <option value="Montserrat">Montserrat</option>
-              <option value="Playfair Display">Playfair Display</option>
-              <option value="Bebas Neue">Bebas Neue</option>
-              <option value="Arial">Arial</option>
+              <option value="Pretendard">Pretendard (무료폰트)</option>
+              <option value="Noto Sans KR">Noto Sans KR (무료폰트)</option>
+              <option value="Nanum Gothic">나눔고딕 (무료폰트)</option>
+              <option value="Black Han Sans">Black Han Sans (무료폰트)</option>
+              <option value="Do Hyeon">Do Hyeon (무료폰트)</option>
+              <option value="Jua">Jua (무료폰트)</option>
+              <option value="Gowun Dodum">고운돋움 (무료폰트)</option>
+              <option value="Roboto">Roboto (무료폰트)</option>
+              <option value="Montserrat">Montserrat (무료폰트)</option>
+              <option value="Playfair Display">Playfair Display (무료폰트)</option>
+              <option value="Bebas Neue">Bebas Neue (무료폰트)</option>
+              <option value="GMarketSans">G마켓 산스 (무료폰트)</option>
+              <option value="CookieRun">쿠키런체 (무료폰트・귀엽고 캐주얼한 느낌)</option>
+              <option value="D2Coding">D2Coding (무료폰트)</option>
+              <option value="YeogiOttaeJalnan">여기어때 잘난체 (무료폰트)</option>
+              <option value="Euljiro">배민 을지로체 (무료폰트)</option>
+              <option value="HannaPro">배민 한나체 Pro (무료폰트)</option>
+              <option value="Cafe24Ssurround">카페24 써라운드 (무료폰트)</option>
+              <option value="TMoneyDungunbaram">티머니 둥근바람 (무료폰트)</option>
+              <option value="Godo">고도체 (무료폰트)</option>
+              <option value="Maru Buri">마루 부리 (무료폰트)</option>
+              <option value="Busan">부산체 (무료폰트)</option>
+              <option value="Dahaeng">나눔손글씨 다행체 (무료폰트)</option>
+              <option value="Sonpyeonji">나눔손글씨 손편지체 (무료폰트)</option>
+              <option value="NotGothicButGoding">나눔손글씨 고딕아니고 고딩 (무료폰트)</option>
+              <option value="MomToDaughter">나눔손글씨 딸에게 엄마가 (무료폰트)</option>
+              <option value="JoyfulStory">tvN 즐거운이야기체 (무료폰트)</option>
+              <option value="NexonBazzi">넥슨 배찌체 (무료폰트)</option>
+              <option value="BinggraeSsamanco">빙그레 싸만코체 (무료폰트)</option>
+              <option value="ShinbiIsSevenYearsOld">신비는 일곱살체 (무료폰트)</option>
+              <option value="FlowerShopSYoungestDaughter">꽃집막내딸체 (무료폰트・상상토끼)</option>
+              <option value="Cafe24Dongdong">카페24 동동체 (무료폰트)</option>
+              <option value="OngleipParkDahyeon">온글잎 박다현체 (무료폰트)</option>
+              <option value="JejuStoneWall">제주돌담체 (무료폰트)</option>
+              <option value="KerisKedyuche">케리스 케듀체 (무료폰트)</option>
+              <option value="IsYun">이서윤체 (무료폰트)</option>
+              <option value="OneStoreMobilePop">원스토어 모바일POP체 (무료폰트)</option>
+              <option value="OngleipKonkon">온글잎 콘콘체 (무료폰트)</option>
+              <option value="NexonMaplestory">넥슨 메이플스토리 (무료폰트)</option>
+              <option value="Nanum Brush Script">나눔손글씨붓 (무료폰트・붓글씨)</option>
+              <option value="LeeSunShin">이순신체 (무료폰트・붓글씨)</option>
+              <option value="Euljiro10YearsLater">을지로10년후체 (무료폰트・붓글씨)</option>
+              <option value="Juache">주아체 (무료폰트・팡팡톡톡)</option>
+              <option value="HannaAir">한나체 Air (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="Giranghaerang">기랑해랑체 (무료폰트・팡팡톡톡)</option>
+              <option value="TWayAirFont">티웨이항공체 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="Cafe24AnemoneAir">카페24 아네모네 에어 (무료폰트・화사한)</option>
+              <option value="Cafe24SurroundAir">카페24 써라운드에어 (무료폰트・동글동글)</option>
+              <option value="Cafe24Anemone">카페24 아네모네 (무료폰트・화사한)</option>
+              <option value="Cafe24Dangdanghae">카페24 당당해 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="Cafe24Gowoonbam">카페24 고운밤 (무료폰트・화사한)</option>
+              <option value="Cafe24Simple">카페24 심플해 (무료폰트・동글동글)</option>
+              <option value="Cafe24Syongsyong">카페24 숑숑 (무료폰트・팡팡톡톡)</option>
+              <option value="Cafe24ShiningStar">카페24 빛나는별 (무료폰트・화사한)</option>
+              <option value="KkuBulLim">꾸불림체 (무료폰트・팡팡톡톡)</option>
+              <option value="BMEuljirooraeorae">을지로오래오래체 (무료폰트・붓글씨)</option>
+              <option value="Ddakdandan">따악단단 (무료폰트・팡팡톡톡)</option>
+              <option value="MuseumCulturalFoundationClassic">국립박물관문화재단클래식 (무료폰트・화사한)</option>
+              <option value="LotteMartHappiness">롯데마트행복체 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="Yeonseong">연성체 (무료폰트・붓글씨)</option>
+              <option value="Dohyun">도현체 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="NexonLv1Gothic">넥슨 Lv.1 고딕 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="SchoolSafetyHalfMoon">학교안심 반달 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyRoundedSmile">학교안심 둥근미소 (무료폰트・동글동글)</option>
+              <option value="SchoolSafeMonggleMonggle">학교안심 몽글몽글 (무료폰트・동글동글)</option>
+              <option value="SchoolSafeUniverse">학교안심 우주 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyRecorder">학교안심 리코더 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyWave">학교안심 물결 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyColoredPencil">학교안심 색연필 (무료폰트・귀여운)</option>
+              <option value="SchoolSafeOuting">학교안심 나들이 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyNotification">학교안심 알림장 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyCloud">학교안심 구름 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyAttendanceBook">학교안심 출석부 (무료폰트・귀여운)</option>
+              <option value="SchoolSafeDictation">학교안심 받아쓰기 (무료폰트・귀여운)</option>
+              <option value="SchoolSafeStoneWall">학교안심 돌담 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyEraser">학교안심 지우개 (무료폰트・귀여운)</option>
+              <option value="SchoolSafeTree">학교안심 나무 (무료폰트・동글동글)</option>
+              <option value="SchoolSafeLocker">학교안심 사물함 (무료폰트・귀여운)</option>
+              <option value="HakgyoansimGeurimilgi">학교안심 그림일기 (무료폰트・귀여운)</option>
+              <option value="HakgyoansimYeohaeng">학교안심 여행 (무료폰트・귀여운)</option>
+              <option value="HakgyoansimTtwimteul">학교안심 뜀틀 (무료폰트・팡팡톡톡)</option>
+              <option value="HakgyoansimKkokkoma">학교안심 꼬꼬마 (무료폰트・귀여운)</option>
+              <option value="HakgyoansimPuzzleOutline">학교안심 퍼즐 아웃라인 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="SchoolSafetyFoundation">학교안심 바른바탕 (무료폰트・동글동글)</option>
+              <option value="SchoolSafeAutumnTrip">학교안심 가을소풍 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyPuzzleBlack">학교안심 퍼즐 블랙 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="SchoolSafetyChalkboardEraser">학교안심 칠판지우개 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyMilkyWay">학교안심 은하수 (무료폰트・귀여운)</option>
+              <option value="SchoolSafeTwist">학교안심 꽈배기 (무료폰트・팡팡톡톡)</option>
+              <option value="SchoolSafetyKid">학교안심 꾸러기 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyDinosaurEgg">학교안심 공룡알 (무료폰트・동글동글)</option>
+              <option value="SchoolSafetyWing">학교안심 날개 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyMagnifier">학교안심 돋보기 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyStraightTitle">학교안심 곧은제목 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="SchoolSafetySusukkang">학교안심 수수깡 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyAquariumDecor">학교안심 어항꾸미기 (무료폰트・두껍고 눈에 띄는)</option>
+              <option value="SchoolSafetyConstellation">학교안심 별자리 (무료폰트・화사한)</option>
+              <option value="SchoolSafetyStubbyChalk">학교안심 몽당분필 (무료폰트・귀여운)</option>
+              <option value="SchoolSafetyBookmark">학교안심 책갈피 (무료폰트・귀여운)</option>
+              <option value="MYArirang-Medium">밀양아리랑체 (무료폰트・한국적)</option>
+              <option value="MYYeongnamnu">밀양영남루체 (무료폰트・한국적)</option>
+              <option value="MYArirang_gothic">밀양아리랑고딕체 (무료폰트・한국적)</option>
+              <option value="JeongseonArirang">정선아리랑체 (무료폰트・한국적)</option>
+              <option value="Eommakkaturi">엄마까투리체 (무료폰트・한국적)</option>
+              <option value="Wolyeong">월영교체 (무료폰트・한국적)</option>
+              <option value="AndongIyuksa">안동이육사체 (무료폰트・한국적)</option>
+              <option value="DeogonPrincess">덕온공주체 (무료폰트・한국적)</option>
+              <option value="SpokaHanSansNeo">스포카 한 산스 네오 (무료폰트・명함용 고딕)</option>
+              <option value="Presentation">프리젠테이션 (무료폰트・명함용 고딕)</option>
+              <option value="Paperozi">페이퍼로지 (무료폰트・명함용 고딕)</option>
+              <option value="PyeojinGothic">펴진고딕 (무료폰트・명함용 고딕)</option>
+              <option value="Suit">수트 (무료폰트・명함용 고딕)</option>
+              <option value="Sweet">스위트 (무료폰트・명함용 고딕)</option>
+              <option value="Escoredream">에스코어드림 (무료폰트・명함용 고딕)</option>
+              <option value="NanumSquareRound">나눔스퀘어라운드 (무료폰트・명함용 고딕)</option>
+              <option value="IbmPlexSans">IBM Plex Sans KR (무료폰트・명함용 고딕)</option>
+              <option value="GothicA1">Gothic A1 (무료폰트・명함용 고딕)</option>
             </select>
           </div>
           <div class="row">
             <label>크기</label>
             <input type="number" id="fontSizeInput" min="10" max="600">
+          </div>
+          <div class="row">
+            <input type="range" id="fontSizeGauge" min="10" max="600" step="1" title="막대를 움직여서 글자 크기를 바로 조절할 수 있어요">
+          </div>
+          <div class="row">
             <label>색상</label>
             <div class="cmyk-picker" id="textColorInput" title="CMYK 색상 선택"></div>
+          </div>
+          <div class="row">
+            <input type="range" id="textColorHueSlider" class="hue-slider" min="0" max="360" step="1" title="막대를 움직여서 색상을 바로 바꿀 수 있어요">
+          </div>
+          <div class="row" style="margin-bottom:0;gap:4px;flex-direction:row;">
+            <button type="button" class="small-btn tone-varied" id="textColorVariedBrightBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도는 0~100%, 명도는 밝은 쪽(72~100%) 범위에서 랜덤으로 붙어요 — 파스텔~밝은 원색 위주">밝은</button>
+            <button type="button" class="small-btn tone-varied" id="textColorVariedMediumBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도·명도가 중간~높은(55~100%, 55~95%) 범위에서 랜덤으로 붙어요 — 쨍한 원색 위주">중간</button>
+            <button type="button" class="small-btn tone-varied" id="textColorVariedDarkBtn" style="flex:1;" title="켜두면 채도·명도가 0~100% 전체 범위에서 랜덤으로 붙어요 — 어둡고 차분한 톤도 자주 섞여 나옴">어두운</button>
           </div>
           <div class="row">
             <label>스타일</label>
@@ -352,6 +499,14 @@
             <label>채우기</label>
             <div class="cmyk-picker" id="fillColorInput" title="CMYK 색상 선택"></div>
           </div>
+          <div class="row" id="fillColorHueRow">
+            <input type="range" id="fillColorHueSlider" class="hue-slider" min="0" max="360" step="1" title="막대를 움직여서 채우기 색을 바로 바꿀 수 있어요">
+          </div>
+          <div class="row" id="fillColorVariedRow" style="margin-bottom:0;gap:4px;flex-direction:row;">
+            <button type="button" class="small-btn tone-varied" id="fillColorVariedBrightBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도는 0~100%, 명도는 밝은 쪽(72~100%) 범위에서 랜덤으로 붙어요 — 파스텔~밝은 원색 위주">밝은</button>
+            <button type="button" class="small-btn tone-varied" id="fillColorVariedMediumBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도·명도가 중간~높은(55~100%, 55~95%) 범위에서 랜덤으로 붙어요 — 쨍한 원색 위주">중간</button>
+            <button type="button" class="small-btn tone-varied" id="fillColorVariedDarkBtn" style="flex:1;" title="켜두면 채도·명도가 0~100% 전체 범위에서 랜덤으로 붙어요 — 어둡고 차분한 톤도 자주 섞여 나옴">어두운</button>
+          </div>
           <div class="row">
             <label>테두리</label>
             <div class="cmyk-picker" id="strokeColorInput" title="CMYK 색상 선택"></div>
@@ -402,7 +557,8 @@
 
 <div class="qa-popover hidden" id="qaPopover">
   <button type="button" class="font-popover-close" id="qaPopoverCloseBtn" title="닫기">✕</button>
-  <button type="button" class="qa-btn" id="qaDiceBtn" title="랜덤으로 필터 1~5개 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <button type="button" class="qa-btn hidden" id="qaDiceBtn" title="랜덤으로 필터 1~5개 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <button type="button" class="qa-btn" id="qaDetailToggleBtn" style="margin-bottom:6px;" aria-expanded="false">상세조정하기 ▾</button>
   <div class="row hidden" id="qaRollNav" style="align-items:center;gap:6px;">
     <button type="button" class="qa-btn" id="qaRollPrevBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">◀</button>
     <span id="qaRollCounter" style="flex:1;text-align:center;font-size:12px;color:#B87A3D;">1/3</span>
@@ -491,6 +647,7 @@
     <option value="sakura">벚꽃 효과</option>
     <option value="randomTypo">랜덤 타이포</option>
     <option value="zebra">얼룩말 무늬</option>
+    <option value="tote">토트 무늬</option>
     <option value="translate">번역(영/중/일)</option>
     <option value="typo">맞춤법 검사</option>
     <option value="bubble">말풍선 배경</option>
@@ -735,6 +892,14 @@
       <div class="cmyk-picker mini" id="qaCrackColor" title="균열(금) 색상"></div>
     </div>
     <div class="row">
+      <label>깨짐무늬 투명도</label>
+      <input type="range" id="qaCrackLineOpacity" min="0" max="100" step="1" title="거미줄처럼 뻗은 균열 선 자체의 진하기 — 0이면 안 보임">
+    </div>
+    <div class="row">
+      <label>유리부분 투명도</label>
+      <input type="range" id="qaCrackGlassOpacity" min="0" max="100" step="1" title="갈라진 유리 조각(파편) 부분의 진하기 — 0이면 안 보임">
+    </div>
+    <div class="row">
       <button type="button" class="qa-btn" id="qaCrackShuffleBtn" style="flex:1;">🎲 다시 깨기</button>
       <button type="button" class="qa-btn" id="qaCrackOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
     </div>
@@ -831,7 +996,11 @@
   <div class="qa-filter-detail hidden" id="qaDetailClub">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaClubIntensity" min="0" max="100" step="1" title="글자 옆에 사람들이 와르르 몰려있는 무리가 생깁니다(인원수는 랜덤)">
+      <input type="range" id="qaClubIntensity" min="0" max="100" step="1" title="글자 중간 아래쪽 부근에 사람들이 산발적으로 흩어져 있는 모습이 생깁니다(인원수는 랜덤)">
+    </div>
+    <div class="row">
+      <label>사람 크기</label>
+      <input type="range" id="qaClubPersonSize" min="20" max="100" step="1" title="사람 실루엣의 크기를 줄이거나 키워요">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaClubShuffleBtn" style="flex:1;">🎲 다시 모으기</button>
@@ -1488,6 +1657,10 @@
       <input type="range" id="qaButterflySpread" min="0" max="100" step="1" title="글자 주변에 흩어지는 범위">
     </div>
     <div class="row">
+      <label>나비 크기</label>
+      <input type="range" id="qaButterflySize" min="10" max="100" step="1" title="나비 한 마리 한 마리의 크기">
+    </div>
+    <div class="row">
       <button type="button" class="qa-btn" id="qaButterflyOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;margin-left:auto;">끄기</button>
     </div>
     <div class="row">
@@ -1714,6 +1887,26 @@
     </div>
   </div>
 
+  <div class="qa-filter-detail hidden" id="qaDetailTote">
+    <div class="row">
+      <span style="font-size:11px;color:#8a93a3;line-height:1.4;">글자가 토트백 특유의 체크(깅엄) 무늬로 채워져요. 배경색과 무늬색을 직접 고르거나, 다시 뽑기로 둘 다 무작위로 바꿀 수 있어요.</span>
+    </div>
+    <div class="row">
+      <label>배경색상</label>
+      <div class="cmyk-picker mini" id="qaToteBgColor" title="깅엄 무늬 배경 색상"></div>
+      <label style="width:auto;margin-left:6px;">무늬색상</label>
+      <div class="cmyk-picker mini" id="qaToteColor" title="깅엄 체크 무늬 색상"></div>
+    </div>
+    <div class="row">
+      <label>체크 크기</label>
+      <input type="range" id="qaToteSize" min="6" max="50" step="1">
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaToteShuffleBtn" style="flex:1;">🎲 색상·크기 다시 뽑기</button>
+      <button type="button" class="qa-btn" id="qaToteOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
+    </div>
+  </div>
+
   <div class="qa-filter-detail hidden" id="qaDetailTranslate">
     <div class="row" style="font-size:11.5px;color:#8a93a3;line-height:1.5;">무료 번역 API(MyMemory)로 실제 번역을 가져옵니다. 인터넷 연결이 필요하고, 하루 사용량 제한이 있어요.</div>
     <div class="row">
@@ -1743,6 +1936,10 @@
       <div class="cmyk-picker mini" id="qaBgColor" title="배경 색상"></div>
       <button type="button" class="qa-btn" id="qaBgOffBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">끄기</button>
     </div>
+    <div class="row">
+      <label>투명도</label>
+      <input type="range" id="qaBgOpacity" min="0" max="100" step="1">
+    </div>
   </div>
 
   <div class="qa-filter-detail hidden" id="qaDetailBubble">
@@ -1771,7 +1968,8 @@
      <option>과 qa-filter-detail로 추가해나감 -->
 <div class="qa-popover hidden" id="qaMPopover">
   <button type="button" class="font-popover-close" id="qaMPopoverCloseBtn" title="닫기">✕</button>
-  <button type="button" class="qa-btn" id="qaMDiceBtn" title="모양필터 1~3개를 랜덤으로 겹쳐 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <button type="button" class="qa-btn hidden" id="qaMDiceBtn" title="모양필터 1~3개를 랜덤으로 겹쳐 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <button type="button" class="qa-btn" id="qaMDetailToggleBtn" style="margin-bottom:6px;" aria-expanded="false">상세조정하기 ▾</button>
   <select id="qaMFilterSelect">
     <option value="" disabled selected>모양 필터 선택...</option>
     <option value="banknote">지폐/상품권 그물무늬</option>
@@ -1963,6 +2161,8 @@
     <option value="screen">스크린</option>
     <option value="whiteTransparent">흰색 투과</option>
     <option value="customColorTransparent">지정색 투과</option>
+    <option value="edgeExtend">가장자리 확장</option>
+    <option value="textExtract">글자 추출</option>
   </select>
 
   <div class="qa-filter-detail hidden" id="qaZDetailMultiply">
@@ -2079,6 +2279,52 @@
       <button type="button" class="qa-btn" id="qaZCustomOffBtn9" title="이 색상 끄기" style="flex:0 0 auto;width:auto;padding:4px 6px;font-size:11px;">✕</button>
     </div>
   </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailEdgeExtend">
+    <div class="row">
+      <span style="font-size:11px;color:#8a93a3;line-height:1.4;">가장자리 색상을 그대로 밖으로 늘려서 캔버스를 키워요. 원본과의 경계는 뿌옇게 흐려져서 이어붙인 티가 안 나요.</span>
+    </div>
+    <div class="row" style="gap:4px;">
+      <button type="button" class="qa-btn on" id="qaZEdgeExtendDirAllBtn" data-dir="all" style="flex:1;">전체확장</button>
+      <button type="button" class="qa-btn" id="qaZEdgeExtendDirHBtn" data-dir="horizontal" style="flex:1;">가로확장</button>
+      <button type="button" class="qa-btn" id="qaZEdgeExtendDirVBtn" data-dir="vertical" style="flex:1;">세로확장</button>
+    </div>
+    <div class="row" style="align-items:center;gap:8px;">
+      <label style="width:56px;flex:0 0 auto;font-size:12px;">확장 폭</label>
+      <input type="range" id="qaZEdgeExtendAmount" min="10" max="100" step="1" value="30" style="flex:1;">
+      <span id="qaZEdgeExtendAmountVal" style="width:40px;flex:0 0 auto;text-align:right;font-size:12px;">30px</span>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaZEdgeExtendApplyBtn" style="flex:1;">가장자리 확장 적용</button>
+    </div>
+  </div>
+
+  <div class="qa-filter-detail hidden" id="qaZDetailTextExtract">
+    <div class="row">
+      <span style="font-size:11px;color:#8a93a3;line-height:1.4;">이미지 안에 있는 글자를 인식해서 복사할 수 있는 메모장으로 꺼내줘요. 사진 화질이나 폰트에 따라 정확도는 달라질 수 있어요.</span>
+    </div>
+    <div class="row">
+      <button type="button" class="qa-btn" id="qaZTextExtractKoreanBtn" style="flex:1;">한글 추출</button>
+      <button type="button" class="qa-btn" id="qaZTextExtractEnglishBtn" style="flex:1;">영어 추출</button>
+    </div>
+  </div>
+</div>
+
+<!-- 글자 추출 결과 모달 — 닫기(✕) 버튼을 직접 누르기 전까지는 절대 자동으로 안 닫힘
+     (복사/붙여넣기 하는 동안 다른 곳을 클릭해도 사라지지 않도록) -->
+<div class="qa-popover hidden" id="textExtractModal" style="width:480px;min-width:480px;max-width:90vw;min-height:280px;resize:both;overflow:auto;">
+  <button type="button" class="font-popover-close" id="textExtractModalCloseBtn" title="닫기">✕</button>
+  <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 8px;">글자추출 결과 (이곳에서 오탈자 수정후 캔바스에 적용시켜주세요)</div>
+  <div class="row" style="flex:1;min-height:0;">
+    <textarea id="textExtractResultArea" rows="10" style="width:100%;height:100%;resize:none;font-size:12.5px;line-height:1.5;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);"></textarea>
+  </div>
+  <div class="row" style="gap:6px;">
+    <button type="button" class="qa-btn" id="textExtractCopyBtn" style="flex:1;">📋 전체 복사</button>
+    <button type="button" class="qa-btn" id="textExtractPasteToCanvasBtn" style="flex:1;" title="한 줄마다 별도의 텍스트 오브젝트로 캔버스 좌측 상단부터 위에서 아래로 나란히 배치돼요">📌 캔버스에 붙여넣기</button>
+  </div>
+  <div class="row" style="gap:6px;">
+    <button type="button" class="qa-btn" id="textExtractModalCloseBtn2" style="flex:1;">닫기</button>
+  </div>
 </div>
 
 <!-- 캔버스 전체를 채우는 배경 만들기 모달 — 캔버스 정가운데에 뜸 -->
@@ -2097,7 +2343,7 @@
   <button type="button" class="font-popover-close" id="shapePickerModalCloseBtn" title="닫기">✕</button>
 
   <div id="shapePickerGridView">
-    <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 8px;">모양 만들기</div>
+    <div class="popover-drag-handle" title="드래그해서 옮기기">⠿ 모양 만들기</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <button type="button" class="qa-btn" id="pickRectBtn" style="padding:14px 6px;line-height:1.6;">▭<br>사각형</button>
       <button type="button" class="qa-btn" id="pickRoundRectBtn" style="padding:14px 6px;line-height:1.6;">▢<br>둥근사각형</button>
@@ -2106,10 +2352,11 @@
       <button type="button" class="qa-btn" id="pickStarBtn" style="padding:14px 6px;line-height:1.6;">★<br>별</button>
       <button type="button" class="qa-btn" id="pickHeartBtn" style="padding:14px 6px;line-height:1.6;">♥<br>하트</button>
     </div>
+    <button type="button" class="qa-btn" id="openFreeShapeGalleryBtn" style="margin-top:8px;padding:10px 6px;" title="다양한 아이콘·도형을 눈으로 보고 바로 골라서 캔버스에 추가해요">🔷 자유모양 만들기</button>
   </div>
 
   <div id="shapePickerRoundRectView" class="hidden">
-    <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 8px;">둥근 사각형 만들기</div>
+    <div class="popover-drag-handle" title="드래그해서 옮기기">⠿ 둥근 사각형 만들기</div>
     <div class="row">
       <label>가로 길이</label>
       <input type="number" id="roundRectWidthInput" min="10" max="2000" step="1" value="180">
@@ -2129,12 +2376,16 @@
   </div>
 </div>
 
-<!-- 랜덤모양 생성 모달 — 캔버스 정가운데에 뜸 -->
-<div class="qa-popover hidden" id="randomShapeModal" style="width:200px;">
-  <button type="button" class="font-popover-close" id="randomShapeModalCloseBtn" title="닫기">✕</button>
-  <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 2px;">랜덤모양 생성</div>
-  <button type="button" class="qa-btn" id="randomShapeGenBtn" style="padding:10px 6px;">🎲 랜덤생성</button>
-  <div style="text-align:center;font-size:11px;color:#8a93a3;">누를 때마다 새 모양·색상으로 바뀌어요</div>
+<!-- 자유모양 갤러리 모달 — 기하학적 도형(정다각형/별/기어/화살표 등)과 실용 아이콘(전화기/명함/봉투/
+     지구본 등)을 한눈에 보고 클릭 한 번으로 캔버스에 바로 추가할 수 있음(랜덤 방식 아님) -->
+<div class="free-shape-modal" id="freeShapeGalleryModal">
+  <div class="free-shape-modal-inner">
+    <div class="free-shape-modal-header">
+      <span>🔷 자유모양 선택</span>
+      <button type="button" id="freeShapeGalleryCloseBtn" class="free-shape-close-btn">✕</button>
+    </div>
+    <div class="free-shape-grid" id="freeShapeGalleryGrid"></div>
+  </div>
 </div>
 
 <div class="font-popover hidden" id="fontPopover">
@@ -2144,26 +2395,131 @@
     <div class="cmyk-picker mini" id="fontColorSwatch" title="상세 색상 선택 (CMYK)"></div>
   </div>
   <select id="floatingFontSelect">
-    <option value="Pretendard">Pretendard</option>
-    <option value="Noto Sans KR">Noto Sans KR</option>
-    <option value="Nanum Gothic">나눔고딕</option>
-    <option value="Black Han Sans">Black Han Sans</option>
-    <option value="Do Hyeon">Do Hyeon</option>
-    <option value="Jua">Jua</option>
-    <option value="Gowun Dodum">고운돋움</option>
-    <option value="Roboto">Roboto</option>
-    <option value="Montserrat">Montserrat</option>
-    <option value="Playfair Display">Playfair Display</option>
-    <option value="Bebas Neue">Bebas Neue</option>
-    <option value="Arial">Arial</option>
+    <option value="Pretendard">Pretendard (무료폰트)</option>
+    <option value="Noto Sans KR">Noto Sans KR (무료폰트)</option>
+    <option value="Nanum Gothic">나눔고딕 (무료폰트)</option>
+    <option value="Black Han Sans">Black Han Sans (무료폰트)</option>
+    <option value="Do Hyeon">Do Hyeon (무료폰트)</option>
+    <option value="Jua">Jua (무료폰트)</option>
+    <option value="Gowun Dodum">고운돋움 (무료폰트)</option>
+    <option value="Roboto">Roboto (무료폰트)</option>
+    <option value="Montserrat">Montserrat (무료폰트)</option>
+    <option value="Playfair Display">Playfair Display (무료폰트)</option>
+    <option value="Bebas Neue">Bebas Neue (무료폰트)</option>
+    <option value="GMarketSans">G마켓 산스 (무료폰트)</option>
+    <option value="CookieRun">쿠키런체 (무료폰트・귀엽고 캐주얼한 느낌)</option>
+    <option value="D2Coding">D2Coding (무료폰트)</option>
+    <option value="YeogiOttaeJalnan">여기어때 잘난체 (무료폰트)</option>
+    <option value="Euljiro">배민 을지로체 (무료폰트)</option>
+    <option value="HannaPro">배민 한나체 Pro (무료폰트)</option>
+    <option value="Cafe24Ssurround">카페24 써라운드 (무료폰트)</option>
+    <option value="TMoneyDungunbaram">티머니 둥근바람 (무료폰트)</option>
+    <option value="Godo">고도체 (무료폰트)</option>
+    <option value="Maru Buri">마루 부리 (무료폰트)</option>
+    <option value="Busan">부산체 (무료폰트)</option>
+    <option value="Dahaeng">나눔손글씨 다행체 (무료폰트)</option>
+    <option value="Sonpyeonji">나눔손글씨 손편지체 (무료폰트)</option>
+    <option value="NotGothicButGoding">나눔손글씨 고딕아니고 고딩 (무료폰트)</option>
+    <option value="MomToDaughter">나눔손글씨 딸에게 엄마가 (무료폰트)</option>
+    <option value="JoyfulStory">tvN 즐거운이야기체 (무료폰트)</option>
+    <option value="NexonBazzi">넥슨 배찌체 (무료폰트)</option>
+    <option value="BinggraeSsamanco">빙그레 싸만코체 (무료폰트)</option>
+    <option value="ShinbiIsSevenYearsOld">신비는 일곱살체 (무료폰트)</option>
+    <option value="FlowerShopSYoungestDaughter">꽃집막내딸체 (무료폰트・상상토끼)</option>
+    <option value="Cafe24Dongdong">카페24 동동체 (무료폰트)</option>
+    <option value="OngleipParkDahyeon">온글잎 박다현체 (무료폰트)</option>
+    <option value="JejuStoneWall">제주돌담체 (무료폰트)</option>
+    <option value="KerisKedyuche">케리스 케듀체 (무료폰트)</option>
+    <option value="IsYun">이서윤체 (무료폰트)</option>
+    <option value="OneStoreMobilePop">원스토어 모바일POP체 (무료폰트)</option>
+    <option value="OngleipKonkon">온글잎 콘콘체 (무료폰트)</option>
+    <option value="NexonMaplestory">넥슨 메이플스토리 (무료폰트)</option>
+    <option value="Nanum Brush Script">나눔손글씨붓 (무료폰트・붓글씨)</option>
+    <option value="LeeSunShin">이순신체 (무료폰트・붓글씨)</option>
+    <option value="Euljiro10YearsLater">을지로10년후체 (무료폰트・붓글씨)</option>
+    <option value="Juache">주아체 (무료폰트・팡팡톡톡)</option>
+    <option value="HannaAir">한나체 Air (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="Giranghaerang">기랑해랑체 (무료폰트・팡팡톡톡)</option>
+    <option value="TWayAirFont">티웨이항공체 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="Cafe24AnemoneAir">카페24 아네모네 에어 (무료폰트・화사한)</option>
+    <option value="Cafe24SurroundAir">카페24 써라운드에어 (무료폰트・동글동글)</option>
+    <option value="Cafe24Anemone">카페24 아네모네 (무료폰트・화사한)</option>
+    <option value="Cafe24Dangdanghae">카페24 당당해 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="Cafe24Gowoonbam">카페24 고운밤 (무료폰트・화사한)</option>
+    <option value="Cafe24Simple">카페24 심플해 (무료폰트・동글동글)</option>
+    <option value="Cafe24Syongsyong">카페24 숑숑 (무료폰트・팡팡톡톡)</option>
+    <option value="Cafe24ShiningStar">카페24 빛나는별 (무료폰트・화사한)</option>
+    <option value="KkuBulLim">꾸불림체 (무료폰트・팡팡톡톡)</option>
+    <option value="BMEuljirooraeorae">을지로오래오래체 (무료폰트・붓글씨)</option>
+    <option value="Ddakdandan">따악단단 (무료폰트・팡팡톡톡)</option>
+    <option value="MuseumCulturalFoundationClassic">국립박물관문화재단클래식 (무료폰트・화사한)</option>
+    <option value="LotteMartHappiness">롯데마트행복체 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="Yeonseong">연성체 (무료폰트・붓글씨)</option>
+    <option value="Dohyun">도현체 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="NexonLv1Gothic">넥슨 Lv.1 고딕 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="SchoolSafetyHalfMoon">학교안심 반달 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyRoundedSmile">학교안심 둥근미소 (무료폰트・동글동글)</option>
+    <option value="SchoolSafeMonggleMonggle">학교안심 몽글몽글 (무료폰트・동글동글)</option>
+    <option value="SchoolSafeUniverse">학교안심 우주 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyRecorder">학교안심 리코더 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyWave">학교안심 물결 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyColoredPencil">학교안심 색연필 (무료폰트・귀여운)</option>
+    <option value="SchoolSafeOuting">학교안심 나들이 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyNotification">학교안심 알림장 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyCloud">학교안심 구름 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyAttendanceBook">학교안심 출석부 (무료폰트・귀여운)</option>
+    <option value="SchoolSafeDictation">학교안심 받아쓰기 (무료폰트・귀여운)</option>
+    <option value="SchoolSafeStoneWall">학교안심 돌담 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyEraser">학교안심 지우개 (무료폰트・귀여운)</option>
+    <option value="SchoolSafeTree">학교안심 나무 (무료폰트・동글동글)</option>
+    <option value="SchoolSafeLocker">학교안심 사물함 (무료폰트・귀여운)</option>
+    <option value="HakgyoansimGeurimilgi">학교안심 그림일기 (무료폰트・귀여운)</option>
+    <option value="HakgyoansimYeohaeng">학교안심 여행 (무료폰트・귀여운)</option>
+    <option value="HakgyoansimTtwimteul">학교안심 뜀틀 (무료폰트・팡팡톡톡)</option>
+    <option value="HakgyoansimKkokkoma">학교안심 꼬꼬마 (무료폰트・귀여운)</option>
+    <option value="HakgyoansimPuzzleOutline">학교안심 퍼즐 아웃라인 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="SchoolSafetyFoundation">학교안심 바른바탕 (무료폰트・동글동글)</option>
+    <option value="SchoolSafeAutumnTrip">학교안심 가을소풍 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyPuzzleBlack">학교안심 퍼즐 블랙 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="SchoolSafetyChalkboardEraser">학교안심 칠판지우개 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyMilkyWay">학교안심 은하수 (무료폰트・귀여운)</option>
+    <option value="SchoolSafeTwist">학교안심 꽈배기 (무료폰트・팡팡톡톡)</option>
+    <option value="SchoolSafetyKid">학교안심 꾸러기 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyDinosaurEgg">학교안심 공룡알 (무료폰트・동글동글)</option>
+    <option value="SchoolSafetyWing">학교안심 날개 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyMagnifier">학교안심 돋보기 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyStraightTitle">학교안심 곧은제목 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="SchoolSafetySusukkang">학교안심 수수깡 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyAquariumDecor">학교안심 어항꾸미기 (무료폰트・두껍고 눈에 띄는)</option>
+    <option value="SchoolSafetyConstellation">학교안심 별자리 (무료폰트・화사한)</option>
+    <option value="SchoolSafetyStubbyChalk">학교안심 몽당분필 (무료폰트・귀여운)</option>
+    <option value="SchoolSafetyBookmark">학교안심 책갈피 (무료폰트・귀여운)</option>
+    <option value="MYArirang-Medium">밀양아리랑체 (무료폰트・한국적)</option>
+    <option value="MYYeongnamnu">밀양영남루체 (무료폰트・한국적)</option>
+    <option value="MYArirang_gothic">밀양아리랑고딕체 (무료폰트・한국적)</option>
+    <option value="JeongseonArirang">정선아리랑체 (무료폰트・한국적)</option>
+    <option value="Eommakkaturi">엄마까투리체 (무료폰트・한국적)</option>
+    <option value="Wolyeong">월영교체 (무료폰트・한국적)</option>
+    <option value="AndongIyuksa">안동이육사체 (무료폰트・한국적)</option>
+    <option value="DeogonPrincess">덕온공주체 (무료폰트・한국적)</option>
+    <option value="SpokaHanSansNeo">스포카 한 산스 네오 (무료폰트・명함용 고딕)</option>
+    <option value="Presentation">프리젠테이션 (무료폰트・명함용 고딕)</option>
+    <option value="Paperozi">페이퍼로지 (무료폰트・명함용 고딕)</option>
+    <option value="PyeojinGothic">펴진고딕 (무료폰트・명함용 고딕)</option>
+    <option value="Suit">수트 (무료폰트・명함용 고딕)</option>
+    <option value="Sweet">스위트 (무료폰트・명함용 고딕)</option>
+    <option value="Escoredream">에스코어드림 (무료폰트・명함용 고딕)</option>
+    <option value="NanumSquareRound">나눔스퀘어라운드 (무료폰트・명함용 고딕)</option>
+    <option value="IbmPlexSans">IBM Plex Sans KR (무료폰트・명함용 고딕)</option>
+    <option value="GothicA1">Gothic A1 (무료폰트・명함용 고딕)</option>
   </select>
   <div class="row" style="gap:8px;">
     <input type="number" id="floatingFontSizeInput" min="10" max="600" step="1" title="글자 크기" style="width:52px;flex:0 0 52px;">
     <input type="range" id="floatingOpacityInput" class="opacity-gauge" min="0" max="1" step="0.02" title="투명도" style="flex:1;margin:0;">
   </div>
 
-  <button type="button" class="font-popover-more-btn" id="fontPopoverMoreBtn" aria-expanded="false">더보기 ▾</button>
-  <div class="font-popover-more hidden" id="fontPopoverMore">
+  <button type="button" class="font-popover-more-btn hidden" id="fontPopoverMoreBtn" aria-expanded="true">더보기 ▾</button>
+  <div class="font-popover-more" id="fontPopoverMore">
     <div class="row">
       <label>스타일</label>
       <div class="seg">
@@ -2191,6 +2547,16 @@
       <input type="range" id="letterSpacingGauge" class="opacity-gauge" min="-20" max="100" step="1" title="자간" style="flex:0 0 76px;">
     </div>
   </div>
+</div>
+
+<!-- 브라우저 우측 하단 고정 플로팅 바 — 우측 오브젝트 속성 패널(140px)을 가리지 않도록
+     그 패널 폭만큼 왼쪽으로 띄워서 배치함(.floating-action-bar의 right 값 참고).
+     왼쪽에 흰색 "이미지 불러오기", 오른쪽에 파란(주요) "상품담기/구입" 버튼 순서로 배치.
+     상품담기/구입 버튼은 아직 아무 기능도 없는 자리표시 버튼임(나중에 실제 장바구니/결제
+     연동이 정해지면 그때 기능을 붙일 예정) — PNG/JPG/SVG 저장은 상단 "🖼 이미지" 메뉴에서만 함. -->
+<div class="floating-action-bar" id="floatingActionBar">
+  <label class="btn" for="imageInput">이미지 불러오기</label>
+  <button type="button" class="btn primary" id="floatingSaveBtn">상품담기/구입</button>
 </div>
 
 <script src="ecopro3.js" defer></script>

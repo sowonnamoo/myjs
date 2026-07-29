@@ -98,6 +98,11 @@
       ctx.restore();
     }
 
+    // 모바일 최적화: 리사이즈 핸들·회전 핸들·T/주사위/J/Z 버튼 전부, 눈에 보이는 크기는 그대로 두고
+    // "터치로 인식되는 범위"만 넉넉하게 넓힘(기본값 24px → 44px). 화면엔 안 보이지만 그 반경
+    // 안에서는 어디를 눌러도 인식되므로, 손가락으로 정확히 맞추기 훨씬 편해짐(마우스는 영향 없음).
+    fabric.Object.prototype.touchCornerSize = 44;
+
     const cu = fabric.controlsUtils || {};
     fabric.Object.prototype.controls.mtr = new fabric.Control({
       x: 0,
@@ -151,6 +156,7 @@
       mouseUpHandler: function(eventData, transformData){
         const target = transformData && transformData.target;
         if (!target) return true;
+        if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
         if (!fontPopover.classList.contains('hidden')) { hideFontPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
         openFontPopover(target);
         return true;
@@ -242,9 +248,13 @@
   function makeDraggablePopover(el){
     let dragging = false, dcx = 0, dcy = 0; // 마우스 시작점 → 박스 "중심"까지의 오프셋(회전은 중심 기준이라 이렇게 재면 회전 상태에서도 어긋나지 않음)
     el.addEventListener('mousedown', (e) => {
-      if (e.target.closest('select, input, button, .cmyk-picker, .cmyk-popover')) return;
+      if (e.target.closest('select, input, textarea, button, .cmyk-picker, .cmyk-popover')) return;
+      // 우측 하단 모서리(약 16px 이내)는 브라우저 기본 리사이즈 손잡이 영역일 수 있으므로,
+      // 여기를 누르면 이동 드래그를 시작하지 않고 그대로 둬서 리사이즈가 우선되게 함
+      const rr = el.getBoundingClientRect();
+      if ((rr.right - e.clientX) < 16 && (rr.bottom - e.clientY) < 16) return;
       dragging = true;
-      const r = el.getBoundingClientRect(); // 회전이 적용된 실제 화면상 사각형 기준
+      const r = rr; // 회전이 적용된 실제 화면상 사각형 기준
       dcx = e.clientX - (r.left + r.width / 2);
       dcy = e.clientY - (r.top + r.height / 2);
       e.preventDefault();
@@ -299,7 +309,7 @@
   function hideFontPopover(){
     fontPopover.classList.add('hidden');
     fontPopoverTargets = [];
-    setFontPopoverMoreOpen(false);
+    setFontPopoverMoreOpen(true);
   }
 
   // "더보기" 펼침/접기 상태 전환 (열림 상태에 따라 버튼 라벨도 함께 바뀜)
@@ -441,9 +451,8 @@
     floatingItalicBtn.classList.toggle('on', anchor.fontStyle === 'italic');
     floatingUnderlineBtn.classList.toggle('on', !!anchor.underline);
     updateGroupToggleBtn();
-    // 완전히 새로 열 때(닫혀 있다가 여는 경우)만 접힌 상태로 시작.
-    // 이미 열려 있는 채로 다른 텍스트/새 텍스트로 대상만 바뀌는 경우엔 더보기 상태를 그대로 유지.
-    if (wasHidden) setFontPopoverMoreOpen(false);
+    // 이제 더보기/접기 구분 없이 항상 펼친 상태로 둠(요청에 따라 토글 버튼 자체를 없앰)
+    if (wasHidden) setFontPopoverMoreOpen(true);
 
     // T 버튼으로 처음 열 때만 텍스트 아래(6시 방향)에 배치하고,
     // 다른 텍스트를 클릭해서 대상이 바뀌는 경우엔 드래그해둔 자리 그대로 고정
@@ -459,10 +468,11 @@
   floatingFontSelect.addEventListener('change', () => {
     const boxes = fontPopoverTargets.filter(isTextObject);
     if (!boxes.length) return;
-    boxes.forEach(o => o.set('fontFamily', floatingFontSelect.value));
+    boxes.forEach(o => { clearPerCharStyleOverrides(o, ['fontFamily', 'fontWeight']); o.set('fontFamily', floatingFontSelect.value); });
     const active = canvas.getActiveObject();
     if (active && isTextObject(active)) fontFamilySelect.value = floatingFontSelect.value;
     canvas.requestRenderAll();
+    forceFontReloadRedraw(boxes, floatingFontSelect.value);
     pushHistory();
   });
 
@@ -470,9 +480,9 @@
     const boxes = fontPopoverTargets.filter(isTextObject);
     if (!boxes.length) return;
     const v = Math.max(10, parseInt(floatingFontSizeInput.value, 10) || 10);
-    boxes.forEach(o => o.set('fontSize', v));
+    boxes.forEach(o => { clearPerCharStyleOverrides(o, ['fontSize']); o.set('fontSize', v); });
     const active = canvas.getActiveObject();
-    if (active && isTextObject(active)) fontSizeInput.value = v;
+    if (active && isTextObject(active)) { fontSizeInput.value = v; fontSizeGauge.value = v; }
     canvas.requestRenderAll();
   });
   floatingFontSizeInput.addEventListener('change', () => {
@@ -636,7 +646,7 @@
     if (!boxes.length) return;
     const anchor = boxes[0];
     const makeBold = !(anchor.fontWeight === 'bold' || anchor.fontWeight >= 700);
-    boxes.forEach(o => o.set('fontWeight', makeBold ? 'bold' : 'normal'));
+    boxes.forEach(o => { clearPerCharStyleOverrides(o, ['fontWeight']); o.set('fontWeight', makeBold ? 'bold' : 'normal'); });
     floatingBoldBtn.classList.toggle('on', makeBold);
     canvas.requestRenderAll();
     pushHistory();
@@ -646,7 +656,7 @@
     if (!boxes.length) return;
     const anchor = boxes[0];
     const makeItalic = anchor.fontStyle !== 'italic';
-    boxes.forEach(o => o.set('fontStyle', makeItalic ? 'italic' : 'normal'));
+    boxes.forEach(o => { clearPerCharStyleOverrides(o, ['fontStyle']); o.set('fontStyle', makeItalic ? 'italic' : 'normal'); });
     floatingItalicBtn.classList.toggle('on', makeItalic);
     canvas.requestRenderAll();
     pushHistory();
@@ -656,7 +666,7 @@
     if (!boxes.length) return;
     const anchor = boxes[0];
     const makeUnderline = !anchor.underline;
-    boxes.forEach(o => o.set('underline', makeUnderline));
+    boxes.forEach(o => { clearPerCharStyleOverrides(o, ['underline']); o.set('underline', makeUnderline); });
     floatingUnderlineBtn.classList.toggle('on', makeUnderline);
     canvas.requestRenderAll();
     pushHistory();
@@ -696,10 +706,8 @@
   // 패널을 자유롭게 드래그로 이동 (드롭다운/게이지/스와치/닫기버튼 위에서는 드래그 시작 안 함)
   makeDraggablePopover(fontPopover);
 
-  const emptyHint = document.getElementById('emptyHint');
   function refreshEmptyHint(){
-    const real = canvas.getObjects().filter(o => !o.isGuide);
-    emptyHint.style.display = real.length ? 'none' : 'block';
+    // (캔버스 중앙 안내 문구는 제거됨 — 이 함수는 다른 곳에서 계속 호출되므로 빈 채로 남겨둠)
   }
 
   /* ---------- 상태바 표시 ---------- */
@@ -845,7 +853,7 @@
     { trigger: document.getElementById('fileMenuBtn'), menu: document.getElementById('fileMenu') },
     { trigger: document.getElementById('shapeMenuBtn'), menu: document.getElementById('shapeMenu') },
     { trigger: document.getElementById('rotateMenuBtn'), menu: document.getElementById('rotateMenu') },
-    { trigger: document.getElementById('exportBtn'), menu: document.getElementById('exportMenu') }
+    { trigger: document.getElementById('zoomMenuBtn'), menu: document.getElementById('zoomMenu') }
   ];
 
   function closeAllMegaMenus(){
@@ -897,7 +905,7 @@
       canvas.add(guideRect, outerGuideRect, gridGuide);
       bringGuideToFront();
       if (EP.reapplyCircularTextPatches) EP.reapplyCircularTextPatches();
-      canvas.discardActiveObject();
+      if (EP.reapplyShapeComboPatches) EP.reapplyShapeComboPatches();
       canvas.renderAll();
       restoring = false;
       refreshEmptyHint();
@@ -965,7 +973,7 @@
         groupInput.className = 'design-group-input';
         groupInput.placeholder = '그룹';
         groupInput.value = designGroups[i] || '';
-        groupInput.title = '같은 값을 입력한 디자인끼리 묶입니다. "부분통일하기"를 누르면 그룹 안에서 가장 번호가 앞선 디자인 내용으로 통일됩니다.';
+        groupInput.title = '같은 값을 입력한 디자인끼리 묶입니다. "부분적용"을 누르면 그룹 안에서 가장 번호가 앞선 디자인 내용으로 통일됩니다.';
         groupInput.addEventListener('click', (e) => e.stopPropagation());
         groupInput.addEventListener('input', () => { designGroups[i] = groupInput.value; });
         group.appendChild(groupInput);
@@ -1135,7 +1143,7 @@
       const url = URL.createObjectURL(zipBlob);
       const now = new Date();
       const pad = n => String(n).padStart(2, '0');
-      const zipName = `designs-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
+      const zipName = `www.ecogr.net-designs-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
       const a = document.createElement('a');
       a.href = url;
       a.download = zipName;
@@ -1210,7 +1218,17 @@
   let saveTimer = null;
 
   function snapshot(){
-    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText']));
+    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText',
+      // 모양필터(M버튼 — 지폐/기하모자이크/물결/원형장식 등) 관련 내부 상태. 이게 빠져있으면
+      // 실행취소/다시실행으로 오브젝트가 새로 만들어질 때 이 정보가 사라져서, 눈에 보이는
+      // 모양(패턴 채우기 자체)은 그대로여도 "지금 정확히 어떤 필터가 몇 개 적용돼있는지"를
+      // 앱이 잊어버림 -> 그 상태에서 다시 선택해 조절하려고 하면 실제 지금 상태가 아니라
+      // 엉뚱한(실행취소 직전 메모리에 남아있던) 필터 정보를 기준으로 동작하는 문제가 있었음.
+      '_comboLayers', '_comboSize', '_comboPrevFill',
+      // P버튼(텍스트) 랜덤 필터의 ◀1/N▶ 목록 복원용 — 마찬가지로 실행취소 후에도
+      // "이 오브젝트에 정확히 어떤 조합이 적용돼있었는지"를 잃지 않게 하기 위함.
+      '_lastRollComboIds'
+    ]));
   }
   function pushHistory(){
     if (restoring || cropState) return; // 자르기 모드 중 임시 사각형은 실행취소 기록에서 제외
@@ -1233,8 +1251,18 @@
   }
   function restoreFrom(json){
     restoring = true;
+    // 실행취소/다시실행으로 오브젝트가 통째로 새로 만들어지므로, 지금 열려있는 상세조정
+    // 팝업(P/M/J/Z)이 참조하고 있던 오브젝트는 더 이상 캔버스에 있는 그 오브젝트가 아니게 됨.
+    // 그대로 두면 팝업이 옛 참조를 붙든 채 안 갱신되므로, 강제로 닫아서 다음에 다시 열 때
+    // 항상 최신 상태로 새로 채워지도록 함(T 글꼴 팝업도 동일한 이유로 같이 닫음).
+    if (EP.hideQaPopover) EP.hideQaPopover();
+    if (EP.hideQaMPopover) EP.hideQaMPopover();
+    if (EP.hideQaJPopover) EP.hideQaJPopover();
+    if (EP.hideQaZPopover) EP.hideQaZPopover();
+    hideFontPopover();
     canvas.loadFromJSON(json, () => {
       if (EP.reapplyCircularTextPatches) EP.reapplyCircularTextPatches();
+      if (EP.reapplyShapeComboPatches) EP.reapplyShapeComboPatches();
       canvas.renderAll();
       restoring = false;
       refreshEmptyHint();
@@ -1258,6 +1286,18 @@
   canvas.on('object:added', pushHistory);
   canvas.on('object:modified', pushHistory);
   canvas.on('object:removed', () => { pushHistory(); refreshEmptyHint(); });
+
+  // 텍스트 편집이 끝나는 순간(특히 모바일 가상키보드·한글 입력기 조합 입력 이후) 필터가
+  // 확실하게 "전체적으로" 다시 그려지도록 강제함. 텍스트 오브젝트는 편집 중(isEditing=true)엔
+  // 모든 커스텀 필터 렌더를 건너뛰고 기본 렌더만 쓰는데, 데스크톱은 클릭으로 깔끔하게
+  // 편집을 빠져나오지만 모바일은 터치/블러 이벤트 타이밍이 어긋나는 경우가 있어서, 편집이
+  // 끝나자마자 (1) 필터 렌더 패치가 살아있는지 다시 확인하고 (2) 캔버스를 통째로 다시 그려서
+  // 일부 영역만 필터가 반영된 것처럼 보이는 문제를 막음.
+  canvas.on('text:editing:exited', (opt) => {
+    if (opt && opt.target && EP.reapplyCircularTextPatches) EP.reapplyCircularTextPatches();
+    canvas.requestRenderAll();
+  });
+
   resetHistory();
 
   /* ============================================================
@@ -1530,10 +1570,10 @@
   });
 
   /* ============================================================
-     7. SVG 불러오기 — 개별 도형/텍스트를 그대로 편집 가능하게 배치
-     importSvgIntoCanvas()로 빼둬서, 파일로 불러올 때뿐 아니라 다른 기능(예: ecopro3map.js의
-     "지도 만들기"가 생성한 SVG 문자열)에서도 똑같은 방식으로 낱개 편집 가능한 오브젝트로
-     캔버스에 넣을 수 있게 함.
+     7. SVG 문자열 -> 편집 가능한 오브젝트로 변환 (내부 유틸)
+     사용자가 직접 SVG 파일을 "불러오기"하는 UI 기능은 제거됨. 이 함수 자체는 다른 기능
+     (예: ecopro3map.js의 "지도 만들기"가 생성한 SVG 문자열)에서 계속 재사용하므로 남겨둠 —
+     낱개 편집 가능한 오브젝트로 캔버스에 넣어주는 공용 유틸.
   ============================================================ */
   function importSvgIntoCanvas(svgText, opts){
     fabric.loadSVGFromString(svgText, function(objects, options){
@@ -1590,12 +1630,43 @@
     });
   }
 
+  // 이 에디터가 내보낸 SVG 안에 심어둔 <metadata id="ecopro3-project-data"> 블록을 찾아서
+  // 파싱함 — 있으면 이 SVG는 "우리가 저장한 파일"이라는 뜻이므로 완벽 복원이 가능함.
+  // 일반 외부 SVG(이 태그가 없는)에는 영향 없음(항상 null 반환 -> 기존 방식으로 처리됨).
+  function tryExtractEcopro3Metadata(svgText){
+    const m = svgText.match(/<metadata id="ecopro3-project-data"><!\[CDATA\[([\s\S]*?)\]\]><\/metadata>/);
+    if (!m) return null;
+    try {
+      return JSON.parse(m[1].replace(/]]&gt;/g, ']]>'));
+    } catch (err) {
+      console.error('SVG 안의 프로젝트 데이터 파싱 실패:', err);
+      return null;
+    }
+  }
+
+  // ※ SVG 불러오기 메뉴 항목은 현재 화면에서 숨겨둔 상태(요청에 따라 삭제하지 않고 숨김
+  // 처리만 함) — 이 change 리스너와 관련 로직은 그대로 살아있어서, 나중에 필요하면
+  // ecopro3.html의 svgInput 관련 label에서 "hidden" 클래스만 지우면 바로 다시 쓸 수 있음.
   document.getElementById('svgInput').addEventListener('change', function(e){
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(ev){
-      importSvgIntoCanvas(ev.target.result);
+      const svgText = ev.target.result;
+      const restored = tryExtractEcopro3Metadata(svgText);
+      if (restored) {
+        // 이 에디터로 저장했던 SVG -> 필터·글자 위치 등 전부 원래 그대로 완벽 복원(현재 면을 통째로 교체)
+        // 저장 당시 캔버스 크기와 지금 캔버스 크기가 다르면(창 크기가 달라진 경우 등) 그 비율만큼
+        // 다시 스케일링해서 한쪽 구석으로 쏠리지 않고 항상 캔버스에 꽉 차게 맞춤.
+        const rescaled = rescaleSideDataToCurrentCanvas(restored, restored.canvasWidth, restored.canvasHeight);
+        loadCanvasObjects(rescaled, () => {
+          resetHistory();
+          refreshEmptyHint();
+        });
+      } else {
+        // 일반 SVG 파일 -> 기존처럼 낱개 오브젝트로 변환해서 지금 캔버스에 삽입
+        importSvgIntoCanvas(svgText);
+      }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -2075,6 +2146,20 @@
     finishPenPath(false);
   });
 
+  // 펜 도구 사용 중 캔버스 "밖"(캔버스 감싸는 여백의 투명/체크무늬 영역)을 좌클릭하면,
+  // 그리던 중이던 경로는 취소하고 선택 도구로 바로 전환·활성화해줌(선택 버튼을 직접
+  // 누른 것과 완전히 동일하게 동작하도록 그 클릭 핸들러를 그대로 재사용함).
+  canvasWrap.addEventListener('mousedown', function(e){
+    if (!penActive) return;
+    if (e.button !== 0) return; // 좌클릭만 해당
+    // 실제 캔버스(그림이 그려지는 영역) 안쪽 클릭이면 펜 도구 자체 로직에 맡기고 여기선 무시
+    if (canvas.upperCanvasEl.contains(e.target)) return;
+    penPoints = [];
+    penDragging = false;
+    clearPenPreview();
+    document.getElementById('selectToolBtn').click(); // 선택 도구의 기존 활성화 로직을 그대로 재사용
+  });
+
   /* ============================================================
      9. 삭제 / 복제
   ============================================================ */
@@ -2349,20 +2434,20 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
 
   /* ============================================================
-     10. 줌
+     10. 줌 — 회전 버튼처럼 드롭다운으로 배율을 골라서 적용
   ============================================================ */
   let zoom = 1;
-  const zoomLabel = document.getElementById('zoomLabel');
+  const zoomMenuBtnLabel = document.getElementById('zoomMenuBtnLabel');
   function setZoomLevel(z){
     zoom = Math.min(Math.max(z, 0.2), 3);
     canvas.setZoom(zoom);
     canvas.setWidth(CANVAS_W * zoom);
     canvas.setHeight(CANVAS_H * zoom);
-    zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    zoomMenuBtnLabel.textContent = Math.round(zoom * 100) + '%';
   }
-  document.getElementById('zoomInBtn').addEventListener('click', () => setZoomLevel(zoom + 0.1));
-  document.getElementById('zoomOutBtn').addEventListener('click', () => setZoomLevel(zoom - 0.1));
-  document.getElementById('zoomResetBtn').addEventListener('click', () => setZoomLevel(1));
+  document.querySelectorAll('#zoomMenu .dropdown-item').forEach(btn => {
+    btn.addEventListener('click', () => setZoomLevel((parseFloat(btn.dataset.zoom) || 100) / 100));
+  });
   setZoomLevel(1);
 
   canvasWrap.addEventListener('wheel', (e) => {
@@ -2381,10 +2466,11 @@
 
   /* ============================================================
      12. 내보내기 (PNG / JPG / SVG) — 안내선은 항상 제외
+     data-export 버튼은 상단 "🖼 이미지" 드롭다운 메뉴 안에만 있음(우측 하단 플로팅
+     "상품담기/구입" 버튼은 아무 기능 없는 자리표시 버튼이라 여기 관여 안 함).
+     메뉴 컨테이너가 클릭 시 e.stopPropagation()을 걸어두므로, document에 위임해서 듣는
+     방식이 아니라 각 버튼에 직접 리스너를 붙여서 확실하게 동작하도록 함.
   ============================================================ */
-  const exportBtn = document.getElementById('exportBtn');
-  const exportMenu = document.getElementById('exportMenu');
-
   function download(url, filename){
     const a = document.createElement('a');
     a.href = url; a.download = filename;
@@ -2417,8 +2503,12 @@
     });
   }
 
-  exportMenu.addEventListener('click', async (e) => {
-    const type = e.target.getAttribute('data-export');
+  // 상단 "🖼 이미지" 메뉴 안의 PNG/JPG/SVG 버튼 각각에 직접 리스너를 붙임(메뉴 컨테이너에
+  // 위임하지 않음 — 메뉴가 자기 안 클릭을 e.stopPropagation()으로 막아버리는 것과 무관하게
+  // 항상 확실히 실행되도록 하기 위함).
+  async function handleExportClick(e){
+    const trigger = e.currentTarget;
+    const type = trigger.getAttribute('data-export');
     if (!type) return;
     canvas.discardActiveObject();
     const wasBoxVisible = guideRect.visible, wasGridVisible = gridGuide.visible;
@@ -2431,18 +2521,47 @@
     } else if (type === 'jpg') {
       download(canvas.toDataURL({ format: 'jpeg', quality: 0.95, multiplier }), 'design.jpg');
     } else if (type === 'svg') {
-      exportBtn.disabled = true;
+      trigger.disabled = true;
       const flattened = await buildFontFlattenedClone();
-      const blob = new Blob([flattened.toSVG()], { type: 'image/svg+xml' });
+      let svgString = flattened.toSVG();
+      // 이 SVG를 나중에 "SVG 불러오기"로 다시 열었을 때 필터·글자 위치 등이 전혀 손실되지
+      // 않고 완벽히 복원되도록, 캔버스의 전체 데이터를 <metadata> 안에 그대로 함께 저장해둠.
+      // 순수 SVG 뷰어/다른 프로그램에서는 이 태그가 그냥 무시되고 평소처럼 보이는 그림만 보임
+      // — 이 에디터로 다시 열 때만 읽힘.
+      // 주의: 프로젝트 저장(JSON)과 똑같이, 업로드한(임시) 폰트를 쓴 텍스트는 이미지로 바꿔서
+      // 넣음 — 그 폰트는 이 브라우저 탭에만 등록돼있어서(파일 자체가 저장되지 않음), 원본
+      // 그대로(글꼴 이름만) 넣어두면 다른 사람이나 나중에 다시 열었을 때 그 폰트가 이미
+      // 사라지고 없어서 엉뚱한 기본 글꼴로 보이는 문제가 생기기 때문. 이미지로 바꿔두면
+      // 폰트 없이도 항상 모양이 정확히 유지됨(다만 그 텍스트만 이후 글자 내용 수정은 불가).
+      const originalData = await flattenSideDataForSave(serializeCurrentCanvas());
+      const metadataJson = JSON.stringify(Object.assign({}, originalData, { canvasWidth: CANVAS_W, canvasHeight: CANVAS_H })).replace(/]]>/g, ']]&gt;'); // CDATA 종료 시퀀스 충돌 방지
+      const metadataTag = '<metadata id="ecopro3-project-data"><![CDATA[' + metadataJson + ']]></metadata>';
+      svgString = svgString.replace(/(<svg[^>]*>)/, '$1' + metadataTag);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
       download(url, 'design.svg');
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       flattened.dispose();
-      exportBtn.disabled = false;
+      trigger.disabled = false;
+    } else if (type === 'svg-vector') {
+      // 폰트를 이미지로 바꾸는 과정(buildFontFlattenedClone) 자체를 건너뛰고, 지금 캔버스를
+      // 있는 그대로 바로 SVG로 뽑음 — 그래서 글자도 <text>로, 도형도 전부 벡터 경로 그대로
+      // 남아서 래스터화(이미지화)가 전혀 없음. 다만 업로드한 임시 폰트를 쓴 글자가 있으면
+      // 그 폰트가 없는 다른 환경에서는 다른 글꼴로 대체되어 보일 수 있음(트레이드오프).
+      let svgString = canvas.toSVG();
+      const originalData = serializeCurrentCanvas(); // 이쪽도 폰트를 안 바꾼 원본 그대로 넣음(내용 일치)
+      const metadataJson = JSON.stringify(Object.assign({}, originalData, { canvasWidth: CANVAS_W, canvasHeight: CANVAS_H })).replace(/]]>/g, ']]&gt;');
+      const metadataTag = '<metadata id="ecopro3-project-data"><![CDATA[' + metadataJson + ']]></metadata>';
+      svgString = svgString.replace(/(<svg[^>]*>)/, '$1' + metadataTag);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      download(url, 'design-vector.svg');
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
     guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
     canvas.renderAll();
-  });
+  }
+  document.querySelectorAll('#fileMenu [data-export]').forEach(btn => btn.addEventListener('click', handleExportClick));
 
   /* ============================================================
      13. 프로젝트 저장 / 불러오기
@@ -2474,15 +2593,9 @@
     });
   }
 
-  document.getElementById('saveProjectBtn').addEventListener('click', async () => {
-    const saveBtn = document.getElementById('saveProjectBtn');
+  // 프로젝트 JSON 데이터를 만드는 공용 로직 — "저장" 버튼과 "자동저장" 둘 다 이걸 재사용함.
+  async function buildProjectExportData(){
     designData[currentIdx][currentSide] = serializeCurrentCanvas();
-
-    const hasAnyCustomFont = customFontNames.size > 0;
-    saveBtn.disabled = true;
-    const originalLabel = saveBtn.textContent;
-    if (hasAnyCustomFont) saveBtn.textContent = '이미지로 변환 중...';
-
     // 업로드한 폰트를 쓴 디자인이 있다면, 저장용으로만 텍스트를 이미지로 바꿔서 내보냄
     const exportDesignData = [];
     for (let i = 0; i < designData.length; i++) {
@@ -2490,8 +2603,7 @@
       const back = await flattenSideDataForSave(designData[i].back);
       exportDesignData.push({ front, back });
     }
-
-    const project = {
+    return {
       type: 'svg-editor-project',
       version: 1,
       savedAt: new Date().toISOString(),
@@ -2504,24 +2616,117 @@
       designNames,
       designData: exportDesignData
     };
+  }
+
+  document.getElementById('saveProjectBtn').addEventListener('click', async () => {
+    const saveBtn = document.getElementById('saveProjectBtn');
+    const hasAnyCustomFont = customFontNames.size > 0;
+    saveBtn.disabled = true;
+    const originalLabel = saveBtn.textContent;
+    if (hasAnyCustomFont) saveBtn.textContent = '이미지로 변환 중...';
+
+    const project = await buildProjectExportData();
     const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
-    download(url, `design-project-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`);
+    download(url, `www.ecogr.net-design-project-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 
     saveBtn.disabled = false;
     saveBtn.textContent = originalLabel;
   });
 
+  /* ============================================================
+     자동저장 — 켜면 파일 저장 위치를 한 번만 물어보고(브라우저 저장창), 그 뒤로는
+     10초마다 한 번씩 그 "같은 파일"에 조용히 덮어써서 저장함. 저장됐다는 표시는 따로
+     안 띄움(요청대로). File System Access API(showSaveFilePicker)를 지원하는 브라우저
+     (크롬·엣지 등)에서만 동작 가능 — 이 API라야 매번 다운로드 창을 띄우지 않고 같은
+     파일에 조용히 계속 덮어쓸 수 있음(일반 다운로드 방식은 10초마다 파일이 새로 쌓이거나
+     매번 알림이 떠서 이 요청에 안 맞음).
+  ============================================================ */
+  const autoSaveToggleBtn = document.getElementById('autoSaveToggleBtn');
+  const AUTOSAVE_ORIGINAL_LABEL = '🔄 자동저장';
+  const AUTOSAVE_ON_LABEL = '✅ 자동저장';
+  let autoSaveFileHandle = null;
+  let autoSaveTimer = null;
+
+  async function writeAutoSaveFile(){
+    if (!autoSaveFileHandle) return;
+    try {
+      const project = await buildProjectExportData();
+      const writable = await autoSaveFileHandle.createWritable();
+      await writable.write(JSON.stringify(project));
+      await writable.close();
+    } catch (err) {
+      // 사용자가 나중에 권한을 취소했거나 파일이 없어졌거나 등 — 화면에 따로 알리지 않고
+      // (요청대로 "저장됐다는 표시"는 물론 실패 표시도 조용히 넘어감) 자동저장만 꺼둠
+      console.error('자동저장 실패:', err);
+      stopAutoSave();
+    }
+  }
+
+  function stopAutoSave(){
+    if (autoSaveTimer) { clearInterval(autoSaveTimer); autoSaveTimer = null; }
+    autoSaveFileHandle = null;
+    autoSaveToggleBtn.textContent = AUTOSAVE_ORIGINAL_LABEL;
+    autoSaveToggleBtn.classList.remove('on');
+  }
+
+  autoSaveToggleBtn.addEventListener('click', async () => {
+    if (autoSaveTimer) { stopAutoSave(); return; } // 이미 켜져있으면 다시 눌러서 끔
+
+    if (typeof window.showSaveFilePicker !== 'function') {
+      alert('이 브라우저에서는 자동저장을 쓸 수 없어요. 크롬(Chrome)이나 엣지(Edge) 최신 버전에서 이용해주세요.');
+      return;
+    }
+    try {
+      autoSaveFileHandle = await window.showSaveFilePicker({
+        suggestedName: 'www.ecogr.net-design-autosave.json',
+        types: [{ description: 'JSON 프로젝트 파일', accept: { 'application/json': ['.json'] } }]
+      });
+    } catch (err) {
+      return; // 사용자가 파일 선택을 취소한 경우 — 조용히 아무 것도 안 함
+    }
+    autoSaveToggleBtn.textContent = AUTOSAVE_ON_LABEL; // 체크 표시로 활성화 상태를 보여줌
+    autoSaveToggleBtn.classList.add('on');
+    writeAutoSaveFile(); // 켜자마자 한 번 바로 저장해두고, 그 뒤로 10초마다 반복
+    autoSaveTimer = setInterval(writeAutoSaveFile, 10000);
+  });
+
+
+  // 저장 당시 캔버스 크기(project.canvasWidth/Height)와 지금 이 세션의 캔버스 크기(CANVAS_W/H)가
+  // 다르면(예: 저장할 때보다 브라우저 창이 좁아서 캔버스가 더 작게 잡힌 경우 등), 오브젝트들의
+  // 절대좌표(left/top)와 크기(scaleX/scaleY)가 예전 캔버스 기준 그대로라 지금 캔버스에서는
+  // 왼쪽 위 한쪽으로 쏠려 보이게 됨. 그 비율만큼 전부 다시 스케일링해서 항상 캔버스에 꽉 차게 맞춤.
+  function rescaleSideDataToCurrentCanvas(data, savedW, savedH){
+    if (!data || !data.objects || !data.objects.length) return data;
+    if (!savedW || !savedH) return data; // 옛날 버전으로 저장돼서 크기 정보가 없는 파일은 그대로 둠
+    const scale = CANVAS_W / savedW;
+    if (!isFinite(scale) || Math.abs(scale - 1) < 0.001) return data; // 크기가 사실상 같으면 손댈 필요 없음
+    const scaledObjects = data.objects.map(o => {
+      const co = Object.assign({}, o);
+      if (typeof co.left === 'number') co.left = co.left * scale;
+      if (typeof co.top === 'number') co.top = co.top * scale;
+      if (typeof co.scaleX === 'number') co.scaleX = co.scaleX * scale;
+      if (typeof co.scaleY === 'number') co.scaleY = co.scaleY * scale;
+      return co;
+    });
+    return { objects: scaledObjects, background: data.background };
+  }
+
   // 프로젝트 JSON(파일로 직접 열었든, URL 쿼리로 가져왔든)을 캔버스에 적용하는 공용 로직.
   // ※ project.designData 안의 각 항목은 loadCanvasObjects가 기대하는 { objects, background }
   //   형태여야 함(저장 시 saveProjectBtn이 만드는 포맷과 동일).
   function applyProjectData(project, onDone){
     if (project && project.designData) {
+      const savedW = project.canvasWidth, savedH = project.canvasHeight;
       for (let i = 0; i < Math.min(count, project.designData.length); i++) {
-        designData[i] = project.designData[i];
+        const d = project.designData[i] || {};
+        designData[i] = {
+          front: rescaleSideDataToCurrentCanvas(d.front, savedW, savedH),
+          back: rescaleSideDataToCurrentCanvas(d.back, savedW, savedH)
+        };
         if (project.designNames && project.designNames[i] != null) {
           designNames[i] = project.designNames[i];
         }
@@ -2585,12 +2790,18 @@
   const textSection = document.getElementById('textSection');
   const shapeSection = document.getElementById('shapeSection');
   const fillColorRow = document.getElementById('fillColorRow');
+  const fillColorHueRow = document.getElementById('fillColorHueRow');
   const imageSection = document.getElementById('imageSection');
 
   const textContentInput = document.getElementById('textContentInput');
   const fontFamilySelect = document.getElementById('fontFamilySelect');
   const fontSizeInput = document.getElementById('fontSizeInput');
+  const fontSizeGauge = document.getElementById('fontSizeGauge');
   const textColorInput = document.getElementById('textColorInput');
+  const textColorHueSlider = document.getElementById('textColorHueSlider');
+  const textColorVariedBrightBtn = document.getElementById('textColorVariedBrightBtn');
+  const textColorVariedMediumBtn = document.getElementById('textColorVariedMediumBtn');
+  const textColorVariedDarkBtn = document.getElementById('textColorVariedDarkBtn');
   const boldBtn = document.getElementById('boldBtn');
   const italicBtn = document.getElementById('italicBtn');
   const underlineBtn = document.getElementById('underlineBtn');
@@ -2599,6 +2810,11 @@
   const alignRightBtn = document.getElementById('alignRightBtn');
 
   const fillColorInput = document.getElementById('fillColorInput');
+  const fillColorHueSlider = document.getElementById('fillColorHueSlider');
+  const fillColorVariedRow = document.getElementById('fillColorVariedRow');
+  const fillColorVariedBrightBtn = document.getElementById('fillColorVariedBrightBtn');
+  const fillColorVariedMediumBtn = document.getElementById('fillColorVariedMediumBtn');
+  const fillColorVariedDarkBtn = document.getElementById('fillColorVariedDarkBtn');
   const strokeColorInput = document.getElementById('strokeColorInput');
   const strokeWidthInput = document.getElementById('strokeWidthInput');
 
@@ -2678,6 +2894,85 @@
     }
     return { h, s, v };
   }
+  // hex 색상에서 색조(hue, 0~360)값만 뽑아냄 — 우측 패널의 "색상 조절 막대" 초기 위치를 잡는 데 씀
+  function colorToHue(hex){
+    const rgb = hexToRgb(hex);
+    return rgbToHsv(rgb.r, rgb.g, rgb.b).h;
+  }
+  // 지금 색의 채도·명도는 그대로 두고 색조(hue)만 newHue로 바꾼 새 hex 색상을 만듦
+  // — 색상 조절 막대를 움직였을 때 "톤은 유지한 채 색만 휙 바뀌는" 느낌을 주기 위함
+  function hueShiftedColor(hex, newHue){
+    const rgb = hexToRgb(hex);
+    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    // 색이 거의 무채색(회색·흰색·검정)이면 채도가 0이라 색조를 돌려도 눈에 안 보이므로,
+    // 이 경우엔 적당한 채도·명도를 줘서 막대를 움직이면 실제로 색이 나타나게 함
+    const s = hsv.s < 0.05 ? 0.75 : hsv.s;
+    const v = hsv.v < 0.15 ? 0.85 : hsv.v;
+    const newRgb = hsvToRgb(newHue, s, v);
+    return rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+  }
+  // "다양한 컬러" 모드용 — 채도·명도를 매번 랜덤으로 붙여서 색조 막대를 움직일 때마다
+  // 색이 다채롭게(생기 있게) 나오게 함. 너무 탁하거나 너무 어둡지 않도록 범위를 제한함.
+  // "다양한 컬러" 3단계 모드별 채도(S)·명도(V) 랜덤 범위
+  //  - bright(밝은): 채도 0~100%, 명도 72~100% — 파스텔~밝은 원색 위주(칙칙한 색 배제)
+  //  - medium(중간): 채도 55~100%, 명도 55~95% — 맨 처음 만들었던 쨍한 원색 위주 설정
+  //  - dark(어두운): 채도 0~100%, 명도 6~100% — 어둡고 차분한 톤도 자주 섞여 나오는 설정
+  const VARIED_COLOR_RANGES = {
+    bright: { sMin: 0, sSpread: 1, vMin: 0.72, vSpread: 0.28 },
+    medium: { sMin: 0.55, sSpread: 0.45, vMin: 0.55, vSpread: 0.4 }
+  };
+  // "어두운" 모드 전용 — K(먹판) 값이 균등 분포가 아니라 가중치를 둔 분포로 나오게 함:
+  //  - K 45~60% : 60% 확률 (가장 자주 나오는 "적당히 어두운" 구간)
+  //  - K 60~70% : 30% 확률 (더 진한 톤)
+  //  - 나머지(45% 미만 또는 70% 초과, 20~90% 안에서) : 10% 확률 (가끔 섞이는 변주)
+  // K = 1 - 명도(V) 관계를 이용해서 K% 값을 뽑은 뒤 V로 환산함.
+  function pickDarkVByWeightedK(){
+    const roll = Math.random();
+    let kPercent;
+    if (roll < 0.6) {
+      kPercent = 45 + Math.random() * 15; // 45~60%
+    } else if (roll < 0.9) {
+      kPercent = 60 + Math.random() * 10; // 60~70%
+    } else if (Math.random() < 0.5) {
+      kPercent = 20 + Math.random() * 25; // 나머지 중 절반: 20~45%(더 밝은 쪽)
+    } else {
+      kPercent = 70 + Math.random() * 20; // 나머지 중 절반: 70~90%(더 어두운 쪽)
+    }
+    return 1 - kPercent / 100;
+  }
+  // "밝은" 모드 전용 — 뽑힌 색의 CMYK(C+M+Y+K, 퍼센트 합) 값이 50 미만으로 나올 확률이
+  // 정확히 50%가 되도록 함. 그냥 채도·명도를 균등 랜덤으로 뽑으면 이 범위에서는 자연히
+  // 약 25%만 50 미만이 나오길래, "50 미만을 원하는지/50 이상을 원하는지"를 먼저 동전 던지듯
+  // 반반 정하고, 그 목표에 맞는 색이 나올 때까지 다시 뽑는 방식(거부 샘플링)으로 정확히
+  // 맞춤 — 채도·명도 자체의 범위(0~100%, 72~100%)는 그대로 유지됨.
+  function pickBrightColor(newHue){
+    const wantLow = Math.random() < 0.5;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const s = Math.random();
+      const v = 0.72 + Math.random() * 0.28;
+      const rgb = hsvToRgb(newHue, s, v);
+      const cmyk = rgbToCmyk(rgb.r, rgb.g, rgb.b);
+      const sum = (cmyk.c + cmyk.m + cmyk.y + cmyk.k) * 100;
+      if ((wantLow && sum < 50) || (!wantLow && sum >= 50)) return rgbToHex(rgb.r, rgb.g, rgb.b);
+    }
+    // 40번 안에 목표를 못 맞추면(거의 없음) 마지막으로 뽑은 값을 그냥 씀
+    const rgb = hsvToRgb(newHue, Math.random(), 0.72 + Math.random() * 0.28);
+    return rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
+  function randomizedHueColor(newHue, mode){
+    if (mode === 'bright') return pickBrightColor(newHue);
+    let s, v;
+    if (mode === 'dark') {
+      s = Math.random();
+      v = pickDarkVByWeightedK();
+    } else {
+      const range = VARIED_COLOR_RANGES[mode] || VARIED_COLOR_RANGES.bright;
+      s = range.sMin + Math.random() * range.sSpread;
+      v = range.vMin + Math.random() * range.vSpread;
+    }
+    const rgb = hsvToRgb(newHue, s, v);
+    return rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
 
   // CMYK 컬러 팝오버가 화면(뷰포트) 밖으로 벗어나지 않게 좌우/상하 위치를 보정함.
   // - 가로: 오른쪽으로 넘치면 스와치 오른쪽 끝에 맞춰 왼쪽으로 당기고, 그래도 넘치면 화면 안쪽으로 클램프
@@ -2724,7 +3019,12 @@
          <input type="text" class="cmyk-hex-input" maxlength="7" spellcheck="false">
        </div>
        <div class="cmyk-values-line"></div>`;
-    el.appendChild(popover);
+    // 팝업을 el(색상칸) 안이 아니라 document.body에 직접 붙임 — el이 우측 속성 패널처럼
+    // CSS zoom(PC에서 1.3배 확대)이 걸린 조상 안에 있으면, position:fixed로 계산해서 넣은
+    // left/top 픽셀값이 그 zoom 배율만큼 다시 한번 곱해져서 화면 밖으로 팝업이 튕겨나가는
+    // 문제가 있었음(그래서 "색상 선택창이 안 뜬다"처럼 보였음). body에 직접 붙이면 그런
+    // 조상 zoom의 영향을 전혀 안 받아서 항상 계산한 그대로 정확한 화면 위치에 뜸.
+    document.body.appendChild(popover);
 
     const svCanvas = popover.querySelector('.cmyk-sv');
     const hueCanvas = popover.querySelector('.cmyk-hue');
@@ -3002,6 +3302,8 @@
     shapeSection.classList.toggle('hidden', textLike);
     imageSection.classList.toggle('hidden', !imageLike);
     fillColorRow.classList.toggle('hidden', imageLike); // 이미지는 채우기색이 의미 없으므로 숨김(테두리는 계속 노출)
+    fillColorHueRow.classList.toggle('hidden', imageLike); // 채우기 슬라이더도 같이 숨김
+    fillColorVariedRow.classList.toggle('hidden', imageLike); // 다양한 컬러 버튼도 같이 숨김
 
     if (textLike) {
       // "내용"은 텍스트마다 다른 게 당연하므로, 여러 개를 한꺼번에 선택했을 땐 편집을 막음
@@ -3011,7 +3313,9 @@
       textContentInput.placeholder = isMultiTextSelection ? '텍스트를 여러 개 선택 중 (내용은 개별 수정)' : '더블클릭으로도 수정 가능';
       fontFamilySelect.value = textAnchor.fontFamily || 'Pretendard';
       fontSizeInput.value = Math.round(textAnchor.fontSize || 40);
+      fontSizeGauge.value = Math.min(600, Math.max(10, Math.round(textAnchor.fontSize || 40)));
       textColorInput.value = toHex(textAnchor.fill) || '#222222';
+      textColorHueSlider.value = Math.round(colorToHue(textColorInput.value));
       boldBtn.classList.toggle('on', textAnchor.fontWeight === 'bold' || textAnchor.fontWeight >= 700);
       italicBtn.classList.toggle('on', textAnchor.fontStyle === 'italic');
       underlineBtn.classList.toggle('on', !!textAnchor.underline);
@@ -3021,6 +3325,7 @@
       else alignLeftBtn.classList.add('on');
     } else {
       fillColorInput.value = toHex(obj.fill) || '#3498db';
+      fillColorHueSlider.value = Math.round(colorToHue(fillColorInput.value));
       strokeColorInput.value = toHex(obj.stroke) || '#000000';
       strokeWidthInput.value = obj.strokeWidth || 0;
     }
@@ -3080,15 +3385,203 @@
     canvas.renderAll();
   }
 
-  textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));
-  fontFamilySelect.addEventListener('change', () => withActive(o => { if (isTextObject(o)) o.set('fontFamily', fontFamilySelect.value); }));
-  fontSizeInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('fontSize', Math.max(10, parseInt(fontSizeInput.value, 10) || 10)); }));
-  fontSizeInput.addEventListener('change', () => { fontSizeInput.value = Math.max(10, parseInt(fontSizeInput.value, 10) || 10); });
-  textColorInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('fill', textColorInput.value); }));
+  // 글꼴을 바꿀 때, 브라우저가 그 폰트 파일을 아직 안 받아온 상태면 캔버스에 곧바로 새
+  // 글꼴로 안 바뀌어 보이는 문제가 있음(캔버스는 일반 웹페이지 텍스트와 달리 폰트 로딩
+  // 완료를 자동으로 기다려주지 않음). 이를 해결하기 위해:
+  //  1) 실제로 그 폰트 파일이 로딩 완료될 때까지 기다렸다가(document.fonts.load)
+  //  2) 굵게(볼드)로 살짝 바꿨다가 다시 원래 굵기로 되돌리는 방식으로 캔버스가 새로 로딩된
+  //     폰트를 기준으로 다시 그리도록 강제함(단순히 값만 바꾸는 것보다 이렇게 실제로 화면에
+  //     한 번 그려봐야 캔버스 내부 글자 폭 계산 캐시가 새 폰트 기준으로 확실히 갱신됨)
+  // 이 과정 동안 화면에 순간적으로 볼드로 보이거나 깜빡이지 않도록, 처리하는 동안은 해당
+  // 오브젝트를 잠깐 투명하게(opacity 0) 숨겨뒀다가 다 끝나면 원래대로 되돌림.
+  //
+  // ⚠ 짧은 시간 안에 이 함수가 같은 오브젝트에 대해 여러 번(예: 연달아 다른 폰트를 고르거나,
+  // 처리 중에 다른 조작이 끼어드는 경우) 겹쳐 호출되면, 먼저 시작된 오래된 호출이 "원래
+  // 투명도"로 이미 0(다른 호출이 숨겨둔 값)을 캡처해뒀다가 나중에 그 0을 그대로 "복원"해버려서
+  // 글자가 계속 투명한 채로 남는(사라지는) 문제가 있었음. 이를 막기 위해 오브젝트마다 "지금
+  // 처리 중인 요청 번호(토큰)"를 기록해두고, 나중에 실제로 되돌릴 때 자기가 여전히 가장 최신
+  // 요청인지 확인해서, 그 사이에 더 최신 요청이 들어왔으면 오래된 쪽은 아무 것도 안 하고
+  // 조용히 넘어감(가장 최신 요청만 최종적으로 화면에 반영됨).
+  //
+  // + 볼드 토글만으로는 글자 우측에 이전 폰트로 그려졌던 잔상(캔버스 내부 캐시가 완전히
+  // 안 지워져서 생기는 흔적)이 남는 경우가 있어서, 크기를 살짝(-5%) 줄였다가 다시 원래
+  // 크기로 되돌리는 것도 같이 추가함 — 크기 자체가 바뀌면 캔버스가 그 오브젝트의 캐시를
+  // 완전히 새로 만들 수밖에 없어서 잔상이 확실히 지워짐. 이 과정도 투명하게 숨겨진 동안에만
+  // 일어나므로 화면엔 늘었다 줄었다 하는 게 전혀 안 보임.
+  let fontReloadTokenSeq = 0;
+  function forceFontReloadRedraw(boxes, fontFamilyName){
+    boxes = boxes.filter(o => isTextObject(o));
+    if (!boxes.length) return;
+    const myToken = ++fontReloadTokenSeq;
+    const originalWeights = boxes.map(o => o.fontWeight);
+    const originalScaleXs = boxes.map(o => o.scaleX);
+    const originalScaleYs = boxes.map(o => o.scaleY);
+    boxes.forEach((o, i) => {
+      // 이 오브젝트에 대해 이미 진행 중인 요청이 없을 때만(=처음 숨기는 시점에만) "진짜 원래
+      // 투명도"를 기록함 — 이미 진행 중인 요청이 있다면 그게 기록해둔 원래값을 그대로 이어받아
+      // 씀(안 그러면 "이미 0으로 숨겨진 상태"를 원래값으로 잘못 기록하게 됨)
+      if (o.__fontReloadToken == null) o.__fontReloadOriginalOpacity = o.opacity;
+      o.__fontReloadToken = myToken;
+      o.set('opacity', 0);
+      o.dirty = true;
+    });
+    canvas.requestRenderAll();
 
-  boldBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; o.set('fontWeight', (o.fontWeight === 'bold' || o.fontWeight >= 700) ? 'normal' : 'bold'); }));
-  italicBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; o.set('fontStyle', o.fontStyle === 'italic' ? 'normal' : 'italic'); }));
-  underlineBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; o.set('underline', !o.underline); }));
+    const loadPromises = [];
+    if (window.document.fonts && document.fonts.load) {
+      try {
+        loadPromises.push(document.fonts.load('400 40px "' + fontFamilyName + '"'));
+        loadPromises.push(document.fonts.load('700 40px "' + fontFamilyName + '"'));
+      } catch (e) { /* 폰트명이 특이해서 실패해도 무시하고 진행(아래 타임아웃이 대신 처리) */ }
+    }
+    const readyPromise = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1200)); // 로딩이 안 끝나도 너무 오래 숨겨두지 않게 하는 안전장치
+
+    Promise.race([
+      Promise.all(loadPromises.concat([readyPromise])).catch(() => {}),
+      timeoutPromise
+    ]).then(() => {
+      // 1단계: 폰트가 바뀌었는데도 fabric 내부의 "미리 그려둔 그림(오프스크린 캐시)"이 이전
+      // 폰트 모양 그대로 남아있어서 잔상처럼 보이는 문제가 있었음(단순히 dirty=true만으로는
+      // 캐시가 확실히 새로 안 그려지는 경우가 있었음). 이를 확실히 없애기 위해 캐시 캔버스
+      // 자체를 강제로 파기하고, objectCaching을 껐다 켜서 완전히 새로 만들도록 함. 볼드
+      // 토글·크기 -5%도 같이 걸어서 다중으로 안전하게 강제 재작성시킴(여전히 투명해서 안 보임)
+      boxes.forEach((o, i) => {
+        if (o.__fontReloadToken !== myToken) return;
+        if (typeof o._removeCacheCanvas === 'function') o._removeCacheCanvas();
+        o._cacheCanvas = null; o._cacheContext = null; // 위 메서드가 없는 구버전 fabric까지 대비한 보험
+        o.objectCaching = false; // 일단 캐시를 안 쓰는 상태로 만들어서 원본 그대로 다시 그리게 함
+        const flipped = (originalWeights[i] === 'bold' || originalWeights[i] >= 700) ? 'normal' : 'bold';
+        o.set('fontWeight', flipped);
+        o.set('scaleX', originalScaleXs[i] * 0.95);
+        o.set('scaleY', originalScaleYs[i] * 0.95);
+        o.dirty = true;
+      });
+      canvas.requestRenderAll();
+      requestAnimationFrame(() => {
+        // 2단계: 원래 굵기·크기·투명도로 되돌리고, 캐시도 다시 켜서(이번엔 방금 새로 그린
+        // 정확한 모양으로) 재생성되게 함 — 이제 새로 로딩된 폰트가 반영된 채로, 잔상 없이
+        // 깨끗하게 보임. 마찬가지로 자기가 여전히 최신 요청일 때만 실제로 복원함.
+        boxes.forEach((o, i) => {
+          if (o.__fontReloadToken !== myToken) return;
+          o.set('fontWeight', originalWeights[i]);
+          o.set('scaleX', originalScaleXs[i]);
+          o.set('scaleY', originalScaleYs[i]);
+          o.set('opacity', o.__fontReloadOriginalOpacity != null ? o.__fontReloadOriginalOpacity : 1);
+          // 낙서/우주효과 등 "장식이 글자 박스 바깥까지 퍼지는" 필터가 걸려있으면 objectCaching을
+          // 계속 꺼둬야 함(켜면 fabric이 원래 글자 크기 기준 캐시 캔버스를 만들어서 그 바깥으로
+          // 나가는 장식이 잘려 보이는 문제가 있었음) — 그런 효과가 없을 때만 다시 켬
+          o.objectCaching = EP.hasAnyRenderEffect ? !EP.hasAnyRenderEffect(o) : true;
+          if (typeof o._removeCacheCanvas === 'function') o._removeCacheCanvas();
+          o._cacheCanvas = null; o._cacheContext = null;
+          o.__fontReloadToken = null;
+          o.__fontReloadOriginalOpacity = null;
+          o.dirty = true;
+        });
+        canvas.requestRenderAll();
+      });
+    }).catch(() => {
+      // 혹시 위 과정 중 어딘가에서 예상 못한 오류가 나더라도, 이 요청이 여전히 최신이라면
+      // 최소한 투명도·굵기·크기·캐시 상태만은 반드시 원래대로 되돌려서 글자가 영영 안
+      // 보이거나 작아진 채로 남지 않게 함(마지막 안전망)
+      boxes.forEach((o, i) => {
+        if (o.__fontReloadToken !== myToken) return;
+        o.set('fontWeight', originalWeights[i]);
+        o.set('scaleX', originalScaleXs[i]);
+        o.set('scaleY', originalScaleYs[i]);
+        o.set('opacity', o.__fontReloadOriginalOpacity != null ? o.__fontReloadOriginalOpacity : 1);
+        o.objectCaching = true;
+        o.__fontReloadToken = null;
+        o.__fontReloadOriginalOpacity = null;
+        o.dirty = true;
+      });
+      canvas.requestRenderAll();
+    });
+  }
+
+  textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));
+  // IText는 줄/글자 단위로 개별 스타일(styles)을 따로 가질 수 있는데, 여기에 fontFamily(또는
+  // fontWeight)가 박제돼 있으면 오브젝트 전체에 새 폰트를 적용해도 그 줄/글자만 안 바뀜 —
+  // "첫 줄만 새 폰트로 바뀌고 나머지 줄은 그대로인" 문제가 정확히 이것 때문이었음. 폰트를
+  // 선택할 때는 "이 오브젝트 전체를 이 폰트로" 라는 의도이므로, 남아있는 개별 오버라이드를
+  // 전부 지워서 예외 없이 전체가 똑같이 바뀌도록 함.
+  function clearPerCharStyleOverrides(obj, props){
+    if (!obj.styles) return;
+    Object.keys(obj.styles).forEach(function(lineKey){
+      var line = obj.styles[lineKey];
+      if (!line) return;
+      Object.keys(line).forEach(function(charKey){
+        var charStyle = line[charKey];
+        if (!charStyle) return;
+        props.forEach(function(p){ delete charStyle[p]; });
+      });
+    });
+  }
+
+  fontFamilySelect.addEventListener('change', () => {
+    const targets = [];
+    withActive(o => {
+      if (isTextObject(o)) {
+        clearPerCharStyleOverrides(o, ['fontFamily', 'fontWeight']);
+        o.set('fontFamily', fontFamilySelect.value);
+        targets.push(o);
+      }
+    });
+    forceFontReloadRedraw(targets, fontFamilySelect.value);
+  });
+  fontSizeInput.addEventListener('input', () => {
+    const v = Math.max(10, parseInt(fontSizeInput.value, 10) || 10);
+    withActive(o => { if (isTextObject(o)) { clearPerCharStyleOverrides(o, ['fontSize']); o.set('fontSize', v); } });
+    fontSizeGauge.value = Math.min(600, v); // 숫자로 직접 입력해도 게이지 위치가 같이 따라오게
+  });
+  fontSizeInput.addEventListener('change', () => { fontSizeInput.value = Math.max(10, parseInt(fontSizeInput.value, 10) || 10); });
+  // 크기 조절 게이지(막대) — 움직이는 동안 실시간으로 글자 크기가 바뀌고, 숫자 입력창도 같이 갱신됨
+  fontSizeGauge.addEventListener('input', () => {
+    const v = Math.max(10, parseInt(fontSizeGauge.value, 10) || 10);
+    withActive(o => { if (isTextObject(o)) { clearPerCharStyleOverrides(o, ['fontSize']); o.set('fontSize', v); } });
+    fontSizeInput.value = v;
+  });
+  fontSizeGauge.addEventListener('change', () => pushHistory());
+  textColorInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) { clearPerCharStyleOverrides(o, ['fill']); o.set('fill', textColorInput.value); } }));
+
+  // 색상 조절 막대 — 평소엔 드래그하는 동안 각 오브젝트의 "지금 색"을 기준으로 색조만 바꿔서
+  // 적용함(여러 개를 함께 선택했으면 오브젝트마다 원래 채도/명도가 달라도 각자 자기 색 기준으로
+  // 바뀜). "밝은/중간/어두운" 중 하나가 켜져 있으면, 그 대신 채도·명도를 매번(움직일 때마다,
+  // 그리고 오브젝트마다 각각) 그 모드의 범위 안에서 랜덤으로 붙여서 더 다채로운 색이 나오게 함.
+  // 셋 중 하나만 켜질 수 있고(배타적), 켜진 걸 다시 누르면 꺼져서 원래(색조만 유지) 방식으로 돌아감.
+  function makeExclusiveVariedToggle(buttons){
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const wasOn = btn.classList.contains('on');
+        buttons.forEach(b => b.classList.remove('on'));
+        if (!wasOn) btn.classList.add('on');
+      });
+    });
+  }
+  function getActiveVariedMode(buttons, modes){
+    for (let i = 0; i < buttons.length; i++) { if (buttons[i].classList.contains('on')) return modes[i]; }
+    return null;
+  }
+
+  const textVariedBtns = [textColorVariedBrightBtn, textColorVariedMediumBtn, textColorVariedDarkBtn];
+  const variedModes = ['bright', 'medium', 'dark'];
+  makeExclusiveVariedToggle(textVariedBtns);
+  textColorHueSlider.addEventListener('input', () => {
+    const hue = parseFloat(textColorHueSlider.value) || 0;
+    const mode = getActiveVariedMode(textVariedBtns, variedModes);
+    withActive(o => {
+      if (!isTextObject(o)) return;
+      clearPerCharStyleOverrides(o, ['fill']);
+      const newHex = mode ? randomizedHueColor(hue, mode) : hueShiftedColor(toHex(o.fill) || '#222222', hue);
+      o.set('fill', newHex);
+    });
+    textColorInput.value = mode ? randomizedHueColor(hue, mode) : hueShiftedColor(textColorInput.value, hue); // 스와치도 같이 갱신
+  });
+  textColorHueSlider.addEventListener('change', () => pushHistory());
+
+  boldBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; clearPerCharStyleOverrides(o, ['fontWeight']); o.set('fontWeight', (o.fontWeight === 'bold' || o.fontWeight >= 700) ? 'normal' : 'bold'); }));
+  italicBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; clearPerCharStyleOverrides(o, ['fontStyle']); o.set('fontStyle', o.fontStyle === 'italic' ? 'normal' : 'italic'); }));
+  underlineBtn.addEventListener('click', () => withActive(o => { if (!isTextObject(o)) return; clearPerCharStyleOverrides(o, ['underline']); o.set('underline', !o.underline); }));
 
   alignLeftBtn.addEventListener('click', () => withActive(o => { if (isTextObject(o)) o.set('textAlign', 'left'); }));
   alignCenterBtn.addEventListener('click', () => withActive(o => { if (isTextObject(o)) o.set('textAlign', 'center'); }));
@@ -3098,6 +3591,19 @@
   });
 
   fillColorInput.addEventListener('input', () => withActive(o => o.set('fill', fillColorInput.value)));
+
+  const fillVariedBtns = [fillColorVariedBrightBtn, fillColorVariedMediumBtn, fillColorVariedDarkBtn];
+  makeExclusiveVariedToggle(fillVariedBtns);
+  fillColorHueSlider.addEventListener('input', () => {
+    const hue = parseFloat(fillColorHueSlider.value) || 0;
+    const mode = getActiveVariedMode(fillVariedBtns, variedModes);
+    withActive(o => {
+      const newHex = mode ? randomizedHueColor(hue, mode) : hueShiftedColor(toHex(o.fill) || '#3498db', hue);
+      o.set('fill', newHex);
+    });
+    fillColorInput.value = mode ? randomizedHueColor(hue, mode) : hueShiftedColor(fillColorInput.value, hue); // 스와치도 같이 갱신
+  });
+  fillColorHueSlider.addEventListener('change', () => pushHistory());
   strokeColorInput.addEventListener('input', () => withActive(o => o.set('stroke', strokeColorInput.value)));
   strokeWidthInput.addEventListener('input', () => withActive(o => o.set('strokeWidth', parseInt(strokeWidthInput.value, 10) || 0)));
 
@@ -3183,5 +3689,29 @@
   EP.fontPopover = fontPopover;
   EP.registerRotatablePopover(fontPopover);
   EP.registerFilterPopover(fontPopover);
+  EP.clearPerCharStyleOverrides = clearPerCharStyleOverrides;
+  EP.forceFontReloadRedraw = forceFontReloadRedraw;
+
+  /* ============================================================
+     가끔 캔버스 뒤를 지나가는 고양이 이스터에그
+     — 20분마다 한 번씩, 매번은 아니고 60% 확률로만("가끔") 캔버스 뒤쪽(투명한 여백)을
+       왼쪽에서 오른쪽으로 걸어서 지나감. 실제 디자인/저장/선택과는 전혀 무관한 순수 장식.
+  ============================================================ */
+  (function setupEasterEggCat(){
+    const catEl = document.getElementById('easterEggCat');
+    if (!catEl) return;
+    const INTERVAL_MS = 20 * 60 * 1000; // 20분
+    const TRIGGER_CHANCE = 0.6; // "가끔"이므로 매번 지나가진 않고 60% 확률로만
+    function walk(){
+      if (catEl.classList.contains('walking')) return; // 이미 걷고 있으면 겹치지 않게 건너뜀
+      catEl.classList.add('walking');
+      catEl.addEventListener('animationend', function onEnd(e){
+        if (e.animationName !== 'easterEggCatWalk') return; // 계속 반복되는 걷기(bob) 애니메이션은 무시
+        catEl.classList.remove('walking');
+        catEl.removeEventListener('animationend', onEnd);
+      });
+    }
+    setInterval(() => { if (Math.random() < TRIGGER_CHANCE) walk(); }, INTERVAL_MS);
+  })();
 
 })();

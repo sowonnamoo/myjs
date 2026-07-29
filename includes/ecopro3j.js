@@ -3,9 +3,9 @@
    P(텍스트 전용 큰 필터 목록)·M(도형/텍스트 모양필터)과 완전히 별개의 컨트롤/팝업/상태를 가짐.
    인터페이스 구조(닫기버튼 + 드롭다운 + 상세조절 + 끄기버튼, 드래그·회전 가능한 팝업)는 P와
    비슷하지만, 이 버튼은 "랜덤 적용(주사위)" 기능이 없음 — 사용자가 직접 하나씩 골라 적용함.
-   도형(사각형/원/삼각형/펜도구 패스)·텍스트·이미지 세 종류 모두에 붙음 — 도형에선 M 버튼과,
-   텍스트에선 P 버튼과, 이미지에선 Z 버튼(ecopro3z.js, 이미지 전용 블렌드필터)과 같은 줄에
-   나란히 뜸(모두 P/M 자리 바로 왼쪽인 -46 위치). */
+   도형(사각형/원/삼각형/펜도구 패스)·텍스트·이미지 세 종류 모두에 붙음 — 우측 상단 툴박스에서
+   텍스트는 T 바로 왼쪽(-14), 이미지는 Z 바로 오른쪽(-14)에 뜸. 주사위(P/도형은 M)는 이제
+   좌측 상단 모서리로 따로 빠져서, 이 줄에는 더 이상 함께 있지 않음. */
 (function(){
   "use strict";
   var EP = window.EP = window.EP || {};
@@ -18,7 +18,7 @@
   var isTableRelatedTarget = EP.isTableRelatedTarget || function(){ return false; };
 
   /* ============================================================
-     J 버튼 컨트롤 — M과 같은 줄(offsetY:-36)에, M보다 더 왼쪽(offsetX:-46)에 배치.
+     J 버튼 컨트롤 — T 바로 왼쪽(offsetX:-14, offsetY:-36)에 배치.
   ============================================================ */
   function renderJButton(ctx, left, top, styleOverride, fabricObject){
     if (isTableRelatedTarget(fabricObject)) return;
@@ -46,12 +46,13 @@
 
   const jControl = new fabric.Control({
     x: 0.5, y: -0.5,
-    offsetX: -46, offsetY: -36, // M(-14) 바로 왼쪽
+    offsetX: -14, offsetY: -36, // 주사위(P/M)가 좌측 모서리로 옮겨가서 빈 자리(-14)를 채워 T 바로 옆으로 당김
     cursorStyle: 'pointer',
     render: renderJButton,
     mouseUpHandler: function(eventData, transformData){
       const target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
+      if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
       if (!qaJPopover.classList.contains('hidden')) { hideQaJPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
       openQaJPopover(target);
       return true;

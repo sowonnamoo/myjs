@@ -711,4 +711,7 @@
     EP.canvas.skipTargetFind = false;
     EP.canvas.selection = true;
   };
+  // 화면 좌표 -> 이미지 원본 픽셀 좌표 변환 유틸 — z필터(글자 추출 마키 도구) 등 다른 파일에서도 재사용
+  EP.screenPointToImagePixel = screenPointToImagePixel;
+  EP.getEditableCanvasForImage = getEditableCanvasForImage;
 })();
