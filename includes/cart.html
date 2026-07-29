@@ -486,7 +486,7 @@ const WORKER_PAYPAL = "";
 // ---- Cloudflare Worker를 통한 실제 R2 업로드 (시안에서 넘어온 원본 이미지들을 여기서 업로드) ----
 const R2_WORKER_URL = "https://r2.ecogr.workers.dev/";
 const R2_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
-const R2_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+const R2_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
 
 function getExtFromFilename(filename, fallback){
     const ext = (filename.split('.').pop() || '').toLowerCase();
