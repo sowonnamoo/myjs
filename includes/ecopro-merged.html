@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>비율 검수</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #0F1216;
+    --panel: #171B21;
+    --panel-2: #1E232B;
+    --line: #2A303A;
+    --text: #E9E7E1;
+    --muted: #868C97;
+    --pass: #5EEAD4;
+    --fail: #F2545B;
+    --warn: #E8B65A;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); }
+  body{
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+    padding:48px 24px 80px;
+  }
+  .wrap{ max-width: 780px; margin: 0 auto; }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  h1{
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 20px;
+    letter-spacing: -0.01em;
+  }
+
+  /* --- Status bar (query-derived accept size / work-line size / count) --- */
+  .status-bar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .status-chip{
+    flex:1;
+    min-width:150px;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .status-chip .status-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color: var(--muted);
+    margin-bottom:6px;
+  }
+  .status-chip .status-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:17px;
+    font-weight:600;
+    color: var(--text);
+  }
+  .status-chip.accept .status-value{ color: var(--fail); }
+  .status-chip.workline .status-value{ color: var(--text); }
+  .status-chip.count .status-value{ font-size:14px; color: var(--pass); }
+
+  .spec-bar{ display:none; }
+
+  button#downloadCutline{
+    display:flex; align-items:center; gap:8px;
+    background: var(--panel); border:1px solid var(--line); border-radius:10px;
+    color: var(--text); font-family:'Space Grotesk', sans-serif; font-size:13.5px; font-weight:500;
+    padding:12px 16px; margin-bottom:28px; cursor:pointer; width:100%; justify-content:center;
+  }
+
+  /* --- Design / side slots --- */
+  .design-block{ margin-bottom:22px; }
+  .design-block-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.06em;
+    color: var(--muted);
+    margin-bottom:10px;
+  }
+  .slot-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .slot{
+    flex: 1 1 300px;
+    min-width: 280px;
+  }
+  .slot-side-label{
+    font-size:12.5px;
+    font-weight:500;
+    color: var(--muted);
+    margin-bottom:6px;
+  }
+
+  .mini-dropzone{
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    padding: 22px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease;
+    background: var(--panel);
+  }
+  .mini-dropzone.drag{ border-color: var(--pass); background: #16201D; }
+  .mini-dropzone .main{ font-size:13px; margin-bottom:3px; }
+  .mini-dropzone .hint{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--muted);
+  }
+
+  .slot-reset{
+    margin-top:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .slot-reset:hover{ color: var(--text); border-color:#4B5563; }
+
+  .dropzone{ display:none; }
+  .results{ display:none; }
+
+  .row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+  }
+  .row.fail{ border-color: rgba(242,84,91,0.35); }
+  .row.pass{ border-color: rgba(94,234,212,0.3); }
+  .row.unknown{ border-color: rgba(232,182,90,0.3); }
+
+  .gauge{
+    flex: 0 0 56px;
+    width:56px; height:56px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+  }
+  .gauge svg{ overflow: visible; }
+  .gauge .thumb-wrap{
+    width:52px; height:52px;
+    border-radius:6px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#0B0D10;
+    border: 1.6px solid var(--line);
+  }
+  .gauge .thumb-wrap.pass{ border-color: var(--pass); }
+  .gauge .thumb-wrap.fail{ border-color: var(--fail); }
+  .gauge .thumb-wrap.unknown{ border-color: var(--warn); }
+  .gauge .thumb-wrap img{
+    max-width:100%; max-height:100%;
+    display:block;
+  }
+  .gauge .thumb-wrap.clickable{ cursor: zoom-in; }
+
+  .modal-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background: rgba(6,7,9,0.86);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    padding: 40px;
+    cursor: zoom-out;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal-frame{
+    width: 90vw;
+    height: 88vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .modal-backdrop img{
+    width:100%;
+    height:100%;
+    object-fit: contain;
+    background:#fff;
+    border-radius:8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    cursor: default;
+  }
+  .modal-close{
+    position:fixed;
+    top:20px; right:24px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color: var(--muted);
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 12px;
+    cursor:pointer;
+  }
+  .modal-close:hover{ color: var(--text); }
+
+  .info{ flex:1; min-width:0; }
+  .fname{
+    font-size:13.5px;
+    font-weight:500;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--muted);
+    margin-top:4px;
+    display:flex;
+    gap:9px;
+    flex-wrap:wrap;
+  }
+  .meta b{ color: var(--text); font-weight:500; }
+
+  .row-actions{ margin-top:6px; }
+  .row-actions button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color: var(--pass);
+    background: rgba(94,234,212,0.08);
+    border: 1px solid rgba(94,234,212,0.3);
+    border-radius: 6px;
+    padding: 5px 9px;
+    cursor: pointer;
+  }
+  .row-actions button:hover{ background: rgba(94,234,212,0.16); }
+
+  .badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:.04em;
+    padding: 6px 10px;
+    border-radius: 999px;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .badge.pass{ background: rgba(94,234,212,0.12); color: var(--pass); }
+  .badge.fail{ background: rgba(242,84,91,0.12); color: var(--fail); }
+  .badge.unknown{ background: rgba(232,182,90,0.12); color: var(--warn); }
+
+  .footnote{
+    margin-top: 28px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color: var(--muted);
+    line-height:1.7;
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Intake / Pre-check</p>
+  <h1>비율 검수</h1>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-chip accept">
+      <div class="status-label">접수 사이즈</div>
+      <div class="status-value" id="statAccept">–</div>
+    </div>
+    <div class="status-chip workline">
+      <div class="status-label">작업선(도련) 사이즈</div>
+      <div class="status-value" id="statWorkline">–</div>
+    </div>
+    <div class="status-chip count">
+      <div class="status-label">건수</div>
+      <div class="status-value" id="statCount">–</div>
+    </div>
+  </div>
+
+  <!-- Hidden — values are set programmatically from query params, and the
+       toggles below stay hardcoded on. Kept in the DOM only so the checker
+       logic (unchanged from the ratio-gate build) can keep reading them. -->
+  <div class="spec-bar">
+    <input type="number" id="sizeW" value="100">
+    <input type="number" id="sizeH" value="150">
+    <input type="checkbox" id="anyOrientation">
+    <input type="checkbox" id="liveTextCheck" checked>
+    <input type="checkbox" id="bleedInclude" checked>
+  </div>
+
+  <button id="downloadCutline" type="button">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M12 4v12m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    칼선 템플릿(.pdf) 다운로드
+  </button>
+
+  <div id="slotsContainer"></div>
+
+  <!-- Legacy free-upload elements kept only because createRow()/processFile
+       share code paths with them; not shown (see .dropzone / .results above). -->
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept=".pdf,.ai,.eps" multiple>
+  </div>
+  <div class="results" id="results"></div>
+
+  <p class="footnote" style="text-align:center;">ecogr@allright.reserved</p>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <button class="modal-close" id="modalClose">닫기 ✕</button>
+  <div class="modal-frame">
+    <img id="modalImg" src="" alt="">
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   1) Query parsing — same generic pattern as ecopro1.html: every query key
+      is captured into orderData, and any value containing "양면" flips
+      isDouble on. width/height are read here as literal millimeters
+      (not an aspect ratio) to match the mm-based checker below.
+   ========================================================================= */
+let orderData = {};
+let designCount = 1;
+let isDouble = false;
+let acceptW = 100;
+let acceptH = 150;
+
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  for(const [key, value] of urlParams.entries()){
+    const decoded = decodeURIComponent(value);
+    orderData[key] = decoded;
+    if(decoded.includes('양면')) isDouble = true;
+  }
+
+  designCount = parseInt(orderData.count) || 1;
+  acceptW = parseFloat(orderData.width) || 100;
+  acceptH = parseFloat(orderData.height) || 150;
+
+  // Feed the (hidden) checker inputs — everything below this point runs
+  // exactly like the standalone ratio-gate build.
+  document.getElementById('sizeW').value = acceptW;
+  document.getElementById('sizeH').value = acceptH;
+
+  renderStatusBar();
+  renderSlots();
+});
+
+function renderStatusBar(){
+  const workW = acceptW + 8; // +4mm each side, matches bleedInclude=true below
+  const workH = acceptH + 8;
+  document.getElementById('statAccept').textContent = `${acceptW.toFixed(1)} × ${acceptH.toFixed(1)} mm`;
+  document.getElementById('statWorkline').textContent = `${workW.toFixed(1)} × ${workH.toFixed(1)} mm`;
+  document.getElementById('statCount').textContent =
+    `${isDouble ? '양면' : '단면'} · 디자인 ${designCount}건`;
+}
+
+/* =========================================================================
+   2) Design / side slots — one upload slot per design × side, replacing
+      ecopro1.html's canvas+tab switcher (no canvas here, per instructions).
+   ========================================================================= */
+function renderSlots(){
+  const container = document.getElementById('slotsContainer');
+  container.innerHTML = '';
+
+  for(let i = 0; i < designCount; i++){
+    const block = document.createElement('div');
+    block.className = 'design-block';
+
+    const title = document.createElement('div');
+    title.className = 'design-block-title';
+    title.textContent = `디자인 ${i + 1}`;
+    block.appendChild(title);
+
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+
+    const sides = isDouble ? [['front', '앞면'], ['back', '뒷면']] : [['front', '앞면']];
+    sides.forEach(([sideKey, sideLabel]) => {
+      const slotId = `d${i}-${sideKey}`;
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.innerHTML = `
+        <div class="slot-side-label">${sideLabel}</div>
+        <div class="slot-body" id="slotBody-${slotId}"></div>
+      `;
+      row.appendChild(slot);
+    });
+
+    block.appendChild(row);
+    container.appendChild(block);
+  }
+
+  // Now that all slot-body containers exist, drop the initial dropzone UI into each.
+  for(let i = 0; i < designCount; i++){
+    const sides = isDouble ? ['front', 'back'] : ['front'];
+    sides.forEach(sideKey => renderSlotDropzone(`d${i}-${sideKey}`));
+  }
+}
+
+function renderSlotDropzone(slotId){
+  const body = document.getElementById('slotBody-' + slotId);
+  body.innerHTML = `
+    <div class="mini-dropzone" tabindex="0">
+      <div class="main">클릭 또는 드래그해서 업로드</div>
+      <div class="hint">.PDF · .AI · .EPS</div>
+      <input type="file" accept=".pdf,.ai,.eps" style="display:none;">
+    </div>
+  `;
+  const dz = body.querySelector('.mini-dropzone');
+  const input = dz.querySelector('input');
+
+  dz.addEventListener('click', () => input.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if(file) processSlotFile(file, slotId);
+  });
+  input.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(file) processSlotFile(file, slotId);
+  });
+}
+
+async function processSlotFile(file, slotId){
+  const body = document.getElementById('slotBody-' + slotId);
+  const row = createRow(file.name);
+  body.innerHTML = '';
+  body.appendChild(row.el);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.type = 'button';
+  resetBtn.className = 'slot-reset';
+  resetBtn.textContent = '다시 업로드';
+  resetBtn.addEventListener('click', () => renderSlotDropzone(slotId));
+  body.appendChild(resetBtn);
+
+  await runFileCheck(file, row);
+}
+
+/* =========================================================================
+   3) Checker core — unchanged from the standalone ratio-gate build.
+   ========================================================================= */
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalImg = document.getElementById('modalImg');
+const modalClose = document.getElementById('modalClose');
+
+function openModal(dataUrl){
+  modalImg.src = dataUrl;
+  modalBackdrop.classList.add('open');
+}
+function closeModal(){
+  modalBackdrop.classList.remove('open');
+  modalImg.src = '';
+}
+modalBackdrop.addEventListener('click', closeModal);
+modalClose.addEventListener('click', e => { e.stopPropagation(); closeModal(); });
+modalImg.addEventListener('click', e => e.stopPropagation());
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
+
+const sizeWInput = document.getElementById('sizeW');
+const sizeHInput = document.getElementById('sizeH');
+const anyOrientationInput = document.getElementById('anyOrientation');
+const TOLERANCE_MM = 1; // ±1mm absolute
+const PT_TO_MM = 25.4 / 72;
+
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// Text-show operator codes pdf.js emits for any live (non-outlined) text draw.
+const TEXT_SHOW_OPS = new Set([
+  (typeof pdfjsLib !== 'undefined' && pdfjsLib.OPS) ? pdfjsLib.OPS.showText : null,
+  (typeof pdfjsLib !== 'undefined' && pdfjsLib.OPS) ? pdfjsLib.OPS.showSpacedText : null,
+  (typeof pdfjsLib !== 'undefined' && pdfjsLib.OPS) ? pdfjsLib.OPS.nextLineShowText : null,
+  (typeof pdfjsLib !== 'undefined' && pdfjsLib.OPS) ? pdfjsLib.OPS.nextLineSetSpacingShowText : null,
+].filter(x => x != null));
+
+function stampLiveTextWarning(ctx, width, height){
+  const bannerH = Math.max(28, height * 0.09);
+  ctx.save();
+  ctx.fillStyle = 'rgba(217, 34, 42, 0.88)';
+  ctx.fillRect(0, height - bannerH, width, bannerH);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = `600 ${Math.round(bannerH * 0.46)}px 'Space Grotesk', sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('LIVE TEXT · 아웃라인 미처리', width / 2, height - bannerH / 2);
+  ctx.restore();
+}
+
+// Samples rendered pixels to catch a suspiciously blank or fully-black
+// render — usually a sign something went wrong (missing fonts/images,
+// broken overprint, wrong color profile) rather than genuinely empty art.
+function analyzeCanvasBlank(ctx, width, height){
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const stride = 4 * 8; // sample every 8th pixel for speed
+  let whiteCount = 0, blackCount = 0, total = 0;
+  for(let i = 0; i < data.length; i += stride){
+    const r = data[i], g = data[i+1], b = data[i+2];
+    total++;
+    if(r > 248 && g > 248 && b > 248) whiteCount++;
+    else if(r < 8 && g < 8 && b < 8) blackCount++;
+  }
+  if(total === 0) return null;
+  const whiteRatio = whiteCount / total;
+  const blackRatio = blackCount / total;
+  if(whiteRatio > 0.995) return 'blank';
+  if(blackRatio > 0.995) return 'black';
+  return null;
+}
+
+// Renders page 1 to a canvas AND inspects pdf.js's own parsed operator list
+// to determine whether any live (non-outlined) text-show operators exist.
+// This is far more reliable than regex header scanning because pdf.js
+// correctly decodes compressed object/content streams that regex can't see.
+// Returns null if pdf.js can't load the file (legacy AI, EPS, encrypted, etc).
+async function tryRenderThumbnail(arrayBuffer, enforceLiveTextCheck){
+  if(!window.pdfjsLib) return null;
+  try{
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+
+    const opList = await page.getOperatorList();
+    const hasLiveText = opList.fnArray.some(code => TEXT_SHOW_OPS.has(code));
+
+    const baseViewport = page.getViewport({ scale: 1 });
+    const target = 900; // render high-res so the lightbox zoom stays sharp
+    const scale = target / Math.max(baseViewport.width, baseViewport.height);
+    const viewport = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const renderIssue = analyzeCanvasBlank(ctx, canvas.width, canvas.height);
+
+    // Preview-only cosmetic treatment: crop 4mm off each edge and mute
+    // saturation by 20%. Purely visual — the mm size check above still
+    // judges against the full, uncropped artboard.
+    const PT_PER_MM = 72 / 25.4;
+    const cropMarginPx = 4 * PT_PER_MM * scale;
+    const cropW = Math.max(1, canvas.width - cropMarginPx * 2);
+    const cropH = Math.max(1, canvas.height - cropMarginPx * 2);
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.filter = 'saturate(80%)';
+    cropCtx.drawImage(canvas, cropMarginPx, cropMarginPx, cropW, cropH, 0, 0, cropW, cropH);
+    cropCtx.filter = 'none';
+
+    if(hasLiveText && enforceLiveTextCheck){
+      stampLiveTextWarning(cropCtx, cropCanvas.width, cropCanvas.height);
+    }
+
+    return { dataUrl: cropCanvas.toDataURL('image/png'), hasLiveText, renderIssue };
+  }catch(err){
+    return null;
+  }
+}
+
+const downloadCutlineBtn = document.getElementById('downloadCutline');
+downloadCutlineBtn.addEventListener('click', () => {
+  const targetW = parseFloat(sizeWInput.value) || 0;
+  const targetH = parseFloat(sizeHInput.value) || 0;
+  if(targetW <= 0 || targetH <= 0) return;
+  downloadCutlineEPS(targetW, targetH);
+});
+
+function downloadCutlineEPS(wMm, hMm){
+  const pdfText = generateCutlinePDF(wMm, hMm);
+  const blob = new Blob([pdfText], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cutline_${wMm.toFixed(1)}x${hMm.toFixed(1)}mm.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Builds a minimal, hand-written single-page PDF die-line template:
+// - Black rectangle = accept size + 4mm on every side (the actual cut line)
+// - Red rectangle = accept size exactly, centered inside the black box
+// Colors are CMYK (K operator) rather than RGB, matching print workflows.
+// PDF's /MediaBox is an unambiguous page-size declaration (unlike an EPS's
+// %%BoundingBox, which some apps treat as advisory and default to A4
+// instead) — so opening this in Illustrator always creates a new document
+// sized exactly to the cutline box.
+function generateCutlinePDF(targetWmm, targetHmm){
+  const PT_PER_MM = 72 / 25.4;
+  const bleedMm = 4;
+  const n = v => v.toFixed(2);
+
+  const cutWpt = (targetWmm + bleedMm * 2) * PT_PER_MM;
+  const cutHpt = (targetHmm + bleedMm * 2) * PT_PER_MM;
+  const trimWpt = targetWmm * PT_PER_MM;
+  const trimHpt = targetHmm * PT_PER_MM;
+  const marginPt = bleedMm * PT_PER_MM;
+
+  const contentStream =
+`0 0 0 1 K
+1 w
+${n(0.5)} ${n(0.5)} ${n(cutWpt - 1)} ${n(cutHpt - 1)} re
+S
+0 1 1 0 K
+1 w
+${n(marginPt)} ${n(marginPt)} ${n(trimWpt)} ${n(trimHpt)} re
+S
+`;
+
+  const objects = [
+    `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`,
+    `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`,
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n(cutWpt)} ${n(cutHpt)}] /Contents 4 0 R /Resources << >> >>\nendobj\n`,
+    `4 0 obj\n<< /Length ${contentStream.length} >>\nstream\n${contentStream}endstream\nendobj\n`
+  ];
+
+  // Every character below must stay plain ASCII — the byte offsets in the
+  // xref table are computed from JS string .length, which only matches the
+  // Blob's actual UTF-8 byte length when there are no multi-byte characters.
+  let body = `%PDF-1.4\n%CutlineTemplateID: RATIOGATE-DIELINE-V1\n%CutlineTemplateSize: ${targetWmm}x${targetHmm}mm\n%CutlineColorMode: CMYK\n`;
+  const offsets = [];
+  for(const obj of objects){
+    offsets.push(body.length);
+    body += obj;
+  }
+  const xrefStart = body.length;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for(const off of offsets){
+    xref += `${String(off).padStart(10, '0')} 00000 n \n`;
+  }
+  const trailer = `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+  return body + xref + trailer;
+}
+
+function extOf(name){
+  const m = name.toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : '';
+}
+
+// Core measurement + judging logic, shared by every slot's upload handler.
+async function runFileCheck(file, row){
+  const ext = extOf(file.name);
+
+  if(!['pdf','ai','eps'].includes(ext)){
+    row.setUnknown('지원하지 않는 형식', '.pdf / .ai / .eps 만 허용됩니다');
+    return;
+  }
+
+  const buf = await file.arrayBuffer();
+  const text = decodeLatin1(buf);
+  const box = extractBoundingBox(text, ext);
+
+  if(!box){
+    row.setUnknown('치수 확인 불가', '헤더에서 크기 정보를 찾지 못했습니다');
+    return;
+  }
+
+  const wPt = box.x2 - box.x1;
+  const hPt = box.y2 - box.y1;
+  if(wPt <= 0 || hPt <= 0){
+    row.setUnknown('치수 확인 불가', '비정상적인 크기 값');
+    return;
+  }
+
+  const wMm = wPt * PT_TO_MM;
+  const hMm = hPt * PT_TO_MM;
+  const targetW = parseFloat(sizeWInput.value) || 0;
+  const targetH = parseFloat(sizeHInput.value) || 0;
+  const anyOrientation = anyOrientationInput.checked;
+  const bleedInclude = document.getElementById('bleedInclude').checked;
+  const BLEED_MM = 4;
+  const compareW = targetW + (bleedInclude ? BLEED_MM * 2 : 0);
+  const compareH = targetH + (bleedInclude ? BLEED_MM * 2 : 0);
+
+  const matchesDirect = Math.abs(wMm - compareW) <= TOLERANCE_MM && Math.abs(hMm - compareH) <= TOLERANCE_MM;
+  const matchesFlipped = anyOrientation &&
+    Math.abs(wMm - compareH) <= TOLERANCE_MM && Math.abs(hMm - compareW) <= TOLERANCE_MM;
+  const sizeOk = matchesDirect || matchesFlipped;
+  const hasLiveText = detectLiveText(text, ext);
+  const enforceLiveTextCheck = document.getElementById('liveTextCheck').checked;
+  const passed = sizeOk && !(enforceLiveTextCheck && hasLiveText);
+
+  row.setResult({
+    passed,
+    wMm, hMm,
+    targetW, targetH,
+    compareW, compareH, bleedInclude,
+    source: box.source,
+    hasLiveText,
+    enforceLiveTextCheck,
+    sizeOk
+  });
+
+  // Best-effort real preview for PDF / PDF-compatible AI files.
+  // Runs after the pass/fail badge is already shown, so it never blocks judging.
+  if(ext === 'pdf' || ext === 'ai'){
+    const rendered = await tryRenderThumbnail(buf, enforceLiveTextCheck);
+    if(rendered){
+      if(rendered.renderIssue){
+        row.setRenderWarning(rendered.dataUrl, rendered.renderIssue);
+      } else if(rendered.hasLiveText !== hasLiveText){
+        const correctedPassed = sizeOk && !(enforceLiveTextCheck && rendered.hasLiveText);
+        row.setResult({
+          passed: correctedPassed,
+          wMm, hMm,
+          targetW, targetH,
+          compareW, compareH, bleedInclude,
+          source: box.source,
+          hasLiveText: rendered.hasLiveText,
+          enforceLiveTextCheck,
+          sizeOk
+        });
+        row.setThumbnail(rendered.dataUrl, correctedPassed ? 'pass' : 'fail');
+      } else {
+        row.setThumbnail(rendered.dataUrl, passed ? 'pass' : 'fail');
+      }
+    }
+  }
+}
+
+// Decode as latin1 so byte offsets map 1:1 to chars; safe for scanning
+// ASCII headers/operators even inside otherwise binary PDF/AI/EPS files.
+function decodeLatin1(arrayBuffer){
+  const bytes = new Uint8Array(arrayBuffer);
+  let text = '';
+  const CHUNK = 0x8000;
+  for(let i=0;i<bytes.length;i+=CHUNK){
+    text += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i+CHUNK, bytes.length)));
+  }
+  return text;
+}
+
+function extractBoundingBox(text, ext){
+  // 1) PDF / AI (PDF-compatible): use MediaBox (declared artboard/canvas size).
+  const mediaBoxRe = /\/MediaBox\s*\[\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\]/;
+  const artBoxRe = /\/ArtBox\s*\[\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\]/;
+
+  let m = text.match(mediaBoxRe) || text.match(artBoxRe);
+  if(m){
+    return {
+      x1: parseFloat(m[1]), y1: parseFloat(m[2]),
+      x2: parseFloat(m[3]), y2: parseFloat(m[4]),
+      source: m === text.match(mediaBoxRe) ? 'MediaBox' : 'ArtBox'
+    };
+  }
+
+  // 2) EPS / legacy AI: %%BoundingBox header (prefer HiRes for precision)
+  const hiResRe = /%%HiResBoundingBox:\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/;
+  const bboxRe = /%%BoundingBox:\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)/;
+
+  m = text.match(hiResRe) || text.match(bboxRe);
+  if(m){
+    return {
+      x1: parseFloat(m[1]), y1: parseFloat(m[2]),
+      x2: parseFloat(m[3]), y2: parseFloat(m[4]),
+      source: m === text.match(hiResRe) ? 'HiResBoundingBox' : 'BoundingBox'
+    };
+  }
+
+  return null;
+}
+
+// Best-effort detection of live (non-outlined) text.
+function detectLiveText(text, ext){
+  if(ext === 'pdf' || ext === 'ai'){
+    if(/\/Font\s*<</.test(text) || /\/Type\s*\/Font\b/.test(text)){
+      return true;
+    }
+  }
+  if(/\bfindfont\b/.test(text) || /\bdefinefont\b/.test(text) || /\bscalefont\b/.test(text)){
+    return true;
+  }
+  return false;
+}
+
+function createRow(filename){
+  const el = document.createElement('div');
+  el.className = 'row unknown';
+  el.innerHTML = `
+    <div class="gauge" id="gauge"></div>
+    <div class="info">
+      <div class="fname">${escapeHtml(filename)}</div>
+      <div class="meta" id="meta">검사 중…</div>
+      <div class="row-actions" id="rowActions"></div>
+    </div>
+    <div class="badge unknown" id="badge">확인중</div>
+  `;
+
+  const gaugeEl = el.querySelector('#gauge');
+  const metaEl = el.querySelector('#meta');
+  const badgeEl = el.querySelector('#badge');
+  const actionsEl = el.querySelector('#rowActions');
+
+  function setUnknown(title, detail){
+    el.className = 'row unknown';
+    const targetW = parseFloat(sizeWInput.value) || 1;
+    const targetH = parseFloat(sizeHInput.value) || 1;
+    const bleedInclude = document.getElementById('bleedInclude').checked;
+    const compareW = targetW + (bleedInclude ? 8 : 0);
+    const compareH = targetH + (bleedInclude ? 8 : 0);
+    gaugeEl.innerHTML = drawGauge(null, null, compareW, compareH, null);
+    metaEl.innerHTML = `<b>${escapeHtml(title)}</b>${detail ? ' · ' + escapeHtml(detail) : ''}`;
+    badgeEl.className = 'badge unknown';
+    badgeEl.textContent = '수동검토';
+  }
+
+  function setResult({passed, wMm, hMm, targetW, targetH, compareW, compareH, bleedInclude, source, hasLiveText, enforceLiveTextCheck, sizeOk}){
+    el.className = 'row ' + (passed ? 'pass' : 'fail');
+    gaugeEl.innerHTML = drawGauge(wMm, hMm, compareW, compareH, passed);
+    let metaHtml =
+      `<span><b>${wMm.toFixed(1)} × ${hMm.toFixed(1)}</b> mm</span>` +
+      (bleedInclude
+        ? `<span>기준 <b>${compareW.toFixed(1)} × ${compareH.toFixed(1)}</b> mm</span>`
+        : `<span>기준 <b>${targetW.toFixed(1)} × ${targetH.toFixed(1)}</b> mm</span>`) +
+      `<span>${source}</span>`;
+    if(hasLiveText){
+      const color = enforceLiveTextCheck ? 'var(--fail)' : 'var(--warn)';
+      const note = enforceLiveTextCheck ? '라이브 텍스트 감지 · 아웃라인 처리 필요' : '라이브 텍스트 감지 (검사 꺼짐)';
+      metaHtml += `<span style="color:${color};">${note}</span>`;
+    } else if(!sizeOk){
+      metaHtml += `<span style="color:var(--fail);">크기 불일치</span>`;
+    }
+    metaEl.innerHTML = metaHtml;
+    badgeEl.className = 'badge ' + (passed ? 'pass' : 'fail');
+    badgeEl.textContent = passed ? '접수' : '거부';
+
+    actionsEl.innerHTML = `<button type="button">이 파일 크기로 칼선(.pdf) 받기</button>`;
+    actionsEl.querySelector('button').addEventListener('click', () => {
+      downloadCutlineEPS(wMm, hMm);
+    });
+  }
+
+  function setThumbnail(dataUrl, statusClass){
+    gaugeEl.innerHTML = `<div class="thumb-wrap clickable ${statusClass}"><img src="${dataUrl}" alt=""></div>`;
+    gaugeEl.querySelector('.thumb-wrap').addEventListener('click', () => openModal(dataUrl));
+  }
+
+  function setRenderWarning(dataUrl, issue){
+    el.className = 'row unknown';
+    gaugeEl.innerHTML = `<div class="thumb-wrap clickable unknown"><img src="${dataUrl}" alt=""></div>`;
+    gaugeEl.querySelector('.thumb-wrap').addEventListener('click', () => openModal(dataUrl));
+    const label = issue === 'blank' ? '미리보기가 텅 비어 있음' : '미리보기가 전체 검정';
+    metaEl.innerHTML = `<span style="color:var(--warn);"><b>${label}</b> · 렌더링 이상 가능성, 수동 확인 필요</span>`;
+    badgeEl.className = 'badge unknown';
+    badgeEl.textContent = '수동검토';
+  }
+
+  return { el, setUnknown, setResult, setThumbnail, setRenderWarning };
+}
+
+// Draws two overlaid outlines to scale: target size (dashed, muted) and actual size (solid, colored)
+function drawGauge(actualWMm, actualHMm, targetWMm, targetHMm, passed){
+  const box = 56;
+  const pad = 4;
+  const maxDim = box - pad*2;
+
+  const spanW = Math.max(targetWMm || 0, actualWMm || 0, 1);
+  const spanH = Math.max(targetHMm || 0, actualHMm || 0, 1);
+  const scale = Math.min(maxDim / spanW, maxDim / spanH);
+
+  function rect(wMm, hMm){
+    const w = wMm * scale;
+    const h = hMm * scale;
+    return { w, h, x: (box - w)/2, y: (box - h)/2 };
+  }
+
+  let inner = '';
+  const t = rect(targetWMm, targetHMm);
+  inner += `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}"
+    fill="none" stroke="#4B5563" stroke-width="1.2" stroke-dasharray="3 3" rx="2"/>`;
+
+  if(actualWMm != null){
+    const a = rect(actualWMm, actualHMm);
+    const color = passed ? '#5EEAD4' : '#F2545B';
+    inner += `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}"
+      fill="none" stroke="${color}" stroke-width="1.6" rx="2"/>`;
+  } else {
+    inner += `<line x1="18" y1="18" x2="38" y2="38" stroke="#E8B65A" stroke-width="1.4"/>
+      <line x1="38" y1="18" x2="18" y2="38" stroke="#E8B65A" stroke-width="1.4"/>`;
+  }
+
+  return `<svg width="${box}" height="${box}" viewBox="0 0 ${box} ${box}">${inner}</svg>`;
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
