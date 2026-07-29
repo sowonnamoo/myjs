@@ -2630,7 +2630,6 @@
   ============================================================ */
   const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';       // sian.html이 그대로 읽는 키(포맷 동일: [{label, dataUrl}])
   const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';            // [{label, svg}]
-  const ORIGINAL_PNG_KEY = 'ecogr_original_pngs';            // [{label, dataUrl}] (고해상도)
   const SIAN_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/sian';
 
   // switchTo()와 달리 히스토리 리셋 등 부수효과 없이, 내보내기 목적으로만 조용히 화면을 바꿔줌
@@ -2658,7 +2657,6 @@
 
     const previews = [];
     const svgs = [];
-    const highResPngs = [];
 
     try {
       const sides = isDouble ? ['front', 'back'] : ['front'];
@@ -2668,17 +2666,14 @@
           await loadDesignForExport(i, side);
 
           const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
-          const multiplier = 1 / zoom;
+          const multiplier = Math.max(1 / zoom, 4);
 
-          // 1) 시안 이미지 — 용량 고려해 JPEG, 일반 해상도
-          const previewDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.9, multiplier });
-          previews.push({ label, dataUrl: previewDataUrl });
+          // 1) 고해상도 JPEG — 시안 미리보기와 인쇄용 원본을 겸함 (PNG는 무손실이라
+          //    용량이 너무 커서 sessionStorage 한도를 쉽게 넘겨버려 JPEG로 통일함)
+          const jpegDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.95, multiplier });
+          previews.push({ label, dataUrl: jpegDataUrl });
 
-          // 2) 고해상도 원본 PNG — 인쇄/다운로드용으로 배율을 넉넉히 줌
-          const highResDataUrl = canvas.toDataURL({ format: 'png', multiplier: Math.max(multiplier, 4) });
-          highResPngs.push({ label, dataUrl: highResDataUrl });
-
-          // 3) 원본 SVG — PNG/JPG 내보내기와 동일하게 임시 폰트만 이미지로 바꿔서 뽑음
+          // 2) 원본 SVG — PNG/JPG 내보내기와 동일하게 임시 폰트만 이미지로 바꿔서 뽑음
           const flattened = await buildFontFlattenedClone();
           const svgString = flattened.toSVG();
           flattened.dispose();
@@ -2695,7 +2690,6 @@
       try {
         sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(previews));
         sessionStorage.setItem(ORIGINAL_SVG_KEY, JSON.stringify(svgs));
-        sessionStorage.setItem(ORIGINAL_PNG_KEY, JSON.stringify(highResPngs));
       } catch (storageErr) {
         console.error('시안 데이터 저장 실패:', storageErr);
         alert('이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요.');
