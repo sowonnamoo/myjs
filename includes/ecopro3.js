@@ -2683,7 +2683,7 @@
   ============================================================ */
   const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';       // sian.html이 그대로 읽는 키(포맷 동일: [{label, dataUrl}])
   const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';            // [{label, svg}]
-  const SIAN_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/sian';
+  const SIAN_PAGE_URL = 'sian';
 
   // switchTo()와 달리 히스토리 리셋 등 부수효과 없이, 내보내기 목적으로만 조용히 화면을 바꿔줌
   function loadDesignForExport(idx, side){
