@@ -222,13 +222,13 @@
         word-break: keep-all;
         line-height: 1.5;
     }
-    #printQuoteBtn {
+    #quoteBtnGroup {
         width: 100%;
     }
+    #printQuoteBtn,
     #printCutlineBtn {
-        width: 100%;
-        margin-left: 0 !important;
-        margin-top: 8px;
+        flex: 1;
+        width: auto;
     }
 }
 
@@ -452,16 +452,19 @@
         </div>
 
       <div class="total-price" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
-    
-    <!-- 견적서 버튼: height를 명시하고 flex-shrink를 0으로 설정 -->
-  <button type="button" id="printQuoteBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
-    견적서 출력
-</button>
 
-    <!-- 작업선(칼선) 버튼: 지금 선택된 사이즈(규격/비규격 상관없이)에 맞춰 PDF 칼선을 바로 다운로드 -->
-  <button type="button" id="printCutlineBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap; margin-left: 8px;">
-    작업선
-</button>
+    <!-- 견적서/작업선 버튼 묶음: 이 그룹 자체는 하나의 flex 아이템이라, 컨테이너 폭이
+         바뀌어도(옵션 선택 등으로) 두 버튼 사이 간격은 항상 고정됨 -->
+    <div id="quoteBtnGroup" style="display: flex; gap: 8px;">
+      <button type="button" id="printQuoteBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
+        견적서 출력
+      </button>
+
+      <!-- 작업선(칼선) 버튼: 지금 선택된 사이즈(규격/비규격 상관없이)에 맞춰 PDF 칼선을 바로 다운로드 -->
+      <button type="button" id="printCutlineBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
+        작업선
+      </button>
+    </div>
 
     <!-- 우측: 총 결제액 영역 -->
     <div style="text-align: right;">
