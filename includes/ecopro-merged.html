@@ -219,6 +219,16 @@
     color:#8A8F98;
     cursor:not-allowed;
     box-shadow:none;
+    opacity: 0.5;
+  }
+  .global-cart-hint{
+    display:block;
+    text-align:center;
+    margin-top:-12px;
+    margin-bottom:20px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color: var(--muted-onbg);
   }
 
   .dropzone{ display:none; }
@@ -419,11 +429,12 @@
   <div id="slotsContainer"></div>
 
   <button type="button" id="globalCartBtn" class="global-cart-btn" disabled>시안확인/장바구니 담기</button>
+  <span class="global-cart-hint" id="globalCartHint">(완성파일 접수시 활성화)</span>
 
   <!-- Legacy free-upload elements kept only because createRow()/processFile
        share code paths with them; not shown (see .dropzone / .results above). -->
   <div class="dropzone" id="dropzone">
-    <input type="file" id="fileInput" accept=".pdf,.ai,.eps" multiple>
+    <input type="file" id="fileInput" accept=".pdf,.ai" multiple>
   </div>
   <div class="results" id="results"></div>
 
@@ -520,6 +531,8 @@ function updateGlobalCartButton(){
   if(!btn) return;
   const allPassed = getExpectedSlotIds().every(id => slotPassState[id] === true);
   btn.disabled = !allPassed;
+  const hint = document.getElementById('globalCartHint');
+  if(hint) hint.style.display = allPassed ? 'none' : 'block';
 }
 
 function renderSlots(){
@@ -572,8 +585,8 @@ function renderSlotDropzone(slotId){
         <path d="M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <div class="main">파일첨부 클릭또는 드래그해서 업로드</div>
-      <div class="hint">.PDF · .AI · .EPS</div>
-      <input type="file" accept=".pdf,.ai,.eps" style="display:none;">
+      <div class="hint">PDF, AI 파일만 접수됩니다</div>
+      <input type="file" accept=".pdf,.ai" style="display:none;">
     </div>
   `;
   const dz = body.querySelector('.mini-dropzone');
@@ -876,8 +889,8 @@ function extOf(name){
 async function runFileCheck(file, row){
   const ext = extOf(file.name);
 
-  if(!['pdf','ai','eps'].includes(ext)){
-    row.setUnknown('지원하지 않는 형식', '.pdf / .ai / .eps 만 허용됩니다', '.pdf, .ai, .eps 파일로 다시 저장한 뒤 업로드해주세요.');
+  if(!['pdf','ai'].includes(ext)){
+    row.setUnknown('지원하지 않는 형식', '.pdf / .ai 만 허용됩니다 (EPS는 접수 불가)', '.pdf 또는 .ai 파일로 다시 저장한 뒤 업로드해주세요.');
     return;
   }
 
@@ -953,9 +966,6 @@ async function runFileCheck(file, row){
       // pdf.js couldn't open this one (legacy AI, encrypted, etc.)
       row.appendPreviewUnsupportedNote();
     }
-  } else if(ext === 'eps'){
-    // EPS is never sent to pdf.js — no browser-side renderer exists for it.
-    row.appendPreviewUnsupportedNote();
   }
 }
 
