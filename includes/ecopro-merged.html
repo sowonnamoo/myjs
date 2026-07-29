@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>비율 검수</title>
+<title>파일접수</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
   :root{
-    --bg: #0F1216;
+    --bg: #FFFFFF;
     --panel: #171B21;
     --panel-2: #1E232B;
     --line: #2A303A;
@@ -17,13 +17,18 @@
     --pass: #5EEAD4;
     --fail: #F2545B;
     --warn: #E8B65A;
+    /* Separate tokens for text sitting directly on the (now white) page
+       background — --text/--muted stay as-is since they're tuned for the
+       dark panels and must keep working there. */
+    --text-onbg: #1A1D21;
+    --muted-onbg: #6B7280;
   }
   *{ box-sizing: border-box; }
   html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); }
   body{
     font-family:'Space Grotesk', sans-serif;
     min-height:100vh;
-    padding:48px 24px 80px;
+    padding:20px 24px 80px;
   }
   .wrap{ max-width: 780px; margin: 0 auto; }
 
@@ -40,47 +45,33 @@
     font-weight: 700;
     margin: 0 0 20px;
     letter-spacing: -0.01em;
+    color: var(--text-onbg);
   }
 
   /* --- Status bar (query-derived accept size / work-line size / count) --- */
-  .status-bar{
+  .status-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color: var(--muted-onbg);
+    margin-bottom:24px;
     display:flex;
-    gap:10px;
     flex-wrap:wrap;
-    margin-bottom:20px;
+    align-items:center;
+    gap:6px;
   }
-  .status-chip{
-    flex:1;
-    min-width:150px;
-    background: var(--panel);
-    border:1px solid var(--line);
-    border-radius:10px;
-    padding:14px 16px;
-  }
-  .status-chip .status-label{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:10.5px;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    color: var(--muted);
-    margin-bottom:6px;
-  }
-  .status-chip .status-value{
-    font-family:'IBM Plex Mono', monospace;
-    font-size:17px;
+  .status-line b{
+    font-family:'Space Grotesk', sans-serif;
+    color: var(--text-onbg);
     font-weight:600;
-    color: var(--text);
   }
-  .status-chip.accept .status-value{ color: var(--fail); }
-  .status-chip.workline .status-value{ color: var(--text); }
-  .status-chip.count .status-value{ font-size:14px; color: var(--pass); }
+  .status-line .sep{ color:#C7CAD0; }
 
   .spec-bar{ display:none; }
 
   button#downloadCutline{
     display:flex; align-items:center; gap:8px;
-    background: var(--panel); border:1px solid var(--line); border-radius:10px;
-    color: var(--text); font-family:'Space Grotesk', sans-serif; font-size:13.5px; font-weight:500;
+    background: #CCCCCC; border:1px solid #B8B8B8; border-radius:10px;
+    color: #000000; font-family:'Space Grotesk', sans-serif; font-size:13.5px; font-weight:500;
     padding:12px 16px; margin-bottom:28px; cursor:pointer; width:100%; justify-content:center;
   }
 
@@ -90,7 +81,7 @@
     font-family:'IBM Plex Mono', monospace;
     font-size:12px;
     letter-spacing:.06em;
-    color: var(--muted);
+    color: var(--muted-onbg);
     margin-bottom:10px;
   }
   .slot-row{
@@ -105,39 +96,121 @@
   .slot-side-label{
     font-size:12.5px;
     font-weight:500;
-    color: var(--muted);
+    color: var(--muted-onbg);
     margin-bottom:6px;
   }
 
   .mini-dropzone{
-    border: 1.5px dashed var(--line);
+    border: 2px dashed rgba(59,130,246,0.55);
     border-radius: 12px;
-    padding: 22px 16px;
+    padding: 26px 16px;
     text-align:center;
     cursor:pointer;
-    transition: border-color .15s ease, background .15s ease;
-    background: var(--panel);
+    transition: border-color .15s ease, background .15s ease, transform .15s ease, box-shadow .15s ease;
+    background: rgba(59,130,246,0.06);
+    box-shadow: 0 0 0 0 rgba(59,130,246,0);
   }
-  .mini-dropzone.drag{ border-color: var(--pass); background: #16201D; }
-  .mini-dropzone .main{ font-size:13px; margin-bottom:3px; }
+  .mini-dropzone:hover{
+    border-color: #3B82F6;
+    background: rgba(59,130,246,0.12);
+    box-shadow: 0 4px 16px rgba(59,130,246,0.18);
+    transform: translateY(-1px);
+  }
+  .mini-dropzone.drag{
+    border-color: #3B82F6;
+    border-style: solid;
+    background: rgba(59,130,246,0.16);
+    box-shadow: 0 4px 20px rgba(59,130,246,0.28);
+  }
+  .mini-dropzone .icon{
+    width:24px; height:24px; margin:0 auto 8px;
+    color: #3B82F6;
+  }
+  .mini-dropzone .main{
+    font-size:14px;
+    font-weight:600;
+    color: #3B82F6;
+    margin-bottom:4px;
+  }
   .mini-dropzone .hint{
     font-family:'IBM Plex Mono', monospace;
     font-size:11px;
     color: var(--muted);
   }
 
-  .slot-reset{
-    margin-top:8px;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:11px;
-    color: var(--muted);
-    background: var(--panel-2);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 10px;
-    cursor: pointer;
+  .slot-btn-row{
+    display:flex;
+    align-items:stretch;
+    gap:8px;
+    margin-top:10px;
   }
-  .slot-reset:hover{ color: var(--text); border-color:#4B5563; }
+  .slot-reset{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    color: #FFFFFF;
+    background: #3B82F6;
+    border: 1px solid #3B82F6;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.35);
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .slot-reset:hover{
+    background: #2563EB;
+    border-color:#2563EB;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.45);
+    transform: translateY(-1px);
+  }
+  .slot-review{
+    flex: 1;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color: #FFFFFF;
+    background: #F97316;
+    border: 1px solid #F97316;
+    border-radius: 8px;
+    padding: 11px 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(249,115,22,0.4);
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .slot-review:hover{
+    background: #EA580C;
+    border-color:#EA580C;
+    box-shadow: 0 4px 14px rgba(249,115,22,0.5);
+    transform: translateY(-1px);
+  }
+  .slot-review:disabled{
+    background: #FDBA74;
+    border-color:#FDBA74;
+    cursor: default;
+    box-shadow:none;
+    transform:none;
+  }
+
+  .slot-cart{
+    flex: 1;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color: #FFFFFF;
+    background: #2563EB;
+    border: 1px solid #2563EB;
+    border-radius: 8px;
+    padding: 11px 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(37,99,235,0.4);
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .slot-cart:hover{
+    background: #1D4ED8;
+    border-color:#1D4ED8;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.5);
+    transform: translateY(-1px);
+  }
 
   .dropzone{ display:none; }
   .results{ display:none; }
@@ -171,7 +244,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    background:#0B0D10;
+    background:#FFFFFF;
     border: 1.6px solid var(--line);
   }
   .gauge .thumb-wrap.pass{ border-color: var(--pass); }
@@ -244,6 +317,26 @@
   }
   .meta b{ color: var(--text); font-weight:500; }
 
+  .issue-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--muted);
+  }
+  .issue-title b{ color: var(--text); font-weight:500; }
+
+  .issue-tip{
+    margin-top:6px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:11.5px;
+    line-height:1.5;
+    color: var(--warn);
+    background: rgba(232,182,90,0.12);
+    border-left: 3px solid var(--warn);
+    border-radius: 4px;
+    padding: 6px 9px;
+  }
+  .issue-tip b{ color: var(--warn); font-weight:700; }
+
   .row-actions{ margin-top:6px; }
   .row-actions button{
     font-family:'IBM Plex Mono', monospace;
@@ -259,10 +352,10 @@
 
   .badge{
     font-family:'IBM Plex Mono', monospace;
-    font-size:10.5px;
+    font-size:15.75px;
     font-weight:600;
     letter-spacing:.04em;
-    padding: 6px 10px;
+    padding: 8px 13px;
     border-radius: 999px;
     white-space:nowrap;
     flex-shrink:0;
@@ -275,9 +368,9 @@
     margin-top: 28px;
     font-family:'IBM Plex Mono', monospace;
     font-size:11.5px;
-    color: var(--muted);
+    color: var(--muted-onbg);
     line-height:1.7;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid #E4E6E9;
     padding-top: 16px;
   }
 </style>
@@ -285,22 +378,14 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="eyebrow">Intake / Pre-check</p>
-  <h1>비율 검수</h1>
+  <h1>파일접수</h1>
 
-  <div class="status-bar" id="statusBar">
-    <div class="status-chip accept">
-      <div class="status-label">접수 사이즈</div>
-      <div class="status-value" id="statAccept">–</div>
-    </div>
-    <div class="status-chip workline">
-      <div class="status-label">작업선(도련) 사이즈</div>
-      <div class="status-value" id="statWorkline">–</div>
-    </div>
-    <div class="status-chip count">
-      <div class="status-label">건수</div>
-      <div class="status-value" id="statCount">–</div>
-    </div>
+  <div class="status-line" id="statusBar">
+    <span>접수 사이즈 <b id="statAccept">–</b></span>
+    <span class="sep">·</span>
+    <span>작업선(도련) <b id="statWorkline">–</b></span>
+    <span class="sep">·</span>
+    <span id="statCount">–</span>
   </div>
 
   <!-- Hidden — values are set programmatically from query params, and the
@@ -376,8 +461,8 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function renderStatusBar(){
-  const workW = acceptW + 8; // +4mm each side, matches bleedInclude=true below
-  const workH = acceptH + 8;
+  const workW = acceptW + 4; // total +4mm per dimension (2mm each side)
+  const workH = acceptH + 4;
   document.getElementById('statAccept').textContent = `${acceptW.toFixed(1)} × ${acceptH.toFixed(1)} mm`;
   document.getElementById('statWorkline').textContent = `${workW.toFixed(1)} × ${workH.toFixed(1)} mm`;
   document.getElementById('statCount').textContent =
@@ -388,6 +473,24 @@ function renderStatusBar(){
    2) Design / side slots — one upload slot per design × side, replacing
       ecopro1.html's canvas+tab switcher (no canvas here, per instructions).
    ========================================================================= */
+// Gathers every slot's rendered raster preview (the same thumbnail shown in
+// the left gauge box) into sian.html's expected [{label, dataUrl}] shape.
+// Only slots that actually got a real preview (PDF / PDF-compatible AI that
+// pdf.js could render) are included — EPS/legacy AI have no raster preview
+// to hand off, since no browser-side renderer exists for them.
+function collectPreviewDesigns(){
+  const designs = [];
+  document.querySelectorAll('#slotsContainer .slot').forEach(slotEl => {
+    const sideLabel = slotEl.querySelector('.slot-side-label')?.textContent || '';
+    const blockTitle = slotEl.closest('.design-block')?.querySelector('.design-block-title')?.textContent || '';
+    const img = slotEl.querySelector('.thumb-wrap img');
+    if(img && img.src){
+      designs.push({ label: `${blockTitle} ${sideLabel}`.trim(), dataUrl: img.src });
+    }
+  });
+  return designs;
+}
+
 function renderSlots(){
   const container = document.getElementById('slotsContainer');
   container.innerHTML = '';
@@ -431,7 +534,11 @@ function renderSlotDropzone(slotId){
   const body = document.getElementById('slotBody-' + slotId);
   body.innerHTML = `
     <div class="mini-dropzone" tabindex="0">
-      <div class="main">클릭 또는 드래그해서 업로드</div>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 4v12m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="main">파일첨부 클릭또는 드래그해서 업로드</div>
       <div class="hint">.PDF · .AI · .EPS</div>
       <input type="file" accept=".pdf,.ai,.eps" style="display:none;">
     </div>
@@ -454,20 +561,69 @@ function renderSlotDropzone(slotId){
   });
 }
 
+// Placeholder — point this at the real "시안보기" page in your deployment
+// (same idea as ecopro1.html's PREVIEW_PAGE_URL).
+// Destination for "JPEG / PNG 파일로 접수하기" — the original canvas-based
+// JPG/PNG/PDF upload editor (ecopro1.html).
+const JPEG_PNG_UPLOAD_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/ecopro1';
+// Placeholder — point this at the real 시안확인/장바구니 page in your deployment.
+// 시안보기 페이지. sian.html은 sessionStorage의 'ecogr_preview_designs' 키에서
+// [{label, dataUrl}, ...] 형태의 미리보기 이미지 배열을 읽어 화면에 그린다.
+const SIAN_PAGE_URL = 'https://sowonnamoo.github.io/myjs/includes/sian';
+const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
+
 async function processSlotFile(file, slotId){
   const body = document.getElementById('slotBody-' + slotId);
   const row = createRow(file.name);
   body.innerHTML = '';
   body.appendChild(row.el);
 
+  const btnRow = document.createElement('div');
+  btnRow.className = 'slot-btn-row';
+
   const resetBtn = document.createElement('button');
   resetBtn.type = 'button';
   resetBtn.className = 'slot-reset';
-  resetBtn.textContent = '다시 업로드';
+  resetBtn.textContent = '수정후 다시 업로드';
   resetBtn.addEventListener('click', () => renderSlotDropzone(slotId));
-  body.appendChild(resetBtn);
+  btnRow.appendChild(resetBtn);
+
+  body.appendChild(btnRow);
 
   await runFileCheck(file, row);
+
+  // Only offer 시안의뢰/구입하기 for files that came back "미완성 파일"
+  // (needs manual review) — not for clean passes or straight rejects.
+  if(row.el.classList.contains('unknown')){
+    const sianBtn = document.createElement('button');
+    sianBtn.type = 'button';
+    sianBtn.className = 'slot-review';
+    sianBtn.textContent = 'JPEG / PNG 파일로 접수하기';
+    sianBtn.addEventListener('click', () => {
+      // Forward the current query string so ecopro1 gets the same
+      // count/width/height/etc. this page received.
+      window.location.href = JPEG_PNG_UPLOAD_PAGE_URL + window.location.search;
+    });
+    btnRow.appendChild(sianBtn);
+  } else if(row.el.classList.contains('pass')){
+    const cartBtn = document.createElement('button');
+    cartBtn.type = 'button';
+    cartBtn.className = 'slot-cart';
+    cartBtn.textContent = '시안확인/장바구니 담기';
+    cartBtn.addEventListener('click', () => {
+      const designs = collectPreviewDesigns();
+      try{
+        sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(designs));
+      }catch(e){
+        console.error('시안 이미지 저장 실패:', e);
+        alert('미리보기 이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.');
+        return;
+      }
+      // 접수 시 사용한 쿼리(count/width/height 등)를 그대로 이어서 전달
+      window.location.href = SIAN_PAGE_URL + window.location.search;
+    });
+    btnRow.appendChild(cartBtn);
+  }
 }
 
 /* =========================================================================
@@ -631,7 +787,7 @@ function downloadCutlineEPS(wMm, hMm){
 // sized exactly to the cutline box.
 function generateCutlinePDF(targetWmm, targetHmm){
   const PT_PER_MM = 72 / 25.4;
-  const bleedMm = 4;
+  const bleedMm = 2; // per side (total +4mm per dimension)
   const n = v => v.toFixed(2);
 
   const cutWpt = (targetWmm + bleedMm * 2) * PT_PER_MM;
@@ -687,7 +843,7 @@ async function runFileCheck(file, row){
   const ext = extOf(file.name);
 
   if(!['pdf','ai','eps'].includes(ext)){
-    row.setUnknown('지원하지 않는 형식', '.pdf / .ai / .eps 만 허용됩니다');
+    row.setUnknown('지원하지 않는 형식', '.pdf / .ai / .eps 만 허용됩니다', '.pdf, .ai, .eps 파일로 다시 저장한 뒤 업로드해주세요.');
     return;
   }
 
@@ -696,14 +852,14 @@ async function runFileCheck(file, row){
   const box = extractBoundingBox(text, ext);
 
   if(!box){
-    row.setUnknown('치수 확인 불가', '헤더에서 크기 정보를 찾지 못했습니다');
+    row.setUnknown('치수 확인 불가', '헤더에서 크기 정보를 찾지 못했습니다', "일러스트레이터에서 저장할 때 'PDF 호환성 유지(Create PDF Compatible File)'를 체크한 뒤 다시 저장해주세요.");
     return;
   }
 
   const wPt = box.x2 - box.x1;
   const hPt = box.y2 - box.y1;
   if(wPt <= 0 || hPt <= 0){
-    row.setUnknown('치수 확인 불가', '비정상적인 크기 값');
+    row.setUnknown('치수 확인 불가', '비정상적인 크기 값', '파일이 손상되었을 수 있어요. 원본에서 다시 내보내기(Export) 한 뒤 업로드해주세요.');
     return;
   }
 
@@ -713,7 +869,7 @@ async function runFileCheck(file, row){
   const targetH = parseFloat(sizeHInput.value) || 0;
   const anyOrientation = anyOrientationInput.checked;
   const bleedInclude = document.getElementById('bleedInclude').checked;
-  const BLEED_MM = 4;
+  const BLEED_MM = 2; // per side (total +4mm per dimension)
   const compareW = targetW + (bleedInclude ? BLEED_MM * 2 : 0);
   const compareH = targetH + (bleedInclude ? BLEED_MM * 2 : 0);
 
@@ -755,11 +911,17 @@ async function runFileCheck(file, row){
           enforceLiveTextCheck,
           sizeOk
         });
-        row.setThumbnail(rendered.dataUrl, correctedPassed ? 'pass' : 'fail');
+        row.setThumbnail(rendered.dataUrl, correctedPassed ? 'pass' : 'unknown');
       } else {
-        row.setThumbnail(rendered.dataUrl, passed ? 'pass' : 'fail');
+        row.setThumbnail(rendered.dataUrl, passed ? 'pass' : 'unknown');
       }
+    } else {
+      // pdf.js couldn't open this one (legacy AI, encrypted, etc.)
+      row.appendPreviewUnsupportedNote();
     }
+  } else if(ext === 'eps'){
+    // EPS is never sent to pdf.js — no browser-side renderer exists for it.
+    row.appendPreviewUnsupportedNote();
   }
 }
 
@@ -818,6 +980,21 @@ function detectLiveText(text, ext){
   return false;
 }
 
+// Common troubleshooting tip appended to the bottom of every issue/warning
+// message below, regardless of the specific cause.
+const COMMON_TIP_TEXT =
+  '1. 폰트를 아웃라인(Ctrl+Shift+O) 처리후 저장 바랍니다.<br>' +
+  '2. 이미지를 포함 처리 (파일 > 가져오기 > 연결박스 체크해제)후 저장 해서 다시 올려주세요.<br>' +
+  '좌측 미리보기에 정상적으로 이미지가 보이지 않는 경우 AI나 PDF 저장시 PDF호환파일 체크, 8버전 이상으로 저장 해주세요.<br>' +
+  '좌측 미리보기가 정상적으로 보이지 않는 경우 JPEG나 PNG 파일로 접수 바랍니다.';
+
+function tipHtml(text){
+  return `<div class="issue-tip"><b>Tip.</b> 해결방법: ${text}</div>`;
+}
+function commonTipHtml(){
+  return tipHtml(COMMON_TIP_TEXT);
+}
+
 function createRow(filename){
   const el = document.createElement('div');
   el.className = 'row unknown';
@@ -836,21 +1013,27 @@ function createRow(filename){
   const badgeEl = el.querySelector('#badge');
   const actionsEl = el.querySelector('#rowActions');
 
-  function setUnknown(title, detail){
+  function setUnknown(title, detail, tip){
     el.className = 'row unknown';
     const targetW = parseFloat(sizeWInput.value) || 1;
     const targetH = parseFloat(sizeHInput.value) || 1;
     const bleedInclude = document.getElementById('bleedInclude').checked;
-    const compareW = targetW + (bleedInclude ? 8 : 0);
-    const compareH = targetH + (bleedInclude ? 8 : 0);
+    const compareW = targetW + (bleedInclude ? 4 : 0);
+    const compareH = targetH + (bleedInclude ? 4 : 0);
     gaugeEl.innerHTML = drawGauge(null, null, compareW, compareH, null);
-    metaEl.innerHTML = `<b>${escapeHtml(title)}</b>${detail ? ' · ' + escapeHtml(detail) : ''}`;
+    metaEl.innerHTML = `
+      <div>
+        <div class="issue-title"><b>${escapeHtml(title)}</b>${detail ? ' · ' + escapeHtml(detail) : ''}</div>
+        ${tip ? `<div class="issue-tip"><b>Tip.</b> 해결방법: ${escapeHtml(tip)}</div>` : ''}
+        ${commonTipHtml()}
+      </div>
+    `;
     badgeEl.className = 'badge unknown';
-    badgeEl.textContent = '수동검토';
+    badgeEl.textContent = '미완성 파일';
   }
 
   function setResult({passed, wMm, hMm, targetW, targetH, compareW, compareH, bleedInclude, source, hasLiveText, enforceLiveTextCheck, sizeOk}){
-    el.className = 'row ' + (passed ? 'pass' : 'fail');
+    el.className = 'row ' + (passed ? 'pass' : 'unknown');
     gaugeEl.innerHTML = drawGauge(wMm, hMm, compareW, compareH, passed);
     let metaHtml =
       `<span><b>${wMm.toFixed(1)} × ${hMm.toFixed(1)}</b> mm</span>` +
@@ -862,17 +1045,17 @@ function createRow(filename){
       const color = enforceLiveTextCheck ? 'var(--fail)' : 'var(--warn)';
       const note = enforceLiveTextCheck ? '라이브 텍스트 감지 · 아웃라인 처리 필요' : '라이브 텍스트 감지 (검사 꺼짐)';
       metaHtml += `<span style="color:${color};">${note}</span>`;
+      if(enforceLiveTextCheck){
+        metaHtml += commonTipHtml();
+      }
     } else if(!sizeOk){
-      metaHtml += `<span style="color:var(--fail);">크기 불일치</span>`;
+      metaHtml += `<span style="color:var(--fail);">크기 불일치</span>` +
+        `<div class="issue-tip"><b>Tip.</b> 해결방법: 칼선을 다운로드 받은 후 ai나 pdf 저장후 재업로드 바랍니다.</div>` +
+        commonTipHtml();
     }
     metaEl.innerHTML = metaHtml;
-    badgeEl.className = 'badge ' + (passed ? 'pass' : 'fail');
-    badgeEl.textContent = passed ? '접수' : '거부';
-
-    actionsEl.innerHTML = `<button type="button">이 파일 크기로 칼선(.pdf) 받기</button>`;
-    actionsEl.querySelector('button').addEventListener('click', () => {
-      downloadCutlineEPS(wMm, hMm);
-    });
+    badgeEl.className = 'badge ' + (passed ? 'pass' : 'unknown');
+    badgeEl.textContent = passed ? '접수가능' : '미완성 파일';
   }
 
   function setThumbnail(dataUrl, statusClass){
@@ -885,12 +1068,31 @@ function createRow(filename){
     gaugeEl.innerHTML = `<div class="thumb-wrap clickable unknown"><img src="${dataUrl}" alt=""></div>`;
     gaugeEl.querySelector('.thumb-wrap').addEventListener('click', () => openModal(dataUrl));
     const label = issue === 'blank' ? '미리보기가 텅 비어 있음' : '미리보기가 전체 검정';
-    metaEl.innerHTML = `<span style="color:var(--warn);"><b>${label}</b> · 렌더링 이상 가능성, 수동 확인 필요</span>`;
+    const specificTip = issue === 'blank'
+      ? null
+      : '오버프린트 설정이나 색상 프로파일 문제일 수 있어요. 오버프린트 미리보기를 끄고 CMYK로 다시 저장해주세요.';
+    metaEl.innerHTML = `
+      <div>
+        <div class="issue-title"><b>${label}</b> · 렌더링 이상 가능성, 수동 확인 필요</div>
+        ${specificTip ? tipHtml(specificTip) : ''}
+        ${commonTipHtml()}
+      </div>
+    `;
     badgeEl.className = 'badge unknown';
-    badgeEl.textContent = '수동검토';
+    badgeEl.textContent = '미완성 파일';
   }
 
-  return { el, setUnknown, setResult, setThumbnail, setRenderWarning };
+  function appendPreviewUnsupportedNote(){
+    const note = document.createElement('div');
+    note.innerHTML = `
+      <div class="issue-title" style="margin-top:6px;"><b>미리보기가 지원되지 않는 상태입니다.</b></div>
+      <div class="issue-tip"><b>Tip.</b> 해결방법: PDF 또는 PDF 호환 AI로 저장하면 미리보기를 확인할 수 있어요.</div>
+      ${commonTipHtml()}
+    `;
+    metaEl.appendChild(note);
+  }
+
+  return { el, setUnknown, setResult, setThumbnail, setRenderWarning, appendPreviewUnsupportedNote };
 }
 
 // Draws two overlaid outlines to scale: target size (dashed, muted) and actual size (solid, colored)
