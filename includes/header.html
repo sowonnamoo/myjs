@@ -173,7 +173,7 @@
                 <button class="header-btn all-menu-btn" onclick="toggleSlider()">전체메뉴</button>
                 <button class="header-btn" onclick="location.href='https://sowonnamoo.github.io/myboard/search'">제작상황</button>
                 <button class="header-btn" onclick="window.open('https://sowonnamoo.github.io/myboard/', '_blank', 'width=790,height=800')">수정의뢰</button>
-                <button class="header-btn cart-btn" onclick="location.href='/myjs/includes/cart.html'" aria-label="장바구니">
+                <button class="header-btn cart-btn" onclick="goToCart()" aria-label="장바구니">
                     <svg class="cart-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="9" cy="21" r="1"></circle>
                         <circle cx="20" cy="21" r="1"></circle>
@@ -239,6 +239,16 @@ async function updateCartCount() {
 updateCartCount();
 // 뒤로가기(bfcache)로 이 페이지에 돌아왔을 때도 배지 다시 갱신
 window.addEventListener('pageshow', updateCartCount);
+
+// 장바구니 버튼 클릭 시: 비어있으면 이동하지 않고 경고창만 띄움
+async function goToCart() {
+    const cart = await getCartFromDB();
+    if (cart.length === 0) {
+        alert('장바구니가 비어있습니다.');
+        return;
+    }
+    location.href = '/myjs/includes/cart.html';
+}
 
 function toggleSlider() {
     document.getElementById("mobileSlider").classList.toggle("active");
