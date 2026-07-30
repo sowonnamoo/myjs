@@ -49,6 +49,11 @@
 .menu-item > a { text-decoration: none; color: #333; font-weight: bold; }
 .menu-item > a[onclick] { cursor: default; }
 
+/* "전체상품보기" — 다른 카테고리와 똑같이 메가메뉴 아이템으로 동작(호버 시 패널이 열림) */
+.all-products-item > a { display: flex; align-items: center; gap: 7px; color: #68b600; }
+/* 메인페이지에서는 호버 없이도 이 패널이 항상 펼쳐진 상태로 보임 */
+.all-products-item.force-open .mega-panel { display: block; }
+
 /* 메가패널 (다단계 분류를 컬럼으로 표시) */
 .mega-panel {
     display: none;
@@ -77,6 +82,12 @@
 .mega-sub-list > li > a:hover { color: #68b600; }
 .mega-group-title { display: block; font-size: 12px; font-weight: bold; color: #333; margin: 10px 0 3px; }
 .mega-group .mega-sub-list { padding-left: 8px; border-left: 1px solid #eee; margin-top: 2px; }
+
+/* "전체상품보기" 패널 안에서 대분류별로 구역을 나눠 보여줄 때 쓰는 스타일 */
+.all-products-category { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
+.all-products-category:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.all-products-category-title { font-size: 15px; font-weight: 800; color: #222; margin-bottom: 14px; }
+
 
 /* 모바일 슬라이더 */
 .mobile-slider-nav { 
@@ -146,7 +157,8 @@
 
     <nav class="mega-menu-wrap">
         <ul class="mega-menu-list" id="megaMenuList">
-            <!-- 메뉴는 아래 script의 menuData로부터 자동 생성됩니다 -->
+            <!-- 메뉴는 아래 script의 menuData로부터 자동 생성됩니다.
+                 "전체상품보기" 항목도 여기에 다른 카테고리와 똑같은 방식(호버 시 패널)으로 포함됩니다. -->
         </ul>
     </nav>
 </div>
@@ -1701,28 +1713,57 @@ function renderMegaChildren(items) {
     }).join('') + `</ul>`;
 }
 
+// 카테고리 하나(대분류)의 컬럼 HTML(.mega-panel-inner용)을 만듦 — 호버 패널과 "전체상품보기" 패널에서 공용으로 사용
+function renderCategoryColumns(cat) {
+    return (cat.children || []).map(col => {
+        if (col.children && col.children.length) {
+            return `<div class="mega-col">
+                <div class="mega-col-title">${col.name}</div>
+                ${renderMegaChildren(col.children)}
+            </div>`;
+        }
+        return `<div class="mega-col">
+            <div class="mega-col-title mega-col-title-leaf"><a href="${col.url}">${col.name}</a></div>
+        </div>`;
+    }).join('');
+}
+
+// 지금 보고 있는 페이지가 "메인페이지"인지 판단 (경로 끝부분 파일명으로 판단).
+// 메인페이지 파일명이 바뀌면 이 배열에 이름만 추가하면 됨.
+function isMainPage() {
+    const MAIN_PAGE_FILENAMES = ['', 'index.html', 'index', 'main1.html', 'main1'];
+    const path = location.pathname.replace(/\/+$/, ''); // 끝 슬래시 제거
+    const file = path.split('/').pop() || '';
+    return MAIN_PAGE_FILENAMES.includes(file);
+}
+
 // menuData → PC 메가메뉴(.mega-menu-list) 렌더링
+// 맨 앞에 "전체상품보기" 아이템을 추가함: 다른 대분류(상업인쇄소 등)와 완전히 같은 방식(호버 시 .mega-panel 열림)으로 동작하되,
+// 패널 안에는 모든 대분류의 링크를 대분류별로 구역을 나눠서 전부 정리해 넣음.
 function renderMegaMenu() {
     const list = document.getElementById('megaMenuList');
     if (!list) return;
-    list.innerHTML = menuData.map(cat => {
-        const cols = (cat.children || []).map(col => {
-            if (col.children && col.children.length) {
-                return `<div class="mega-col">
-                    <div class="mega-col-title">${col.name}</div>
-                    ${renderMegaChildren(col.children)}
-                </div>`;
-            }
-            return `<div class="mega-col">
-                <div class="mega-col-title mega-col-title-leaf"><a href="${col.url}">${col.name}</a></div>
-            </div>`;
-        }).join('');
 
+    const allProductsPanel = menuData.map(cat => `
+        <div class="all-products-category">
+            <div class="all-products-category-title">${cat.name}</div>
+            <div class="mega-panel-inner">${renderCategoryColumns(cat)}</div>
+        </div>`).join('');
+
+    const allProductsItem = `
+        <li class="menu-item all-products-item${isMainPage() ? ' force-open' : ''}">
+            <a href="#" onclick="return false;">전체상품보기</a>
+            <div class="mega-panel">${allProductsPanel}</div>
+        </li>`;
+
+    const categoryItems = menuData.map(cat => {
         return `<li class="menu-item">
             <a href="${cat.url}"${cat.url === '#' ? ' onclick="return false;"' : ''}>${cat.name}</a>
-            <div class="mega-panel"><div class="mega-panel-inner">${cols}</div></div>
+            <div class="mega-panel"><div class="mega-panel-inner">${renderCategoryColumns(cat)}</div></div>
         </li>`;
     }).join('');
+
+    list.innerHTML = allProductsItem + categoryItems;
 }
 
 /* ---------------- 모바일 좌측 슬라이드 메뉴 렌더링 (다단계 아코디언) ---------------- */
