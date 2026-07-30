@@ -42,6 +42,28 @@
 .icons { display:flex; gap:8px; }
 .header-btn { height: 35px; padding: 0 16px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; white-space: nowrap; }
 
+/* 장바구니: 아이콘 + 담긴 개수 배지 */
+.cart-btn { position: relative; padding: 0 12px; display: flex; align-items: center; justify-content: center; }
+.cart-btn .cart-icon { display: block; }
+.cart-count {
+    position: absolute;
+    top: -6px;
+    right: 0px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    box-sizing: border-box;
+}
+
 /* 메가메뉴 */
 .mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
 .mega-menu-list { display: flex; justify-content: center; list-style: none; margin: 0; padding: 0; }
@@ -149,8 +171,16 @@
             </div>
             <div class="icons">
                 <button class="header-btn all-menu-btn" onclick="toggleSlider()">전체메뉴</button>
-                <button class="header-btn" onclick="location.href='https://sowonnamoo.github.io/myboard/search'">주문정보</button>
-                <button class="header-btn" onclick="location.href='/includes/cart'">장바구니</button>
+		<button class="header-btn" onclick="window.open('https://sowonnamoo.github.io/myboard/search', '_blank', 'width=790,height=800')">조회/제작상황</button>
+                <button class="header-btn" onclick="window.open('https://sowonnamoo.github.io/myboard/', '_blank', 'width=790,height=800')">수정의뢰</button>
+                <button class="header-btn cart-btn" onclick="location.href='/myjs/includes/cart.html'" aria-label="장바구니">
+                    <svg class="cart-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    <span class="cart-count" id="cartCount">0</span>
+                </button>
             </div>
         </div>
     </header>
@@ -164,6 +194,24 @@
 </div>
 
 <script>
+// 장바구니 개수 배지: cart.html과 동일하게 localStorage의 "cart" 배열(담긴 항목 수)을 읽어서 표시
+function updateCartCount() {
+    let cart = [];
+    try { cart = JSON.parse(localStorage.getItem('cart')) || []; } catch (e) { cart = []; }
+    const badge = document.getElementById('cartCount');
+    if (!badge) return;
+    if (cart.length > 0) {
+        badge.textContent = cart.length > 99 ? '99+' : cart.length;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+updateCartCount();
+// 장바구니에 담고 나서 다시 이 페이지로 돌아오거나, 다른 탭에서 장바구니를 바꿨을 때도 배지 갱신
+window.addEventListener('storage', (e) => { if (e.key === 'cart') updateCartCount(); });
+window.addEventListener('pageshow', updateCartCount);
+
 function toggleSlider() {
     document.getElementById("mobileSlider").classList.toggle("active");
     document.getElementById("sliderOverlay").classList.toggle("active");
