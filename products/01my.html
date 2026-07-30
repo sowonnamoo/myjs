@@ -222,13 +222,13 @@
         word-break: keep-all;
         line-height: 1.5;
     }
-    #quoteBtnGroup {
+    #printQuoteBtn {
         width: 100%;
     }
-    #printQuoteBtn,
     #printCutlineBtn {
-        flex: 1;
-        width: auto;
+        width: 100%;
+        margin-left: 0 !important;
+        margin-top: 8px;
     }
 }
 
@@ -421,12 +421,12 @@
                 <input type="number" id="heightInput" value="50" style="width: 60px;" disabled>
                 <span>mm</span>
             </div>
-            <!-- 작업사이즈 (재단 + 2mm) -->
+            <!-- 작업사이즈 (재단 + 8mm, 사방 4mm) -->
             <div class="size-inputs" style="margin-top:5px;">
                 <span style="width:100px;">작업사이즈</span>
-                <input type="number" id="workWidthInput" value="62" style="width: 60px;" disabled>
+                <input type="number" id="workWidthInput" value="68" style="width: 60px;" disabled>
                 <span>x</span>
-                <input type="number" id="workHeightInput" value="52" style="width: 60px;" disabled>
+                <input type="number" id="workHeightInput" value="58" style="width: 60px;" disabled>
                 <span>mm</span>
             </div>
         </div>
@@ -452,19 +452,16 @@
         </div>
 
       <div class="total-price" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
+    
+    <!-- 견적서 버튼: height를 명시하고 flex-shrink를 0으로 설정 -->
+  <button type="button" id="printQuoteBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
+    견적서 출력
+</button>
 
-    <!-- 견적서/작업선 버튼 묶음: 이 그룹 자체는 하나의 flex 아이템이라, 컨테이너 폭이
-         바뀌어도(옵션 선택 등으로) 두 버튼 사이 간격은 항상 고정됨 -->
-    <div id="quoteBtnGroup" style="display: flex; gap: 8px;">
-      <button type="button" id="printQuoteBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
-        견적서 출력
-      </button>
-
-      <!-- 작업선(칼선) 버튼: 지금 선택된 사이즈(규격/비규격 상관없이)에 맞춰 PDF 칼선을 바로 다운로드 -->
-      <button type="button" id="printCutlineBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
-        작업선
-      </button>
-    </div>
+    <!-- 작업선(칼선) 버튼: 지금 선택된 사이즈(규격/비규격 상관없이)에 맞춰 PDF 칼선을 바로 다운로드 -->
+  <button type="button" id="printCutlineBtn" style="height: 45px; padding: 0 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; white-space: nowrap; margin-left: 8px;">
+    작업선
+</button>
 
     <!-- 우측: 총 결제액 영역 -->
     <div style="text-align: right;">
@@ -1223,8 +1220,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             hIn.value = h;
         }
 
-        workW.value = w + 2;
-        workH.value = h + 2;
+        workW.value = w + 8;
+        workH.value = h + 8;
         updatePrice();
     }
 
@@ -1234,8 +1231,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert(`설정할 수 없는 사이즈입니다. \n가로: ${wIn.min}mm, 세로: ${hIn.min}mm부터 입력 가능합니다.`);
             input.value = defaultVal;
         }
-        workW.value = parseFloat(wIn.value) + 2;
-        workH.value = parseFloat(hIn.value) + 2;
+        workW.value = parseFloat(wIn.value) + 8;
+        workH.value = parseFloat(hIn.value) + 8;
         updatePrice();
     }
 
