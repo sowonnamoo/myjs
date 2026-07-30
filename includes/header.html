@@ -171,7 +171,7 @@
             </div>
             <div class="icons">
                 <button class="header-btn all-menu-btn" onclick="toggleSlider()">전체메뉴</button>
-		<button class="header-btn" onclick="window.open('https://sowonnamoo.github.io/myboard/search', '_blank', 'width=790,height=800')">조회/제작상황</button>
+                <button class="header-btn" onclick="location.href='https://sowonnamoo.github.io/myboard/search'">제작상황</button>
                 <button class="header-btn" onclick="window.open('https://sowonnamoo.github.io/myboard/', '_blank', 'width=790,height=800')">수정의뢰</button>
                 <button class="header-btn cart-btn" onclick="location.href='/myjs/includes/cart.html'" aria-label="장바구니">
                     <svg class="cart-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -194,10 +194,39 @@
 </div>
 
 <script>
-// 장바구니 개수 배지: cart.html과 동일하게 localStorage의 "cart" 배열(담긴 항목 수)을 읽어서 표시
-function updateCartCount() {
-    let cart = [];
-    try { cart = JSON.parse(localStorage.getItem('cart')) || []; } catch (e) { cart = []; }
+// 장바구니 개수 배지: cart.html이 실제로 쓰는 저장소(IndexedDB, DB "ecogrHandoff" / 키 "ecogr_cart")를
+// 그대로 읽어서 표시함. (예전엔 localStorage "cart"를 썼지만, 이미지 용량 문제로 cart.html이
+// IndexedDB로 이미 옮겨간 상태라 여기도 같은 곳을 봐야 실제 담긴 개수랑 맞음)
+const CART_DB_NAME = 'ecogrHandoff';
+const CART_STORE_NAME = 'kv';
+const CART_KEY = 'ecogr_cart';
+
+function openCartDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(CART_DB_NAME, 1);
+        req.onupgradeneeded = () => { req.result.createObjectStore(CART_STORE_NAME); };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function getCartFromDB() {
+    try {
+        const db = await openCartDB();
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(CART_STORE_NAME, 'readonly');
+            const req = tx.objectStore(CART_STORE_NAME).get(CART_KEY);
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    } catch (e) {
+        console.error('장바구니를 불러오지 못했습니다:', e);
+        return [];
+    }
+}
+
+async function updateCartCount() {
+    const cart = await getCartFromDB();
     const badge = document.getElementById('cartCount');
     if (!badge) return;
     if (cart.length > 0) {
@@ -208,8 +237,7 @@ function updateCartCount() {
     }
 }
 updateCartCount();
-// 장바구니에 담고 나서 다시 이 페이지로 돌아오거나, 다른 탭에서 장바구니를 바꿨을 때도 배지 갱신
-window.addEventListener('storage', (e) => { if (e.key === 'cart') updateCartCount(); });
+// 뒤로가기(bfcache)로 이 페이지에 돌아왔을 때도 배지 다시 갱신
 window.addEventListener('pageshow', updateCartCount);
 
 function toggleSlider() {
