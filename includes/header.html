@@ -1800,6 +1800,30 @@ function renderMobileMenu() {
 renderMegaMenu();
 renderMobileMenu();
 
+// 메인페이지에서 "전체상품보기"가 처음엔 펼쳐진 상태로 보이다가,
+// 다른 메뉴에 마우스를 올리거나 페이지 바탕 아무데나 클릭하면 접히게(원래 호버 방식으로 되돌아가게) 함.
+(function initForceOpenAllProducts(){
+    const item = document.querySelector('.all-products-item.force-open');
+    if (!item) return;
+
+    function closeForceOpen(){
+        item.classList.remove('force-open');
+        document.removeEventListener('click', onDocClick);
+    }
+
+    // 다른 메뉴 항목에 마우스를 올리면 닫힘
+    document.querySelectorAll('.mega-menu-list > .menu-item').forEach(li => {
+        if (li === item) return;
+        li.addEventListener('mouseenter', closeForceOpen, { once: true });
+    });
+
+    // 페이지 바탕 아무데나 클릭하면 닫힘 (패널 안쪽 클릭은 제외)
+    function onDocClick(e){
+        if (!item.contains(e.target)) closeForceOpen();
+    }
+    document.addEventListener('click', onDocClick);
+})();
+
 (function() {
     // 검색 데이터도 menuData에서 자동으로 만들어집니다.
     // 트리를 재귀적으로 훑어서 실제 링크를 가진 leaf(최하위 상품) 전부를 검색 대상으로 등록합니다.
