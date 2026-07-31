@@ -729,13 +729,16 @@ window.enableMobileCustomPicker = function(selectEl) {
     const reorderWidth = parseFloat(reorderUrlParams.get('reorderWidth')) || 0;
     const reorderHeight = parseFloat(reorderUrlParams.get('reorderHeight')) || 0;
     const reorderSide = reorderUrlParams.get('reorderSide') || ''; // 예: "단면"/"양면"
+    const reorderItemName = reorderUrlParams.get('reorderItemName') || ''; // 예전 상품명 원문
+    // "이전 주문에 '양면'이라는 글자가 들어있었는가" — ink 필드든 상품명이든 어디든 '양면'이
+    // 있었으면 true. 이후 지금 선택한 옵션들에도 '양면' 글자가 있는지와 비교함.
+    const reorderOriginalHadDouble = reorderSide.includes('양면') || reorderItemName.includes('양면');
     // 사이즈를 자동 선택한 직후의 실제 값(표준 매칭 시 반올림 등 반영) — 나중에
     // 고객이 사이즈를 직접 바꿨는지 비교하는 기준값. loadProductAndInit에서 채워짐.
     let reorderOriginalWidth = 0;
     let reorderOriginalHeight = 0;
-    // 단면/양면처럼 "인쇄면" 성격의 옵션 그룹을 자동 인식해서 기억해둠 (있을 때만 사용)
+    // 단면/양면처럼 "인쇄면" 성격의 옵션 그룹을 자동 인식해서 기억해둠 (있으면 자동 선택용으로만 사용)
     let reorderSideSelect = null;
-    let reorderOriginalSide = '';
 
     // cart.html / sian.html과 동일한 IndexedDB(DB명/스토어명/키)를 사용해야
     // 서로 같은 장바구니를 읽고 쓸 수 있음
@@ -860,6 +863,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         const titleEl = document.querySelector(".options-section h2");
         const productTitle = titleEl ? titleEl.textContent.trim() : "상품";
 
+        // "양면" 글자가 있으면 그대로 기록해서, 다음 재구입 때도 상품명 텍스트 비교가 이어지게 함
+        const combinedSelectionText = combinedGroupText + ' ' + finishings.join(' ');
+        const sideForItem = combinedSelectionText.includes('양면') ? '양면'
+            : (reorderSideSelect ? reorderSideSelect.value : '');
+
         const newItem = {
             item: combinedGroupText ? `${productTitle} (${combinedGroupText})` : productTitle,
             qty: qty || 1,
@@ -869,7 +877,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             price: priceNumber,
             weight: weightValue ? `${weightValue}kg` : '',
             finishings: finishings.join(', '),
-            ink: reorderSideSelect ? reorderSideSelect.value : '', // 단면/양면 등 인쇄면 (다음 재구입 비교용)
+            ink: sideForItem, // 단면/양면 등 인쇄면 (다음 재구입 비교용)
             compositeImage: reorderImage, // R2 원본이 살아있으면 그걸, 없으면 카페24 경로를 사용
             compositeImageFallback: reorderImageFallback, // R2가 나중에 지워지면 대신 보여줄 카페24 경로
             originalImages: [], // 재구입은 새로 업로드할 원본이 없음 (예전 시안 그대로 제작)
@@ -1490,7 +1498,6 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (isReorderFlow) {
                 reorderOriginalWidth = parseFloat(document.getElementById("widthInput").value) || 0;
                 reorderOriginalHeight = parseFloat(document.getElementById("heightInput").value) || 0;
-                reorderOriginalSide = reorderSideSelect ? reorderSideSelect.value : '';
             }
 
             window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
@@ -1540,10 +1547,18 @@ window.enableMobileCustomPicker = function(selectEl) {
             const sameSize = (currentW === reorderOriginalWidth && currentH === reorderOriginalHeight) ||
                               (currentW === reorderOriginalHeight && currentH === reorderOriginalWidth);
 
-            // 인쇄면(단면/양면) 그룹이 있는 경우에만 비교. 원래 값이 없었으면(그룹이 없거나
-            // 자동선택 실패) 비교 대상에서 제외해서 항상 "동일"로 취급함.
-            const currentSide = reorderSideSelect ? reorderSideSelect.value : '';
-            const sameSide = !reorderOriginalSide || currentSide === reorderOriginalSide;
+            // 지금 선택된 옵션들(일반 옵션 + 후가공)을 전부 합친 텍스트 안에 "양면"이라는
+            // 글자가 있는지로 판단. 예전 주문에 "양면"이 있었는데 지금은 없거나,
+            // 반대로 예전엔 없었는데 지금 "양면"을 선택했으면 둘 다 재구입 모드 해제 대상.
+            let currentSelectionText = '';
+            document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+                if (sel.value) currentSelectionText += ' ' + sel.value;
+            });
+            document.querySelectorAll('.finishing-select').forEach(sel => {
+                if (sel.value) currentSelectionText += ' ' + sel.value;
+            });
+            const currentHasDouble = currentSelectionText.includes('양면');
+            const sameSide = reorderOriginalHadDouble === currentHasDouble;
 
             if (sameSize && sameSide) {
                 addReorderItemToCartAndGo();
