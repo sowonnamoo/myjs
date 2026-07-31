@@ -700,7 +700,7 @@ function render(){
                     <div class="item-price">${priceNumber.toLocaleString()}원</div>
                 </div>
                 <div class="item-actions">
-                    ${ item.compositeImage && /^https?:\/\//.test(item.compositeImage)
+                    ${ (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) || (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback))
                         ? `<button onclick="viewComposite(${index})" class="item-btn view-btn">시안보기</button>`
                         : `<button disabled class="item-btn view-btn disabled">시안보기</button>` }
                     <button onclick="deleteItem(${index})" class="item-btn delete-btn">삭제</button>
@@ -718,18 +718,32 @@ window.deleteItem = async function(index){
     render();
 };
 
+// R2 원본(compositeImage)을 1차로 보여주고, 나중에 관리자가 R2에서 지우고
+// 카페24로 옮겨두면(compositeImageFallback) 로드 실패 시 자동으로 그쪽을 대신 보여줌
 window.viewComposite = function(index){
-    const url = cart[index] && cart[index].compositeImage;
-    if(!url) return;
+    const item = cart[index];
+    if(!item) return;
+    const primary = item.compositeImage || item.compositeImageFallback;
+    const fallback = item.compositeImageFallback;
+    if(!primary) return;
     const modalImg = document.getElementById('composite-modal-img');
     const overlay = document.getElementById('composite-modal');
-    modalImg.src = url;
+    modalImg.onerror = () => {
+        if (fallback && modalImg.src !== fallback) {
+            modalImg.onerror = null;
+            modalImg.src = fallback;
+        } else {
+            modalImg.onerror = null;
+        }
+    };
+    modalImg.src = primary;
     overlay.classList.add('active');
 };
 window.closeCompositeModal = function(){
     const overlay = document.getElementById('composite-modal');
     overlay.classList.remove('active');
     document.getElementById('composite-modal-img').src = '';
+    document.getElementById('composite-modal-img').onerror = null;
 };
 
 async function saveOrderToFirestore(orderData) {
