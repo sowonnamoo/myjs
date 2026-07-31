@@ -479,7 +479,7 @@
     </div>
 </div>
 
-<button class="order-btn" onclick="window.handleOrder()">셀프편집 & 주문하기</button>
+<button class="order-btn" id="orderBtn" onclick="window.handleOrder()">셀프편집 & 주문하기</button>
     </div>
 </div>
 
@@ -717,6 +717,151 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // ---- [추가] search.html "재구입" 버튼에서 넘어온 경우 처리 ----
+    // 시안(파일업로드) 단계를 완전히 건너뛰고, 지금 화면에서 새로 고른 옵션으로
+    // 즉시 계산된 최신 가격 + 예전에 저장해둔 시안 이미지(카페24 경로)를 그대로
+    // 장바구니에 담아 바로 cart.html로 이동시킨다.
+    const reorderUrlParams = new URLSearchParams(window.location.search);
+    const reorderImage = reorderUrlParams.get('reorderImage') || '';
+    let isReorderFlow = !!reorderImage;
+    const reorderWidth = parseFloat(reorderUrlParams.get('reorderWidth')) || 0;
+    const reorderHeight = parseFloat(reorderUrlParams.get('reorderHeight')) || 0;
+    // 사이즈를 자동 선택한 직후의 실제 값(표준 매칭 시 반올림 등 반영) — 나중에
+    // 고객이 사이즈를 직접 바꿨는지 비교하는 기준값. loadProductAndInit에서 채워짐.
+    let reorderOriginalWidth = 0;
+    let reorderOriginalHeight = 0;
+
+    // cart.html / sian.html과 동일한 IndexedDB(DB명/스토어명/키)를 사용해야
+    // 서로 같은 장바구니를 읽고 쓸 수 있음
+    const HANDOFF_DB_NAME = 'ecogrHandoff';
+    const HANDOFF_STORE_NAME = 'kv';
+    const CART_KEY = 'ecogr_cart';
+    function openHandoffDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+            req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function idbGet(key) {
+        const handoffDb = await openHandoffDB();
+        return new Promise((resolve, reject) => {
+            const tx = handoffDb.transaction(HANDOFF_STORE_NAME, 'readonly');
+            const req = tx.objectStore(HANDOFF_STORE_NAME).get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function idbSet(key, value) {
+        const handoffDb = await openHandoffDB();
+        return new Promise((resolve, reject) => {
+            const tx = handoffDb.transaction(HANDOFF_STORE_NAME, 'readwrite');
+            tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    // [추가] 재구입 흐름일 때 예전 사이즈를 자동으로 선택해둠 (등록된 규격사이즈와
+    // 일치하면 규격사이즈로, 아니면 비규격사이즈로 폭/높이를 직접 채움)
+    function applyReorderSize(w, h) {
+        const sizeTypeSel = document.getElementById("sizeType");
+        const sizeListSel = document.getElementById("sizeList");
+        const wIn = document.getElementById("widthInput");
+        const hIn = document.getElementById("heightInput");
+        if (!sizeTypeSel || !sizeListSel || !wIn || !hIn) return;
+
+        if (isMatchingStandardSize(w, h)) {
+            sizeTypeSel.value = "standard";
+            const match = Array.from(sizeListSel.options).find(opt => {
+                const [ow, oh] = (opt.value || "0,0").split(",").map(Number);
+                return (ow === w && oh === h) || (ow === h && oh === w);
+            });
+            if (match) sizeListSel.value = match.value;
+        } else {
+            sizeTypeSel.value = "custom";
+            wIn.value = w;
+            hIn.value = h;
+        }
+    }
+
+    // 재구입 흐름일 때: 시안 업로드 없이 바로 장바구니에 담고 cart.html로 이동
+    async function addReorderItemToCartAndGo() {
+        // 후가공 중복 선택 체크 (기존 handleOrder와 동일한 규칙)
+        const finishingValuesCheck = [];
+        let hasDuplicateFinishingCheck = false;
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (!sel.value) return;
+            if (finishingValuesCheck.includes(sel.value)) hasDuplicateFinishingCheck = true;
+            finishingValuesCheck.push(sel.value);
+        });
+        if (hasDuplicateFinishingCheck) {
+            alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
+            return;
+        }
+
+        const count = document.getElementById("setCountInput").value;
+        const width = document.getElementById("widthInput").value;
+        const height = document.getElementById("heightInput").value;
+        const priceText = document.getElementById("priceDisplay").textContent;
+        const priceNumber = parseInt(priceText.replace(/[^0-9]/g, ''), 10) || 0;
+        const qty = document.getElementById("qtySelect").value;
+
+        // 무게 추출 (kg 단위 통일)
+        const weightText = document.getElementById("weightDisplay").textContent;
+        let weightValue = 0;
+        if (weightText.includes("kg")) {
+            weightValue = parseFloat(weightText);
+        } else if (weightText.includes("g")) {
+            weightValue = parseFloat(weightText) / 1000;
+        }
+
+        // 선택된 일반 옵션 값들을 이어붙여 상품명 구성 (예: "명함 (양면 금박)")
+        let combinedGroupText = "";
+        document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.value) combinedGroupText += (combinedGroupText ? " " : "") + opt.value;
+        });
+
+        // 후가공 목록 (색상 등 서브옵션 포함)
+        const finishings = [];
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (sel.value) {
+                const subSelect = getFinishingSubSelect(sel);
+                const subValue = subSelect ? subSelect.value : "";
+                finishings.push(subValue ? `${sel.value}(${subValue})` : sel.value);
+            }
+        });
+
+        const titleEl = document.querySelector(".options-section h2");
+        const productTitle = titleEl ? titleEl.textContent.trim() : "상품";
+
+        const newItem = {
+            item: combinedGroupText ? `${productTitle} (${combinedGroupText})` : productTitle,
+            qty: qty || 1,
+            count: count || 1,
+            width: width || '',
+            height: height || '',
+            price: priceNumber,
+            weight: weightValue ? `${weightValue}kg` : '',
+            finishings: finishings.join(', '),
+            compositeImage: reorderImage, // 예전에 저장해둔 카페24 시안 이미지를 그대로 사용
+            originalImages: [], // 재구입은 새로 업로드할 원본이 없음 (예전 시안 그대로 제작)
+            productId: PRODUCT_ID // [추가] 다음에 이 주문을 또 재구입할 때 정확한 상품 페이지로 바로 가도록 기록
+        };
+
+        try {
+            const cart = (await idbGet(CART_KEY)) || [];
+            cart.push(newItem);
+            await idbSet(CART_KEY, cart);
+            location.href = "cart.html";
+        } catch (e) {
+            console.error("재구입 담기 실패:", e);
+            alert("장바구니에 담는 중 오류가 발생했습니다. 다시 시도해주세요.");
+        }
+    }
 
     // ---- 이 상품(01my)의 Firestore 문서. 페이지 진입 시 딱 1번만 불러와 여기에 보관합니다. ----
     const PRODUCT_ID = "01my";
@@ -1303,9 +1448,21 @@ window.enableMobileCustomPicker = function(selectEl) {
             loadFinishingOptions(document.querySelector(".finishing-select"));
             setupFinishingListener(document.querySelector(".finishing-select"));
 
+            // [추가] 재구입 흐름이면 예전 사이즈를 자동으로 선택
+            if (isReorderFlow && reorderWidth > 0 && reorderHeight > 0) {
+                applyReorderSize(reorderWidth, reorderHeight);
+            }
+
             updateSizeMode();
             updatePrice();
             console.log("[01my] 초기 가격 계산 완료. priceDisplay =", document.getElementById("priceDisplay").textContent);
+
+            // 사이즈 자동 선택 직후의 실제 값을 기준값으로 저장 (나중에 고객이 직접
+            // 바꿨는지 비교하는 데 씀 — 표준사이즈 매칭 시 반올림 등이 반영된 최종값)
+            if (isReorderFlow) {
+                reorderOriginalWidth = parseFloat(document.getElementById("widthInput").value) || 0;
+                reorderOriginalHeight = parseFloat(document.getElementById("heightInput").value) || 0;
+            }
 
             window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
             window.enableMobileCustomPicker(document.getElementById("sizeList"));
@@ -1327,8 +1484,47 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     loadProductAndInit();
 
+    // [추가] 재구입 모드 안내 — 옵션을 새로 골라야 하지만, 그만큼 가격은 항상
+    // 지금 시점 최신가로 계산되고, 시안 이미지는 예전 것을 그대로 사용한다는 걸 알려줌
+    if (isReorderFlow) {
+        const orderBtn = document.getElementById("orderBtn");
+        if (orderBtn) orderBtn.textContent = "이 옵션으로 재구입 담기";
+
+        const optionsSection = document.querySelector(".options-section");
+        if (optionsSection) {
+            const banner = document.createElement("div");
+            banner.id = "reorderBanner";
+            banner.style.cssText = "background:#fff7e6; border:1px solid #ffd591; color:#a15c00; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:10px; line-height:1.5;";
+            banner.textContent = "재구입 모드입니다. 옵션을 원하시는 대로 다시 선택해주세요 — 가격은 지금 이 순간의 최신 가격으로 계산됩니다. 시안 이미지는 예전에 제작하신 것을 그대로 사용합니다. (단, 사이즈를 변경하시면 새 시안이 필요해 재구입 모드가 해제됩니다)";
+            optionsSection.insertBefore(banner, optionsSection.firstChild);
+        }
+    }
+
     // ---- 주문하기: 다음 페이지로 선택 옵션 전달 ----
     window.handleOrder = function () {
+        // [추가] 재구입 흐름이면 시안(파일업로드) 단계를 건너뛰고 바로 장바구니로.
+        // 단, 고객이 사이즈를 예전과 다르게 바꿨다면 그 사이즈로는 예전 시안을 그대로
+        // 쓸 수 없으므로(작업사이즈가 달라짐) 재구입 모드를 해제하고 일반 주문 흐름으로 넘김.
+        if (isReorderFlow) {
+            const currentW = parseFloat(document.getElementById("widthInput").value) || 0;
+            const currentH = parseFloat(document.getElementById("heightInput").value) || 0;
+            const sameSize = (currentW === reorderOriginalWidth && currentH === reorderOriginalHeight) ||
+                              (currentW === reorderOriginalHeight && currentH === reorderOriginalWidth);
+
+            if (sameSize) {
+                addReorderItemToCartAndGo();
+                return;
+            }
+
+            alert("사이즈가 바뀌어서 재구입모드가 해제되었습니다.\n새 시안 제작을 위해 기존 상품 주문 페이지로 이동합니다.");
+            isReorderFlow = false;
+            const orderBtn = document.getElementById("orderBtn");
+            if (orderBtn) orderBtn.textContent = "셀프편집 & 주문하기";
+            const banner = document.getElementById("reorderBanner");
+            if (banner) banner.remove();
+            // 여기서 return하지 않고 아래 일반 주문 흐름을 그대로 이어서 실행함
+        }
+
         // 동일한 후가공을 중복 선택한 상태면 다음 페이지로 이동하지 않고 경고만 띄웁니다.
         const finishingValuesCheck = [];
         let hasDuplicateFinishingCheck = false;
@@ -1418,7 +1614,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         //   const finishings = params.get('finishings'); // "후가공1,후가공2" 형태의 일반 문자열
         // 처럼 표준적인 방법으로만 꺼내 쓰면 됩니다. (다음페이지가 바뀌어도 이 부분은 그대로 유지)
         const params = new URLSearchParams({
-            productId: "01my",
+            productId: PRODUCT_ID,
             options: JSON.stringify(groupSelections),
             qty: qty,
             count: count,
