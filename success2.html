@@ -324,7 +324,9 @@ if(order){
         const specLine = [
             (it.width && it.height) ? `${it.width} × ${it.height}mm` : '',
             it.paper ? `용지: ${it.paper}` : '',
-            it.ink ? `편집: ${it.ink}` : ''
+            it.ink ? `인쇄면: ${it.ink}` : '',
+            it.finishings ? `후가공: ${it.finishings}` : '',
+            it.weight ? `무게: ${it.weight}` : ''
         ].filter(Boolean).join(' · ');
 
         const thumb = it.compositeImage
