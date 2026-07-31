@@ -727,10 +727,14 @@ window.enableMobileCustomPicker = function(selectEl) {
     let isReorderFlow = !!reorderImage;
     const reorderWidth = parseFloat(reorderUrlParams.get('reorderWidth')) || 0;
     const reorderHeight = parseFloat(reorderUrlParams.get('reorderHeight')) || 0;
+    const reorderSide = reorderUrlParams.get('reorderSide') || ''; // 예: "단면"/"양면"
     // 사이즈를 자동 선택한 직후의 실제 값(표준 매칭 시 반올림 등 반영) — 나중에
     // 고객이 사이즈를 직접 바꿨는지 비교하는 기준값. loadProductAndInit에서 채워짐.
     let reorderOriginalWidth = 0;
     let reorderOriginalHeight = 0;
+    // 단면/양면처럼 "인쇄면" 성격의 옵션 그룹을 자동 인식해서 기억해둠 (있을 때만 사용)
+    let reorderSideSelect = null;
+    let reorderOriginalSide = '';
 
     // cart.html / sian.html과 동일한 IndexedDB(DB명/스토어명/키)를 사용해야
     // 서로 같은 장바구니를 읽고 쓸 수 있음
@@ -762,6 +766,23 @@ window.enableMobileCustomPicker = function(selectEl) {
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
+    }
+
+    // [추가] 재구입 흐름일 때 예전 인쇄면(단면/양면 등) 옵션을 자동으로 선택해둠.
+    // '단면'/'양면' 두 값을 모두 가진 select를 "인쇄면 그룹"으로 인식한다.
+    function applyReorderSide(sideValue) {
+        const selects = document.querySelectorAll('#dynamicOptionsContainer select');
+        for (const sel of selects) {
+            const optionValues = Array.from(sel.options).map(o => o.value);
+            const looksLikeSideGroup = optionValues.includes('단면') && optionValues.includes('양면');
+            if (looksLikeSideGroup) {
+                reorderSideSelect = sel;
+                if (sideValue && optionValues.includes(sideValue)) {
+                    sel.value = sideValue;
+                }
+                break;
+            }
+        }
     }
 
     // [추가] 재구입 흐름일 때 예전 사이즈를 자동으로 선택해둠 (등록된 규격사이즈와
@@ -847,6 +868,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             price: priceNumber,
             weight: weightValue ? `${weightValue}kg` : '',
             finishings: finishings.join(', '),
+            ink: reorderSideSelect ? reorderSideSelect.value : '', // 단면/양면 등 인쇄면 (다음 재구입 비교용)
             compositeImage: reorderImage, // 예전에 저장해둔 카페24 시안 이미지를 그대로 사용
             originalImages: [], // 재구입은 새로 업로드할 원본이 없음 (예전 시안 그대로 제작)
             productId: PRODUCT_ID // [추가] 다음에 이 주문을 또 재구입할 때 정확한 상품 페이지로 바로 가도록 기록
@@ -1452,6 +1474,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (isReorderFlow && reorderWidth > 0 && reorderHeight > 0) {
                 applyReorderSize(reorderWidth, reorderHeight);
             }
+            // [추가] 재구입 흐름이면 예전 인쇄면(단면/양면 등)도 자동으로 선택
+            if (isReorderFlow) {
+                applyReorderSide(reorderSide);
+            }
 
             updateSizeMode();
             updatePrice();
@@ -1462,6 +1488,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (isReorderFlow) {
                 reorderOriginalWidth = parseFloat(document.getElementById("widthInput").value) || 0;
                 reorderOriginalHeight = parseFloat(document.getElementById("heightInput").value) || 0;
+                reorderOriginalSide = reorderSideSelect ? reorderSideSelect.value : '';
             }
 
             window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
@@ -1495,7 +1522,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const banner = document.createElement("div");
             banner.id = "reorderBanner";
             banner.style.cssText = "background:#fff7e6; border:1px solid #ffd591; color:#a15c00; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:10px; line-height:1.5;";
-            banner.textContent = "재구입 모드입니다. 옵션을 원하시는 대로 다시 선택해주세요 — 가격은 지금 이 순간의 최신 가격으로 계산됩니다. 시안 이미지는 예전에 제작하신 것을 그대로 사용합니다. (단, 사이즈를 변경하시면 새 시안이 필요해 재구입 모드가 해제됩니다)";
+            banner.textContent = "재구입 모드입니다. 옵션을 원하시는 대로 다시 선택해주세요 — 가격은 지금 이 순간의 최신 가격으로 계산됩니다. 시안 이미지는 예전에 제작하신 것을 그대로 사용합니다. (단, 사이즈나 인쇄면(단면/양면)을 변경하시면 새 시안이 필요해 재구입 모드가 해제됩니다)";
             optionsSection.insertBefore(banner, optionsSection.firstChild);
         }
     }
@@ -1511,12 +1538,22 @@ window.enableMobileCustomPicker = function(selectEl) {
             const sameSize = (currentW === reorderOriginalWidth && currentH === reorderOriginalHeight) ||
                               (currentW === reorderOriginalHeight && currentH === reorderOriginalWidth);
 
-            if (sameSize) {
+            // 인쇄면(단면/양면) 그룹이 있는 경우에만 비교. 원래 값이 없었으면(그룹이 없거나
+            // 자동선택 실패) 비교 대상에서 제외해서 항상 "동일"로 취급함.
+            const currentSide = reorderSideSelect ? reorderSideSelect.value : '';
+            const sameSide = !reorderOriginalSide || currentSide === reorderOriginalSide;
+
+            if (sameSize && sameSide) {
                 addReorderItemToCartAndGo();
                 return;
             }
 
-            alert("사이즈가 바뀌어서 재구입모드가 해제되었습니다.\n새 시안 제작을 위해 기존 상품 주문 페이지로 이동합니다.");
+            let changedLabel = '';
+            if (!sameSize && !sameSide) changedLabel = '사이즈와 인쇄면(단면/양면)이';
+            else if (!sameSize) changedLabel = '사이즈가';
+            else changedLabel = '인쇄면(단면/양면)이';
+
+            alert(`${changedLabel} 바뀌어서 재구입모드가 해제되었습니다.\n새 시안 제작을 위해 기존 상품 주문 페이지로 이동합니다.`);
             isReorderFlow = false;
             const orderBtn = document.getElementById("orderBtn");
             if (orderBtn) orderBtn.textContent = "셀프편집 & 주문하기";
