@@ -856,7 +856,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const cart = (await idbGet(CART_KEY)) || [];
             cart.push(newItem);
             await idbSet(CART_KEY, cart);
-            location.href = "cart.html";
+            location.href = "https://sowonnamoo.github.io/myjs/includes/cart.html";
         } catch (e) {
             console.error("재구입 담기 실패:", e);
             alert("장바구니에 담는 중 오류가 발생했습니다. 다시 시도해주세요.");
