@@ -601,8 +601,9 @@ document.getElementById('save-btn').addEventListener('click', async () => {
             return;
         }
 
-        // 시안보기 페이지로 이동
-        window.location.href = PREVIEW_PAGE_URL;
+        // 시안보기 페이지로 이동 (접수 시 사용한 쿼리 — productId/options/paper/ink/qty 등 —
+        // 를 그대로 이어서 전달해야 sian.html이 referrer 등의 우회 방법 없이 바로 읽을 수 있음)
+        window.location.href = PREVIEW_PAGE_URL + window.location.search;
 
     } finally {
         // 페이지 이동이 실패한 경우를 대비해 원래 화면으로 복원
