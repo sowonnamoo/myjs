@@ -898,7 +898,8 @@ const runCartCheckout = withButtonLoading(cartCheckoutBtn, '담는 중...', asyn
     }));
 
     // 4. 01my.html → 에코프로1 → (referrer/세션스토리지 경유) 여기까지 이어받은
-    //    전체 주문정보(용지/편집/수량/건수/사이즈/가격/무게/후가공)를 꺼낸다.
+    //    전체 주문정보(상품ID/용지/편집/수량/건수/사이즈/가격/무게/후가공)를 꺼낸다.
+    const productId = getOrderValue(orderParams, 'productId');
     const paper = getOrderValue(orderParams, 'paper');
     const ink = getOrderValue(orderParams, 'ink');
     const qty = getOrderValue(orderParams, 'qty');
@@ -926,7 +927,8 @@ const runCartCheckout = withButtonLoading(cartCheckoutBtn, '담는 중...', asyn
         weight,
         finishings: finishings.join(', '),
         compositeImage: compositeUrl,   // R2에 실제로 업로드된 시안합성 이미지 URL
-        originalImages                  // 원본 이미지 목록 (카드결제 시점에 R2 업로드 예정)
+        originalImages,                 // 원본 이미지 목록 (카드결제 시점에 R2 업로드 예정)
+        productId                       // [추가] search.html 재구입 시 정확한 상품 페이지로 바로 연결하기 위함
     };
 
     // 6. IndexedDB에 저장 → 장바구니 페이지(cart.html)에서 그대로 읽어간다.
