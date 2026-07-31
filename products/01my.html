@@ -724,6 +724,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 장바구니에 담아 바로 cart.html로 이동시킨다.
     const reorderUrlParams = new URLSearchParams(window.location.search);
     const reorderImage = reorderUrlParams.get('reorderImage') || '';
+    const reorderImageFallback = reorderUrlParams.get('reorderImageFallback') || '';
     let isReorderFlow = !!reorderImage;
     const reorderWidth = parseFloat(reorderUrlParams.get('reorderWidth')) || 0;
     const reorderHeight = parseFloat(reorderUrlParams.get('reorderHeight')) || 0;
@@ -869,7 +870,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             weight: weightValue ? `${weightValue}kg` : '',
             finishings: finishings.join(', '),
             ink: reorderSideSelect ? reorderSideSelect.value : '', // 단면/양면 등 인쇄면 (다음 재구입 비교용)
-            compositeImage: reorderImage, // 예전에 저장해둔 카페24 시안 이미지를 그대로 사용
+            compositeImage: reorderImage, // R2 원본이 살아있으면 그걸, 없으면 카페24 경로를 사용
+            compositeImageFallback: reorderImageFallback, // R2가 나중에 지워지면 대신 보여줄 카페24 경로
             originalImages: [], // 재구입은 새로 업로드할 원본이 없음 (예전 시안 그대로 제작)
             productId: PRODUCT_ID // [추가] 다음에 이 주문을 또 재구입할 때 정확한 상품 페이지로 바로 가도록 기록
         };
@@ -1642,6 +1644,15 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
         });
 
+        // [추가] sian.html은 원래 options(JSON)이 아니라 paper/ink라는 평문 값을 따로 기대하고
+        // 있어서(에코프로1 단계에서 이 값이 유실되면 "커스텀 인쇄물"로 표시되는 문제가 있었음),
+        // 혹시 몰라 일반 옵션 그룹의 선택값들을 paper/ink로도 함께 실어 보냄(순서: 1번째=paper, 2번째=ink).
+        // 그룹이 3개 이상이면 나머지는 반영되지 않으니, 근본적으로는 에코프로1 쪽에서
+        // options(JSON) 전체를 그대로 전달하도록 고치는 게 맞습니다.
+        const groupValuesInOrder = Object.values(groupSelections);
+        const paperFallback = groupValuesInOrder[0] || "";
+        const inkFallback = groupValuesInOrder[1] || "";
+
         // 주의: URLSearchParams가 값들을 알아서 인코딩해줍니다. 여기서 encodeURIComponent를
         // 미리 씌우면 이중 인코딩이 되어버리므로 절대 추가하지 마세요.
         // 이 구조 덕분에 다음페이지 쪽에서는 특별한 디코딩 없이 그냥
@@ -1653,6 +1664,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         const params = new URLSearchParams({
             productId: PRODUCT_ID,
             options: JSON.stringify(groupSelections),
+            paper: paperFallback,
+            ink: inkFallback,
             qty: qty,
             count: count,
             width: width,
