@@ -535,7 +535,7 @@
   <div style="width:1195px; padding-bottom:80px;">
     <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:20px;">
       <h2 style="font-size:22px; margin:0;">이용후기 <span id="reviewCount" style="color:#2b7bc3;"></span></h2>
-      <button id="openReviewModalBtn" type="button" style="background:#2b7bc3; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">✍️ 후기 작성</button>
+      <span style="font-size:12.5px; color:#999;">※ 후기 작성은 주문내역 조회 페이지에서 가능합니다</span>
     </div>
     <div id="reviewSummary" style="margin-bottom:20px; font-size:15px; color:#555;"></div>
     <div id="reviewList"></div>
@@ -1755,7 +1755,6 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
     function setupReviewUI() {
-        const openBtn = document.getElementById('openReviewModalBtn');
         const overlay = document.getElementById('reviewModalOverlay');
         const closeBtn = document.getElementById('closeReviewModalBtn');
         const cancelBtn = document.getElementById('cancelReviewBtn');
@@ -1811,15 +1810,13 @@ window.enableMobileCustomPicker = function(selectEl) {
         phoneInput.addEventListener('blur', runEligibilityCheck);
 
         // [추가] search.html의 "후기 작성" 버튼에서 이름/전화번호를 이미 실어서 넘어온 경우 —
-        // 다시 구매 확인 절차를 밟지 않고 바로 작성창을 열어줌
+        // 입력창을 채워두고 모달을 자동으로 연 뒤, 실제 주문 데이터로 한 번 더(자동으로)
+        // 구매 확인을 돌림. 버튼 자체가 없어졌으니 이 경로가 유일한 진입 경로가 됨.
         if (writeReviewFlow && writeReviewName && writeReviewPhone) {
             nameInput.value = writeReviewName;
             phoneInput.value = writeReviewPhone;
-            reviewEligible = true;
-            eligibilityMsg.innerHTML = '<span style="color:#2b7bc3;">✅ 구매가 확인되었습니다. 후기를 작성해주세요.</span>';
-            formBody.style.display = 'block';
-            setSubmitEnabled(true);
             openModal();
+            runEligibilityCheck();
         }
 
         function renderStars(value) {
@@ -1880,7 +1877,6 @@ window.enableMobileCustomPicker = function(selectEl) {
         function openModal() { overlay.style.display = 'flex'; }
         function closeModal() { overlay.style.display = 'none'; resetForm(); }
 
-        openBtn.addEventListener('click', openModal);
         closeBtn.addEventListener('click', closeModal);
         cancelBtn.addEventListener('click', closeModal);
         overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
