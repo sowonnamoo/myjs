@@ -385,13 +385,15 @@
 <div class="product-container">
     <img id="mainProductImage" src="https://sowonnamoo1005.cafe24.com/1/26070301.jpg" style="width: 600px; height: 600px; object-fit: cover; flex-shrink: 0;" alt="제품 이미지">
     <div class="options-section">
-        <h2 style="margin: 0 0 10px 0;">명함</h2>
-        <div id="productRatingBadge" style="display:none; align-items:center; gap:6px; margin:-4px 0 12px 0; font-size:14px;">
-            <span id="productRatingStars" style="color:#f5a623;"></span>
-            <span id="productRatingValue" style="color:#333; font-weight:700;"></span>
-            <span style="color:#ccc;">·</span>
-            <span id="productRatingCount" onclick="goToReviewTab()" style="color:#2b7bc3; text-decoration:underline; cursor:pointer;"></span>
-        </div>
+        <h2 style="margin: 0 0 10px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <span id="productTitleText">명함</span>
+            <span id="productRatingBadge" style="display:none; align-items:center; gap:6px; font-size:14px; font-weight:normal;">
+                <span id="productRatingStars" style="color:#f5a623;"></span>
+                <span id="productRatingValue" style="color:#333; font-weight:700;"></span>
+                <span style="color:#ccc;">·</span>
+                <span id="productRatingCount" onclick="goToReviewTab()" style="color:#333; font-weight:600; text-decoration:underline; cursor:pointer;"></span>
+            </span>
+        </h2>
         
         <div id="dynamicOptionsContainer"></div>
 
@@ -555,11 +557,6 @@
     </div>
   </div>
 </section>
-
-<!-- 후기 사진 확대보기 -->
-<div id="reviewImageLightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:10000; align-items:center; justify-content:center; cursor:zoom-out;">
-  <img id="reviewImageLightboxImg" src="" style="max-width:90vw; max-height:90vh; border-radius:8px;">
-</div>
 <!-- ============ 이용후기 끝 ============ -->
 
 <script>
@@ -758,7 +755,7 @@ window.enableMobileCustomPicker = function(selectEl) {
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, collection, query, where, orderBy, limit, getDocs, getCountFromServer, updateDoc, startAfter } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -914,7 +911,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
         });
 
-        const titleEl = document.querySelector(".options-section h2");
+        const titleEl = document.getElementById("productTitleText") || document.querySelector(".options-section h2");
         const productTitle = titleEl ? titleEl.textContent.trim() : "상품";
 
         // "양면" 글자가 있으면 그대로 기록해서, 다음 재구입 때도 상품명 텍스트 비교가 이어지게 함
@@ -1509,6 +1506,38 @@ window.enableMobileCustomPicker = function(selectEl) {
     });
 
     // ---- 초기 로드: Firestore에서 01my 문서를 딱 1번만 불러옵니다 (SEO/상세내용도 이 문서 안에 함께 있음) ----
+    // 상품명 옆 별점 배지를 실제로 그려줌
+    function renderRatingBadge(avg, count) {
+        const badge = document.getElementById('productRatingBadge');
+        document.getElementById('productRatingStars').textContent = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
+        document.getElementById('productRatingValue').textContent = avg.toFixed(1);
+        document.getElementById('productRatingCount').textContent = `리뷰(${count})`;
+        if (badge) badge.style.display = 'flex';
+    }
+
+    // 상품 문서에 reviewStats 캐시가 없을 때(이 기능 넣기 전부터 있던 리뷰 등) 한 번만 실제로
+    // 계산해서 캐시해둠 — count()는 저렴한 집계 쿼리라 부담 없고, 그 이후엔 다시 안 돌아감
+    async function backfillReviewStats() {
+        try {
+            const countSnap = await getCountFromServer(query(collection(db, 'reviews'), where('productId', '==', PRODUCT_ID)));
+            const count = countSnap.data().count;
+            if (count === 0) return; // 진짜로 리뷰가 없으면 배지는 계속 숨겨둠
+
+            const snap = await getDocs(query(collection(db, 'reviews'), where('productId', '==', PRODUCT_ID), limit(2000)));
+            const sum = snap.docs.reduce((s, d) => s + (d.data().rating || 0), 0);
+            const avg = sum / count;
+
+            renderRatingBadge(avg, count);
+
+            // 다음 방문자부터는 이 계산을 다시 안 하도록 상품 문서에 캐시
+            await updateDoc(doc(db, 'products', PRODUCT_ID), {
+                reviewStats: { count, sum, avg }
+            });
+        } catch (err) {
+            console.error('리뷰 통계 백필 실패:', err);
+        }
+    }
+
     async function loadProductAndInit() {
         try {
             const snap = await getDoc(doc(db, "products", PRODUCT_ID));
@@ -1521,12 +1550,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 리뷰를 따로 조회하지 않음 — 이미 하고 있던 상품정보 조회 1번에 값이 같이 들어있음.
             const stats = productData.reviewStats;
             if (stats && stats.count > 0) {
-                const badge = document.getElementById('productRatingBadge');
-                const avg = stats.avg || (stats.sum / stats.count);
-                document.getElementById('productRatingStars').textContent = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
-                document.getElementById('productRatingValue').textContent = avg.toFixed(1);
-                document.getElementById('productRatingCount').textContent = `리뷰(${stats.count})`;
-                if (badge) badge.style.display = 'flex';
+                renderRatingBadge(stats.avg || (stats.sum / stats.count), stats.count);
+            } else {
+                // 통계 캐시가 없는 경우 — 이 기능을 넣기 전부터 있던 리뷰일 수 있으니 한 번만
+                // 실제로 확인해서 계산 후 상품 문서에 캐시해둠(다음 방문자부터는 다시 안 함)
+                backfillReviewStats();
             }
 
             renderOptionGroups();
@@ -1587,8 +1615,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     loadProductAndInit();
 
     // ---------------- 이용후기 (표시 전용 — 작성은 search.html 주문 카드에서 처리) ----------------
-    const REVIEW_VISIBLE_COUNT = 10;
-    const REVIEW_FETCH_CAP = 50;
+    const REVIEW_PAGE_SIZE = 10;
 
     function reviewStarsHtml(rating) {
         let html = '';
@@ -1642,65 +1669,78 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
     }
 
-    function setupReviewLightbox() {
-        const lightbox = document.getElementById('reviewImageLightbox');
-        const lightboxImg = document.getElementById('reviewImageLightboxImg');
-        if (!lightbox) return;
-        lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; lightboxImg.src = ''; });
-        window.openReviewImageLightbox = (url) => {
-            lightboxImg.src = url;
-            lightbox.style.display = 'flex';
-        };
+    // 화면에 실제로 그려주는 부분만 따로 뺌 (최초 로드/펼치기 양쪽에서 재사용)
+    // 화면에 카드만 그려줌 (append=true면 기존 목록 뒤에 이어붙이고, 아니면 통째로 교체)
+    function renderReviewCards(reviews, append) {
+        const listEl = document.getElementById('reviewList');
+        const productTitleForAlt = (document.getElementById("productTitleText")?.textContent || '상품').trim();
+
+        // 레이아웃: [별점] [작성한 글 + 사진(있으면 1장, 처음부터 크게)] [성함 / 작성일]
+        const cardsHtml = reviews.map(r => {
+            const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+            const isoDate = isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+            const images = Array.isArray(r.images) ? r.images : [];
+            const photoUrl = images[0]; // 사진은 1장만 받으므로 첫 장만 사용
+
+            return `
+            <article itemprop="review" itemscope itemtype="https://schema.org/Review"
+                style="display:flex; align-items:flex-start; gap:18px; padding:22px 0; border-bottom:1px solid #eee; flex-wrap:wrap;">
+                <div itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating" style="flex-shrink:0; width:92px; font-size:18px; letter-spacing:1px; padding-top:2px;">
+                    ${reviewStarsHtml(r.rating)}
+                    <meta itemprop="ratingValue" content="${r.rating}">
+                    <meta itemprop="bestRating" content="5">
+                </div>
+                <div style="flex:1 1 280px; min-width:0;">
+                    <div itemprop="reviewBody" style="font-size:14px; color:#333; line-height:1.6; white-space:pre-line; ${photoUrl ? 'margin-bottom:12px;' : ''}">${escapeHtml(r.content)}</div>
+                    ${photoUrl ? `<img src="${photoUrl}" alt="${escapeHtml(productTitleForAlt)} 구매 후기 사진" loading="lazy" style="display:block; max-width:420px; width:100%; height:auto; border-radius:8px; border:1px solid #eee;">` : ''}
+                </div>
+                <div style="flex-shrink:0; min-width:90px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                    <span itemprop="author" itemscope itemtype="https://schema.org/Person">
+                        <span itemprop="name" style="font-size:13.5px; font-weight:700; color:#333;">${escapeHtml(r.name || '익명')}</span>
+                    </span>
+                    ${isoDate ? `<time itemprop="datePublished" datetime="${isoDate}" style="font-size:12px; color:#aaa;">${formatReviewDate(r.createdAt)}</time>` : ''}
+                </div>
+            </article>`;
+        }).join('');
+
+        if (append) {
+            listEl.insertAdjacentHTML('beforeend', cardsHtml);
+        } else {
+            listEl.innerHTML = cardsHtml;
+        }
     }
 
-    // 화면에 실제로 그려주는 부분만 따로 뺌 (최초 로드/펼치기 양쪽에서 재사용)
-    function renderReviewCards(reviews) {
-        const listEl = document.getElementById('reviewList');
-        const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
-        const productTitleForAlt = (document.querySelector(".options-section h2")?.textContent || '상품').trim();
-        document.getElementById('reviewCount').textContent = `(${reviews.length})`;
+    // 별점 요약/개수는 상품 문서에 캐시된 reviewStats(정확한 전체 평균/개수)를 우선 사용 —
+    // 지금까지 몇 페이지를 불러왔는지와 무관하게 항상 정확한 값을 보여줌
+    function updateReviewSummaryAndSeo() {
+        const stats = productData.reviewStats;
+        let avg, count;
+        if (stats && stats.count > 0) {
+            avg = stats.avg || (stats.sum / stats.count);
+            count = stats.count;
+        } else {
+            avg = allLoadedReviews.reduce((s, r) => s + (r.rating || 0), 0) / allLoadedReviews.length;
+            count = allLoadedReviews.length;
+        }
+        document.getElementById('reviewCount').textContent = `(${count})`;
         document.getElementById('reviewSummary').innerHTML = `
             <span itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating">
                 <span style="font-size:20px; vertical-align:middle;">${reviewStarsHtml(Math.round(avg))}</span>
                 <span style="vertical-align:middle; margin-left:6px; color:#555;">
                     평균 <span itemprop="ratingValue">${avg.toFixed(1)}</span>점 ·
-                    총 <span itemprop="reviewCount">${reviews.length}</span>건
+                    총 <span itemprop="reviewCount">${count}</span>건
                 </span>
             </span>
         `;
-        updateReviewStructuredData(reviews, avg);
-
-        // 레이아웃: [사진] [별점] [작성한 글] ... [성함] [작성일] — 한 줄 가로 배치
-        listEl.innerHTML = reviews.map(r => {
-            const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-            const isoDate = isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
-            const images = Array.isArray(r.images) ? r.images : [];
-            const photoBlock = images.length
-                ? `<div style="display:flex; gap:6px; flex-shrink:0;">
-                    ${images.map(url => `<img src="${url}" onclick="openReviewImageLightbox('${url}')" alt="${escapeHtml(productTitleForAlt)} 구매 후기 사진" loading="lazy" style="width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ddd; cursor:pointer;">`).join('')}
-                   </div>`
-                : `<div style="width:70px; height:70px; flex-shrink:0; background:#f5f6f7; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px;">사진없음</div>`;
-
-            return `
-            <article itemprop="review" itemscope itemtype="https://schema.org/Review"
-                style="display:flex; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid #eee; flex-wrap:wrap;">
-                ${photoBlock}
-                <div itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating" style="flex-shrink:0; font-size:17px; letter-spacing:1px;">
-                    ${reviewStarsHtml(r.rating)}
-                    <meta itemprop="ratingValue" content="${r.rating}">
-                    <meta itemprop="bestRating" content="5">
-                </div>
-                <div itemprop="reviewBody" style="flex:1 1 260px; font-size:14px; color:#333; line-height:1.55; white-space:pre-line;">${escapeHtml(r.content)}</div>
-                <div itemprop="author" itemscope itemtype="https://schema.org/Person" style="flex-shrink:0; font-size:13.5px; color:#333; font-weight:700; white-space:nowrap;">
-                    <span itemprop="name">${escapeHtml(r.name || '익명')}</span>
-                </div>
-                ${isoDate ? `<time itemprop="datePublished" datetime="${isoDate}" style="flex-shrink:0; font-size:12px; color:#aaa; white-space:nowrap;">${formatReviewDate(r.createdAt)}</time>` : ''}
-            </article>`;
-        }).join('');
+        // SEO 구조화 데이터에는 지금까지 실제로 불러온 리뷰들을 실어둠(더 보기 누를수록 늘어남)
+        updateReviewStructuredData(allLoadedReviews, avg);
     }
 
-    // [읽기 비용 최소화] 페이지 로드 시엔 딱 10개만 읽어옴. "펼치기"를 실제로 눌렀을 때만
-    // 추가로 최대 50개까지 다시 읽어옴 — 안 눌러보는 대다수 방문객은 10개 읽기 비용만 나감.
+    // [읽기 비용 최소화] 한 번에 딱 10개씩만 읽어옴. "더 보기"를 누를 때마다
+    // 커서(startAfter)로 이어서 다음 10개만 추가로 읽어옴 — 이미 읽은 건 절대 다시 안 읽음.
+    let allLoadedReviews = [];
+    let reviewLastDoc = null;
+
     async function loadReviews() {
         const listEl = document.getElementById('reviewList');
         const loadMoreWrap = document.getElementById('reviewLoadMoreWrap');
@@ -1711,7 +1751,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 collection(db, 'reviews'),
                 where('productId', '==', PRODUCT_ID),
                 orderBy('createdAt', 'desc'),
-                limit(REVIEW_VISIBLE_COUNT)
+                limit(REVIEW_PAGE_SIZE)
             );
             const snap = await getDocs(q);
             const reviews = snap.docs.map(d => d.data());
@@ -1725,34 +1765,17 @@ window.enableMobileCustomPicker = function(selectEl) {
                 return;
             }
 
-            renderReviewCards(reviews);
+            allLoadedReviews = reviews;
+            reviewLastDoc = snap.docs[snap.docs.length - 1];
 
-            // 정확히 10개가 꽉 찼다는 건 더 있을 수도 있다는 뜻 — 실제로 몇 개인지는
-            // "펼치기"를 눌러서 다시 읽어보기 전까진 알 수 없음(그래야 읽기 비용이 안 나감)
-            if (reviews.length === REVIEW_VISIBLE_COUNT) {
+            renderReviewCards(reviews, false);
+            updateReviewSummaryAndSeo();
+
+            loadMoreBtn.onclick = loadMoreReviews;
+            if (reviews.length === REVIEW_PAGE_SIZE) {
                 loadMoreWrap.style.display = 'block';
-                loadMoreBtn.textContent = '펼치기';
                 loadMoreBtn.disabled = false;
-                loadMoreBtn.onclick = async () => {
-                    loadMoreBtn.disabled = true;
-                    loadMoreBtn.textContent = '불러오는 중...';
-                    try {
-                        const qAll = query(
-                            collection(db, 'reviews'),
-                            where('productId', '==', PRODUCT_ID),
-                            orderBy('createdAt', 'desc'),
-                            limit(REVIEW_FETCH_CAP)
-                        );
-                        const snapAll = await getDocs(qAll);
-                        const allReviews = snapAll.docs.map(d => d.data());
-                        renderReviewCards(allReviews);
-                        loadMoreWrap.style.display = 'none'; // 이미 다 펼쳤으니 버튼은 숨김
-                    } catch (err) {
-                        console.error('후기 추가 로드 실패:', err);
-                        loadMoreBtn.disabled = false;
-                        loadMoreBtn.textContent = '펼치기 (다시 시도)';
-                    }
-                };
+                loadMoreBtn.textContent = '더 보기 (10개씩)';
             } else {
                 loadMoreWrap.style.display = 'none';
             }
@@ -1762,7 +1785,45 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
     }
 
-    setupReviewLightbox();
+    // "더 보기" 클릭 시 — 지금까지 읽은 것 다음(startAfter)부터 딱 10개만 추가로 읽어옴
+    async function loadMoreReviews() {
+        const loadMoreWrap = document.getElementById('reviewLoadMoreWrap');
+        const loadMoreBtn = document.getElementById('reviewLoadMoreBtn');
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.textContent = '불러오는 중...';
+        try {
+            const q = query(
+                collection(db, 'reviews'),
+                where('productId', '==', PRODUCT_ID),
+                orderBy('createdAt', 'desc'),
+                startAfter(reviewLastDoc),
+                limit(REVIEW_PAGE_SIZE)
+            );
+            const snap = await getDocs(q);
+            const newReviews = snap.docs.map(d => d.data());
+
+            if (newReviews.length === 0) {
+                loadMoreWrap.style.display = 'none';
+                return;
+            }
+
+            reviewLastDoc = snap.docs[snap.docs.length - 1];
+            allLoadedReviews = allLoadedReviews.concat(newReviews);
+            renderReviewCards(newReviews, true);
+            updateReviewSummaryAndSeo();
+
+            if (newReviews.length === REVIEW_PAGE_SIZE) {
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.textContent = '더 보기 (10개씩)';
+            } else {
+                loadMoreWrap.style.display = 'none';
+            }
+        } catch (err) {
+            console.error('후기 추가 로드 실패:', err);
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.textContent = '더 보기 (다시 시도)';
+        }
+    }
 
     // [추가] 페이지 로드 시 자동으로 불러오지 않음 — "이용후기" 탭을 실제로 클릭했을 때
     // 딱 한 번만 Firestore에서 읽어옴 (탭 안 눌러보는 방문객은 읽기 비용이 아예 안 나감)
