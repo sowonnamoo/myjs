@@ -386,6 +386,12 @@
     <img id="mainProductImage" src="https://sowonnamoo1005.cafe24.com/1/26070301.jpg" style="width: 600px; height: 600px; object-fit: cover; flex-shrink: 0;" alt="제품 이미지">
     <div class="options-section">
         <h2 style="margin: 0 0 10px 0;">명함</h2>
+        <div id="productRatingBadge" style="display:none; align-items:center; gap:6px; margin:-4px 0 12px 0; font-size:14px;">
+            <span id="productRatingStars" style="color:#f5a623;"></span>
+            <span id="productRatingValue" style="color:#333; font-weight:700;"></span>
+            <span style="color:#ccc;">·</span>
+            <span id="productRatingCount" onclick="goToReviewTab()" style="color:#2b7bc3; text-decoration:underline; cursor:pointer;"></span>
+        </div>
         
         <div id="dynamicOptionsContainer"></div>
 
@@ -557,6 +563,14 @@
 <!-- ============ 이용후기 끝 ============ -->
 
 <script>
+// 상품명 옆 별점 배지의 "리뷰(N)" 클릭 시 — 이용후기 탭을 찾아서 그대로 클릭한 것처럼 이동
+function goToReviewTab() {
+    const tabs = document.querySelectorAll('[onclick^="setTab(this)"]');
+    for (const t of tabs) {
+        if (t.textContent.includes('이용후기')) { setTab(t); return; }
+    }
+}
+
 function setTab(el) {
     // 1. 탭 버튼 색상 변경 (클릭한 탭만 회색으로 활성화 표시)
     const tabs = el.parentElement.children;
@@ -577,10 +591,12 @@ function setTab(el) {
     // 3. '이용후기' 탭 — 이 탭을 눌렀을 때만 후기 섹션을 보여주고(+ 최초 1회만 Firestore에서 불러옴)
     if (el.textContent.includes("이용후기")) {
         if (window.showReviewTab) window.showReviewTab();
-        // 섹션이 방금 display:flex로 바뀌어 높이가 잡히는 걸 기다렸다가 스크롤
-        setTimeout(() => {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }, 50);
+        // 페이지 맨 밑이 아니라 후기 섹션이 화면 상단에 딱 오도록 정확히 스크롤
+        // (섹션이 방금 display:flex로 바뀌어 높이가 잡히는 걸 한 프레임 기다렸다가 이동)
+        requestAnimationFrame(() => {
+            const section = document.getElementById('reviewSection');
+            if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
         return;
     }
 
@@ -1500,6 +1516,18 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (!Array.isArray(productData.options)) productData.options = [];
 
             console.log("[01my] Firestore 상품 데이터 로드 완료:", productData);
+
+            // [추가] 상품 문서에 미리 계산되어 있는 리뷰 통계(reviewStats)로 별점 배지를 채움.
+            // 리뷰를 따로 조회하지 않음 — 이미 하고 있던 상품정보 조회 1번에 값이 같이 들어있음.
+            const stats = productData.reviewStats;
+            if (stats && stats.count > 0) {
+                const badge = document.getElementById('productRatingBadge');
+                const avg = stats.avg || (stats.sum / stats.count);
+                document.getElementById('productRatingStars').textContent = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
+                document.getElementById('productRatingValue').textContent = avg.toFixed(1);
+                document.getElementById('productRatingCount').textContent = `리뷰(${stats.count})`;
+                if (badge) badge.style.display = 'flex';
+            }
 
             renderOptionGroups();
 
