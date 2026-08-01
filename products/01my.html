@@ -499,7 +499,8 @@
         <div style="display:flex; border:1px solid #ccc; text-align:center; border-bottom:2px solid #ccc;">
 <div onclick="setTab(this)" style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:pointer;">제품정보/제품상세보기</div>            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">별도 후가공 안내</div>
             <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">출고 납기일 안내</div>
-            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">재작업/취소/환불</div>
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">재작업/취소/환불</div>
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">이용후기</div>
         </div>
 
         <div id="ai-holiday-banner" style="display:none; width: 100%; margin-bottom: 20px;">
@@ -534,7 +535,7 @@
 </div>
 
 <!-- ============ 이용후기 ============ -->
-<section id="reviewSection" itemscope itemtype="https://schema.org/Product" style="width:100%; display:flex; justify-content:center; margin-top:60px;">
+<section id="reviewSection" itemscope itemtype="https://schema.org/Product" style="width:100%; display:none; justify-content:center; margin-top:60px;">
   <div style="width:1195px; padding-bottom:80px;">
     <meta itemprop="name" content="명함 인쇄">
     <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:20px;">
@@ -568,11 +569,23 @@ function setTab(el) {
 
     // 2. '제품정보/제품상세보기'는 회색 박스만 그쪽으로 옮기고, 화면은 맨 위(제품 이미지/옵션 영역)로 이동
     if (el.textContent.includes("제품정보")) {
+        if (window.hideReviewTab) window.hideReviewTab();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
 
-    // 3. 나머지 탭은 기존처럼 하단으로 이동
+    // 3. '이용후기' 탭 — 이 탭을 눌렀을 때만 후기 섹션을 보여주고(+ 최초 1회만 Firestore에서 불러옴)
+    if (el.textContent.includes("이용후기")) {
+        if (window.showReviewTab) window.showReviewTab();
+        // 섹션이 방금 display:flex로 바뀌어 높이가 잡히는 걸 기다렸다가 스크롤
+        setTimeout(() => {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }, 50);
+        return;
+    }
+
+    // 4. 나머지 탭(후가공/납기/재작업 안내)은 후기 섹션을 다시 숨기고 기존처럼 하단으로 이동
+    if (window.hideReviewTab) window.hideReviewTab();
     window.scrollTo({
         top: document.body.scrollHeight,
         behavior: 'smooth'
@@ -1546,8 +1559,8 @@ window.enableMobileCustomPicker = function(selectEl) {
     loadProductAndInit();
 
     // ---------------- 이용후기 (표시 전용 — 작성은 search.html 주문 카드에서 처리) ----------------
-    const REVIEW_PAGE_SIZE = 10;
-    let reviewsLoadedCount = 0;
+    const REVIEW_VISIBLE_COUNT = 10;
+    const REVIEW_FETCH_CAP = 50;
 
     function reviewStarsHtml(rating) {
         let html = '';
@@ -1612,21 +1625,68 @@ window.enableMobileCustomPicker = function(selectEl) {
         };
     }
 
+    // 화면에 실제로 그려주는 부분만 따로 뺌 (최초 로드/펼치기 양쪽에서 재사용)
+    function renderReviewCards(reviews) {
+        const listEl = document.getElementById('reviewList');
+        const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
+        const productTitleForAlt = (document.querySelector(".options-section h2")?.textContent || '상품').trim();
+        document.getElementById('reviewCount').textContent = `(${reviews.length})`;
+        document.getElementById('reviewSummary').innerHTML = `
+            <span itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating">
+                <span style="font-size:20px; vertical-align:middle;">${reviewStarsHtml(Math.round(avg))}</span>
+                <span style="vertical-align:middle; margin-left:6px; color:#555;">
+                    평균 <span itemprop="ratingValue">${avg.toFixed(1)}</span>점 ·
+                    총 <span itemprop="reviewCount">${reviews.length}</span>건
+                </span>
+            </span>
+        `;
+        updateReviewStructuredData(reviews, avg);
+
+        // 레이아웃: [사진] [별점] [작성한 글] ... [성함] [작성일] — 한 줄 가로 배치
+        listEl.innerHTML = reviews.map(r => {
+            const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+            const isoDate = isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+            const images = Array.isArray(r.images) ? r.images : [];
+            const photoBlock = images.length
+                ? `<div style="display:flex; gap:6px; flex-shrink:0;">
+                    ${images.map(url => `<img src="${url}" onclick="openReviewImageLightbox('${url}')" alt="${escapeHtml(productTitleForAlt)} 구매 후기 사진" loading="lazy" style="width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ddd; cursor:pointer;">`).join('')}
+                   </div>`
+                : `<div style="width:70px; height:70px; flex-shrink:0; background:#f5f6f7; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px;">사진없음</div>`;
+
+            return `
+            <article itemprop="review" itemscope itemtype="https://schema.org/Review"
+                style="display:flex; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid #eee; flex-wrap:wrap;">
+                ${photoBlock}
+                <div itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating" style="flex-shrink:0; font-size:17px; letter-spacing:1px;">
+                    ${reviewStarsHtml(r.rating)}
+                    <meta itemprop="ratingValue" content="${r.rating}">
+                    <meta itemprop="bestRating" content="5">
+                </div>
+                <div itemprop="reviewBody" style="flex:1 1 260px; font-size:14px; color:#333; line-height:1.55; white-space:pre-line;">${escapeHtml(r.content)}</div>
+                <div itemprop="author" itemscope itemtype="https://schema.org/Person" style="flex-shrink:0; font-size:13.5px; color:#333; font-weight:700; white-space:nowrap;">
+                    <span itemprop="name">${escapeHtml(r.name || '익명')}</span>
+                </div>
+                ${isoDate ? `<time itemprop="datePublished" datetime="${isoDate}" style="flex-shrink:0; font-size:12px; color:#aaa; white-space:nowrap;">${formatReviewDate(r.createdAt)}</time>` : ''}
+            </article>`;
+        }).join('');
+    }
+
+    // [읽기 비용 최소화] 페이지 로드 시엔 딱 10개만 읽어옴. "펼치기"를 실제로 눌렀을 때만
+    // 추가로 최대 50개까지 다시 읽어옴 — 안 눌러보는 대다수 방문객은 10개 읽기 비용만 나감.
     async function loadReviews() {
         const listEl = document.getElementById('reviewList');
         const loadMoreWrap = document.getElementById('reviewLoadMoreWrap');
+        const loadMoreBtn = document.getElementById('reviewLoadMoreBtn');
         if (!listEl) return;
-        const requestLimit = reviewsLoadedCount + REVIEW_PAGE_SIZE;
         try {
             const q = query(
                 collection(db, 'reviews'),
                 where('productId', '==', PRODUCT_ID),
                 orderBy('createdAt', 'desc'),
-                limit(requestLimit)
+                limit(REVIEW_VISIBLE_COUNT)
             );
             const snap = await getDocs(q);
             const reviews = snap.docs.map(d => d.data());
-            reviewsLoadedCount = reviews.length;
 
             if (reviews.length === 0) {
                 listEl.innerHTML = '<div style="text-align:center; padding:40px 0; color:#999;">아직 등록된 후기가 없습니다. 첫 후기를 남겨주세요!</div>';
@@ -1637,49 +1697,37 @@ window.enableMobileCustomPicker = function(selectEl) {
                 return;
             }
 
-            const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
-            const productTitleForAlt = (document.querySelector(".options-section h2")?.textContent || '상품').trim();
-            document.getElementById('reviewCount').textContent = `(${reviews.length})`;
-            document.getElementById('reviewSummary').innerHTML = `
-                <span itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating">
-                    <span style="font-size:20px; vertical-align:middle;">${reviewStarsHtml(Math.round(avg))}</span>
-                    <span style="vertical-align:middle; margin-left:6px; color:#555;">
-                        평균 <span itemprop="ratingValue">${avg.toFixed(1)}</span>점 ·
-                        총 <span itemprop="reviewCount">${reviews.length}</span>건
-                    </span>
-                </span>
-            `;
-            updateReviewStructuredData(reviews, avg);
+            renderReviewCards(reviews);
 
-            // 레이아웃: [사진] [별점] [작성한 글] ... [성함] [작성일] — 한 줄 가로 배치
-            listEl.innerHTML = reviews.map(r => {
-                const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-                const isoDate = isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
-                const images = Array.isArray(r.images) ? r.images : [];
-                const photoBlock = images.length
-                    ? `<div style="display:flex; gap:6px; flex-shrink:0;">
-                        ${images.map(url => `<img src="${url}" onclick="openReviewImageLightbox('${url}')" alt="${escapeHtml(productTitleForAlt)} 구매 후기 사진" loading="lazy" style="width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ddd; cursor:pointer;">`).join('')}
-                       </div>`
-                    : `<div style="width:70px; height:70px; flex-shrink:0; background:#f5f6f7; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px;">사진없음</div>`;
-
-                return `
-                <article itemprop="review" itemscope itemtype="https://schema.org/Review"
-                    style="display:flex; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid #eee; flex-wrap:wrap;">
-                    ${photoBlock}
-                    <div itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating" style="flex-shrink:0; font-size:17px; letter-spacing:1px;">
-                        ${reviewStarsHtml(r.rating)}
-                        <meta itemprop="ratingValue" content="${r.rating}">
-                        <meta itemprop="bestRating" content="5">
-                    </div>
-                    <div itemprop="reviewBody" style="flex:1 1 260px; font-size:14px; color:#333; line-height:1.55; white-space:pre-line;">${escapeHtml(r.content)}</div>
-                    <div itemprop="author" itemscope itemtype="https://schema.org/Person" style="flex-shrink:0; font-size:13.5px; color:#333; font-weight:700; white-space:nowrap;">
-                        <span itemprop="name">${escapeHtml(r.name || '익명')}</span>
-                    </div>
-                    ${isoDate ? `<time itemprop="datePublished" datetime="${isoDate}" style="flex-shrink:0; font-size:12px; color:#aaa; white-space:nowrap;">${formatReviewDate(r.createdAt)}</time>` : ''}
-                </article>`;
-            }).join('');
-
-            loadMoreWrap.style.display = (reviews.length === requestLimit) ? 'block' : 'none';
+            // 정확히 10개가 꽉 찼다는 건 더 있을 수도 있다는 뜻 — 실제로 몇 개인지는
+            // "펼치기"를 눌러서 다시 읽어보기 전까진 알 수 없음(그래야 읽기 비용이 안 나감)
+            if (reviews.length === REVIEW_VISIBLE_COUNT) {
+                loadMoreWrap.style.display = 'block';
+                loadMoreBtn.textContent = '펼치기';
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.onclick = async () => {
+                    loadMoreBtn.disabled = true;
+                    loadMoreBtn.textContent = '불러오는 중...';
+                    try {
+                        const qAll = query(
+                            collection(db, 'reviews'),
+                            where('productId', '==', PRODUCT_ID),
+                            orderBy('createdAt', 'desc'),
+                            limit(REVIEW_FETCH_CAP)
+                        );
+                        const snapAll = await getDocs(qAll);
+                        const allReviews = snapAll.docs.map(d => d.data());
+                        renderReviewCards(allReviews);
+                        loadMoreWrap.style.display = 'none'; // 이미 다 펼쳤으니 버튼은 숨김
+                    } catch (err) {
+                        console.error('후기 추가 로드 실패:', err);
+                        loadMoreBtn.disabled = false;
+                        loadMoreBtn.textContent = '펼치기 (다시 시도)';
+                    }
+                };
+            } else {
+                loadMoreWrap.style.display = 'none';
+            }
         } catch (err) {
             console.error('후기 로드 실패:', err);
             listEl.innerHTML = '<div style="text-align:center; padding:40px 0; color:#c0392b;">후기를 불러오는 중 오류가 발생했습니다.</div>';
@@ -1687,9 +1735,22 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
     setupReviewLightbox();
-    const reviewLoadMoreBtnEl = document.getElementById('reviewLoadMoreBtn');
-    if (reviewLoadMoreBtnEl) reviewLoadMoreBtnEl.addEventListener('click', () => loadReviews());
-    loadReviews();
+
+    // [추가] 페이지 로드 시 자동으로 불러오지 않음 — "이용후기" 탭을 실제로 클릭했을 때
+    // 딱 한 번만 Firestore에서 읽어옴 (탭 안 눌러보는 방문객은 읽기 비용이 아예 안 나감)
+    let reviewsAlreadyLoaded = false;
+    window.showReviewTab = async function () {
+        const section = document.getElementById('reviewSection');
+        if (section) section.style.display = 'flex';
+        if (!reviewsAlreadyLoaded) {
+            reviewsAlreadyLoaded = true;
+            await loadReviews();
+        }
+    };
+    window.hideReviewTab = function () {
+        const section = document.getElementById('reviewSection');
+        if (section) section.style.display = 'none';
+    };
     // ---------------- 이용후기 끝 ----------------
 
     // [추가] 재구입 모드 안내 — 옵션을 새로 골라야 하지만, 그만큼 가격은 항상
