@@ -508,7 +508,7 @@
 <div onclick="setTab(this)" style="flex:1; padding:15px; background:#999; color:white; border-right:1px solid #ccc; cursor:pointer;">제품정보/제품상세보기</div>            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">별도 후가공 안내</div>
             <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">출고 납기일 안내</div>
             <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; border-right:1px solid #ccc; cursor:pointer;">재작업/취소/환불</div>
-            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">이용후기</div>
+            <div onclick="setTab(this)" style="flex:1; padding:15px; background:white; color:#333; cursor:pointer;">이용후기 <span id="reviewTabCount"></span></div>
         </div>
 
         <div id="ai-holiday-banner" style="display:none; width: 100%; margin-bottom: 20px;">
@@ -546,9 +546,12 @@
 <section id="reviewSection" itemscope itemtype="https://schema.org/Product" style="width:100%; display:none; justify-content:center; margin-top:60px;">
   <div style="width:1195px; padding-bottom:80px;">
     <meta itemprop="name" content="명함 인쇄">
-    <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:20px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:12px;">
       <h2 style="font-size:22px; margin:0;">이용후기 <span id="reviewCount" style="color:#2b7bc3;"></span></h2>
       <span style="font-size:12.5px; color:#999;">※ 후기 작성은 주문내역 조회 페이지에서 가능합니다</span>
+    </div>
+    <div style="font-size:11px; color:#aaa; line-height:1.5; margin-bottom:14px;">
+      본 후기는 캐쉬백(2%) 적립 혜택 제공을 조건으로 작성되었습니다. (별점과 무관하게 적립되며, 「추천·보증 등에 관한 표시·광고 심사지침」에 따라 경제적 이해관계를 공개합니다)
     </div>
     <div id="reviewSummary" style="margin-bottom:20px; font-size:15px; color:#555;"></div>
     <div id="reviewList"></div>
@@ -1513,6 +1516,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         document.getElementById('productRatingValue').textContent = avg.toFixed(1);
         document.getElementById('productRatingCount').textContent = `리뷰(${count})`;
         if (badge) badge.style.display = 'flex';
+
+        const tabCountEl = document.getElementById('reviewTabCount');
+        if (tabCountEl) tabCountEl.textContent = `리뷰(${count})`;
     }
 
     // 상품 문서에 reviewStats 캐시가 없을 때(이 기능 넣기 전부터 있던 리뷰 등) 한 번만 실제로
@@ -1635,6 +1641,14 @@ window.enableMobileCustomPicker = function(selectEl) {
         return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     }
 
+    // 리뷰 작성자 이름 마스킹 — 마지막 글자만 * 처리 (예: "조정석" → "조정*님")
+    // 주문 조회(search.html의 이름+전화번호 검색)는 이 마스킹과 완전히 별개 시스템이라 영향 없음
+    function maskReviewerName(name) {
+        if (!name) return '익명님';
+        if (name.length <= 1) return name + '*님';
+        return name.slice(0, -1) + '*님';
+    }
+
     // 상단 Product 구조화 데이터(JSON-LD)에 후기 평점/리뷰를 자동으로 채워넣음
     // — 구글 검색결과에 별점이 노출되는 등 SEO에 도움됨
     function updateReviewStructuredData(reviews, avg) {
@@ -1656,7 +1670,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                     const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
                     return {
                         "@type": "Review",
-                        "author": { "@type": "Person", "name": r.name || '익명' },
+                        "author": { "@type": "Person", "name": maskReviewerName(r.name) },
                         "datePublished": isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10),
                         "reviewRating": { "@type": "Rating", "ratingValue": r.rating, "bestRating": 5, "worstRating": 1 },
                         "reviewBody": r.content || ""
@@ -1691,12 +1705,15 @@ window.enableMobileCustomPicker = function(selectEl) {
                     <meta itemprop="bestRating" content="5">
                 </div>
                 <div style="flex:1 1 280px; min-width:0;">
+                    <div style="margin-bottom:6px;">
+                        <span style="display:inline-block; background:#fef3c7; color:#92400e; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:4px;">💰 캐쉬백 후기</span>
+                    </div>
                     <div itemprop="reviewBody" style="font-size:14px; color:#333; line-height:1.6; white-space:pre-line; ${photoUrl ? 'margin-bottom:12px;' : ''}">${escapeHtml(r.content)}</div>
                     ${photoUrl ? `<img src="${photoUrl}" alt="${escapeHtml(productTitleForAlt)} 구매 후기 사진" loading="lazy" style="display:block; max-width:420px; width:100%; height:auto; border-radius:8px; border:1px solid #eee;">` : ''}
                 </div>
                 <div style="flex-shrink:0; min-width:90px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
                     <span itemprop="author" itemscope itemtype="https://schema.org/Person">
-                        <span itemprop="name" style="font-size:13.5px; font-weight:700; color:#333;">${escapeHtml(r.name || '익명')}</span>
+                        <span itemprop="name" style="font-size:13.5px; font-weight:700; color:#333;">${escapeHtml(maskReviewerName(r.name))}</span>
                     </span>
                     ${isoDate ? `<time itemprop="datePublished" datetime="${isoDate}" style="font-size:12px; color:#aaa;">${formatReviewDate(r.createdAt)}</time>` : ''}
                 </div>
