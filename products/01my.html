@@ -10,15 +10,18 @@
 <meta property="og:type" content="product">
 <meta property="og:title" content="명함 인쇄 | 당일발송 셀프 명함제작 전문 - 에코그래픽스">
 <meta property="og:description" content="고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.">
-<meta property="og:image" content="https://example.com/images/01my-og.jpg">
-<link rel="canonical" href="https://example.com/01my">
-<script type="application/ld+json">
+<meta property="og:image" content="https://sowonnamoo1005.cafe24.com/1/26070301.jpg">
+<meta property="og:url" content="https://sowonnamoo.github.io/myjs/products/01my">
+<link rel="canonical" href="https://sowonnamoo.github.io/myjs/products/01my">
+<script type="application/ld+json" id="productJsonLd">
 {
   "@context": "https://schema.org",
   "@type": "Product",
   "name": "명함 인쇄 | 당일발송 셀프 명함제작 전문 - 에코그래픽스",
   "description": "고급 명함부터 특수인쇄까지 최저가로 만나보세요. 파일 업로드 후 당일 발송되는 셀프 명함인쇄 전문몰입니다.",
-  "image": ["https://example.com/images/01my-og.jpg"]
+  "url": "https://sowonnamoo.github.io/myjs/products/01my",
+  "image": ["https://sowonnamoo1005.cafe24.com/1/26070301.jpg"],
+  "brand": { "@type": "Brand", "name": "에코그래픽스" }
 }
 </script>
 <!-- ▲▲▲ SEO 설정 끝 ▲▲▲ -->
@@ -531,8 +534,9 @@
 </div>
 
 <!-- ============ 이용후기 ============ -->
-<div style="width:100%; display:flex; justify-content:center; margin-top:60px;">
+<section id="reviewSection" itemscope itemtype="https://schema.org/Product" style="width:100%; display:flex; justify-content:center; margin-top:60px;">
   <div style="width:1195px; padding-bottom:80px;">
+    <meta itemprop="name" content="명함 인쇄">
     <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:20px;">
       <h2 style="font-size:22px; margin:0;">이용후기 <span id="reviewCount" style="color:#2b7bc3;"></span></h2>
       <span style="font-size:12.5px; color:#999;">※ 후기 작성은 주문내역 조회 페이지에서 가능합니다</span>
@@ -543,60 +547,7 @@
       <button id="reviewLoadMoreBtn" type="button" style="padding:10px 24px; border:1px solid #ccc; background:#fff; border-radius:6px; cursor:pointer; font-size:14px;">후기 더 보기</button>
     </div>
   </div>
-</div>
-
-<!-- 후기 작성 모달 -->
-<div id="reviewModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center;">
-  <div style="background:#fff; width:520px; max-width:92vw; max-height:88vh; overflow-y:auto; border-radius:12px; padding:24px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-      <h3 style="margin:0; font-size:18px;">이용후기 작성</h3>
-      <span id="closeReviewModalBtn" style="cursor:pointer; font-size:20px; color:#999;">✕</span>
-    </div>
-
-    <div style="background:#f7f8f9; border:1px solid #eee; border-radius:8px; padding:14px; font-size:12px; color:#666; line-height:1.8; margin-bottom:18px; white-space:pre-line;">· 이용후기는 구매한 상품이 출고완료 된 후 30일 이내에만 리뷰를 작성할 수 있습니다.
-· 이용후기 포인트는 등록 즉시 지급되지 않고 선별 지급됩니다.
-· 전액 포인트로 결제한 주문 건은 포인트 지급 대상에서 제외됩니다.
-· 포토 이용후기는 최종 인쇄물을 촬영한 사진을 업로드 해주시기 바랍니다. (jpg, gif, png 이미지만 등록 가능)
-· 이미지 업로드시 식별불가 및 디자인 작업파일 이미지는 포인트 지급에서 제외됩니다.
-· 아래의 경우는 포인트 지급 대상에서 제외되며 통보없이 삭제될 수 있으니 작성 시 유의하시기 바랍니다.
-  ① 상품과 관련없는 내용이나 사진을 올리는 경우
-  ② 특정 또는 동일 문자를 반복하여 작성하는 경우
-  ③ 동일한 내용의 이용후기를 중복으로 올리는 경우
-  ④ 사진/이미지에 개인정보가 포함된 경우, 모자이크 처리 후 업로드해 주세요.
-  ⑤ 개인정보가 포함된 후기는 블라인드 처리 또는 삭제될 수 있습니다.
-  ⑥ 이용후기는 등록 후 내용 수정이 불가능합니다.</div>
-
-    <div style="display:flex; gap:10px; margin-bottom:8px;">
-      <input type="text" id="reviewNameInput" placeholder="이름" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;">
-      <input type="text" id="reviewPhoneInput" placeholder="전화번호 뒤 4자리" maxlength="4" style="width:130px; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;">
-    </div>
-    <div id="reviewEligibilityMsg" style="font-size:12.5px; margin-bottom:14px; min-height:16px;"></div>
-
-    <div id="reviewFormBody" style="display:none;">
-        <div style="margin-bottom:14px;">
-          <div style="font-size:13px; color:#666; margin-bottom:6px;">별점</div>
-          <div id="reviewStarPicker" style="font-size:28px; letter-spacing:4px; user-select:none;">
-            <span class="review-star" data-value="1" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="2" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="3" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="4" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="5" style="color:#ddd; cursor:pointer;">★</span>
-          </div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <textarea id="reviewContentInput" placeholder="상품에 대한 솔직한 후기를 남겨주세요." style="width:100%; min-height:110px; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
-        </div>
-
-        <div style="margin-bottom:18px;">
-          <label for="reviewPhotoInput" style="display:inline-block; padding:8px 16px; border:1px dashed #999; border-radius:6px; cursor:pointer; font-size:13px; color:#555;">📷 사진 첨부 (최대 5장)</label>
-          <input type="file" id="reviewPhotoInput" accept="image/jpeg,image/png,image/gif" multiple style="display:none;">
-          <div id="reviewPhotoPreview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
-        </div>
-    </div>
-
-    <div style="display:flex; gap:10px;">
-      <button id="cancelReviewBtn" type="button" style="flex:1; padding:12px; border:1px solid #ccc; background:#fff; border-radius:6px; cursor:pointer; font-size:14px;">취소</button>
-      <button id="submitReviewBtn" type="button" disabled style="flex:2; padding:12px; border:none; background:#ccc; color:#fff; border-radius:6px; cursor:not-allowed; font-weight:bold; font-size:14px;">확인</button>
-    </div>
-  </div>
-</div>
+</section>
 
 <!-- 후기 사진 확대보기 -->
 <div id="reviewImageLightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:10000; align-items:center; justify-content:center; cursor:zoom-out;">
@@ -778,7 +729,7 @@ window.enableMobileCustomPicker = function(selectEl) {
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -807,11 +758,6 @@ window.enableMobileCustomPicker = function(selectEl) {
     // "이전 주문에 '양면'이라는 글자가 들어있었는가" — ink 필드든 상품명이든 어디든 '양면'이
     // 있었으면 true. 이후 지금 선택한 옵션들에도 '양면' 글자가 있는지와 비교함.
     const reorderOriginalHadDouble = reorderSide.includes('양면') || reorderItemName.includes('양면');
-    // [추가] search.html 주문 카드의 "후기 작성" 버튼에서 넘어온 경우 — 이미 이름/전화번호
-    // 확인이 끝난 상태이므로, 01my.html에서 다시 구매 확인 절차를 밟지 않고 바로 작성창을 연다.
-    const writeReviewFlow = reorderUrlParams.get('writeReview') === '1';
-    const writeReviewName = reorderUrlParams.get('reviewName') || '';
-    const writeReviewPhone = reorderUrlParams.get('reviewPhone') || '';
     // 사이즈를 자동 선택한 직후의 실제 값(표준 매칭 시 반올림 등 반영) — 나중에
     // 고객이 사이즈를 직접 바꿨는지 비교하는 기준값. loadProductAndInit에서 채워짐.
     let reorderOriginalWidth = 0;
@@ -1599,51 +1545,9 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     loadProductAndInit();
 
-    // ---------------- 이용후기 ----------------
-    const REVIEW_WORKER_URL = 'https://r22.sowonnamoo.workers.dev/';
-    const MAX_REVIEW_PHOTOS = 5;
+    // ---------------- 이용후기 (표시 전용 — 작성은 search.html 주문 카드에서 처리) ----------------
     const REVIEW_PAGE_SIZE = 10;
-
-    let reviewRating = 0;
-    let reviewPhotoFiles = []; // 원본 File 객체들 (제출 시점에 리사이즈)
     let reviewsLoadedCount = 0;
-
-    // 정사각형으로 가운데 크롭한 뒤 지정 크기로 리사이즈 + JPEG 압축 (용량 절약용)
-    function resizeImageForUpload(file, size = 200, quality = 0.8) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                const minSide = Math.min(img.width, img.height);
-                const sx = (img.width - minSide) / 2;
-                const sy = (img.height - minSide) / 2;
-                const canvas = document.createElement('canvas');
-                canvas.width = size;
-                canvas.height = size;
-                canvas.getContext('2d').drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-                canvas.toBlob((blob) => {
-                    URL.revokeObjectURL(img.src);
-                    blob ? resolve(blob) : reject(new Error('이미지 변환 실패'));
-                }, 'image/jpeg', quality);
-            };
-            img.onerror = () => reject(new Error('이미지를 불러오지 못했습니다'));
-            img.src = URL.createObjectURL(file);
-        });
-    }
-
-    // r22 Worker(R2)로 업로드. key 앞에 'reviews/'를 붙여서 시안 이미지와 폴더를 분리함
-    async function uploadReviewImage(blob, key) {
-        const url = `${REVIEW_WORKER_URL}?name=${encodeURIComponent(key)}`;
-        const res = await fetch(url, { method: 'PUT', body: blob });
-        if (!res.ok) throw new Error('이미지 업로드 실패: ' + res.statusText);
-        const result = await res.json();
-        return result.url;
-    }
-
-    function maskReviewerName(name) {
-        if (!name) return '익명';
-        if (name.length <= 1) return name + '*';
-        return name[0] + '*'.repeat(name.length - 1);
-    }
 
     function reviewStarsHtml(rating) {
         let html = '';
@@ -1661,6 +1565,51 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     function escapeHtml(s) {
         return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    // 상단 Product 구조화 데이터(JSON-LD)에 후기 평점/리뷰를 자동으로 채워넣음
+    // — 구글 검색결과에 별점이 노출되는 등 SEO에 도움됨
+    function updateReviewStructuredData(reviews, avg) {
+        const scriptEl = document.getElementById('productJsonLd');
+        if (!scriptEl) return;
+        try {
+            const data = JSON.parse(scriptEl.textContent);
+            if (!reviews || reviews.length === 0) {
+                delete data.aggregateRating;
+                delete data.review;
+            } else {
+                data.aggregateRating = {
+                    "@type": "AggregateRating",
+                    "ratingValue": avg.toFixed(1),
+                    "reviewCount": reviews.length
+                };
+                // 개별 리뷰는 최대 20개까지만 실음 (너무 많으면 페이지 용량만 커지고 실효는 없음)
+                data.review = reviews.slice(0, 20).map(r => {
+                    const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                    return {
+                        "@type": "Review",
+                        "author": { "@type": "Person", "name": r.name || '익명' },
+                        "datePublished": isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10),
+                        "reviewRating": { "@type": "Rating", "ratingValue": r.rating, "bestRating": 5, "worstRating": 1 },
+                        "reviewBody": r.content || ""
+                    };
+                });
+            }
+            scriptEl.textContent = JSON.stringify(data);
+        } catch (err) {
+            console.error('구조화 데이터 갱신 실패:', err);
+        }
+    }
+
+    function setupReviewLightbox() {
+        const lightbox = document.getElementById('reviewImageLightbox');
+        const lightboxImg = document.getElementById('reviewImageLightboxImg');
+        if (!lightbox) return;
+        lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; lightboxImg.src = ''; });
+        window.openReviewImageLightbox = (url) => {
+            lightboxImg.src = url;
+            lightbox.style.display = 'flex';
+        };
     }
 
     async function loadReviews() {
@@ -1684,32 +1633,51 @@ window.enableMobileCustomPicker = function(selectEl) {
                 document.getElementById('reviewSummary').innerHTML = '';
                 document.getElementById('reviewCount').textContent = '';
                 loadMoreWrap.style.display = 'none';
+                updateReviewStructuredData([], 0);
                 return;
             }
 
             const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
+            const productTitleForAlt = (document.querySelector(".options-section h2")?.textContent || '상품').trim();
             document.getElementById('reviewCount').textContent = `(${reviews.length})`;
             document.getElementById('reviewSummary').innerHTML = `
-                <span style="font-size:20px; vertical-align:middle;">${reviewStarsHtml(Math.round(avg))}</span>
-                <span style="vertical-align:middle; margin-left:6px; color:#555;">평균 ${avg.toFixed(1)}점 · 총 ${reviews.length}건</span>
+                <span itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating">
+                    <span style="font-size:20px; vertical-align:middle;">${reviewStarsHtml(Math.round(avg))}</span>
+                    <span style="vertical-align:middle; margin-left:6px; color:#555;">
+                        평균 <span itemprop="ratingValue">${avg.toFixed(1)}</span>점 ·
+                        총 <span itemprop="reviewCount">${reviews.length}</span>건
+                    </span>
+                </span>
             `;
+            updateReviewStructuredData(reviews, avg);
 
-            listEl.innerHTML = reviews.map(r => `
-                <div style="border-bottom:1px solid #eee; padding:18px 0;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
-                        <div>
-                            <span style="font-weight:bold; margin-right:8px;">${escapeHtml(maskReviewerName(r.name))}</span>
-                            <span>${reviewStarsHtml(r.rating)}</span>
-                        </div>
-                        <span style="font-size:12px; color:#aaa;">${formatReviewDate(r.createdAt)}</span>
+            // 레이아웃: [사진] [별점] [작성한 글] ... [성함] [작성일] — 한 줄 가로 배치
+            listEl.innerHTML = reviews.map(r => {
+                const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                const isoDate = isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+                const images = Array.isArray(r.images) ? r.images : [];
+                const photoBlock = images.length
+                    ? `<div style="display:flex; gap:6px; flex-shrink:0;">
+                        ${images.map(url => `<img src="${url}" onclick="openReviewImageLightbox('${url}')" alt="${escapeHtml(productTitleForAlt)} 구매 후기 사진" loading="lazy" style="width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ddd; cursor:pointer;">`).join('')}
+                       </div>`
+                    : `<div style="width:70px; height:70px; flex-shrink:0; background:#f5f6f7; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px;">사진없음</div>`;
+
+                return `
+                <article itemprop="review" itemscope itemtype="https://schema.org/Review"
+                    style="display:flex; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid #eee; flex-wrap:wrap;">
+                    ${photoBlock}
+                    <div itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating" style="flex-shrink:0; font-size:17px; letter-spacing:1px;">
+                        ${reviewStarsHtml(r.rating)}
+                        <meta itemprop="ratingValue" content="${r.rating}">
+                        <meta itemprop="bestRating" content="5">
                     </div>
-                    <div style="font-size:14px; color:#333; line-height:1.6; white-space:pre-line;">${escapeHtml(r.content)}</div>
-                    ${Array.isArray(r.images) && r.images.length ? `
-                        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                            ${r.images.map(url => `<img src="${url}" onclick="openReviewImageLightbox('${url}')" style="width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid #ddd; cursor:pointer;">`).join('')}
-                        </div>` : ''}
-                </div>
-            `).join('');
+                    <div itemprop="reviewBody" style="flex:1 1 260px; font-size:14px; color:#333; line-height:1.55; white-space:pre-line;">${escapeHtml(r.content)}</div>
+                    <div itemprop="author" itemscope itemtype="https://schema.org/Person" style="flex-shrink:0; font-size:13.5px; color:#333; font-weight:700; white-space:nowrap;">
+                        <span itemprop="name">${escapeHtml(r.name || '익명')}</span>
+                    </div>
+                    ${isoDate ? `<time itemprop="datePublished" datetime="${isoDate}" style="flex-shrink:0; font-size:12px; color:#aaa; white-space:nowrap;">${formatReviewDate(r.createdAt)}</time>` : ''}
+                </article>`;
+            }).join('');
 
             loadMoreWrap.style.display = (reviews.length === requestLimit) ? 'block' : 'none';
         } catch (err) {
@@ -1718,225 +1686,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
     }
 
-    // 주문 접수일(createdAt) 기준 이 안에 있어야 후기 작성 가능
-    // ※ 지금 저장되는 주문 데이터엔 "출고완료" 상태/일자가 별도로 없어서 접수일 기준으로 계산합니다.
-    //   출고일 기준 필드가 따로 생기면 이 함수만 그 필드를 보도록 고치면 됩니다.
-    const REVIEW_ELIGIBLE_DAYS = 30;
-
-    async function checkReviewEligibility(name, phone4) {
-        try {
-            const q = query(collection(db, 'orders'), where('name', '==', name));
-            const snap = await getDocs(q);
-            const matches = snap.docs
-                .map(d => d.data())
-                .filter(o => o.phone && o.phone.slice(-4) === phone4);
-
-            if (matches.length === 0) {
-                return { eligible: false, reason: 'no_order' };
-            }
-
-            matches.sort((a, b) => {
-                const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-                const dbb = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-                return dbb - da;
-            });
-            const latest = matches[0];
-            const orderDate = latest.createdAt?.toDate ? latest.createdAt.toDate() : new Date(latest.createdAt);
-            const daysSince = (Date.now() - orderDate.getTime()) / (1000 * 60 * 60 * 24);
-
-            if (daysSince > REVIEW_ELIGIBLE_DAYS) {
-                return { eligible: false, reason: 'expired', orderDate };
-            }
-            return { eligible: true, orderDate };
-        } catch (err) {
-            console.error('구매 확인 실패:', err);
-            return { eligible: false, reason: 'error' };
-        }
-    }
-
-    function setupReviewUI() {
-        const overlay = document.getElementById('reviewModalOverlay');
-        const closeBtn = document.getElementById('closeReviewModalBtn');
-        const cancelBtn = document.getElementById('cancelReviewBtn');
-        const submitBtn = document.getElementById('submitReviewBtn');
-        const photoInput = document.getElementById('reviewPhotoInput');
-        const photoPreview = document.getElementById('reviewPhotoPreview');
-        const starPicker = document.getElementById('reviewStarPicker');
-        const stars = starPicker.querySelectorAll('.review-star');
-        const lightbox = document.getElementById('reviewImageLightbox');
-        const lightboxImg = document.getElementById('reviewImageLightboxImg');
-        const formBody = document.getElementById('reviewFormBody');
-        const eligibilityMsg = document.getElementById('reviewEligibilityMsg');
-        const nameInput = document.getElementById('reviewNameInput');
-        const phoneInput = document.getElementById('reviewPhoneInput');
-        let reviewEligible = false;
-
-        function setSubmitEnabled(enabled) {
-            submitBtn.disabled = !enabled;
-            submitBtn.style.background = enabled ? '#2b7bc3' : '#ccc';
-            submitBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
-        }
-
-        async function runEligibilityCheck() {
-            const name = nameInput.value.trim();
-            const phone = phoneInput.value.trim();
-            if (!name || !/^\d{4}$/.test(phone)) {
-                reviewEligible = false;
-                eligibilityMsg.innerHTML = '';
-                formBody.style.display = 'none';
-                setSubmitEnabled(false);
-                return;
-            }
-            eligibilityMsg.innerHTML = '<span style="color:#999;">구매 내역 확인 중...</span>';
-            formBody.style.display = 'none';
-            setSubmitEnabled(false);
-
-            const result = await checkReviewEligibility(name, phone);
-            reviewEligible = result.eligible;
-
-            if (result.eligible) {
-                eligibilityMsg.innerHTML = '<span style="color:#2b7bc3;">✅ 구매가 확인되었습니다. 후기를 작성해주세요.</span>';
-                formBody.style.display = 'block';
-                setSubmitEnabled(true);
-            } else if (result.reason === 'expired') {
-                eligibilityMsg.innerHTML = '<span style="color:#c0392b;">⛔ 주문 접수일로부터 30일이 지나 후기 작성 기간이 종료되었습니다.</span>';
-            } else if (result.reason === 'error') {
-                eligibilityMsg.innerHTML = '<span style="color:#c0392b;">구매 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</span>';
-            } else {
-                eligibilityMsg.innerHTML = '<span style="color:#c0392b;">⛔ 입력하신 이름/전화번호로 구매 내역을 찾을 수 없습니다.</span>';
-            }
-        }
-        nameInput.addEventListener('blur', runEligibilityCheck);
-        phoneInput.addEventListener('blur', runEligibilityCheck);
-
-        // [추가] search.html의 "후기 작성" 버튼에서 이름/전화번호를 이미 실어서 넘어온 경우 —
-        // 입력창을 채워두고 모달을 자동으로 연 뒤, 실제 주문 데이터로 한 번 더(자동으로)
-        // 구매 확인을 돌림. 버튼 자체가 없어졌으니 이 경로가 유일한 진입 경로가 됨.
-        if (writeReviewFlow && writeReviewName && writeReviewPhone) {
-            nameInput.value = writeReviewName;
-            phoneInput.value = writeReviewPhone;
-            openModal();
-            runEligibilityCheck();
-        }
-
-        function renderStars(value) {
-            stars.forEach(s => { s.style.color = Number(s.dataset.value) <= value ? '#f5a623' : '#ddd'; });
-        }
-        stars.forEach(s => {
-            s.addEventListener('mouseenter', () => renderStars(Number(s.dataset.value)));
-            s.addEventListener('click', () => { reviewRating = Number(s.dataset.value); renderStars(reviewRating); });
-        });
-        starPicker.addEventListener('mouseleave', () => renderStars(reviewRating));
-
-        function renderPhotoPreview() {
-            photoPreview.innerHTML = '';
-            reviewPhotoFiles.forEach((file, idx) => {
-                const url = URL.createObjectURL(file);
-                const wrap = document.createElement('div');
-                wrap.style.cssText = 'position:relative; width:64px; height:64px;';
-                wrap.innerHTML = `
-                    <img src="${url}" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid #ddd;">
-                    <span data-idx="${idx}" class="review-photo-remove" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; background:#333; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;">✕</span>
-                `;
-                photoPreview.appendChild(wrap);
-            });
-            photoPreview.querySelectorAll('.review-photo-remove').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    reviewPhotoFiles.splice(Number(btn.dataset.idx), 1);
-                    renderPhotoPreview();
-                });
-            });
-        }
-
-        photoInput.addEventListener('change', () => {
-            const files = Array.from(photoInput.files || []);
-            const room = MAX_REVIEW_PHOTOS - reviewPhotoFiles.length;
-            if (files.length > room) {
-                alert(`사진은 최대 ${MAX_REVIEW_PHOTOS}장까지 첨부할 수 있습니다.`);
-            }
-            reviewPhotoFiles = reviewPhotoFiles.concat(files.slice(0, room));
-            photoInput.value = '';
-            renderPhotoPreview();
-        });
-
-        function resetForm() {
-            reviewRating = 0;
-            reviewPhotoFiles = [];
-            reviewEligible = false;
-            renderStars(0);
-            nameInput.value = '';
-            phoneInput.value = '';
-            document.getElementById('reviewContentInput').value = '';
-            photoInput.value = '';
-            photoPreview.innerHTML = '';
-            eligibilityMsg.innerHTML = '';
-            formBody.style.display = 'none';
-            setSubmitEnabled(false);
-        }
-
-        function openModal() { overlay.style.display = 'flex'; }
-        function closeModal() { overlay.style.display = 'none'; resetForm(); }
-
-        closeBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-
-        submitBtn.addEventListener('click', async () => {
-            const name = document.getElementById('reviewNameInput').value.trim();
-            const phone = document.getElementById('reviewPhoneInput').value.trim();
-            const content = document.getElementById('reviewContentInput').value.trim();
-
-            if (!reviewEligible) { alert('구매 확인 후에 후기를 작성할 수 있습니다.'); return; }
-            if (!name) { alert('이름을 입력해주세요.'); return; }
-            if (!/^\d{4}$/.test(phone)) { alert('전화번호 뒤 4자리를 정확히 입력해주세요.'); return; }
-            if (!reviewRating) { alert('별점을 선택해주세요.'); return; }
-            if (!content) { alert('후기 내용을 입력해주세요.'); return; }
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = '등록 중...';
-
-            try {
-                const images = [];
-                for (let i = 0; i < reviewPhotoFiles.length; i++) {
-                    const resized = await resizeImageForUpload(reviewPhotoFiles[i], 200, 0.8);
-                    const key = `reviews/${PRODUCT_ID}_${Date.now()}_${i}.jpg`;
-                    const url = await uploadReviewImage(resized, key);
-                    images.push(url);
-                }
-
-                await addDoc(collection(db, 'reviews'), {
-                    productId: PRODUCT_ID,
-                    name,
-                    phone,
-                    rating: reviewRating,
-                    content,
-                    images,
-                    createdAt: serverTimestamp()
-                });
-
-                alert('이용후기가 등록되었습니다. 소중한 후기 감사합니다!');
-                closeModal();
-                reviewsLoadedCount = 0;
-                await loadReviews();
-            } catch (err) {
-                console.error('후기 등록 실패:', err);
-                alert('후기 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '확인';
-            }
-        });
-
-        lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; lightboxImg.src = ''; });
-        window.openReviewImageLightbox = (url) => {
-            lightboxImg.src = url;
-            lightbox.style.display = 'flex';
-        };
-
-        document.getElementById('reviewLoadMoreBtn').addEventListener('click', () => loadReviews());
-    }
-
-    setupReviewUI();
+    setupReviewLightbox();
+    const reviewLoadMoreBtnEl = document.getElementById('reviewLoadMoreBtn');
+    if (reviewLoadMoreBtnEl) reviewLoadMoreBtnEl.addEventListener('click', () => loadReviews());
     loadReviews();
     // ---------------- 이용후기 끝 ----------------
 
