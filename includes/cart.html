@@ -746,10 +746,24 @@ window.closeCompositeModal = function(){
     document.getElementById('composite-modal-img').onerror = null;
 };
 
+// [추가] 주문자의 공개 IP를 가져옴 (무료 공개 서비스, 키 필요 없음) — 실패해도 주문 저장 자체는 진행됨
+async function fetchClientIp() {
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        return data.ip || '';
+    } catch (e) {
+        console.error('IP 조회 실패:', e);
+        return '';
+    }
+}
+
 async function saveOrderToFirestore(orderData) {
     try {
+        const ip = await fetchClientIp();
         await addDoc(collection(window.db, "orders"), {
             ...orderData,
+            ip,
             status: (orderData.payment === "무통장입금") ? "입금대기" : "결제완료"
         });
     } catch (e) {
