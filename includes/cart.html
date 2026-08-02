@@ -390,7 +390,7 @@
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -404,6 +404,46 @@
         window.db = getFirestore(app);
         window.addDoc = addDoc;
         window.collection = collection;
+
+        // [추가] IP 차단 확인 — mng_x92a.html(관리자 보안 페이지)에서 차단한 IP는
+        // 게시판뿐 아니라 이 장바구니 페이지도 접속 못 하게 막음. 차단 목록은
+        // board-291e3 프로젝트의 blocked_ips 컬렉션을 그대로 재사용함(같은 목록 공유).
+        const blockCheckFirebaseConfig = {
+            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
+        const blockCheckDb = getFirestore(initializeApp(blockCheckFirebaseConfig, "blockCheckApp"));
+
+        function showBlockedOverlay() {
+            document.documentElement.innerHTML = `
+                <body style="margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f8f9fa; font-family:'Pretendard','Malgun Gothic',sans-serif;">
+                    <div style="text-align:center; padding:40px;">
+                        <div style="font-size:44px; margin-bottom:12px;">🚫</div>
+                        <h1 style="font-size:20px; font-weight:800; color:#1f2937; margin:0 0 8px;">접근이 제한되었습니다</h1>
+                        <p style="font-size:13px; color:#6b7280; line-height:1.6;">비정상적인 이용이 감지되어 접속이 제한된 상태입니다.<br>문의사항은 고객센터로 연락해주세요.</p>
+                    </div>
+                </body>
+            `;
+        }
+
+        (async function checkIpBlocked() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await res.json();
+                if (!ip) return;
+                const snap = await getDoc(doc(blockCheckDb, "blocked_ips", ip));
+                if (snap.exists()) {
+                    showBlockedOverlay();
+                }
+            } catch (e) {
+                // IP 확인 자체가 실패하면(네트워크 문제 등) 정상 이용자를 막지 않도록 그냥 통과시킴
+                console.error('IP 차단 확인 실패:', e);
+            }
+        })();
     </script>
 </head>
 <body>
