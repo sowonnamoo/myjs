@@ -391,7 +391,7 @@
                 <span id="productRatingStars" style="color:#f5a623;"></span>
                 <span id="productRatingValue" style="color:#333; font-weight:700;"></span>
                 <span style="color:#ccc;">·</span>
-                <span id="productRatingCount" onclick="goToReviewTab()" style="color:#333; font-weight:600; text-decoration:underline; text-decoration-skip-ink:none; cursor:pointer;"></span>
+                <span id="productRatingCount" onclick="goToReviewTab()" style="color:#333; font-weight:600; text-decoration:underline; cursor:pointer;"></span>
             </span>
         </h2>
         
@@ -416,12 +416,22 @@
 
         <div class="option-row">
             <div class="label">사이즈</div>
-            <div style="flex:1; display:flex; gap:10px;">
-                <select id="sizeType" style="width:100px;">
+            <div style="flex:1;">
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <button type="button" id="sizeTypeBtnStandard" onclick="setSizeTypeUI('standard')"
+                        style="flex:1; padding:10px 8px; border:2px solid #2b7bc3; background:#2b7bc3; color:#fff; border-radius:8px; font-weight:bold; font-size:13px; cursor:pointer; transition:.15s;">
+                        규격사이즈
+                    </button>
+                    <button type="button" id="sizeTypeBtnCustom" onclick="setSizeTypeUI('custom')"
+                        style="flex:1; padding:10px 8px; border:2px solid #ddd; background:#fff; color:#555; border-radius:8px; font-weight:bold; font-size:13px; cursor:pointer; transition:.15s;">
+                        📐 원하는 사이즈 직접 입력
+                    </button>
+                </div>
+                <select id="sizeType" style="display:none;">
                     <option value="standard">규격사이즈</option>
                     <option value="custom">비규격사이즈</option>
                 </select>
-                <select id="sizeList" style="flex:1;">
+                <select id="sizeList" style="width:100%;">
                     <option value="">불러오는 중...</option>
                 </select>
             </div>
@@ -864,6 +874,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             wIn.value = w;
             hIn.value = h;
         }
+
+        // [추가] 방금 만든 토글 버튼(규격/비규격) 표시도 실제 값에 맞춰 동기화함
+        // (change 이벤트는 다시 안 쏨 — 이미 위에서 값들을 직접 정확히 채워놨기 때문)
+        if (window.syncSizeTypeButtons) window.syncSizeTypeButtons();
     }
 
     // 재구입 흐름일 때: 시안 업로드 없이 바로 장바구니에 담고 cart.html로 이동
@@ -1477,6 +1491,31 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     sizeType.addEventListener("change", updateSizeMode);
     sizeList.addEventListener("change", updateSizeMode);
+
+    // [추가] 토글 버튼(규격/비규격)의 색상을 현재 sizeType 값에 맞춰 그려줌
+    window.syncSizeTypeButtons = function () {
+        const type = sizeType.value;
+        const btnStd = document.getElementById("sizeTypeBtnStandard");
+        const btnCustom = document.getElementById("sizeTypeBtnCustom");
+        if (!btnStd || !btnCustom) return;
+        if (type === "standard") {
+            btnStd.style.background = "#2b7bc3"; btnStd.style.color = "#fff"; btnStd.style.borderColor = "#2b7bc3";
+            btnCustom.style.background = "#fff"; btnCustom.style.color = "#555"; btnCustom.style.borderColor = "#ddd";
+        } else {
+            btnCustom.style.background = "#2b7bc3"; btnCustom.style.color = "#fff"; btnCustom.style.borderColor = "#2b7bc3";
+            btnStd.style.background = "#fff"; btnStd.style.color = "#555"; btnStd.style.borderColor = "#ddd";
+        }
+    };
+
+    // [추가] 새로 만든 토글 버튼(규격/비규격) 클릭 시, 기존 select 값을 바꾸고
+    // change 이벤트를 그대로 발생시켜서 위 updateSizeMode 로직을 그대로 재사용함.
+    // (가격계산 등 기존 로직은 전혀 안 건드림 — 겉모습만 버튼으로 바꾼 것)
+    window.setSizeTypeUI = function (type) {
+        sizeType.value = type;
+        sizeType.dispatchEvent(new Event("change"));
+        window.syncSizeTypeButtons();
+    };
+
     wIn.addEventListener("blur", () => {
         const c = customConfig();
         const min = c ? c.widthMin : 60, max = c ? c.widthMax : 500;
