@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고해상도 멀티 디자인 에디터</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; min-height: 100vh; box-sizing: border-box; }
+        #status-bar { margin-bottom: 15px; font-weight: bold; color: #333; background: #fff; padding: 8px 20px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #tab-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .design-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .design-btn { width: 84px; padding: 9px 0; cursor: pointer; border: 1.5px solid #3498db; background: #fff; color: #3498db; font-weight: 700; font-size: 13px; border-radius: 8px; text-align: center; transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .design-btn:hover { background: #eaf4fc; box-shadow: 0 3px 8px rgba(52,152,219,.25); transform: translateY(-1px); }
+        .design-btn.active { background: linear-gradient(135deg, #4aa3e0, #2f7fc9); color: #fff; border-color: transparent; box-shadow: 0 4px 10px rgba(41,128,185,.35); }
+        .side-switch { display: flex; border: 1.5px solid #d7dde3; border-radius: 8px; overflow: hidden; width: 84px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .side-btn { flex: 1; padding: 4px 0; cursor: pointer; font-size: 11px; background: #f5f6f7; border: none; font-weight: 700; color: #667380; text-align: center; transition: background .15s ease, color .15s ease; }
+        .side-btn:hover { background: #e9edf1; }
+        .side-btn.active { background: linear-gradient(135deg, #f0a352, #e67e22); color: white; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+
+     #notice-box{
+    width:100%;
+    max-width:1024px;
+
+    margin-top:15px;
+
+    font-size:11px;
+    color:#666;
+    line-height:1.6;
+
+    text-align:left;
+}
+
+#canvas-wrapper {
+    border: 1px solid #bdc3c7;
+    background: #fff;
+    width: 100%;
+    max-width: 1024px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.left-tools,
+.right-tools{
+    display:flex;
+    gap:10px;
+}
+
+
+        
+.btn {
+    padding: 13px 28px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    color: white;
+    font-weight: 700;
+
+    font-family: 'Malgun Gothic', sans-serif;
+    font-size: 14px;
+    letter-spacing: .2px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.14);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease, opacity .15s ease;
+}
+.btn:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,.18);
+}
+.btn:active{
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,.14);
+}
+.btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    transform:none;
+    box-shadow:none;
+}
+
+.btn-upload{
+    background: linear-gradient(135deg, #97a1ac, #767f89);
+}
+.btn-upload:hover{
+    background: linear-gradient(135deg, #878f99, #666e77);
+}
+
+.btn-save{
+    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
+}
+.btn-save:hover{
+    background: linear-gradient(135deg, #3f97d6, #2569ad);
+}
+.btn-save:disabled:hover{
+    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
+}
+
+/* ============ 스마트폰 전용: 인쇄물 촬영/크롭 화면 ============ */
+#mobile-capture-screen{
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #ffffff;
+    flex-direction: column;
+}
+@media (max-width: 767px){
+    #mobile-capture-screen:not(.mc-dismissed){ display: flex; }
+}
+.mc-close-btn{
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,.06);
+    color: #333;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+}
+.mc-step{
+    display: none;
+    flex-direction: column;
+    width: 100%; height: 100%;
+    position: relative;
+}
+.mc-step.mc-step-active{ display: flex; }
+
+#mc-intro{ align-items: center; justify-content: center; background: #fff; }
+.mc-capture-btn{
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #4aa3e0, #2f7fc9);
+    color: #fff;
+    box-shadow: 0 8px 22px rgba(41,128,185,.35);
+    cursor: pointer;
+    font-size: 16px; font-weight: 700;
+    font-family: 'Malgun Gothic', sans-serif;
+}
+.mc-capture-btn svg{ width: 50px; height: 50px; }
+
+#mc-crop{ background: #111; }
+.mc-crop-hint{ color: #fff; text-align: center; font-size: 12.5px; padding: 12px 20px 0; opacity: .85; line-height: 1.5; }
+#mc-crop-stage-wrap{ flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 12px; }
+#mc-crop-stage{
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #fff;
+    touch-action: none;
+    background: #000;
+    box-shadow: 0 0 0 2000px rgba(0,0,0,.55);
+}
+#mc-captured-img{
+    position: absolute; left: 0; top: 0;
+    transform-origin: 0 0;
+    user-select: none;
+    -webkit-user-drag: none;
+    max-width: none;
+}
+.mc-crop-controls{ padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; background: #111; }
+.mc-zoom-row{ display: flex; align-items: center; gap: 10px; color: #fff; font-size: 12px; }
+#mc-zoom-range{ flex: 1; }
+.mc-crop-btn-row{ display: flex; gap: 10px; }
+.mc-btn-secondary, .mc-btn-primary{
+    flex: 1; padding: 12px 0; border-radius: 10px; font-weight: 700;
+    font-family: 'Malgun Gothic', sans-serif; font-size: 14px; cursor: pointer;
+}
+.mc-btn-secondary{ border: 1.5px solid rgba(255,255,255,.4); background: transparent; color: #fff; }
+.mc-btn-primary{ border: none; background: linear-gradient(135deg, #4aa3e0, #2f7fc9); color: #fff; }
+    </style>
+</head>
+<body>
+
+<!-- ============ 스마트폰 전용: 인쇄물 촬영/크롭 화면 ============ -->
+<div id="mobile-capture-screen">
+
+    <div id="mc-intro" class="mc-step mc-step-active">
+        <button type="button" class="mc-close-btn" id="mc-close-intro" title="건너뛰기">✕</button>
+        <button type="button" id="mc-start-btn" class="mc-capture-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/>
+                <circle cx="12" cy="13" r="3.5"/>
+            </svg>
+            인쇄물 촬영
+        </button>
+    </div>
+
+    <div id="mc-crop" class="mc-step">
+        <button type="button" class="mc-close-btn" id="mc-close-crop">✕</button>
+        <div class="mc-crop-hint">테두리(가로×세로 규격) 안쪽에 인쇄물이 꽉 차도록<br>손가락으로 옮기고, 아래 슬라이더로 확대/축소해 주세요.</div>
+        <div id="mc-crop-stage-wrap">
+            <div id="mc-crop-stage">
+                <img id="mc-captured-img" alt="촬영된 이미지">
+            </div>
+        </div>
+        <div class="mc-crop-controls">
+            <div class="mc-zoom-row">
+                <span>축소</span>
+                <input type="range" id="mc-zoom-range" min="1" max="3" step="0.01" value="1">
+                <span>확대</span>
+            </div>
+            <div class="mc-crop-btn-row">
+                <button type="button" class="mc-btn-secondary" id="mc-retake-btn">다시 촬영</button>
+                <button type="button" class="mc-btn-primary" id="mc-crop-confirm-btn">완료</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+<canvas id="mc-capture-canvas" style="display:none;"></canvas>
+<input type="file" id="mc-native-capture-input" accept="image/*" capture="environment" style="display:none;">
+
+    <div id="status-bar">작업 규격: <span id="display-info"></span></div>
+    <div id="tab-container"></div>
+    <div id="canvas-wrapper"><canvas id="main-canvas"></canvas></div>
+
+   <div class="controls">
+
+
+
+
+    <!-- 오른쪽 기존 버튼 -->
+    <div class="right-tools">
+
+        <label class="btn btn-upload" for="file-input">
+            업로드/재업로드
+        </label>
+
+        <input type="file" id="file-input" accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf,.pdf" style="display:none;">
+
+        <button id="edit-btn" class="btn btn-upload">
+            편집하기
+        </button>
+
+        <button id="save-btn" class="btn btn-save">
+            시안보기/장바구니담기
+        </button>
+
+    </div>
+
+</div>
+
+
+<div id="notice-box">
+      <strong>※ 작업 시 주의사항</strong>
+    ※ 업로드하신 파일의 배경은 회색선까지 꼭 연장해 주세요.<br>
+    ※ 이미지를 클릭하면 꼭지의 작은 점과 선 중앙의 점 클릭하시면 이미지를 늘릴수 있습니다.<br>
+    ※ 중요내용!!(글씨, 로고, 테두리)은 붉은선 안쪽 배치해 주세요. 닿으면 잘릴수 있어요.<br>
+    ※ 재단 공정 특성상 가장자리 디자인은 일부 오차가 발생할 수 있습니다.<br>
+    ※ 업로드 가능 파일 형식 : JPG, JPEG, PNG, PDF (PDF는 자동으로 고화질 이미지로 변환됩니다) <br>
+    ※ 본 이미지는 실출력물과 색상차이가 존재할수 있으며 이는 재작업 사유에 해당되지 않습니다. <br>
+    ※ 최종 접수후 반드시 접수완료되신 시안을 확인해주세요.
+</div>
+    
+    
+
+
+
+    
+<script>
+    let orderData = {}, canvas, designData, currentIdx, currentSide, guideRect, guideText, guideCornerText;
+
+    // 시안보기 페이지로 넘길 때 사용할 IndexedDB 키
+    const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
+    // 시안보기 페이지 실제 주소 (ecopro3.js의 SIAN_PAGE_URL과 동일하게 맞춤)
+    const PREVIEW_PAGE_URL = 'sian';
+
+    // "편집하기" 버튼으로 고급 에디터(ecopro3)에 현재 첨부 이미지를 넘길 때 쓰는
+    // IndexedDB 키 / 실제 에디터 페이지 주소. ecopro3.js가 시작할 때 이 키를
+    // 읽어서 각 디자인(idx)/면(side)에 맞는 이미지를 캔버스에 자동으로 올려줍니다.
+    // (sessionStorage는 도메인당 5~10MB 한도라 고화질 이미지 여러 장엔 부족해서
+    // 한도가 훨씬 넉넉한 IndexedDB를 씀 — ecopro3.js와 DB/스토어 이름이 같아야 함)
+    const EDITOR_IMPORT_KEY = 'ecogr_editor_import_images';
+    const EDITOR_PAGE_URL = 'ecopro3';
+
+    const HANDOFF_DB_NAME = 'ecogrHandoff';
+    const HANDOFF_STORE_NAME = 'kv';
+    function openHandoffDB(){
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+            req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function idbSet(key, value){
+        const db = await openHandoffDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+            tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    // data URL(base64) 문자열 길이로 대략적인 바이트 수를 추정 (R2 업로드 한도인
+    // 500MB와 동일한 기준으로, 넘기기 전에 미리 걸러내기 위함)
+    const MAX_TRANSFER_BYTES = 500 * 1024 * 1024; // 500MB
+    function estimateDataUrlBytes(dataUrl){
+        if (!dataUrl) return 0;
+        const commaIdx = dataUrl.indexOf(',');
+        const base64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+        return Math.floor(base64.length * 3 / 4);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let hasDouble = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            const decodedValue = decodeURIComponent(value);
+            orderData[key] = decodedValue;
+            if (decodedValue.includes('양면')) hasDouble = true;
+        }
+
+        window.count = parseInt(orderData.count) || 1;
+        window.isDouble = hasDouble; 
+        const ratioW = parseInt(orderData.width) || 16;
+        const ratioH = parseInt(orderData.height) || 9;
+        // 스마트폰 전용 촬영/크롭 모듈에서 같은 가로세로 규격을 쓰기 위해 전역으로 노출
+        window.ratioW = ratioW;
+        window.ratioH = ratioH;
+
+        designData = Array.from({length: count}, () => ({ front: null, back: null }));
+        currentIdx = 0; currentSide = 'front';
+
+        const containerWidth = document.getElementById('canvas-wrapper').clientWidth;
+        canvas = new fabric.Canvas('main-canvas', {
+            width: containerWidth,
+            height: containerWidth * (ratioH / ratioW),
+            backgroundColor: '#ffffff'
+        });
+        
+canvas.on('selection:created', (e) => {});
+
+canvas.on('mouse:down', (e) => {
+    if (!e.target) {
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+    }
+});
+        
+        const padding = canvas.width * 0.02; 
+        guideRect = new fabric.Rect({
+            left: padding, top: padding,
+            width: canvas.width - (padding * 2), height: canvas.height - (padding * 2),
+            fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
+            selectable: false, evented: false, visible: true
+        });
+        canvas.add(guideRect);
+
+        guideText = new fabric.Text("아래 업로드 클릭, 파일을 업로드하세요.(jpg, jpeg, png)", {
+            fontSize: 20, fontWeight: '700', fill: '#e74c3c',
+            stroke: '#ffffff', strokeWidth: 4, paintFirst: 'stroke',
+            textAlign: 'center', originX: 'center', originY: 'center',
+            left: canvas.width / 2, top: canvas.height / 2, selectable: false, evented: false
+        });
+        canvas.add(guideText);
+
+        // 붉은선 박스 우측 하단 안내문구 (실 출력에는 포함되지 않는 화면 안내용 문구)
+        guideCornerText = new fabric.Text(
+            "붉은선은 실출력시 보이지 않습니다.\n이 선 밖으로 테두리나 글씨가 넘어가면 실 출력시 잘릴 수 있습니다.",
+            {
+                fontSize: Math.max(10, canvas.width * 0.012), fontWeight: '700', fill: '#ff0000',
+                stroke: '#ffffff', strokeWidth: 3, paintFirst: 'stroke',
+                textAlign: 'right',
+                originX: 'right', originY: 'bottom',
+                left: padding + (canvas.width - padding * 2) - 6,
+                top: padding + (canvas.height - padding * 2) - 6,
+                selectable: false, evented: false, visible: true
+            }
+        );
+        canvas.add(guideCornerText);
+
+     document.getElementById('display-info').innerText =
+    `${isDouble ? "양면" : "단면"} | 사이즈 ${ratioW} × ${ratioH} mm (붉은박스)`;
+        updateView();
+    });
+
+    function updateView() {
+        const tabContainer = document.getElementById('tab-container');
+        tabContainer.innerHTML = '';
+        for(let i = 0; i < count; i++) {
+            const group = document.createElement('div'); group.className = 'design-group';
+            const dBtn = document.createElement('div'); dBtn.className = 'design-btn' + (i === currentIdx ? ' active' : ''); 
+            dBtn.innerText = `디자인 ${i+1}`; dBtn.onclick = () => { currentIdx = i; updateView(); };
+            group.appendChild(dBtn);
+            if(isDouble) {
+                const switchDiv = document.createElement('div'); switchDiv.className = 'side-switch';
+                ['front', 'back'].forEach(s => {
+                    const sBtn = document.createElement('button'); sBtn.className = 'side-btn' + (currentIdx === i && currentSide === s ? ' active' : ''); 
+                    sBtn.innerText = s === 'front' ? '앞' : '뒤'; sBtn.onclick = () => { currentIdx = i; currentSide = s; updateView(); };
+                    switchDiv.appendChild(sBtn);
+                });
+                group.appendChild(switchDiv);
+            }
+            tabContainer.appendChild(group);
+        }
+
+        const img = designData[currentIdx][currentSide];
+        canvas.clear();
+        canvas.add(guideRect);
+        canvas.add(guideCornerText);
+        if(img) { 
+            canvas.add(img); canvas.sendToBack(img); 
+            guideText.visible = false; 
+        } else { 
+            canvas.add(guideText); guideText.visible = true;
+        }
+        canvas.renderAll();
+    }
+
+    // pdf.js 워커 경로 설정
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // 업로드된 이미지(dataUrl)를 캔버스에 반영하는 공통 처리 (기존 이미지 업로드 로직 그대로)
+    function applyUploadedImage(dataUrl) {
+        fabric.Image.fromURL(dataUrl, (img) => {
+
+            // 필터 적용용 최대 해상도 제한
+            const maxSize = 3000;
+
+            if (img.width > maxSize || img.height > maxSize) {
+
+                const ratio = Math.min(
+                    maxSize / img.width,
+                    maxSize / img.height
+                );
+
+                img.scale(ratio);
+                img.setCoords();
+            }
+
+
+            img.set({
+                borderColor: '#3498db',
+                cornerColor: '#3498db',
+                cornerSize: 5,
+                transparentCorners: false,
+                borderScaleFactor: 1,
+
+                rotatingPointOffset: 30
+            });
+
+            // 캔버스 비율과 이미지 비율이 달라도(세로 이미지 + 가로 캔버스 등)
+            // 이미지가 늘어나더라도 캔버스 전체를 꽉 채우도록 가로/세로 배율을 각각 맞춥니다.
+            img.set({
+                scaleX: canvas.width / img.width,
+                scaleY: canvas.height / img.height,
+                left: 0,
+                top: 0,
+                originX: 'left',
+                originY: 'top'
+            });
+            img.setCoords();
+            designData[currentIdx][currentSide] = img;
+            updateView();
+
+            // 업로드 즉시 선택 상태로 전환
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+        });
+    }
+
+    // PDF 파일을 pdf.js로 렌더링한 뒤 고화질 JPEG dataURL로 변환
+    async function convertPdfToJpegDataUrl(arrayBuffer) {
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdfDoc = await loadingTask.promise;
+        const page = await pdfDoc.getPage(1); // 첫 페이지만 사용
+
+        // 고화질 변환을 위해 넉넉한 배율로 렌더링 (인쇄용 해상도 확보)
+        const targetLongSidePx = 2400;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const longSide = Math.max(baseViewport.width, baseViewport.height);
+        const scale = Math.min(4, Math.max(2, targetLongSidePx / longSide));
+        const viewport = page.getViewport({ scale });
+
+        const pdfCanvas = document.createElement('canvas');
+        pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
+        const ctx = pdfCanvas.getContext('2d');
+
+        // 투명 배경(png 원본 등) 대비, 인쇄물 기준 흰 배경으로 채움
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        return pdfCanvas.toDataURL('image/jpeg', 0.95);
+    }
+
+    document.getElementById('file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+        const isAllowedImage = ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)
+            || /\.(jpe?g|png)$/i.test(file.name);
+
+        if (!isPdf && !isAllowedImage) {
+            alert('지원하지 않는 파일 형식입니다.\n\nJPG, JPEG, PNG, PDF 파일만 업로드할 수 있습니다.');
+            e.target.value = '';
+            return;
+        }
+
+        if (isPdf) {
+            if (!window.pdfjsLib) {
+                alert('PDF 변환 기능을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
+                e.target.value = '';
+                return;
+            }
+
+            const label = document.querySelector('label[for="file-input"]');
+            const originalLabelText = label ? label.textContent : '';
+            if (label) label.textContent = 'PDF 변환 중...';
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const dataUrl = await convertPdfToJpegDataUrl(event.target.result);
+                    applyUploadedImage(dataUrl);
+                } catch (err) {
+                    console.error(err);
+                    alert('PDF 파일을 변환하지 못했습니다. 다른 파일로 다시 시도해주세요.');
+                } finally {
+                    if (label) label.textContent = originalLabelText;
+                    e.target.value = '';
+                }
+            };
+            reader.onerror = () => {
+                alert('PDF 파일을 읽지 못했습니다. 다시 시도해주세요.');
+                if (label) label.textContent = originalLabelText;
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
+
+        // 기존 이미지(JPG/PNG 등) 업로드 처리
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            applyUploadedImage(event.target.result);
+        };
+        reader.readAsDataURL(file);
+    });
+
+
+
+document.getElementById('edit-btn').addEventListener('click', async () => {
+
+    const editBtn = document.getElementById('edit-btn');
+    const originalBtnText = editBtn.textContent;
+    editBtn.disabled = true;
+    editBtn.textContent = '이동 준비 중...';
+
+    // 원래 보고 있던 디자인/사이드를 기억해뒀다가 작업 끝나면 복원
+    const originalIdx = currentIdx;
+    const originalSide = currentSide;
+
+    try {
+        const importImages = [];
+
+        // 이미지가 올라와 있는 디자인/면만 순회하며 캔버스에 잠깐씩 올려 내보냄
+        for (let i = 0; i < count; i++) {
+            const sides = isDouble ? ['front', 'back'] : ['front'];
+            for (const side of sides) {
+                if (!designData[i][side]) continue; // 아직 안 올린 자리는 건너뜀
+
+                currentIdx = i;
+                currentSide = side;
+                updateView();
+
+                // 가이드(빨간 박스/안내문구)는 내보낼 이미지에서 제외
+                canvas.remove(guideRect);
+                canvas.remove(guideText);
+                canvas.remove(guideCornerText);
+                canvas.renderAll();
+
+                // 편집기에서 원본으로 쓸 것이므로 고화질(PNG)로 내보냄
+                const dataUrl = canvas.toDataURL({
+                    format: 'png',
+                    multiplier: 2
+                });
+
+                importImages.push({ idx: i, side, dataUrl });
+            }
+        }
+
+        if (importImages.length === 0) {
+            alert('편집기로 넘길 이미지가 없습니다. 먼저 사진을 업로드해주세요.');
+            return;
+        }
+
+        // 넘길 데이터 총량이 500MB를 넘지 않는지 확인 (R2 업로드 한도와 동일하게 맞춤)
+        const totalBytes = importImages.reduce((sum, item) => sum + estimateDataUrlBytes(item.dataUrl), 0);
+        if (totalBytes > MAX_TRANSFER_BYTES) {
+            alert('전달할 이미지 용량이 500MB를 초과합니다.\n디자인 수나 해상도를 줄여서 다시 시도해주세요. (현재 약 ' + (totalBytes / 1024 / 1024).toFixed(0) + 'MB)');
+            return;
+        }
+
+        // IndexedDB에 담아서 편집기(ecopro3) 페이지로 전달
+        try {
+            await idbSet(EDITOR_IMPORT_KEY, importImages);
+        } catch (storageErr) {
+            console.error(storageErr);
+            alert('이미지를 편집기로 전달하지 못했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.');
+            return;
+        }
+
+        // 현재 쿼리(건수/사이즈 등)를 그대로 이어서 편집기로 이동
+        window.location.href = EDITOR_PAGE_URL + window.location.search;
+
+    } finally {
+        // 페이지 이동이 실패한 경우를 대비해 원래 화면으로 복원
+        currentIdx = originalIdx;
+        currentSide = originalSide;
+        updateView();
+        editBtn.disabled = false;
+        editBtn.textContent = originalBtnText;
+    }
+});
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+
+
+    // 이미지 업로드 여부 검사
+    let emptyDesign = [];
+
+    designData.forEach((item, index) => {
+
+        if (!item.front) {
+            emptyDesign.push(`디자인 ${index + 1} 앞면`);
+        }
+
+        if (isDouble && !item.back) {
+            emptyDesign.push(`디자인 ${index + 1} 뒷면`);
+        }
+
+    });
+
+
+    if (emptyDesign.length > 0) {
+
+        alert(
+            "이미지가 등록되지 않은 시안이 있습니다.\n\n" +
+            emptyDesign.join("\n") +
+            "\n\n모든 디자인을 등록해주세요."
+        );
+
+        return;
+    }
+
+    const saveBtn = document.getElementById('save-btn');
+    const originalBtnText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '이미지 생성 중...';
+
+    // 원래 보고 있던 디자인/사이드를 기억해뒀다가 작업 끝나면 복원
+    const originalIdx = currentIdx;
+    const originalSide = currentSide;
+
+    try {
+        const exportedDesigns = [];
+
+        // 이미지 오브젝트가 캔버스 전체(붉은선 바깥 회색박스, 즉 도련까지)를 덮고 있는지 확인
+        function isImageFullyFilled(){
+            const img = designData[currentIdx][currentSide];
+            if (!img) return false;
+            const r = img.getBoundingRect(true, true);
+            const tol = 1; // 부동소수점 오차 허용
+            return r.left <= tol && r.top <= tol &&
+                (r.left + r.width) >= (canvas.width - tol) &&
+                (r.top + r.height) >= (canvas.height - tol);
+        }
+
+        // 모든 디자인(양면이면 앞/뒤 각각)을 순회하며 캔버스에 잠깐씩 올려 내보냄
+        for (let i = 0; i < count; i++) {
+            const sides = isDouble ? ['front', 'back'] : ['front'];
+            for (const side of sides) {
+                currentIdx = i;
+                currentSide = side;
+                updateView();
+
+                if (!isImageFullyFilled()) {
+                    alert('붉은선 밖 회색박스까지 이미지를 채워주세요.\n(이미지 수정시 편집하기 클릭후 셀프 편집 추천)');
+                    return;
+                }
+
+                // 가이드(빨간 박스/안내문구)는 저장 이미지에서 제외
+                canvas.remove(guideRect);
+                canvas.remove(guideText);
+                canvas.remove(guideCornerText);
+                canvas.renderAll();
+
+                // 시안보기 페이지 전달용이라 용량을 고려해 JPEG로 내보냄
+                // (붙여넣기용 고해상도 PNG가 필요하면 format을 'png'로 바꾸세요)
+                const dataUrl = canvas.toDataURL({
+                    format: 'jpeg',
+                    quality: 0.92,
+                    multiplier: 2
+                });
+
+                const label = `디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : '');
+                exportedDesigns.push({ label, dataUrl });
+            }
+        }
+
+        // IndexedDB에 담아서 시안보기 페이지로 전달 (sian.html이 IndexedDB에서 읽음 —
+        // sessionStorage로 저장하면 sian.html이 못 찾아서 샘플 이미지가 대신 뜸)
+        try {
+            await idbSet(PREVIEW_STORAGE_KEY, exportedDesigns);
+        } catch (storageErr) {
+            console.error(storageErr);
+            alert('이미지를 시안보기 페이지로 전달하지 못했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.');
+            return;
+        }
+
+        // 시안보기 페이지로 이동 (접수 시 사용한 쿼리 — productId/options/paper/ink/qty 등 —
+        // 를 그대로 이어서 전달해야 sian.html이 referrer 등의 우회 방법 없이 바로 읽을 수 있음)
+        window.location.href = PREVIEW_PAGE_URL + window.location.search;
+
+    } finally {
+        // 페이지 이동이 실패한 경우를 대비해 원래 화면으로 복원
+        currentIdx = originalIdx;
+        currentSide = originalSide;
+        updateView();
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalBtnText;
+    }
+});
+    
+
+    
+
+    window.onload = function() {
+        if(!window.location.hash) {
+            window.location = window.location + '#loaded';
+            window.location.reload();
+        }
+    }
+
+    // 브라우저 창 가로 폭이 바뀌면(늘리거나 줄이거나 둘 다) 자동으로 새로고침해서
+    // 캔버스가 새 컨테이너 크기에 맞게 다시 계산되도록 함. 드래그하는 동안 계속
+    // 리로드되지 않도록 리사이즈가 멈추고 잠깐(400ms) 지난 뒤 한 번만 실행함.
+    (function(){
+        let lastWidth = window.innerWidth;
+        let resizeTimer = null;
+        window.addEventListener('resize', function(){
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function(){
+                const newWidth = window.innerWidth;
+                if(newWidth !== lastWidth){
+                    window.location.reload();
+                    return;
+                }
+                lastWidth = newWidth;
+            }, 400);
+        });
+    })();
+
+
+/*
+canvas.on('selection:created', (e) => {});
+
+canvas.on('mouse:down', (e) => {
+    if (!e.target) {
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+});
+*/
+
+// 캔버스 외부 영역(body) 클릭 시 선택 해제
+document.addEventListener('mousedown', (e) => {
+
+    const wrapper = document.querySelector('.canvas-container');
+
+    if (
+        wrapper &&
+        !wrapper.contains(e.target) &&
+        !e.target.closest('.left-tools') &&
+        !e.target.closest('.right-tools')
+    ) {
+
+        if (canvas && canvas.getActiveObject()) {
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+        }
+
+    }
+
+});
+
+
+
+    
+
+const guideBtn = document.getElementById('guide-btn');
+
+if (guideBtn) {
+
+    guideBtn.addEventListener('mouseenter', () => {
+        guideRect.visible = true;
+        guideCornerText.visible = true;
+        canvas.renderAll();
+    });
+
+    guideBtn.addEventListener('mouseleave', () => {
+        guideRect.visible = false;
+        guideCornerText.visible = false;
+        canvas.renderAll();
+    });
+
+}
+
+// ============ 스마트폰 전용: 인쇄물 촬영(클릭 즉시 카메라) → 가로세로 규격 크롭 ============
+(function(){
+    const screenEl = document.getElementById('mobile-capture-screen');
+    if (!screenEl) return;
+
+    const steps = {
+        intro: document.getElementById('mc-intro'),
+        crop: document.getElementById('mc-crop')
+    };
+    function showStep(name){
+        Object.values(steps).forEach(s => s.classList.remove('mc-step-active'));
+        steps[name].classList.add('mc-step-active');
+    }
+    function dismissMobileScreen(){
+        screenEl.classList.add('mc-dismissed');
+    }
+
+    // ---------- 촬영: 버튼 클릭 즉시 스마트폰 기본 카메라 앱 실행 ----------
+    const nativeCaptureInput = document.getElementById('mc-native-capture-input');
+
+    document.getElementById('mc-start-btn').addEventListener('click', () => {
+        nativeCaptureInput.click();
+    });
+
+    nativeCaptureInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!file) return; // 사용자가 촬영을 취소한 경우
+        const reader = new FileReader();
+        reader.onload = (ev) => openCropStep(ev.target.result);
+        reader.onerror = () => alert('사진을 불러오지 못했습니다. 다시 시도해주세요.');
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('mc-close-intro').addEventListener('click', dismissMobileScreen);
+    document.getElementById('mc-close-crop').addEventListener('click', dismissMobileScreen);
+
+    const captureCanvas = document.getElementById('mc-capture-canvas');
+    const croppedSourceImg = document.getElementById('mc-captured-img');
+
+    document.getElementById('mc-retake-btn').addEventListener('click', () => {
+        showStep('intro');
+        nativeCaptureInput.click();
+    });
+
+    // ---------- 크롭: 쿼리로 받은 가로×세로 규격 틀을 사진 위에 씌우고 조절 ----------
+    const stageWrap = document.getElementById('mc-crop-stage-wrap');
+    const stageEl = document.getElementById('mc-crop-stage');
+    const zoomRange = document.getElementById('mc-zoom-range');
+
+    let cropState = null; // { naturalW, naturalH, stageW, stageH, minScale, maxScale, scale, tx, ty }
+
+    function openCropStep(dataUrl){
+        showStep('crop');
+        croppedSourceImg.onload = () => initCropStage();
+        croppedSourceImg.src = dataUrl;
+    }
+
+    function initCropStage(){
+        const ratioW = window.ratioW || 16;
+        const ratioH = window.ratioH || 9;
+
+        // 쿼리로 받은 가로:세로 비율에 맞춰 크롭 틀(스테이지) 크기 계산
+        const wrapRect = stageWrap.getBoundingClientRect();
+        const maxW = Math.max(50, wrapRect.width - 4);
+        const maxH = Math.max(50, wrapRect.height - 4);
+        let stageW = maxW;
+        let stageH = stageW * (ratioH / ratioW);
+        if (stageH > maxH) {
+            stageH = maxH;
+            stageW = stageH * (ratioW / ratioH);
+        }
+        stageEl.style.width = stageW + 'px';
+        stageEl.style.height = stageH + 'px';
+
+        const naturalW = croppedSourceImg.naturalWidth;
+        const naturalH = croppedSourceImg.naturalHeight;
+        croppedSourceImg.style.width = naturalW + 'px';
+        croppedSourceImg.style.height = naturalH + 'px';
+
+        // 사진이 크롭 틀을 항상 꽉 채우도록 최소 배율(cover) 계산
+        const minScale = Math.max(stageW / naturalW, stageH / naturalH);
+        const scale = minScale;
+        const tx = (stageW - naturalW * scale) / 2;
+        const ty = (stageH - naturalH * scale) / 2;
+
+        cropState = { naturalW, naturalH, stageW, stageH, minScale, maxScale: minScale * 3, scale, tx, ty };
+        zoomRange.value = 1;
+        applyCropTransform();
+    }
+
+    function clampTranslate(){
+        const s = cropState;
+        const minTx = s.stageW - s.naturalW * s.scale;
+        const minTy = s.stageH - s.naturalH * s.scale;
+        s.tx = Math.min(0, Math.max(minTx, s.tx));
+        s.ty = Math.min(0, Math.max(minTy, s.ty));
+    }
+
+    function applyCropTransform(){
+        clampTranslate();
+        croppedSourceImg.style.transform = `translate(${cropState.tx}px, ${cropState.ty}px) scale(${cropState.scale})`;
+    }
+
+    function rescaleAroundPoint(px, py, newScale){
+        const s = cropState;
+        newScale = Math.min(s.maxScale, Math.max(s.minScale, newScale));
+        const imgX = (px - s.tx) / s.scale;
+        const imgY = (py - s.ty) / s.scale;
+        s.scale = newScale;
+        s.tx = px - imgX * s.scale;
+        s.ty = py - imgY * s.scale;
+        applyCropTransform();
+    }
+
+    // 슬라이더로 확대/축소 (크롭 틀 중앙 기준)
+    zoomRange.addEventListener('input', () => {
+        if (!cropState) return;
+        const newScale = cropState.minScale * parseFloat(zoomRange.value);
+        rescaleAroundPoint(cropState.stageW / 2, cropState.stageH / 2, newScale);
+    });
+
+    // ---- 손가락(포인터)으로 이동 + 두 손가락 핀치 줌 ----
+    const activePointers = new Map();
+    let dragStart = null;
+    let pinchStart = null;
+
+    stageEl.addEventListener('pointerdown', (e) => {
+        if (!cropState) return;
+        stageEl.setPointerCapture(e.pointerId);
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (activePointers.size === 1) {
+            dragStart = { x: e.clientX, y: e.clientY, tx: cropState.tx, ty: cropState.ty };
+        } else if (activePointers.size === 2) {
+            dragStart = null;
+            const pts = Array.from(activePointers.values());
+            const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
+            pinchStart = {
+                dist: Math.hypot(dx, dy) || 1,
+                scale: cropState.scale,
+                midX: (pts[0].x + pts[1].x) / 2,
+                midY: (pts[0].y + pts[1].y) / 2
+            };
+        }
+    });
+
+    stageEl.addEventListener('pointermove', (e) => {
+        if (!cropState || !activePointers.has(e.pointerId)) return;
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (activePointers.size === 1 && dragStart) {
+            const dx = e.clientX - dragStart.x;
+            const dy = e.clientY - dragStart.y;
+            cropState.tx = dragStart.tx + dx;
+            cropState.ty = dragStart.ty + dy;
+            applyCropTransform();
+        } else if (activePointers.size === 2 && pinchStart) {
+            const pts = Array.from(activePointers.values());
+            const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
+            const dist = Math.hypot(dx, dy) || 1;
+            const ratio = dist / pinchStart.dist;
+            const stageRect = stageEl.getBoundingClientRect();
+            const px = pinchStart.midX - stageRect.left;
+            const py = pinchStart.midY - stageRect.top;
+            rescaleAroundPoint(px, py, pinchStart.scale * ratio);
+            zoomRange.value = (cropState.scale / cropState.minScale).toFixed(2);
+        }
+    });
+
+    function endPointer(e){
+        activePointers.delete(e.pointerId);
+        if (activePointers.size < 2) pinchStart = null;
+        if (activePointers.size === 0) dragStart = null;
+    }
+    stageEl.addEventListener('pointerup', endPointer);
+    stageEl.addEventListener('pointercancel', endPointer);
+    stageEl.addEventListener('pointerleave', endPointer);
+
+    // 화면 회전 등으로 크롭 틀 크기가 바뀌면 다시 계산
+    window.addEventListener('resize', () => {
+        if (steps.crop.classList.contains('mc-step-active') && cropState) {
+            initCropStage();
+        }
+    });
+
+    // ---------- 크롭 완료: 규격에 맞게 잘라내서 기존 업로드 파이프라인으로 전달 ----------
+    document.getElementById('mc-crop-confirm-btn').addEventListener('click', () => {
+        const s = cropState;
+        if (!s) return;
+
+        // 크롭 틀(가로×세로 규격) 영역에 해당하는 원본 사진 좌표 계산
+        const sx = -s.tx / s.scale;
+        const sy = -s.ty / s.scale;
+        const sw = s.stageW / s.scale;
+        const sh = s.stageH / s.scale;
+
+        // 인쇄용 해상도를 확보하되 너무 커지지 않도록 긴 변 기준 상한
+        const maxLongSide = 3000;
+        const longSide = Math.max(sw, sh);
+        const outScale = Math.min(3, maxLongSide / longSide) || 1;
+        const outW = Math.round(sw * outScale);
+        const outH = Math.round(sh * outScale);
+
+        captureCanvas.width = outW;
+        captureCanvas.height = outH;
+        captureCanvas.getContext('2d').drawImage(croppedSourceImg, sx, sy, sw, sh, 0, 0, outW, outH);
+
+        const finalDataUrl = captureCanvas.toDataURL('image/jpeg', 0.95);
+
+        // 기존 업로드 처리 로직(applyUploadedImage)에 그대로 태워서 캔버스에 반영
+        applyUploadedImage(finalDataUrl);
+
+        dismissMobileScreen();
+    });
+})();
+</script>
+</body>
+</html>
