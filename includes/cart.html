@@ -518,6 +518,7 @@
     </div>
 </div>
 
+<script src="shipping.js"></script>
 <script>
 // 장바구니(cart) 저장소 — 원래 localStorage를 썼는데, 도메인당 5~10MB 한도라
 // 아직 R2에 안 올라간 원본 이미지(SVG/고해상도 JPEG data URL)를 여러 개 담으면
@@ -667,6 +668,10 @@ document.getElementById('addressSearchBtn').addEventListener('click', function (
 
             document.getElementById('address').value = fullAddress;
             document.getElementById('detailAddress').focus();
+
+            // 주소가 바뀌면(특히 제주/울릉 등 착불 대상 여부가 바뀔 수 있으므로)
+            // 총 결제금액·배송비 표시를 다시 계산합니다.
+            render();
         }
     }).open();
 });
@@ -704,7 +709,7 @@ function validateOrderForm(){
 
 function render(){
     const list = document.getElementById("cart-list");
-    total = 0;
+    let subtotal = 0;
 
     if(cart.length === 0){
         list.innerHTML = `<div class="empty-state">
@@ -716,7 +721,7 @@ function render(){
         cart.forEach((item,index)=>{
             // price가 "12,345원" 같은 문자열로 들어와도 안전하게 숫자로 변환
             const priceNumber = Number(String(item.price).replace(/[^0-9.-]/g, '')) || 0;
-            total += priceNumber;
+            subtotal += priceNumber;
 
             // 01my.html → 에코프로1 → 시안보기를 거쳐 넘어온 상세 주문정보(용지/편집/후가공/무게)가
             // 있으면 함께 표시하고, 없으면(기존 방식으로 담긴 항목) 기본 정보만 표시한다.
@@ -749,7 +754,33 @@ function render(){
         });
     }
 
-    document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+    // shipping.js의 calculateShippingFee()로 묶음배송 여부 + 무게 구간 + 착불(제주/울릉) 여부를 반영해 배송비 계산.
+    // 이 파일의 cart 항목은 상품명이 item.item에 들어있어서, shipping.js가 기대하는
+    // productName 필드로 맞춰서 전달한다.
+    const addressForShipping = (document.getElementById('address')?.value || '')
+        + ' ' + (document.getElementById('detailAddress')?.value || '');
+    const mappedForShipping = cart.map(it => ({
+        productId: it.productId || '',
+        productName: it.item || it.productName || it.name || '',
+        weight: it.weight,
+        options: it.options
+    }));
+    const shippingResult = (typeof calculateShippingFee === 'function')
+        ? calculateShippingFee(mappedForShipping, addressForShipping)
+        : { totalFee: 0, breakdown: [], cashOnDelivery: false };
+    const shippingFee = shippingResult.totalFee;
+    total = subtotal + shippingFee;
+
+    const totalPriceEl = document.getElementById("total-price");
+    if(cart.length === 0){
+        totalPriceEl.innerText = "총 결제금액 : 0원";
+    } else if(shippingResult.cashOnDelivery){
+        totalPriceEl.innerText = `총 결제금액 : ${total.toLocaleString()}원 (배송비 착불·도서산간 — 상품 도착 시 별도 결제)`;
+    } else if(shippingFee > 0){
+        totalPriceEl.innerText = `총 결제금액 : ${total.toLocaleString()}원 (상품 ${subtotal.toLocaleString()}원 + 배송비 ${shippingFee.toLocaleString()}원)`;
+    } else {
+        totalPriceEl.innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+    }
 }
 
 window.deleteItem = async function(index){
