@@ -895,6 +895,18 @@ window.enableMobileCustomPicker = function(selectEl) {
             return;
         }
 
+        // [추가] 필수옵션으로 설정된 후가공 그룹은 재구입 흐름에서도 동일하게 검증함
+        const fGroupReorder = finishingGroup();
+        if (fGroupReorder && fGroupReorder.required) {
+            const anyFinishingSelectedReorder = Array.from(document.querySelectorAll(".finishing-select"))
+                .some(sel => sel.value);
+            if (!anyFinishingSelectedReorder) {
+                alert(`"${fGroupReorder.title || '후가공'}"은(는) 꼭 선택해야 하는 옵션이에요.\n원하시는 항목을 하나 선택해주세요 🙂`);
+                document.querySelector(".finishing-select")?.focus();
+                return;
+            }
+        }
+
         const count = document.getElementById("setCountInput").value;
         const width = document.getElementById("widthInput").value;
         const height = document.getElementById("heightInput").value;
@@ -1965,6 +1977,20 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (hasDuplicateFinishingCheck) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
             return;
+        }
+
+        // [추가] 관리자 페이지에서 "필수옵션"으로 체크해둔 후가공 그룹은, 하나라도
+        // 선택되어 있어야만 다음 단계로 넘어갈 수 있음. 하나도 안 골랐으면 부드럽게
+        // 안내만 하고(에러창처럼 딱딱하지 않게) 여기서 멈춤.
+        const fGroup = finishingGroup();
+        if (fGroup && fGroup.required) {
+            const anyFinishingSelected = Array.from(document.querySelectorAll(".finishing-select"))
+                .some(sel => sel.value);
+            if (!anyFinishingSelected) {
+                alert(`"${fGroup.title || '후가공'}"은(는) 꼭 선택해야 하는 옵션이에요.\n원하시는 항목을 하나 선택해주세요 🙂`);
+                document.querySelector(".finishing-select")?.focus();
+                return;
+            }
         }
 
         const count = document.getElementById("setCountInput").value;
