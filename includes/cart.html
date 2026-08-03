@@ -772,14 +772,19 @@ function render(){
     total = subtotal + shippingFee;
 
     const totalPriceEl = document.getElementById("total-price");
+    const totalLabel = `<span style="color:var(--blue);">총 결제금액</span>`;
     if(cart.length === 0){
-        totalPriceEl.innerText = "총 결제금액 : 0원";
+        totalPriceEl.innerHTML = `<div>${totalLabel} : 0원</div>`;
     } else if(shippingResult.cashOnDelivery){
-        totalPriceEl.innerText = `총 결제금액 : ${total.toLocaleString()}원 (배송비 착불·도서산간 — 상품 도착 시 별도 결제)`;
+        totalPriceEl.innerHTML = `
+            <div>${totalLabel} : ${total.toLocaleString()}원</div>
+            <div style="font-size:11px;font-weight:500;color:var(--ink-soft);margin-top:4px;">배송비 착불·도서산간 — 상품 도착 시 별도 결제</div>`;
     } else if(shippingFee > 0){
-        totalPriceEl.innerText = `총 결제금액 : ${total.toLocaleString()}원 (상품 ${subtotal.toLocaleString()}원 + 배송비 ${shippingFee.toLocaleString()}원)`;
+        totalPriceEl.innerHTML = `
+            <div>${totalLabel} : ${total.toLocaleString()}원</div>
+            <div style="font-size:11px;font-weight:500;color:var(--ink-soft);margin-top:4px;">상품 ${subtotal.toLocaleString()}원 + 배송비 ${shippingFee.toLocaleString()}원</div>`;
     } else {
-        totalPriceEl.innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+        totalPriceEl.innerHTML = `<div>${totalLabel} : ${total.toLocaleString()}원</div>`;
     }
 }
 
