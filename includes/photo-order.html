@@ -46,6 +46,9 @@
         width: 100%; padding: 10px 12px; border: 1px solid var(--border);
         border-radius: 8px; font-size: 14px;
     }
+    /* 4자리 조회번호 — 실제 로그인 비밀번호가 아니므로 type=password 대신 이걸로 시각적으로만 가림
+       (브라우저의 "비밀번호 유출 감지" 경고가 뜨지 않게 하기 위함). Firefox는 미지원이라 숫자가 그대로 보임 */
+    input.pin-input { -webkit-text-security: disc; text-security: disc; letter-spacing: 4px; }
     input[type=file] { width: 100%; font-size: 13px; margin-top: 4px; }
     .file-row { border: 1px dashed var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
     .file-row-label { font-size:12px;color:var(--muted);margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
@@ -137,6 +140,7 @@
     .stretch-wrap {
         width: 100%; height: 320px; background: #2a2c30;
         display: flex; align-items: center; justify-content: center;
+        position: relative;
     }
     .stretch-frame {
         position: relative; background: #fff; overflow: hidden;
@@ -145,6 +149,7 @@
     .stretch-frame img {
         position: absolute; cursor: move; user-select: none;
         -webkit-user-drag: none; touch-action: none;
+        transform-origin: 50% 50%;
     }
     .stretch-handle {
         position: absolute; width: 18px; height: 18px; margin: -9px;
@@ -156,6 +161,15 @@
     .stretch-handle[data-corner="tr"] { cursor: nesw-resize; }
     .stretch-handle[data-corner="bl"] { cursor: nesw-resize; }
 
+    /* 회전 핸들 — 프레임 오른쪽 상단 모서리 바깥에 위치, 드래그하면 사진이 회전됨 */
+    .rotate-handle {
+        position: absolute; width: 30px; height: 30px; border-radius: 50%;
+        background: var(--accent); color: #fff; border: 2px solid #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px; line-height: 1; cursor: grab;
+        z-index: 6; touch-action: none; user-select: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    }
     .crop-hint { padding: 10px 16px 0; font-size: 12px; color: var(--muted); text-align:center; }
     .crop-actions { display: flex; gap: 8px; padding: 16px; }
     .crop-actions button {
@@ -182,7 +196,7 @@
         <input type="text" id="upName" placeholder="홍길동">
 
         <label>비밀번호 (숫자 4자리)</label>
-        <input type="password" id="upPin" maxlength="4" inputmode="numeric" placeholder="0000">
+        <input type="text" id="upPin" class="pin-input" maxlength="4" inputmode="numeric" pattern="\d*" autocomplete="off" placeholder="0000">
 
         <label>시안 종류</label>
         <select id="upButtonType"></select>
@@ -214,7 +228,7 @@
         <label>이름</label>
         <input type="text" id="ckName" placeholder="홍길동">
         <label>비밀번호 (숫자 4자리)</label>
-        <input type="password" id="ckPin" maxlength="4" inputmode="numeric" placeholder="0000">
+        <input type="text" id="ckPin" class="pin-input" maxlength="4" inputmode="numeric" pattern="\d*" autocomplete="off" placeholder="0000">
         <button class="primary" onclick="startCheck()">확인하기</button>
         <div class="msg" id="ckMsg"></div>
     </div>
@@ -239,9 +253,10 @@
                 <div class="stretch-handle" data-corner="bl"></div>
                 <div class="stretch-handle" data-corner="br"></div>
             </div>
+            <div class="rotate-handle" id="rotateHandle" title="회전">↻</div>
         </div>
 
-        <div class="crop-hint">가운데를 끌어 옮기고, 모서리를 끌어 사진을 늘리거나 줄여서 틀에 맞춰주세요.<br>틀 바깥으로 나간 부분은 잘려서 저장됩니다.</div>
+        <div class="crop-hint">가운데를 끌어 옮기고, 모서리를 끌어 사진을 늘리거나 줄여서 틀에 맞춰주세요.<br>오른쪽 위 동그라미(↻)를 끌면 사진을 회전할 수 있어요. 틀 바깥으로 나간 부분은 잘려서 저장됩니다.</div>
         <div class="crop-actions">
             <button type="button" class="crop-cancel-btn" onclick="cancelCrop()">취소</button>
             <button type="button" class="crop-apply-btn" onclick="applyCrop()">적용</button>
@@ -291,6 +306,8 @@ let currentIndex = 0;
 let cropTargetSide = null; // 'front' | 'back'
 const stretchImgEl = document.getElementById("stretchImg");
 const stretchFrameEl = document.getElementById("stretchFrame");
+const stretchWrapEl = document.querySelector(".stretch-wrap");
+const rotateHandleEl = document.getElementById("rotateHandle");
 
 // side별로 원본 파일(다시 맞추기용)과, 최종 확정된 업로드 파일을 따로 보관
 const rawFiles = { front: null, back: null };
@@ -298,6 +315,7 @@ const processedFiles = { front: null, back: null };
 
 // 이미지 오브젝트의 위치/크기 (stretch-frame 기준 로컬 px)
 let stretchGeom = { left: 0, top: 0, width: 0, height: 0 };
+let rotationDeg = 0; // 회전 각도 (회전 핸들로 조절)
 
 function switchTab(tab) {
     document.getElementById("tabUpload").classList.toggle("active", tab === "upload");
@@ -390,15 +408,41 @@ function initStretchMode() {
 
     function setup() {
         const naturalW = stretchImgEl.naturalWidth, naturalH = stretchImgEl.naturalHeight;
-        // 기본값: 프레임을 꽉 채우도록 시작(이후 자유롭게 이동·늘리기·줄이기 가능)
+        // 기본값: 프레임을 꽉 채우도록 시작(이후 자유롭게 이동·늘리기·줄이기·회전 가능)
         const scale = Math.max(frameW / naturalW, frameH / naturalH);
         const w = naturalW * scale, h = naturalH * scale;
         stretchGeom = { left: (frameW - w) / 2, top: (frameH - h) / 2, width: w, height: h };
+        rotationDeg = 0; // 사진을 새로 열 때마다 회전은 초기화
+        applyImageRotation();
         renderStretchGeom();
     }
 
     if (stretchImgEl.complete && stretchImgEl.naturalWidth) setup();
     else stretchImgEl.onload = setup;
+}
+
+function applyImageRotation() {
+    stretchImgEl.style.transform = `rotate(${rotationDeg}deg)`;
+}
+
+// 회전 핸들을 이미지의 오른쪽 위 리사이즈 핸들(파란 동그라미) 옆에 붙여서 같이 움직이게 함
+// (프레임 바깥 고정 위치가 아니라 이미지 모서리를 따라가므로, 화면 밖으로 나가서 안 보이는 일이 없음)
+function updateRotateHandlePosition() {
+    const wrapW = stretchWrapEl.clientWidth, wrapH = stretchWrapEl.clientHeight;
+    const frameW = stretchFrameEl.offsetWidth, frameH = stretchFrameEl.offsetHeight;
+    const frameLeft = (wrapW - frameW) / 2;
+    const frameTop = (wrapH - frameH) / 2;
+
+    const OFFSET = 26; // tr 핸들에서 대각선 방향으로 살짝 띄우는 간격
+    let x = frameLeft + stretchGeom.left + stretchGeom.width + OFFSET - 15;
+    let y = frameTop + stretchGeom.top - OFFSET - 15;
+
+    // 보이는 영역(wrap) 밖으로 나가지 않게 항상 안쪽으로 붙잡아둠
+    x = Math.max(4, Math.min(wrapW - 34, x));
+    y = Math.max(4, Math.min(wrapH - 34, y));
+
+    rotateHandleEl.style.left = x + "px";
+    rotateHandleEl.style.top = y + "px";
 }
 
 function renderStretchGeom() {
@@ -415,7 +459,33 @@ function renderStretchGeom() {
         h.style.left = x + "px";
         h.style.top = y + "px";
     });
+
+    updateRotateHandlePosition();
 }
+
+// 회전 핸들을 끌면 이미지 중심을 기준으로 사진이 회전됨
+rotateHandleEl.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = stretchImgEl.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+    const startRotation = rotationDeg;
+
+    function onMove(ev) {
+        const angle = Math.atan2(ev.clientY - centerY, ev.clientX - centerX) * (180 / Math.PI);
+        rotationDeg = startRotation + (angle - startAngle);
+        applyImageRotation();
+    }
+    function onUp() {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+});
 
 // 이미지 본체를 끌면 이동만(리사이즈 없음) — 틀 밖으로 옮기면 그만큼 잘려서 저장됨(자르기 효과)
 stretchImgEl.addEventListener("pointerdown", function (e) {
@@ -482,23 +552,33 @@ function cancelCrop() {
     cropTargetSide = null;
 }
 
-// 사진이 틀(프레임)을 완전히 덮고 있는지 확인.
-// 모서리 핸들 4개가 전부 틀 가장자리에 걸쳐있거나 밖으로 나가있어야 정상(=틀 전체가 사진으로 채워짐).
-// 사진을 너무 작게 줄이면 핸들이 틀 "안쪽"에 위치하게 되고, 그 경우 흰 여백이 남아 인쇄에 부적합함.
+// 사진이 틀(프레임)을 완전히 덮고 있는지 확인 (회전 각도까지 반영).
+// 프레임의 4개 모서리 점이 전부 "회전된 사진 사각형" 안에 들어와 있어야 정상(=흰 여백 없음).
+// 사진을 너무 작게 줄이거나, 회전시켜서 모서리가 빠져나오면 여백이 생겨 인쇄에 부적합함.
 function imageFullyCoversFrame() {
     const { w: frameW, h: frameH } = computeFrameDisplaySize();
     const EPS = 0.5; // 픽셀 반올림 오차 허용
-    return (
-        stretchGeom.left <= EPS &&
-        stretchGeom.top <= EPS &&
-        stretchGeom.left + stretchGeom.width >= frameW - EPS &&
-        stretchGeom.top + stretchGeom.height >= frameH - EPS
-    );
+
+    const cx = stretchGeom.left + stretchGeom.width / 2;
+    const cy = stretchGeom.top + stretchGeom.height / 2;
+    const halfW = stretchGeom.width / 2, halfH = stretchGeom.height / 2;
+    const rad = -rotationDeg * Math.PI / 180; // 프레임 모서리를 이미지의 회전 안 된 좌표계로 역회전시켜서 비교
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+
+    const frameCorners = [
+        { x: 0, y: 0 }, { x: frameW, y: 0 }, { x: 0, y: frameH }, { x: frameW, y: frameH },
+    ];
+    return frameCorners.every(function (pt) {
+        const dx = pt.x - cx, dy = pt.y - cy;
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+        return Math.abs(localX) <= halfW + EPS && Math.abs(localY) <= halfH + EPS;
+    });
 }
 
 function applyCrop() {
     if (!imageFullyCoversFrame()) {
-        alert("사진이 틀을 다 채우지 못했어요.\n모서리(동그라미)를 끌어 사진을 더 키워서, 흰 여백 없이 틀 전체를 채워주세요.");
+        alert("사진이 틀을 다 채우지 못했어요.\n모서리(동그라미)를 끌어 사진을 더 키우거나 회전을 조절해서, 흰 여백 없이 틀 전체를 채워주세요.");
         return; // 다음 단계로 진행하지 않음 (모달 그대로 유지)
     }
 
@@ -512,11 +592,16 @@ function applyCrop() {
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, outW, outH);
-    ctx.drawImage(
-        stretchImgEl,
-        stretchGeom.left * sx, stretchGeom.top * sy,
-        stretchGeom.width * sx, stretchGeom.height * sy
-    );
+
+    // 회전을 반영해서 그리기: 이미지 중심으로 이동 -> 회전 -> 그 자리에 그대로 그림
+    const destCenterX = (stretchGeom.left + stretchGeom.width / 2) * sx;
+    const destCenterY = (stretchGeom.top + stretchGeom.height / 2) * sy;
+    const destW = stretchGeom.width * sx, destH = stretchGeom.height * sy;
+    ctx.save();
+    ctx.translate(destCenterX, destCenterY);
+    ctx.rotate(rotationDeg * Math.PI / 180);
+    ctx.drawImage(stretchImgEl, -destW / 2, -destH / 2, destW, destH);
+    ctx.restore();
 
     canvas.toBlob(function (blob) {
         const fileName = side + ".jpg";
