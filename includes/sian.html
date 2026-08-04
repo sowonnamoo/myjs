@@ -10,7 +10,7 @@
     --grid-size: 32px;
     --bg: #232323;
     --gap: 70px; /* 고정 */
-    --sat: 50%; /* 채도 -50% 고정 */
+    --sat: 58%; /* 채도 -50% 고정 -> 요청에 따라 8%p 상승(58%) */
     --img-width: 700px;
   }
 
@@ -396,7 +396,7 @@
 <div class="board" id="board">
   <div class="quick-bar">
     <label>이미지 너비 <span class="val" id="widthVal">700px</span></label>
-    <input type="range" id="widthSlider" min="300" max="1200" step="10" value="700" />
+    <input type="range" id="widthSlider" min="300" max="1800" step="10" value="700" />
   </div>
 
   <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치 뒤에 채워집니다 -->
@@ -507,6 +507,10 @@
     const img = document.createElement('img');
     img.src = design.dataUrl;
     img.alt = design.label || '';
+    // 우클릭(다른 이름으로 저장)·드래그 저장 차단
+    img.draggable = false;
+    img.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    img.addEventListener('dragstart', function(e){ e.preventDefault(); });
 
     frame.appendChild(img);
     frame.appendChild(buildWatermarkEl());
@@ -630,7 +634,7 @@
   const CROP_RATIO = 0.95;   // 화면과 동일하게 상하좌우 2.5%씩(총 5%) 크롭
   const COMPOSITE_WIDTH = 700;
   const COMPOSITE_GAP = 70;  // 화면의 고정 간격(gap)과 동일
-  const COMPOSITE_SAT = 50;  // 채도 -50% 고정과 동일
+  const COMPOSITE_SAT = 58;  // 화면 채도(--sat)와 동일하게 맞춤
 
   function loadImageEl(src){
     return new Promise((resolve, reject)=>{
