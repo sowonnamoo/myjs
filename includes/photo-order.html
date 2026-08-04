@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사진 시안 접수</title>
+<style>
+    :root {
+        --accent: #2b6cb0;
+        --bg: #f7f8fa;
+        --card: #ffffff;
+        --border: #e2e5ea;
+        --text: #23262b;
+        --muted: #767c86;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, "Malgun Gothic", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        padding: 32px 16px;
+    }
+    .card {
+        width: 100%;
+        max-width: 440px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 28px 24px;
+    }
+    h1 { font-size: 19px; margin: 0 0 4px; }
+    p.sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+    .tab-btn {
+        flex: 1; padding: 9px; border-radius: 8px; border: 1px solid var(--border);
+        background: #fff; cursor: pointer; font-size: 13px; color: var(--muted);
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+    input[type=text], input[type=password], select {
+        width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+        border-radius: 8px; font-size: 14px;
+    }
+    input[type=file] { width: 100%; font-size: 13px; margin-top: 4px; }
+    .file-row { border: 1px dashed var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+    .file-row-label { font-size:12px;color:var(--muted);margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
+
+    /* 편집 완료 후 썸네일 프리뷰 */
+    .file-preview { display:none; align-items:center; gap:10px; margin-top:8px; }
+    .file-preview.show { display:flex; }
+    .file-preview img {
+        width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);
+    }
+    .file-preview .recrop-btn {
+        font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer;
+        text-decoration: underline; padding: 0;
+    }
+
+    button.primary {
+        width: 100%; margin-top: 22px; padding: 12px; border: none; border-radius: 8px;
+        background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    button.primary:disabled { background: #b9c2cf; cursor: not-allowed; }
+
+    .msg { margin-top: 12px; font-size: 13px; padding: 10px 12px; border-radius: 8px; display: none; }
+    .msg.error { display: block; background: #fdecec; color: #c0392b; }
+    .msg.info { display: block; background: #eaf2ff; color: var(--accent); }
+
+    /* 로딩 화면 */
+    .loading-wrap { text-align: center; padding: 30px 0 10px; }
+    .spinner {
+        width: 42px; height: 42px; margin: 0 auto 18px;
+        border: 4px solid var(--border); border-top-color: var(--accent);
+        border-radius: 50%; animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-wrap .status-line { color: var(--muted); font-size: 13px; }
+
+    /* 결과 화면 — 확대/드래그 뷰어 */
+    .result-wrap { text-align: center; }
+    .zoom-viewport {
+        width: 100%; height: 320px; margin-top: 14px;
+        border-radius: 10px; border: 1px solid var(--border);
+        background: #eee; overflow: hidden; position: relative;
+        touch-action: none; user-select: none;
+    }
+    .zoom-viewport img {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        object-fit: contain; transform-origin: center center;
+        pointer-events: none; -webkit-user-drag: none; user-select: none;
+    }
+    .zoom-control {
+        display: flex; align-items: center; gap: 10px; margin-top: 12px;
+        padding: 0 4px;
+    }
+    .zoom-control span { font-size: 13px; color: var(--muted); }
+    .zoom-control input[type="range"] { flex: 1; }
+    .pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px; }
+    .pager button {
+        border: 1px solid var(--border); background: #fff; border-radius: 8px;
+        padding: 8px 14px; cursor: pointer; font-size: 14px;
+    }
+    .pager button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .pager .count { font-size: 13px; color: var(--muted); min-width: 40px; }
+    .reset-link { display:block; text-align:center; margin-top:18px; font-size:12px; color: var(--muted); cursor:pointer; }
+
+    .order-action-btn {
+        display: block; width: 100%; margin-top: 12px; padding: 12px;
+        border-radius: 8px; border: none; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .order-checkout-btn { background: var(--accent); color: #fff; }
+    .self-edit-btn { background: #fff; color: var(--accent); border: 1.5px solid var(--accent); }
+
+    /* ===== 사진 맞추기 모달 ===== */
+    .crop-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 16px; touch-action: none; overscroll-behavior: contain;
+    }
+    .crop-overlay.hidden { display: none; }
+    .crop-modal {
+        background: #fff; border-radius: 12px; width: 100%; max-width: 420px;
+        overflow: hidden; display: flex; flex-direction: column;
+    }
+    .crop-modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700;
+    }
+    .crop-modal-close { cursor: pointer; font-size: 20px; line-height: 1; color: var(--muted); }
+
+    /* 이미지를 오브젝트처럼 이동/리사이즈하면서 동시에 프레임 밖은 잘려나가는 단일 편집 화면 */
+    .stretch-wrap {
+        width: 100%; height: 320px; background: #2a2c30;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .stretch-frame {
+        position: relative; background: #fff; overflow: hidden;
+        box-shadow: 0 0 0 2px #fff, 0 0 0 3px #111;
+    }
+    .stretch-frame img {
+        position: absolute; cursor: move; user-select: none;
+        -webkit-user-drag: none; touch-action: none;
+    }
+    .stretch-handle {
+        position: absolute; width: 18px; height: 18px; margin: -9px;
+        background: var(--accent); border: 2px solid #fff; border-radius: 50%;
+        z-index: 5; touch-action: none;
+    }
+    .stretch-handle[data-corner="tl"] { cursor: nwse-resize; }
+    .stretch-handle[data-corner="br"] { cursor: nwse-resize; }
+    .stretch-handle[data-corner="tr"] { cursor: nesw-resize; }
+    .stretch-handle[data-corner="bl"] { cursor: nesw-resize; }
+
+    .crop-hint { padding: 10px 16px 0; font-size: 12px; color: var(--muted); text-align:center; }
+    .crop-actions { display: flex; gap: 8px; padding: 16px; }
+    .crop-actions button {
+        flex: 1; padding: 11px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600;
+    }
+    .crop-cancel-btn { background: #f0f3f7; color: var(--text); }
+    .crop-apply-btn { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <h1>사진 시안 접수</h1>
+    <p class="sub">보정시안 / 수정시안 파일을 접수하고 결과를 확인하세요.</p>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="tabUpload" onclick="switchTab('upload')">새 접수</button>
+        <button class="tab-btn" id="tabCheck" onclick="switchTab('check')">결과 확인</button>
+    </div>
+
+    <!-- ============ 업로드 폼 ============ -->
+    <div id="viewUpload">
+        <label>이름</label>
+        <input type="text" id="upName" placeholder="홍길동">
+
+        <label>비밀번호 (숫자 4자리)</label>
+        <input type="password" id="upPin" maxlength="4" inputmode="numeric" placeholder="0000">
+
+        <label>시안 종류</label>
+        <select id="upButtonType"></select>
+
+        <label>파일 첨부 (앞면 / 뒷면, 뒷면은 선택) — 주문 사이즈(<span id="ratioLabel"></span>)에 맞춰 편집됩니다</label>
+        <div class="file-row">
+            <div class="file-row-label"><span>앞면</span></div>
+            <input type="file" id="upFront" accept="image/*">
+            <div class="file-preview" id="frontPreview">
+                <img id="frontPreviewImg" alt="앞면 미리보기">
+                <button type="button" class="recrop-btn" onclick="reopenCrop('front')">다시 맞추기</button>
+            </div>
+        </div>
+        <div class="file-row" style="margin-top:6px;">
+            <div class="file-row-label"><span>뒷면 (선택)</span></div>
+            <input type="file" id="upBack" accept="image/*">
+            <div class="file-preview" id="backPreview">
+                <img id="backPreviewImg" alt="뒷면 미리보기">
+                <button type="button" class="recrop-btn" onclick="reopenCrop('back')">다시 맞추기</button>
+            </div>
+        </div>
+
+        <button class="primary" id="btnSubmit" onclick="submitUpload()">저장완료</button>
+        <div class="msg" id="upMsg"></div>
+    </div>
+
+    <!-- ============ 결과 확인(재접속) 폼 ============ -->
+    <div id="viewCheck" style="display:none;">
+        <label>이름</label>
+        <input type="text" id="ckName" placeholder="홍길동">
+        <label>비밀번호 (숫자 4자리)</label>
+        <input type="password" id="ckPin" maxlength="4" inputmode="numeric" placeholder="0000">
+        <button class="primary" onclick="startCheck()">확인하기</button>
+        <div class="msg" id="ckMsg"></div>
+    </div>
+
+    <!-- ============ 로딩 / 결과 (공통) ============ -->
+    <div id="viewStatus" style="display:none;"></div>
+</div>
+
+<!-- ============ 사진 맞추기 모달 (이동 + 자유 리사이즈 = 자르기와 늘리기 동시 처리) ============ -->
+<div class="crop-overlay hidden" id="cropOverlay">
+    <div class="crop-modal">
+        <div class="crop-modal-header">
+            <span id="cropModalTitle">사진 맞추기</span>
+            <span class="crop-modal-close" onclick="cancelCrop()">×</span>
+        </div>
+
+        <div class="stretch-wrap">
+            <div class="stretch-frame" id="stretchFrame">
+                <img id="stretchImg" alt="이미지 오브젝트" draggable="false">
+                <div class="stretch-handle" data-corner="tl"></div>
+                <div class="stretch-handle" data-corner="tr"></div>
+                <div class="stretch-handle" data-corner="bl"></div>
+                <div class="stretch-handle" data-corner="br"></div>
+            </div>
+        </div>
+
+        <div class="crop-hint">가운데를 끌어 옮기고, 모서리를 끌어 사진을 늘리거나 줄여서 틀에 맞춰주세요.<br>틀 바깥으로 나간 부분은 잘려서 저장됩니다.</div>
+        <div class="crop-actions">
+            <button type="button" class="crop-cancel-btn" onclick="cancelCrop()">취소</button>
+            <button type="button" class="crop-apply-btn" onclick="applyCrop()">적용</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ⚠️ 실제 배포된 Cloudflare Worker 주소로 교체하세요.
+const API_BASE = "https://photo-process-api.sowonnamoo.workers.dev";
+
+// ---------------- 주문 사이즈(비율) — URL 쿼리에서 읽음 ----------------
+// 예: index.html?width=90&height=50&type=명함&...
+const urlParams = new URLSearchParams(location.search);
+const RATIO_W = parseFloat(urlParams.get("width")) || 90;
+const RATIO_H = parseFloat(urlParams.get("height")) || 50;
+document.getElementById("ratioLabel").textContent = `${RATIO_W} x ${RATIO_H}`;
+
+// ---------------- 시안 종류 옵션 — 새 종류 추가할 땐 이 배열에 한 줄만 추가하면 됨 ----------------
+// value는 반드시 worker(Cloudflare Worker)의 VALID_BUTTON_TYPES와 똑같이 맞춰야 함
+const BUTTON_TYPES = [
+    { value: "1", label: "보정시안" },
+    { value: "2", label: "수정시안" },
+    // { value: "3", label: "차후추가시안" },  // 예시: 이렇게 한 줄만 추가하면 드롭다운에 바로 반영됨
+];
+
+(function renderButtonTypeOptions() {
+    const select = document.getElementById("upButtonType");
+    select.innerHTML = "";
+    BUTTON_TYPES.forEach(function (opt) {
+        const el = document.createElement("option");
+        el.value = opt.value;
+        el.textContent = opt.label;
+        select.appendChild(el);
+    });
+})();
+
+// 결과물 해상도(긴 변 기준) — 인쇄/편집기 용도로 충분히 크게
+const OUTPUT_WIDTH = 1000; // 가로를 항상 이 값으로 고정 (원본이 작든 크든 무조건 이 크기로 맞춰서 서버 부담 일정하게 유지)
+const STRETCH_MIN_SIZE = 24; // 이미지가 이 픽셀 이하로 작아지지 않게
+
+let pollTimer = null;
+let currentItems = [];
+let currentIndex = 0;
+
+// ---------------- 사진 맞추기 상태 ----------------
+let cropTargetSide = null; // 'front' | 'back'
+const stretchImgEl = document.getElementById("stretchImg");
+const stretchFrameEl = document.getElementById("stretchFrame");
+
+// side별로 원본 파일(다시 맞추기용)과, 최종 확정된 업로드 파일을 따로 보관
+const rawFiles = { front: null, back: null };
+const processedFiles = { front: null, back: null };
+
+// 이미지 오브젝트의 위치/크기 (stretch-frame 기준 로컬 px)
+let stretchGeom = { left: 0, top: 0, width: 0, height: 0 };
+
+function switchTab(tab) {
+    document.getElementById("tabUpload").classList.toggle("active", tab === "upload");
+    document.getElementById("tabCheck").classList.toggle("active", tab === "check");
+    document.getElementById("viewUpload").style.display = tab === "upload" ? "block" : "none";
+    document.getElementById("viewCheck").style.display = tab === "check" ? "block" : "none";
+    document.getElementById("viewStatus").style.display = "none";
+    stopPolling();
+}
+
+function showMsg(elId, text, type) {
+    const el = document.getElementById(elId);
+    el.textContent = text;
+    el.className = "msg " + type;
+}
+
+// ================================================================
+// 파일 첨부 -> 즉시 사진 맞추기 모달 오픈
+// ================================================================
+document.getElementById("upFront").addEventListener("change", function (e) {
+    const f = e.target.files[0];
+    if (f) openCropModal("front", f);
+});
+document.getElementById("upBack").addEventListener("change", function (e) {
+    const f = e.target.files[0];
+    if (f) openCropModal("back", f);
+});
+
+function reopenCrop(side) {
+    const f = rawFiles[side];
+    if (f) openCropModal(side, f);
+}
+
+// ---------------- 모달 열려있는 동안 배경 페이지 스크롤/스와이프 잠금 ----------------
+// (모달 안에서 사진을 드래그할 때 그 터치가 뒤쪽 페이지로 새서 "다음 페이지로 넘어가는"
+//  것처럼 보이는 문제 방지용. 모달 열 때 잠그고, 닫힐 때 반드시 원상복구함)
+let _scrollLockY = 0;
+function lockBodyScroll() {
+    _scrollLockY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${_scrollLockY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+}
+function unlockBodyScroll() {
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    window.scrollTo(0, _scrollLockY);
+}
+
+function openCropModal(side, file) {
+    cropTargetSide = side;
+    rawFiles[side] = file;
+
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+        stretchImgEl.src = ev.target.result;
+        document.getElementById("cropModalTitle").textContent =
+            (side === "front" ? "앞면" : "뒷면") + " 사진 맞추기";
+        document.getElementById("cropOverlay").classList.remove("hidden");
+        lockBodyScroll();
+        initStretchMode();
+    };
+    reader.readAsDataURL(file);
+}
+
+// ---------------- 프레임(틀) 표시 크기 계산 (모달 안에서 보여줄 픽셀 크기) ----------------
+function computeFrameDisplaySize() {
+    const maxW = 360, maxH = 300;
+    let w = maxW, h = w * RATIO_H / RATIO_W;
+    if (h > maxH) { h = maxH; w = h * RATIO_W / RATIO_H; }
+    return { w: Math.round(w), h: Math.round(h) };
+}
+
+function getOutputSize() {
+    // 가로는 항상 OUTPUT_WIDTH(1000px)로 고정. 세로는 주문 비율(RATIO_W:RATIO_H)에 맞춰 계산.
+    // 원본 사진 해상도가 1000보다 작든 크든 상관없이 무조건 이 크기로 맞춰서 내보냄
+    // (canvas.drawImage가 자동으로 확대/축소해줌 -> 결과 파일 크기가 항상 일정해짐)
+    return { w: OUTPUT_WIDTH, h: Math.round(OUTPUT_WIDTH * RATIO_H / RATIO_W) };
+}
+
+function initStretchMode() {
+    const { w: frameW, h: frameH } = computeFrameDisplaySize();
+    stretchFrameEl.style.width = frameW + "px";
+    stretchFrameEl.style.height = frameH + "px";
+
+    function setup() {
+        const naturalW = stretchImgEl.naturalWidth, naturalH = stretchImgEl.naturalHeight;
+        // 기본값: 프레임을 꽉 채우도록 시작(이후 자유롭게 이동·늘리기·줄이기 가능)
+        const scale = Math.max(frameW / naturalW, frameH / naturalH);
+        const w = naturalW * scale, h = naturalH * scale;
+        stretchGeom = { left: (frameW - w) / 2, top: (frameH - h) / 2, width: w, height: h };
+        renderStretchGeom();
+    }
+
+    if (stretchImgEl.complete && stretchImgEl.naturalWidth) setup();
+    else stretchImgEl.onload = setup;
+}
+
+function renderStretchGeom() {
+    stretchImgEl.style.left = stretchGeom.left + "px";
+    stretchImgEl.style.top = stretchGeom.top + "px";
+    stretchImgEl.style.width = stretchGeom.width + "px";
+    stretchImgEl.style.height = stretchGeom.height + "px";
+
+    const handles = stretchFrameEl.querySelectorAll(".stretch-handle");
+    handles.forEach(function (h) {
+        const corner = h.dataset.corner;
+        const x = corner.includes("l") ? stretchGeom.left : stretchGeom.left + stretchGeom.width;
+        const y = corner.includes("t") ? stretchGeom.top : stretchGeom.top + stretchGeom.height;
+        h.style.left = x + "px";
+        h.style.top = y + "px";
+    });
+}
+
+// 이미지 본체를 끌면 이동만(리사이즈 없음) — 틀 밖으로 옮기면 그만큼 잘려서 저장됨(자르기 효과)
+stretchImgEl.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX, startY = e.clientY;
+    const startGeom = Object.assign({}, stretchGeom);
+
+    function onMove(ev) {
+        stretchGeom.left = startGeom.left + (ev.clientX - startX);
+        stretchGeom.top = startGeom.top + (ev.clientY - startY);
+        renderStretchGeom();
+    }
+    function onUp() {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+});
+
+// 모서리 핸들을 끌면 반대쪽 모서리를 고정한 채 가로/세로를 독립적으로 리사이즈
+// (사진을 키워서 일부만 틀에 담으면 자르기 효과, 비율을 다르게 늘리면 늘리기 효과 — 하나의 조작으로 둘 다 가능)
+document.querySelectorAll(".stretch-handle").forEach(function (handle) {
+    handle.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const corner = handle.dataset.corner;
+        const startX = e.clientX, startY = e.clientY;
+        const startGeom = Object.assign({}, stretchGeom);
+
+        function onMove(ev) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            let { left, top, width, height } = startGeom;
+
+            if (corner.includes("l")) { left = startGeom.left + dx; width = startGeom.width - dx; }
+            if (corner.includes("r")) { width = startGeom.width + dx; }
+            if (corner.includes("t")) { top = startGeom.top + dy; height = startGeom.height - dy; }
+            if (corner.includes("b")) { height = startGeom.height + dy; }
+
+            if (width < STRETCH_MIN_SIZE) width = STRETCH_MIN_SIZE;
+            if (height < STRETCH_MIN_SIZE) height = STRETCH_MIN_SIZE;
+
+            stretchGeom = { left, top, width, height };
+            renderStretchGeom();
+        }
+        function onUp() {
+            document.removeEventListener("pointermove", onMove);
+            document.removeEventListener("pointerup", onUp);
+        }
+        document.addEventListener("pointermove", onMove);
+        document.addEventListener("pointerup", onUp);
+    });
+});
+
+function cancelCrop() {
+    document.getElementById("cropOverlay").classList.add("hidden");
+    unlockBodyScroll();
+    // 완료 안 하고 취소했으니, 아직 처리된 파일이 없다면 입력을 비워서 미확정 상태로 안 남게 함
+    if (cropTargetSide && !processedFiles[cropTargetSide]) {
+        document.getElementById(cropTargetSide === "front" ? "upFront" : "upBack").value = "";
+    }
+    cropTargetSide = null;
+}
+
+// 사진이 틀(프레임)을 완전히 덮고 있는지 확인.
+// 모서리 핸들 4개가 전부 틀 가장자리에 걸쳐있거나 밖으로 나가있어야 정상(=틀 전체가 사진으로 채워짐).
+// 사진을 너무 작게 줄이면 핸들이 틀 "안쪽"에 위치하게 되고, 그 경우 흰 여백이 남아 인쇄에 부적합함.
+function imageFullyCoversFrame() {
+    const { w: frameW, h: frameH } = computeFrameDisplaySize();
+    const EPS = 0.5; // 픽셀 반올림 오차 허용
+    return (
+        stretchGeom.left <= EPS &&
+        stretchGeom.top <= EPS &&
+        stretchGeom.left + stretchGeom.width >= frameW - EPS &&
+        stretchGeom.top + stretchGeom.height >= frameH - EPS
+    );
+}
+
+function applyCrop() {
+    if (!imageFullyCoversFrame()) {
+        alert("사진이 틀을 다 채우지 못했어요.\n모서리(동그라미)를 끌어 사진을 더 키워서, 흰 여백 없이 틀 전체를 채워주세요.");
+        return; // 다음 단계로 진행하지 않음 (모달 그대로 유지)
+    }
+
+    const side = cropTargetSide;
+    const { w: outW, h: outH } = getOutputSize();
+    const { w: frameW, h: frameH } = computeFrameDisplaySize();
+    const sx = outW / frameW, sy = outH / frameH;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, outW, outH);
+    ctx.drawImage(
+        stretchImgEl,
+        stretchGeom.left * sx, stretchGeom.top * sy,
+        stretchGeom.width * sx, stretchGeom.height * sy
+    );
+
+    canvas.toBlob(function (blob) {
+        const fileName = side + ".jpg";
+        const file = new File([blob], fileName, { type: "image/jpeg" });
+        processedFiles[side] = file;
+        showFilePreview(side, canvas.toDataURL("image/jpeg", 0.7)); // 미리보기 썸네일은 화면표시용이라 화질 낮춰도 무방
+        document.getElementById("cropOverlay").classList.add("hidden");
+        unlockBodyScroll();
+        cropTargetSide = null;
+    }, "image/jpeg", 0.85);
+}
+
+function showFilePreview(side, dataUrl) {
+    document.getElementById(side + "PreviewImg").src = dataUrl;
+    document.getElementById(side + "Preview").classList.add("show");
+}
+
+// ---------------- 업로드 ----------------
+async function submitUpload() {
+    const name = document.getElementById("upName").value.trim();
+    const pin = document.getElementById("upPin").value.trim();
+    const buttonType = document.getElementById("upButtonType").value;
+
+    if (!name) return showMsg("upMsg", "이름을 입력해주세요.", "error");
+    if (!/^\d{4}$/.test(pin)) return showMsg("upMsg", "비밀번호는 숫자 4자리여야 합니다.", "error");
+    if (!processedFiles.front && !processedFiles.back) {
+        return showMsg("upMsg", "최소 한 장은 첨부 후 맞추기를 완료해주세요.", "error");
+    }
+
+    const btn = document.getElementById("btnSubmit");
+    btn.disabled = true;
+    showMsg("upMsg", "업로드 중입니다...", "info");
+
+    const fd = new FormData();
+    fd.append("customer_name", name);
+    fd.append("pin", pin);
+    fd.append("button_type", buttonType);
+    if (processedFiles.front) fd.append("front", processedFiles.front);
+    if (processedFiles.back) fd.append("back", processedFiles.back);
+
+    try {
+        const res = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "업로드 실패");
+
+        // 저장 성공 -> "새로고침" 후 로딩 화면으로 전환 (이름/비번 세션에 저장해서 재조회 가능하게)
+        sessionStorage.setItem("customer_name", name);
+        sessionStorage.setItem("customer_pin", pin);
+        location.reload();
+    } catch (err) {
+        showMsg("upMsg", err.message, "error");
+        btn.disabled = false;
+    }
+}
+
+// ---------------- 재접속 확인 ----------------
+function startCheck() {
+    const name = document.getElementById("ckName").value.trim();
+    const pin = document.getElementById("ckPin").value.trim();
+    if (!name) return showMsg("ckMsg", "이름을 입력해주세요.", "error");
+    if (!/^\d{4}$/.test(pin)) return showMsg("ckMsg", "비밀번호는 숫자 4자리여야 합니다.", "error");
+
+    sessionStorage.setItem("customer_name", name);
+    sessionStorage.setItem("customer_pin", pin);
+    enterStatusView();
+}
+
+// ---------------- 상태 화면 (로딩바 / 결과) ----------------
+function enterStatusView() {
+    document.getElementById("viewUpload").style.display = "none";
+    document.getElementById("viewCheck").style.display = "none";
+    document.getElementById("viewStatus").style.display = "block";
+    renderLoading();
+    pollStatus();
+    pollTimer = setInterval(pollStatus, 5000); // 5초 간격 폴링
+}
+
+function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+}
+
+function renderLoading(text) {
+    document.getElementById("viewStatus").innerHTML = `
+        <div class="loading-wrap">
+            <div class="spinner"></div>
+            <div><strong>제작중입니다...</strong></div>
+            <div class="status-line">${text || "잠시만 기다려주세요. 완료되면 자동으로 표시됩니다."}</div>
+        </div>
+        <span class="reset-link" onclick="goHome()">처음으로</span>
+    `;
+}
+
+function renderError(text) {
+    stopPolling();
+    document.getElementById("viewStatus").innerHTML = `
+        <div class="loading-wrap">
+            <div style="font-size:14px;color:#c0392b;">${text}</div>
+        </div>
+        <span class="reset-link" onclick="goHome()">처음으로</span>
+    `;
+}
+
+function renderResult(items) {
+    stopPolling();
+    currentItems = items;
+    currentIndex = 0;
+    renderCurrentPage();
+}
+
+function renderCurrentPage() {
+    const item = currentItems[currentIndex];
+    const total = currentItems.length;
+    const sideLabel = item.side === "front" ? "앞면" : "뒷면";
+
+    document.getElementById("viewStatus").innerHTML = `
+        <div class="result-wrap">
+            <div style="font-size:13px;color:var(--muted);">${sideLabel} 시안</div>
+            <div class="zoom-viewport" id="zoomViewport" oncontextmenu="return false">
+                <img id="zoomImg" src="${item.result_url}" alt="${sideLabel}" draggable="false" oncontextmenu="return false">
+            </div>
+            <div class="zoom-control">
+                <span>🔍</span>
+                <input type="range" id="zoomRange" min="1" max="8" step="0.1" value="1">
+            </div>
+            <div class="pager">
+                <button onclick="prevPage()" ${currentIndex === 0 ? "disabled" : ""}>‹ 이전</button>
+                <span class="count">${currentIndex + 1} / ${total}</span>
+                <button onclick="nextPage()" ${currentIndex === total - 1 ? "disabled" : ""}>다음 ›</button>
+            </div>
+        </div>
+        <button type="button" class="order-action-btn order-checkout-btn" onclick="goToOrderBoard()">상품담기/결제</button>
+        <button type="button" class="order-action-btn self-edit-btn" onclick="goToSelfEdit()">셀프 편집하기</button>
+    `;
+
+    initZoomViewer();
+}
+
+// 같은 폴더(GitHub의 includes 폴더)에 있는 실제 파일명 그대로 상대경로로 연결
+const SIAN_PAGE_URL = "sian.html";
+const ECOPRO3_PAGE_URL = "ecopro3.html";
+
+// sian.html이 읽는 것과 완전히 동일한 IndexedDB(ecogrHandoff / kv 스토어)에
+// 같은 키(ecogr_preview_designs)로 이미지 목록을 저장해두는 핸드오프 방식
+const HANDOFF_DB_NAME = "ecogrHandoff";
+const HANDOFF_STORE_NAME = "kv";
+const PREVIEW_STORAGE_KEY = "ecogr_preview_designs";
+
+function openHandoffDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+        req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbSet(key, value) {
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, "readwrite");
+        tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// "상품담기/결제" — 완성된 시안 이미지를 sian.html이 읽는 IndexedDB에 넣어두고 이동
+async function goToOrderBoard() {
+    const designs = currentItems.map((item) => ({
+        label: item.side === "front" ? "앞면" : "뒷면",
+        dataUrl: item.result_url,
+    }));
+
+    try {
+        await idbSet(PREVIEW_STORAGE_KEY, designs);
+    } catch (e) {
+        console.error("시안게시판 전달용 이미지 저장 실패:", e);
+    }
+
+    // sian.html의 resolveOrderParams()가 "현재 페이지 쿼리"를 1순위로 보므로,
+    // 지금 주문 쿼리(width/height 등)를 그대로 실어서 넘김
+    window.location.href = SIAN_PAGE_URL + location.search;
+}
+
+// "셀프 편집하기" — ecopro3(SVG 편집기)로 이동하면서, 지금 결과 이미지가 이미 캔버스에
+// 배치된 상태(+ 지금 URL에 실려있던 주문 쿼리 전부)로 넘어가게 함.
+// ecopro3.js는 ?project=<JSON URL>을 만나면 그 JSON을 fetch해서 자동으로 캔버스에 적용하는
+// 기능이 이미 있음 -> 여기서는 서버에 파일을 따로 안 올리고, JSON을 그 자리에서 만들어
+// data: URL로 인코딩해서 넘김 (즉시 동작, 별도 저장소 불필요).
+function goToSelfEdit() {
+    const { w: outW, h: outH } = getOutputSize();
+    const frontItem = currentItems.find(it => it.side === "front");
+    const backItem = currentItems.find(it => it.side === "back");
+
+    function imageObject(url) {
+        return {
+            type: "image", version: "5.3.0",
+            originX: "left", originY: "top",
+            left: 0, top: 0,
+            width: outW, height: outH,
+            scaleX: 1, scaleY: 1,
+            angle: 0, opacity: 1, visible: true,
+            flipX: false, flipY: false,
+            src: url,
+            selectable: true, evented: true,
+        };
+    }
+    function sideData(item) {
+        return item ? { objects: [imageObject(item.result_url)], background: undefined }
+                     : { objects: [], background: undefined };
+    }
+
+    const project = {
+        type: "svg-editor-project",
+        version: 1,
+        orderData: Object.fromEntries(urlParams.entries()), // 지금 주문 쿼리 전부 보존
+        count: 1,
+        isDouble: !!backItem,
+        ratioW: RATIO_W, ratioH: RATIO_H,
+        canvasWidth: outW,
+        canvasHeight: outH,
+        designNames: ["시안"],
+        designData: [{ front: sideData(frontItem), back: sideData(backItem) }],
+    };
+
+    const jsonStr = JSON.stringify(project);
+    const projectDataUrl = "data:application/json;charset=utf-8;base64," + btoa(unescape(encodeURIComponent(jsonStr)));
+
+    const params = new URLSearchParams(location.search); // 현재 주문 쿼리(width/height 등) 그대로 유지
+    params.set("project", projectDataUrl);
+    window.location.href = ECOPRO3_PAGE_URL + "?" + params.toString();
+}
+
+// ---------------- 결과 이미지 확대/드래그 뷰어 ----------------
+// (다운로드 버튼 없음, 우클릭/드래그 저장 차단, 대신 슬라이더로 확대 + 손가락/마우스로 이동)
+function initZoomViewer() {
+    const viewport = document.getElementById("zoomViewport");
+    const img = document.getElementById("zoomImg");
+    const range = document.getElementById("zoomRange");
+
+    let zoom = 1;
+    let panX = 0, panY = 0;
+
+    function clampPan() {
+        const maxX = (viewport.clientWidth * (zoom - 1)) / 2;
+        const maxY = (viewport.clientHeight * (zoom - 1)) / 2;
+        panX = Math.max(-maxX, Math.min(maxX, panX));
+        panY = Math.max(-maxY, Math.min(maxY, panY));
+    }
+
+    function applyTransform() {
+        clampPan();
+        img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+        viewport.style.cursor = zoom > 1 ? "grab" : "default";
+    }
+
+    range.addEventListener("input", function () {
+        zoom = parseFloat(range.value);
+        if (zoom <= 1) { panX = 0; panY = 0; }
+        applyTransform();
+    });
+
+    // 저장/복사를 어렵게 함 (완벽한 차단은 아니지만 우클릭 저장, 드래그 저장은 막힘)
+    viewport.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    img.addEventListener("dragstart", function (e) { e.preventDefault(); });
+
+    // 드래그(포인터)로 확대된 이미지 이동
+    let dragging = false, startX = 0, startY = 0, startPanX = 0, startPanY = 0;
+    viewport.addEventListener("pointerdown", function (e) {
+        if (zoom <= 1) return;
+        dragging = true;
+        startX = e.clientX; startY = e.clientY;
+        startPanX = panX; startPanY = panY;
+        viewport.style.cursor = "grabbing";
+    });
+    document.addEventListener("pointermove", function (e) {
+        if (!dragging) return;
+        panX = startPanX + (e.clientX - startX);
+        panY = startPanY + (e.clientY - startY);
+        applyTransform();
+    });
+    document.addEventListener("pointerup", function () {
+        if (!dragging) return;
+        dragging = false;
+        viewport.style.cursor = zoom > 1 ? "grab" : "default";
+    });
+
+    applyTransform();
+}
+
+function prevPage() { if (currentIndex > 0) { currentIndex--; renderCurrentPage(); } }
+function nextPage() { if (currentIndex < currentItems.length - 1) { currentIndex++; renderCurrentPage(); } }
+
+async function pollStatus() {
+    const name = sessionStorage.getItem("customer_name");
+    const pin = sessionStorage.getItem("customer_pin");
+    if (!name || !pin) { renderError("접속 정보가 없습니다. 처음으로 돌아가주세요."); return; }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/status?name=${encodeURIComponent(name)}&pin=${encodeURIComponent(pin)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "조회 실패");
+
+        if (data.overall_status === "done") {
+            renderResult(data.items.filter(it => it.status === "done"));
+        } else if (data.overall_status === "failed") {
+            renderError("처리 중 오류가 발생했습니다. 담당자에게 문의해주세요.");
+        } else {
+            renderLoading();
+        }
+    } catch (err) {
+        renderError(err.message);
+    }
+}
+
+function goHome() {
+    sessionStorage.removeItem("customer_name");
+    sessionStorage.removeItem("customer_pin");
+    location.reload();
+}
+
+// 페이지 로드 시: 세션에 이름/비번이 남아있으면(=업로드 직후 새로고침, 혹은 재접속) 바로 상태화면 표시
+window.addEventListener("DOMContentLoaded", () => {
+    const name = sessionStorage.getItem("customer_name");
+    const pin = sessionStorage.getItem("customer_pin");
+    if (name && pin) {
+        enterStatusView();
+    }
+});
+</script>
+
+</body>
+</html>
