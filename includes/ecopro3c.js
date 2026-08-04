@@ -38,6 +38,7 @@
   ============================================================ */
   (function setupFilterControl(){
     function renderPButton(ctx, left, top, styleOverride, fabricObject){
+      if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
       if (isTableRelatedTarget(fabricObject)) return;
       if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
         const objs = fabricObject.getObjects().filter(o => !o.isGuide);
@@ -67,6 +68,7 @@
       cursorStyle: 'pointer',
       render: renderPButton,
       mouseUpHandler: function(eventData, transformData){
+        if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
         const target = transformData && transformData.target;
         if (!target || isTableRelatedTarget(target)) return true;
         if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴

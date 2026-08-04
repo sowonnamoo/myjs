@@ -5,17 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <script>
-  // 모바일 브라우저로 접속하면 이 데스크톱용 에디터 대신 모바일 전용 페이지로 자동 이동시킴.
+  // 모바일 브라우저로 접속하면 다른 페이지로 이동하지 않고, 이 페이지(데스크톱과 완전히
+  // 같은 파일 · 같은 기능)에 <html class="ep-mobile-mode">만 붙여서 "화면만" 모바일용으로
+  // 바꿔서 보여줌. 실제 기능(버튼·모달·JS 로직)은 전부 그대로 존재하고, ecopro3.css 안의
+  // html.ep-mobile-mode 규칙으로 PC용 화면 요소를 안 보이게(display:none)만 할 뿐, 기능
+  // 자체를 지우거나 막지는 않음(선별한 일부 기능만 모바일 전용 상단 드롭다운으로 노출).
   // (CSS/JS 로딩 전에 최대한 빨리 판단하도록 head 맨 앞에 둠 — 화면 깜빡임 최소화)
-  // 쿼리스트링(?a=b 같은 것들)과 해시(#...)는 그대로 들고 넘어감.
-  // "?desktop=1"을 붙이면 모바일에서도 이 데스크톱 버전을 계속 볼 수 있게 예외를 둠(테스트/파워유저용).
+  // "?desktop=1"을 붙이면 모바일 기기에서도 PC용 화면을 그대로 볼 수 있고,
+  // "?mobile=1"을 붙이면 PC 브라우저에서도 모바일용 화면을 테스트해볼 수 있음.
   (function(){
     var params = new URLSearchParams(location.search);
-    if (params.get('desktop') === '1') return; // 강제로 데스크톱 버전 보기 원할 때 탈출구
+    if (params.get('desktop') === '1') { try{ localStorage.removeItem('ep_force_mobile_preview'); }catch(e){} return; } // 강제로 PC 화면 보기 원할 때 탈출구
+    if (params.get('mobile') === '1') { try{ localStorage.setItem('ep_force_mobile_preview','1'); }catch(e){} }
+    var forcedPreview = false;
+    try { forcedPreview = localStorage.getItem('ep_force_mobile_preview') === '1'; } catch(e){}
     var ua = navigator.userAgent || '';
-    var isMobile = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    var isMobile = forcedPreview ||
+      /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
     if (isMobile) {
-      location.replace('ecopro3-mobile.html' + location.search + location.hash);
+      document.documentElement.classList.add('ep-mobile-mode');
     }
   })();
 </script>
@@ -35,6 +43,31 @@
 </head>
 <body>
 <div class="app">
+
+  <!-- ============ 모바일 전용 상단 바 (PC에서는 항상 숨김) ============
+       PC용 상단 툴바를 그대로 대체하는 게 아니라, 모바일에서만 화면에 보이는
+       "선별된 기능" 진입점. 여기서 실제로 실행하는 동작은 전부 PC 쪽에 이미 있는
+       기존 기능(예: 사각형 만들기 버튼 #pickRectBtn)을 그대로 호출하는 것뿐이라
+       기능 자체는 하나도 새로 만들지 않고 100% 재사용함. 나중에 항목을 더
+       추가할 때는 #mobileMenuDropdown 안에 dropdown-item 버튼만 더 넣으면 됨. -->
+  <div class="mobile-topbar" id="mobileTopbar">
+    <div class="dropdown mobile-menu-dropdown">
+      <button type="button" class="btn mobile-menu-btn" id="mobileMenuBtn">🔲 글씨 가리기 <span>▾</span></button>
+      <div class="dropdown-menu hidden" id="mobileMenuDropdown">
+        <button type="button" class="dropdown-item" id="mobileCoverTextBtn" title="흰색 사각형을 만들어서 상품 이미지 위 기존 글씨를 가릴 수 있어요 (PC의 '모양 만들기 > 사각형'과 동일한 기능)">🔲 글씨 가리기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 모바일 전용: 앞면/뒷면 개별 편집 전환 바 (PC에서는 항상 숨김) ============
+       양면(앞/뒤) 주문일 때만 보임(PC 좌측 "디자인 목록" 패널 안의 앞/뒤 버튼과 동일 조건).
+       새 기능이 아니라 PC에서 쓰던 switchTo(idx, 'front'|'back') 함수를 그대로 호출함 —
+       좌측 디자인목록 패널을 모바일에서는 숨겼기 때문에, 그 안에 있던 앞/뒤 전환 기능만
+       이 바로 빼서 계속 쓸 수 있게 한 것뿐임. -->
+  <div class="mobile-side-switch" id="mobileSideSwitch">
+    <button type="button" class="mobile-side-btn" id="mobileFrontBtn" data-side="front">앞면</button>
+    <button type="button" class="mobile-side-btn" id="mobileBackBtn" data-side="back">뒷면</button>
+  </div>
 
   <!-- ============ 상단 툴바 ============ -->
   <div class="toolbar">
@@ -2558,6 +2591,36 @@
   <label class="btn" for="imageInput">이미지 불러오기</label>
   <button type="button" class="btn primary" id="floatingSaveBtn">상품담기/구입</button>
 </div>
+
+<!-- ============ 개발용: 모바일 화면 미리보기 토글 ============
+     PC든 모바일이든 상관없이 항상 화면 구석에 떠 있는 작은 버튼. 누를 때마다
+     <html class="ep-mobile-mode">를 즉시 켜고 끄면서, 실제 폰 없이도 이 컴퓨터
+     브라우저에서 바로 모바일 화면을 확인·수정할 수 있게 해줌. 선택 상태는
+     localStorage에 저장돼서 새로고침해도 유지됨(?desktop=1을 주소에 붙이면 초기화됨).
+     실제 서비스 오픈 전엔 이 버튼을 지우거나 CSS로 숨기면 됨(코드 자체는 그대로 둬도 무방). -->
+<button type="button" id="devMobilePreviewToggleBtn" class="dev-mobile-toggle" title="모바일 화면 미리보기 켜기/끄기 (로컬 테스트용)">📱</button>
+<script>
+(function(){
+  var btn = document.getElementById('devMobilePreviewToggleBtn');
+  if (!btn) return;
+  function sync(){
+    var on = document.documentElement.classList.contains('ep-mobile-mode');
+    btn.classList.toggle('on', on);
+    btn.textContent = on ? '🖥' : '📱';
+    btn.title = on ? '지금 모바일 화면 미리보기 중입니다 (누르면 PC 화면으로 돌아가기)' : '모바일 화면 미리보기 켜기 (로컬 테스트용)';
+  }
+  btn.addEventListener('click', function(){
+    var willEnable = !document.documentElement.classList.contains('ep-mobile-mode');
+    document.documentElement.classList.toggle('ep-mobile-mode', willEnable);
+    try {
+      if (willEnable) localStorage.setItem('ep_force_mobile_preview', '1');
+      else localStorage.removeItem('ep_force_mobile_preview');
+    } catch (e) {}
+    sync();
+  });
+  sync();
+})();
+</script>
 
 <script src="ecopro3.js" defer></script>
 <script src="ecopro3table.js" defer></script>

@@ -20,6 +20,7 @@
      (ecopro3c.js는 더 이상 도형에 qa 컨트롤을 붙이지 않으므로 여기서 붙이는 게 유일한 등록임)
   ============================================================ */
   function renderMButton(ctx, left, top, styleOverride, fabricObject){
+    if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
     if (isTableRelatedTarget(fabricObject)) return;
     if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
       const objs = fabricObject.getObjects().filter(o => !o.isGuide);
@@ -49,6 +50,7 @@
     cursorStyle: 'pointer',
     render: renderMButton,
     mouseUpHandler: function(eventData, transformData){
+      if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
       const target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
       // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 랜덤 모양필터를 다시 뽑음(토글로

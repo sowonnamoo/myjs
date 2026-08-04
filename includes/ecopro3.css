@@ -1346,3 +1346,86 @@ input[type=file]{display:none;}
 }
 .free-shape-item:hover{ background:#eaf4fc;border-color:var(--accent); }
 .free-shape-item svg{ width:100%;height:100%;display:block; }
+
+/* ============================================================
+   모바일 모드 (html.ep-mobile-mode)
+   - PC용 기능은 하나도 지우지 않음. 아래 규칙은 전부 "화면에 안 보이게"만 할 뿐,
+     버튼/모달 자체는 DOM에 그대로 남아있고 JS 기능도 그대로 살아있음.
+   - 모바일에서는 PC용 상단 툴바/좌우 패널/상태바 등 복잡한 UI를 전부 숨기고,
+     .mobile-topbar 안의 "선별한 기능" 드롭다운 하나만 노출함.
+   - 캔버스(.canvas-wrap)와 하단 플로팅 바(이미지 불러오기 / 상품담기·구입)는
+     PC와 모바일 공통으로 그대로 사용함.
+============================================================ */
+
+/* ---------- 모바일 전용 상단 바: PC에서는 항상 숨김 ---------- */
+.mobile-topbar{
+  display:none;
+  align-items:center;
+  background:var(--panel);border-bottom:1px solid var(--line);
+  padding:10px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05);
+  position:relative;z-index:45;flex-shrink:0;
+}
+html.ep-mobile-mode .mobile-topbar{ display:flex; }
+.mobile-menu-dropdown{ position:relative; }
+.mobile-menu-btn{
+  font-size:15px;font-weight:700;padding:9px 14px;border-radius:10px;
+}
+.mobile-menu-btn span{ font-size:12px;color:var(--sub);margin-left:2px; }
+/* #mobileMenuDropdown은 화면 폭이 900px 이하일 때 다른 dropdown-menu들처럼 하단 시트로
+   바뀌지 않고, 트리거 버튼(#mobileMenuBtn) 바로 아래에 PC 메가메뉴처럼 뜨게 함.
+   ID 선택자라 위쪽 @media(max-width:900px) .dropdown-menu 규칙보다 우선 적용됨 */
+#mobileMenuDropdown{
+  position:absolute !important;
+  top:calc(100% + 6px) !important;
+  left:0 !important;right:auto !important;bottom:auto !important;
+  width:auto;min-width:200px;max-width:calc(100vw - 28px);
+  max-height:60vh;overflow-y:auto;
+  border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);
+}
+#mobileMenuDropdown .dropdown-item{ font-size:14.5px;padding:12px 12px; }
+
+/* ---------- html.ep-mobile-mode: PC 화면 요소는 숨기고, 모바일 전용 UI만 표시 ---------- */
+html.ep-mobile-mode .toolbar{ display:none !important; }
+html.ep-mobile-mode .status-bar{ display:none !important; }
+html.ep-mobile-mode .tab-sidebar{ display:none !important; }
+html.ep-mobile-mode .side-panel{ display:none !important; }
+html.ep-mobile-mode .mobile-overlay{ display:none !important; }
+
+/* 하단 플로팅 바(이미지 불러오기 / 상품담기·구입)는 모바일에서도 그대로 쓰되,
+   우측 속성 패널이 사라졌으니 그 폭만큼 띄워뒀던 여백은 제거하고 화면 우측 끝 기준으로 되돌림 */
+html.ep-mobile-mode .floating-action-bar{
+  right:14px;bottom:14px;gap:8px;
+}
+html.ep-mobile-mode .floating-action-bar .btn{
+  padding:12px 18px;font-size:15px;border-radius:12px;
+}
+
+/* 캔버스 옆 "붉은선 : 재단/안전선 · 회색선 : 원본 캔버스 여백" 범례는 모바일에서는 숨김 */
+html.ep-mobile-mode .guide-legend{ display:none !important; }
+
+/* ---------- 모바일 전용: 앞면/뒷면 개별 편집 전환 바 ---------- */
+/* 기본은 숨겨두고, 양면 주문일 때만 JS가 .show 클래스를 붙여서 보이게 함(PC에서는 항상 숨김) */
+.mobile-side-switch{
+  display:none;
+  gap:8px;padding:8px 14px;
+  background:var(--panel);border-bottom:1px solid var(--line);
+}
+html.ep-mobile-mode .mobile-side-switch.show{ display:flex; }
+.mobile-side-btn{
+  flex:1;border:1px solid var(--line);background:var(--panel-2);color:var(--sub);
+  border-radius:10px;padding:10px 0;font-size:14.5px;font-weight:700;cursor:pointer;
+}
+.mobile-side-btn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
+
+/* ---------- 개발용: 모바일 화면 미리보기 토글 버튼 (PC/모바일 어디서든 항상 보임) ---------- */
+.dev-mobile-toggle{
+  position:fixed;left:14px;bottom:14px;z-index:9999;
+  width:44px;height:44px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;color:var(--ink);
+  font-size:19px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+  opacity:.55;transition:.12s;
+}
+.dev-mobile-toggle:hover{opacity:1;}
+.dev-mobile-toggle.on{background:var(--accent);border-color:var(--accent);color:#fff;opacity:.9;}

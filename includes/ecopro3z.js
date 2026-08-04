@@ -91,6 +91,7 @@
      1. Z 버튼 컨트롤 — J(offsetX:-14)보다 한 칸 더 왼쪽(-46)에, 이미지에만 부착.
   ============================================================ */
   function renderZButton(ctx, left, top, styleOverride, fabricObject){
+    if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
     if (isTableRelatedTarget(fabricObject)) return;
     ctx.save();
     ctx.translate(left, top);
@@ -116,6 +117,7 @@
     cursorStyle: 'pointer',
     render: renderZButton,
     mouseUpHandler: function(eventData, transformData){
+      if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
       var target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
       if (!qaZPopover.classList.contains('hidden')) { hideQaZPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)

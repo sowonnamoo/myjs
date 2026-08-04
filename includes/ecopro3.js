@@ -6,6 +6,13 @@
   window.EP = window.EP || {};
   EP.canvasRotationDeg = EP.canvasRotationDeg || 0;
 
+  // 모바일 모드(html.ep-mobile-mode) 여부를 어디서든 확인할 수 있는 공용 헬퍼.
+  // 오브젝트 선택 시 뜨는 주사위(M/P)·T·J·Z 미니버튼들을 모바일에서만 숨기는 데 씀
+  // (ecopro3.js/c/m/j/z 등 여러 파일에서 공통으로 참조)
+  EP.isMobileModeActive = function(){
+    return document.documentElement.classList.contains('ep-mobile-mode');
+  };
+
   /* ============================================================
      1. URL 쿼리 파라미터 읽기
      예) editor.html?count=3&width=90&height=50&type=양면인쇄
@@ -124,6 +131,7 @@
   ============================================================ */
   (function setupTextFontControl(){
     function renderTButton(ctx, left, top, styleOverride, fabricObject){
+      if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
       // 여러 개를 묶어 선택했거나(활성선택) 묶기로 그룹화한 경우: 텍스트뿐 아니라 이미지가 섞여 있어도
       // (정렬 기능은 이미지에도 필요하므로) 2개 이상의 유효한 오브젝트만 있으면 T 버튼을 보여줌
       if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
@@ -154,6 +162,7 @@
       cursorStyle: 'pointer',
       render: renderTButton,
       mouseUpHandler: function(eventData, transformData){
+        if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
         const target = transformData && transformData.target;
         if (!target) return true;
         if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
@@ -853,7 +862,9 @@
     { trigger: document.getElementById('fileMenuBtn'), menu: document.getElementById('fileMenu') },
     { trigger: document.getElementById('shapeMenuBtn'), menu: document.getElementById('shapeMenu') },
     { trigger: document.getElementById('rotateMenuBtn'), menu: document.getElementById('rotateMenu') },
-    { trigger: document.getElementById('zoomMenuBtn'), menu: document.getElementById('zoomMenu') }
+    { trigger: document.getElementById('zoomMenuBtn'), menu: document.getElementById('zoomMenu') },
+    // 모바일 전용 상단 드롭다운(#mobileMenuBtn) — PC 메가메뉴와 완전히 같은 열기/닫기 동작을 씀
+    { trigger: document.getElementById('mobileMenuBtn'), menu: document.getElementById('mobileMenuDropdown') }
   ];
 
   function closeAllMegaMenus(){
@@ -875,6 +886,19 @@
   });
 
   document.addEventListener('click', () => closeAllMegaMenus());
+
+  // 모바일 상단 드롭다운 "🔲 글씨 가리기" — PC의 '✏️ 편집하기 > ◆ 모양 만들기 > ▭ 사각형'
+  // (#pickRectBtn)과 완전히 동일한 기능을 그대로 호출함. 새 도구를 만드는 게 아니라
+  // 기존 사각형 생성 기능의 진입로만 모바일용으로 하나 더 뚫어주는 것뿐이라, 만들어진
+  // 사각형은 PC에서 만든 것과 똑같이(캔버스 정가운데, 파란색 180x120) 생기고, 그 뒤로는
+  // 캔버스 위에서 손가락으로 직접 옮기고 크기 조절해서 가리고 싶은 글씨 위에 덮으면 됨.
+  const mobileCoverTextBtn = document.getElementById('mobileCoverTextBtn');
+  if (mobileCoverTextBtn) {
+    mobileCoverTextBtn.addEventListener('click', () => {
+      const pickRectBtn = document.getElementById('pickRectBtn');
+      if (pickRectBtn) pickRectBtn.click();
+    });
+  }
 
   /* ============================================================
      4. 디자인(건수) / 앞뒤(면) 데이터 & 전환
@@ -981,7 +1005,32 @@
 
       tabList.appendChild(group);
     }
+    syncMobileSideSwitch();
   }
+
+  // 모바일 전용 "앞면/뒷면" 전환 바 — PC 좌측 디자인목록 패널의 앞/뒤 버튼(위 side-switch)과
+  // 완전히 같은 switchTo(idx, side) 함수를 그대로 호출함. 새 기능이 아니라 그 기능의
+  // 진입로 하나를 모바일에서도 쓸 수 있게 옮겨 붙인 것뿐임. 양면 주문(isDouble)일 때만
+  // 보이고, 단면 주문이면 PC와 마찬가지로 계속 숨겨둠.
+  (function setupMobileSideSwitch(){
+    const bar = document.getElementById('mobileSideSwitch');
+    const frontBtn = document.getElementById('mobileFrontBtn');
+    const backBtn = document.getElementById('mobileBackBtn');
+    if (!bar || !frontBtn || !backBtn) return;
+    if (!isDouble) return; // 단면 주문이면 아예 안 씀(항상 숨김 상태 유지)
+    bar.classList.add('show');
+    frontBtn.addEventListener('click', () => switchTo(currentIdx, 'front'));
+    backBtn.addEventListener('click', () => switchTo(currentIdx, 'back'));
+  })();
+
+  function syncMobileSideSwitch(){
+    const frontBtn = document.getElementById('mobileFrontBtn');
+    const backBtn = document.getElementById('mobileBackBtn');
+    if (!frontBtn || !backBtn) return;
+    frontBtn.classList.toggle('active', currentSide === 'front');
+    backBtn.classList.toggle('active', currentSide === 'back');
+  }
+
   renderTabs();
 
   /* ============================================================
