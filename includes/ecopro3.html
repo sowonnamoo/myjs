@@ -4,29 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<script>
-  // 모바일 브라우저로 접속하면 다른 페이지로 이동하지 않고, 이 페이지(데스크톱과 완전히
-  // 같은 파일 · 같은 기능)에 <html class="ep-mobile-mode">만 붙여서 "화면만" 모바일용으로
-  // 바꿔서 보여줌. 실제 기능(버튼·모달·JS 로직)은 전부 그대로 존재하고, ecopro3.css 안의
-  // html.ep-mobile-mode 규칙으로 PC용 화면 요소를 안 보이게(display:none)만 할 뿐, 기능
-  // 자체를 지우거나 막지는 않음(선별한 일부 기능만 모바일 전용 상단 드롭다운으로 노출).
-  // (CSS/JS 로딩 전에 최대한 빨리 판단하도록 head 맨 앞에 둠 — 화면 깜빡임 최소화)
-  // "?desktop=1"을 붙이면 모바일 기기에서도 PC용 화면을 그대로 볼 수 있고,
-  // "?mobile=1"을 붙이면 PC 브라우저에서도 모바일용 화면을 테스트해볼 수 있음.
-  (function(){
-    var params = new URLSearchParams(location.search);
-    if (params.get('desktop') === '1') { try{ localStorage.removeItem('ep_force_mobile_preview'); }catch(e){} return; } // 강제로 PC 화면 보기 원할 때 탈출구
-    if (params.get('mobile') === '1') { try{ localStorage.setItem('ep_force_mobile_preview','1'); }catch(e){} }
-    var forcedPreview = false;
-    try { forcedPreview = localStorage.getItem('ep_force_mobile_preview') === '1'; } catch(e){}
-    var ua = navigator.userAgent || '';
-    var isMobile = forcedPreview ||
-      /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    if (isMobile) {
-      document.documentElement.classList.add('ep-mobile-mode');
-    }
-  })();
-</script>
+<!-- 예전엔 기기 종류(UA)를 판별해서 모바일이면 <html class="ep-mobile-mode">를 붙이고,
+     화면 좌하단에 수동 토글 버튼도 있었는데, 그러면 "지금 내가 PC 화면을 보고 있는지
+     모바일 화면을 보고 있는지" 헷갈리는 문제가 있어서 전부 없앰. 이제는 순수하게 화면
+     "폭"만 보고 자동으로 전환됨 — ecopro3.css 안의 @media (max-width:900px) 규칙 하나로,
+     브라우저 폭이 좁아지면(실제 모바일 기기든, PC에서 창을 좁혀도든) 자동으로 모바일
+     인터페이스가 되고, 넓으면 자동으로 PC 인터페이스가 됨. 버튼도, 기기 판별도 필요 없음. -->
 <title>SVG · 이미지 편집기</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2591,36 +2574,6 @@
   <label class="btn" for="imageInput">이미지 불러오기</label>
   <button type="button" class="btn primary" id="floatingSaveBtn">상품담기/구입</button>
 </div>
-
-<!-- ============ 개발용: 모바일 화면 미리보기 토글 ============
-     PC든 모바일이든 상관없이 항상 화면 구석에 떠 있는 작은 버튼. 누를 때마다
-     <html class="ep-mobile-mode">를 즉시 켜고 끄면서, 실제 폰 없이도 이 컴퓨터
-     브라우저에서 바로 모바일 화면을 확인·수정할 수 있게 해줌. 선택 상태는
-     localStorage에 저장돼서 새로고침해도 유지됨(?desktop=1을 주소에 붙이면 초기화됨).
-     실제 서비스 오픈 전엔 이 버튼을 지우거나 CSS로 숨기면 됨(코드 자체는 그대로 둬도 무방). -->
-<button type="button" id="devMobilePreviewToggleBtn" class="dev-mobile-toggle" title="모바일 화면 미리보기 켜기/끄기 (로컬 테스트용)">📱</button>
-<script>
-(function(){
-  var btn = document.getElementById('devMobilePreviewToggleBtn');
-  if (!btn) return;
-  function sync(){
-    var on = document.documentElement.classList.contains('ep-mobile-mode');
-    btn.classList.toggle('on', on);
-    btn.textContent = on ? '🖥' : '📱';
-    btn.title = on ? '지금 모바일 화면 미리보기 중입니다 (누르면 PC 화면으로 돌아가기)' : '모바일 화면 미리보기 켜기 (로컬 테스트용)';
-  }
-  btn.addEventListener('click', function(){
-    var willEnable = !document.documentElement.classList.contains('ep-mobile-mode');
-    document.documentElement.classList.toggle('ep-mobile-mode', willEnable);
-    try {
-      if (willEnable) localStorage.setItem('ep_force_mobile_preview', '1');
-      else localStorage.removeItem('ep_force_mobile_preview');
-    } catch (e) {}
-    sync();
-  });
-  sync();
-})();
-</script>
 
 <script src="ecopro3.js" defer></script>
 <script src="ecopro3table.js" defer></script>

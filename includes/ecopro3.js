@@ -6,11 +6,14 @@
   window.EP = window.EP || {};
   EP.canvasRotationDeg = EP.canvasRotationDeg || 0;
 
-  // 모바일 모드(html.ep-mobile-mode) 여부를 어디서든 확인할 수 있는 공용 헬퍼.
+  // 모바일 화면(좁은 폭) 여부를 어디서든 확인할 수 있는 공용 헬퍼.
+  // 예전엔 기기 종류(UA)로 판별해서 <html class="ep-mobile-mode">를 붙이는 방식이었는데,
+  // 이제는 순수하게 "화면 폭"만 보고 자동 판단함 — ecopro3.css의 @media(max-width:900px)와
+  // 같은 기준(900px)이라 CSS가 모바일 UI를 보여주는 시점과 항상 정확히 일치함.
   // 오브젝트 선택 시 뜨는 주사위(M/P)·T·J·Z 미니버튼들을 모바일에서만 숨기는 데 씀
   // (ecopro3.js/c/m/j/z 등 여러 파일에서 공통으로 참조)
   EP.isMobileModeActive = function(){
-    return document.documentElement.classList.contains('ep-mobile-mode');
+    return window.innerWidth <= 900;
   };
 
   /* ============================================================
