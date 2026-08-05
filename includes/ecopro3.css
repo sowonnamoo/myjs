@@ -666,6 +666,16 @@ button,input,select{font-family:inherit;}
 }
 .text-tool-hint-toast.show{ opacity:1;transform:translateX(-50%) translateY(0); }
 
+/* ---------- 화면정리(눈 아이콘)를 처음 켤 때 한 번만, 화면 아래 중간쯤에 보여주는 안내 토스트 ---------- */
+.mobile-focus-hint-toast{
+  position:fixed;left:50%;bottom:70px;transform:translateX(-50%) translateY(10px);
+  background:#1f2430;color:#fff;font-size:12.5px;font-weight:600;line-height:1.4;
+  padding:9px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  z-index:2000;opacity:0;transition:opacity .25s ease,transform .25s ease;
+  pointer-events:none;text-align:center;max-width:calc(100vw - 32px);white-space:nowrap;
+}
+.mobile-focus-hint-toast.show{ opacity:1;transform:translateX(-50%) translateY(0); }
+
 .dropdown{position:relative;}
 .dropdown-menu{
   position:absolute;top:calc(100% + 6px);left:0;background:var(--panel);border:1px solid var(--line);
@@ -680,6 +690,20 @@ button,input,select{font-family:inherit;}
 .dropdown-menu label.dropdown-item:hover{background:var(--panel-2);}
 .dropdown-item.on{background:#e8f5e9;color:#2e7d32;font-weight:700;}
 .dropdown-divider{height:1px;background:var(--line);margin:6px 4px;}
+
+/* ---------- 모바일 "전문가모드" ----------
+   메뉴 안 "⚙ 전문가모드"를 누르면 <body>에 이 클래스가 붙고 드롭다운이 닫힘 — 그 다음
+   "메뉴" 버튼을 다시 열면(이때부터 버튼이 초록색으로 바뀌어 있음) 기존 메뉴
+   (#mobileMenuBasicGroup) 대신 전문가 전용 메뉴(#mobileMenuExpertGroup)가 보임(서로
+   동시에 보이지 않고 하나만 보임). 전문가 메뉴 안의 "⚙ 기본모드"를 누르면 반대로 돌아감.
+   전문가 메뉴 안에 구체적으로 어떤 항목을 넣을지는 아직 정하지 않아서 우선 틀만 만들어둠. */
+#mobileMenuExpertGroup{display:none;}
+body.mobile-expert-mode #mobileMenuBasicGroup{display:none;}
+body.mobile-expert-mode #mobileMenuExpertGroup{display:block;}
+body.mobile-expert-mode #mobileMenuBtn{background:#27ae60;border-color:#27ae60;color:#fff;}
+body.mobile-expert-mode #mobileMenuBtn span{color:#fff;}
+#mobileExpertModeToggleBtn{color:#219150;font-weight:700;}
+#mobileBasicModeToggleBtn{color:#219150;font-weight:700;}
 /* 화면 아래쪽 끝에 붙는 트리거(우측 하단 플로팅 저장버튼 등)용 — 아래로 열면 화면 밖으로
    나가버리므로 위쪽으로, 오른쪽 정렬로 펼쳐지게 함 */
 .dropdown-menu.open-up-right{top:auto;bottom:calc(100% + 6px);left:auto;right:0;}
@@ -711,15 +735,18 @@ button,input,select{font-family:inherit;}
 .mobile-zoom-gauge input[type=range]{width:96px;accent-color:var(--accent);}
 #mobileZoomGaugeLabel{font-size:12px;color:var(--sub);font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;margin-right:10px;}
 /* 손바닥 버튼: 아이콘(이모지) 크기는 그대로 두고, 그 주위 둥근사각(버튼 배경)만 절반 크기로 축소 */
-#mobilePanBtn{ padding:6px 9px;border-radius:6px; }
+#mobilePanBtn{ padding:6px 9px;border-radius:6px;margin-left:4px; }
 /* 눈 아이콘(화면 정리 토글) — 손바닥 버튼과 같은 축소 크기, 살짝 간격만 띄움 */
-#mobileFocusToggleBtn{ padding:6px 9px;border-radius:6px;margin-left:4px; }
+#mobileFocusToggleBtn{ padding:6px 9px;border-radius:6px; }
 #mobileFocusToggleBtn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
 
 /* ---------- 모바일 "화면 정리(미리보기)" 모드 ----------
    눈 아이콘을 누르면 <body>에 이 클래스가 붙어서, 캔버스 안 디자인만 남기고 상단바·하단
-   플로팅바·열려있던 팝업 등 나머지 UI를 전부 숨김(눈 아이콘 자기 자신은 계속 보이게 예외
-   처리해서 다시 눌러 원래대로 돌아올 수 있게 함). 다시 누르면 이 클래스가 빠지면서 원래대로. */
+   플로팅바·열려있던 팝업 등 나머지 UI를 화면에서 안 보이게만 함(눈 아이콘 자기 자신은
+   계속 보이게 예외 처리). display:none/visibility:hidden 대신 opacity:0을 써서, 안 보일
+   뿐이지 자리(레이아웃 위치)는 그대로 차지하고 클릭·드롭다운 등 기능도 그대로 다 작동함
+   — "화면상에서만 안 보이고, 누르는 건 그대로 되는" 상태. 다시 누르면 이 클래스가 빠지면서
+   원래대로 다시 보임. */
 body.mobile-focus-mode .mobile-topbar,
 body.mobile-focus-mode .mobile-side-switch,
 body.mobile-focus-mode .qa-popover,
@@ -727,12 +754,23 @@ body.mobile-focus-mode .font-popover,
 body.mobile-focus-mode .ctx-menu,
 body.mobile-focus-mode .free-shape-modal,
 body.mobile-focus-mode .guide-legend,
-body.mobile-focus-mode .canvas-caption-row{
-  display:none !important;
-}
+body.mobile-focus-mode .canvas-caption-row,
 body.mobile-focus-mode .mobile-canvas-tools > *:not(#mobileFocusToggleBtn),
 body.mobile-focus-mode .floating-action-bar > *:not(.mobile-canvas-tools){
-  display:none !important;
+  opacity:0 !important;
+}
+/* 상단바가 투명해지면 그 자리에 <body>의 기본 배경색(--bg, 밋밋한 회색)이 그대로 비쳐서
+   "회색 바"처럼 보였음 — 캔버스 바깥 여백과 똑같은 체크무늬 패턴으로 바꿔서 캔버스
+   영역과 시각적으로 이어지게 함(.canvas-wrap과 완전히 같은 패턴). */
+body.mobile-focus-mode{
+  background:
+    linear-gradient(45deg,#d9dee4 25%,transparent 25%),
+    linear-gradient(-45deg,#d9dee4 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#d9dee4 75%),
+    linear-gradient(-45deg,transparent 75%,#d9dee4 75%);
+  background-size:20px 20px;
+  background-position:0 0,0 10px,10px -10px,-10px 0;
+  background-color:#f6f8fa;
 }
 
 /* ---------- 작업 규격 상태바 ---------- */

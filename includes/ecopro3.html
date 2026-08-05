@@ -37,15 +37,24 @@
     <div class="dropdown mobile-menu-dropdown">
       <button type="button" class="btn mobile-menu-btn" id="mobileMenuBtn">메뉴 <span>▾</span></button>
       <div class="dropdown-menu hidden" id="mobileMenuDropdown">
-        <button type="button" class="dropdown-item" id="mobileShapePickerBtn" title="사각형·원·삼각형·별·하트·자유모양 등 원하는 모양을 골라 만들어요 (PC의 '편집하기 > 모양 만들기'와 동일한 기능)">◆ 모양 만들기</button>
-        <button type="button" class="dropdown-item" id="mobileAddTextBtn" title="캔버스에 새 텍스트를 추가해요 (PC의 '편집하기 > 텍스트'와 동일한 기능)">🅣 텍스트 추가</button>
-        <button type="button" class="dropdown-item" id="mobilePenToolBtn" title="펜 도구 — 손가락으로 점을 찍어 자유로운 모양을 그려요 (더블탭: 완료, 시작점 탭: 닫힌 도형) (PC의 '편집하기 > 펜 도구'와 동일한 기능)">✒ 펜 도구</button>
-        <div class="dropdown-divider"></div>
-        <button type="button" class="dropdown-item" id="mobileRotateCanvasRightBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)">↻ 캔버스 90도 회전</button>
-        <div class="dropdown-divider"></div>
-        <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기</label>
-        <label class="dropdown-item" for="projectInput">📂 파일 불러오기</label>
-        <button type="button" class="dropdown-item" id="mobileSaveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
+        <!-- 기본모드(회색 "메뉴" 버튼)일 때 보이는 지금까지의 기존 메뉴 그대로 -->
+        <div class="mobile-menu-group" id="mobileMenuBasicGroup">
+          <button type="button" class="dropdown-item" id="mobileShapePickerBtn" title="사각형·원·삼각형·별·하트·자유모양 등 원하는 모양을 골라 만들어요 (PC의 '편집하기 > 모양 만들기'와 동일한 기능)">◆ 모양 만들기</button>
+          <button type="button" class="dropdown-item" id="mobileAddTextBtn" title="캔버스에 새 텍스트를 추가해요 (PC의 '편집하기 > 텍스트'와 동일한 기능)">🅣 텍스트 추가</button>
+          <button type="button" class="dropdown-item" id="mobilePenToolBtn" title="펜 도구 — 손가락으로 점을 찍어 자유로운 모양을 그려요 (더블탭: 완료, 시작점 탭: 닫힌 도형) (PC의 '편집하기 > 펜 도구'와 동일한 기능)">✒ 펜 도구</button>
+          <button type="button" class="dropdown-item" id="mobileExpertModeToggleBtn" title="전문가 모드로 전환 — '메뉴' 버튼이 초록색으로 바뀌고, 다음에 '메뉴'를 다시 열면 다른 메뉴들이 나와요">⚙ 전문가모드</button>
+          <div class="dropdown-divider"></div>
+          <button type="button" class="dropdown-item" id="mobileRotateCanvasRightBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)">↻ 캔버스 90도 회전</button>
+          <div class="dropdown-divider"></div>
+          <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기</label>
+          <label class="dropdown-item" for="projectInput">📂 파일 불러오기</label>
+          <button type="button" class="dropdown-item" id="mobileSaveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
+        </div>
+        <!-- 전문가모드("메뉴" 버튼이 초록색일 때)에 보이는 메뉴 — 어떤 항목을 넣을지는 아직
+             정해지지 않아서 우선 "기본모드로 전환" 버튼만 둠. 나중에 여기에 항목을 추가하면 됨. -->
+        <div class="mobile-menu-group" id="mobileMenuExpertGroup">
+          <button type="button" class="dropdown-item" id="mobileBasicModeToggleBtn" title="기본모드로 전환 — '메뉴' 버튼이 다시 회색으로 바뀌고, 기존 메뉴로 돌아가요">⚙ 기본모드</button>
+        </div>
       </div>
     </div>
 
@@ -2647,8 +2656,8 @@
   <!-- 모바일 전용: 손바닥(화면 이동) 아이콘 + 이미지 확대 게이지. PC에서는 항상 숨김
        (PC는 기존처럼 상단 🔍 확대 메뉴/Ctrl+휠을 그대로 씀). 자세한 동작은 ecopro3mobiletools.js 참고. -->
   <div class="mobile-canvas-tools" id="mobileCanvasTools">
-    <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)">✋</button>
     <button type="button" class="btn icon" id="mobileFocusToggleBtn" title="화면 정리 — 누르면 캔버스 안 디자인만 남기고 메뉴·버튼이 전부 숨겨져요(미리보기용). 다시 누르면 원래대로 돌아와요">👁</button>
+    <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)">✋</button>
     <div class="mobile-zoom-gauge">
       <input type="range" id="mobileZoomGauge" min="20" max="300" step="5" value="100" title="화면 확대/축소">
       <span id="mobileZoomGaugeLabel">100%</span>

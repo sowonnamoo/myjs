@@ -999,6 +999,23 @@
     });
   }
 
+  // 모바일 상단 드롭다운 "⚙ 전문가모드" / "⚙ 기본모드" — <body>에 클래스를 붙였다 뗐다 하는
+  // 스위치일 뿐임. 실제 화면 전환(기존 메뉴 ↔ 전문가 메뉴, "메뉴" 버튼 초록색 여부)은
+  // ecopro3.css의 body.mobile-expert-mode 규칙이 전부 처리함. 전문가 메뉴 안에 구체적으로
+  // 어떤 항목을 넣을지는 아직 정해지지 않아서, 지금은 이 스위치 틀만 만들어둠.
+  const mobileExpertModeToggleBtn = document.getElementById('mobileExpertModeToggleBtn');
+  if (mobileExpertModeToggleBtn) {
+    mobileExpertModeToggleBtn.addEventListener('click', () => {
+      document.body.classList.add('mobile-expert-mode');
+    });
+  }
+  const mobileBasicModeToggleBtn = document.getElementById('mobileBasicModeToggleBtn');
+  if (mobileBasicModeToggleBtn) {
+    mobileBasicModeToggleBtn.addEventListener('click', () => {
+      document.body.classList.remove('mobile-expert-mode');
+    });
+  }
+
   // 모바일 상단 드롭다운 "↻ 캔버스 90도 회전" / "↺ 반대 90도 회전" — PC의 '↻ 회전 > 캔버스 90도
   // 회전'/'반대 90도 회전'(#rotateCanvasRightBtn/#rotateCanvasLeftBtn)과 완전히 동일한 기능을
   // 그대로 호출함(새로 만든 게 아니라 100% 재사용). 캔버스 위 모든 오브젝트가 캔버스와 함께 회전됨.
