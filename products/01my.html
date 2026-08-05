@@ -1114,10 +1114,41 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith("http")) {
                     openOnce(selectedOpt.dataset.url);
                 }
-                updatePrice();
+                updateCountLockByEditOption();
             });
         });
+
+        // 방금 렌더링된 기본 선택값 기준으로도 한 번 판단해둠
+        updateCountLockByEditOption();
     }
+
+    // [추가] 편집옵션(일반 옵션 그룹) 중에서 "선시안"이라는 글자가 들어있는 값이
+    // 선택되어 있으면, 건수(setCountInput)를 1로 고정하고 그 외의 값은 입력하지
+    // 못하게 막는다. "선시안"이 아닌 값이 선택되면 원래대로(최대 50건까지 직접
+    // 입력 가능) 되돌린다.
+    function updateCountLockByEditOption() {
+        const countInput = document.getElementById("setCountInput");
+        if (!countInput) return;
+        const selects = document.querySelectorAll('#dynamicOptionsContainer select');
+        let hasPreDesignSelected = false;
+        selects.forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt) return;
+            if ((opt.value || '').includes('선시안') || (opt.textContent || '').includes('선시안')) {
+                hasPreDesignSelected = true;
+            }
+        });
+        if (hasPreDesignSelected) {
+            countInput.value = "1";
+            countInput.max = "1";
+            countInput.disabled = true;
+        } else {
+            countInput.disabled = false;
+            countInput.max = "50";
+        }
+        if (typeof updatePrice === "function") updatePrice();
+    }
+
 
     // ---- ② 후가공(다중 선택) 렌더링 ----
     function loadFinishingOptions(selectElement) {
@@ -1286,6 +1317,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         qtyInput.value = minQty;
         qtyInput.disabled = true;
     }
+
 
     // 매수 모드 셀렉트 전환: "최소구간매수"를 고르면 입력창을 최소구간 매수로 고정하고 비활성화,
     // "수량 직접입력"을 고르면 입력창을 비우고 활성화해 사용자가 원하는 매수를 직접 입력하게 합니다.
@@ -1679,6 +1711,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 재구입 흐름이면, 지금까지 만들어진 모든 옵션(일반 옵션 + 후가공)
             // 중에서 예전에 실제로 구입했던 값이 아닌 옵션은 아예 선택하지 못하게 막는다.
             restrictReorderOptionsToPurchased();
+
+            // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
+            // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
+            updateCountLockByEditOption();
 
             updateSizeMode();
             updatePrice();
