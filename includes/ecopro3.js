@@ -134,7 +134,8 @@
   ============================================================ */
   (function setupTextFontControl(){
     function renderTButton(ctx, left, top, styleOverride, fabricObject){
-      if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
+      // 모바일에서도 T 버튼만은 예외적으로 보이게 함(요청에 따라) — 도형쪽 M/P/J/Z 등
+      // 나머지 미니 버튼들은 계속 모바일에서 숨김 처리됨(각 파일의 isMobileModeActive 체크 유지).
       // 여러 개를 묶어 선택했거나(활성선택) 묶기로 그룹화한 경우: 텍스트뿐 아니라 이미지가 섞여 있어도
       // (정렬 기능은 이미지에도 필요하므로) 2개 이상의 유효한 오브젝트만 있으면 T 버튼을 보여줌
       if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
@@ -165,7 +166,6 @@
       cursorStyle: 'pointer',
       render: renderTButton,
       mouseUpHandler: function(eventData, transformData){
-        if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
         const target = transformData && transformData.target;
         if (!target) return true;
         if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
@@ -765,10 +765,21 @@
     });
     guideRect.isGuide = true;
 
-    outerGuideRect = new fabric.Rect({
+    // 예전엔 얇은 테두리선(stroke)으로 그렸는데, stroke는 기준선 위에 "가운데 정렬"로 그려지는
+    // 방식이라 두께의 절반이 캔버스 밖으로 나가 잘리거나(그래서 방향에 따라 안 보이던 문제),
+    // 살짝 안쪽으로 들여도 화면 배율·기기 해상도에 따라 미세하게 안티에일리어싱이 번져서
+    // 방향마다 두께가 다르게 보이거나 바깥쪽에 지저분한 흰 선이 비치는 문제가 있었음.
+    // 그래서 선이 아니라 "캔버스 전체 사각형에서 안쪽 사각형을 뺀 도넛(액자) 모양"을
+    // 그냥 회색으로 꽉 채워서 그림 — 이렇게 하면 두께가 사방 어디서든 정확히 outerThickness
+    // px로 완전히 균일하고, 캔버스 가장자리에 딱 맞물려서 바깥으로 새거나 잘리는 부분이
+    // 전혀 없음(선의 "중심 정렬" 개념 자체가 없어져서 이 문제가 원천적으로 사라짐).
+    const outerThickness = 2;
+    const outerFrameD =
+      `M0,0 L${CANVAS_W},0 L${CANVAS_W},${CANVAS_H} L0,${CANVAS_H} Z ` +
+      `M${outerThickness},${outerThickness} L${outerThickness},${CANVAS_H - outerThickness} L${CANVAS_W - outerThickness},${CANVAS_H - outerThickness} L${CANVAS_W - outerThickness},${outerThickness} Z`;
+    outerGuideRect = new fabric.Path(outerFrameD, {
       left: 0, top: 0,
-      width: CANVAS_W, height: CANVAS_H,
-      fill: 'transparent', stroke: '#999999', strokeWidth: 2,
+      fill: '#999999', fillRule: 'evenodd', stroke: '', strokeWidth: 0,
       selectable: false, evented: false, visible: guideState !== 2
     });
     outerGuideRect.isGuide = true;
@@ -783,15 +794,39 @@
   }
   buildGuides();
 
+  // 붉은선(재단선)의 "실제로 보여야 할 상태"는 두 스위치가 함께 결정함:
+  //  1) 기존 guideToggleBtn의 3단계 순환(재단선만 / 재단선+모눈 / 전부 숨김)
+  //  2) 새로 추가한 "👁 문구·붉은선 가리기" 버튼(회색선은 그대로 두고 붉은선+안내문구만 따로 숨김)
+  // 둘 중 하나라도 "숨김"이면 붉은선은 안 보여야 하므로, 이 함수로 항상 같이 계산해서 반영함.
+  let redLineHiddenByCaptionBtn = false;
+  function updateGuideRectVisibility(){
+    guideRect.visible = (guideState !== 2) && !redLineHiddenByCaptionBtn;
+    canvas.renderAll();
+  }
+
   document.getElementById('guideToggleBtn').addEventListener('click', () => {
     // 1번째: 붉은 재단선 박스만 표시 → 2번째: 그 안에 5px 간격 모눈까지 표시 → 3번째: 전부 숨김
     guideState = (guideState + 1) % 3;
     const boxVisible = guideState !== 2;
-    guideRect.visible = boxVisible;
     outerGuideRect.visible = boxVisible;
     gridGuide.visible = guideState === 1;
-    canvas.renderAll();
+    updateGuideRectVisibility();
   });
+
+  // "👁 문구·붉은선 가리기" — 캔버스 바깥의 안내 문구(붉은선/회색선 설명)와 캔버스 안의
+  // 붉은 재단선만 같이 숨김(회색선·모눈은 그대로 둠). 다시 누르면 원래대로 돌아옴.
+  const canvasCaptionToggleBtn = document.getElementById('canvasCaptionToggleBtn');
+  const canvasRedLineCaption = document.getElementById('canvasRedLineCaption');
+  if (canvasCaptionToggleBtn && canvasRedLineCaption) {
+    canvasCaptionToggleBtn.addEventListener('click', () => {
+      redLineHiddenByCaptionBtn = !redLineHiddenByCaptionBtn;
+      canvasRedLineCaption.classList.toggle('hidden', redLineHiddenByCaptionBtn);
+      canvasCaptionToggleBtn.classList.toggle('active', redLineHiddenByCaptionBtn);
+      canvasCaptionToggleBtn.textContent = redLineHiddenByCaptionBtn ? '🙈' : '👁';
+      canvasCaptionToggleBtn.title = redLineHiddenByCaptionBtn ? '문구·붉은선 다시 보이기' : '문구·붉은선 가리기';
+      updateGuideRectVisibility();
+    });
+  }
 
   /* ============================================================
      3b. 캔버스 전체 90도 회전
@@ -801,16 +836,35 @@
   function rotateCanvas90(dir){ // dir: 1 = 시계방향, -1 = 반시계방향
     const oldW = CANVAS_W, oldH = CANVAS_H;
 
-    canvas.getObjects().forEach((obj) => {
+    // 오브젝트 하나(모양/패스/텍스트/이미지 등)의 중심점·각도를 새 캔버스 크기 기준으로 회전시킴.
+    // 클리핑 마스크로 붙인 클립패스(absolutePositioned:true)에도 그대로 재사용함 — 이건
+    // canvas.getObjects()에 안 잡히는 별도 오브젝트라서, 안 챙겨주면 캔버스는 돌아갔는데
+    // 클립 경계(마스크 창)만 예전 위치·각도에 그대로 남아 어긋나 버리는 문제가 있었음.
+    function rotateOneObject(obj){
       const c = obj.getCenterPoint();
       let nx, ny;
       if (dir === 1) { nx = oldH - c.y; ny = c.x; }
       else { nx = c.y; ny = oldW - c.x; }
-      obj.setPositionByOrigin(new fabric.Point(nx, ny), 'center', 'center');
+      // 순서 중요: 각도를 먼저 바꾸고 그 다음에 위치(중심점)를 맞춰야 함.
+      // "모양 만들기"로 만든 도형들은 originX/Y가 'center'라서 순서가 상관없었지만,
+      // 텍스트·펜 도구 패스는 origin이 'left'/'top'이라, 위치를 먼저 맞추고 나중에
+      // 각도를 바꾸면 "모서리→중심" 오프셋이 새 각도로 다시 회전되면서 중심점이 엉뚱한
+      // 곳으로 밀려나 버림(그래서 도형은 멀쩡한데 텍스트/펜 패스만 위치가 이탈해 보였음).
       if (!obj.isGuide) {
         obj.set('angle', ((obj.angle || 0) + dir * 90 + 360) % 360);
       }
+      obj.setPositionByOrigin(new fabric.Point(nx, ny), 'center', 'center');
       obj.setCoords();
+    }
+
+    canvas.getObjects().forEach((obj) => {
+      rotateOneObject(obj);
+      // 클리핑 마스크로 붙은 클립패스가 캔버스 절대좌표 기준(absolutePositioned)이면
+      // 오브젝트 본체와 똑같이 같이 돌려줘야 마스크 창이 새 위치에도 정확히 들어맞음
+      if (obj.clipPath && obj.clipPath.absolutePositioned) {
+        rotateOneObject(obj.clipPath);
+        obj.dirty = true;
+      }
     });
 
     // 캔버스 논리 크기 및 규격 비율 교체 (가로 ↔ 세로)
@@ -823,9 +877,14 @@
     EP.canvasRotationDeg = ((EP.canvasRotationDeg || 0) + dir * 90 + 360) % 360;
     EP.refreshRotatablePopovers();
 
-    // 안내선(붉은선/회색선/모눈)을 새 크기에 맞게 다시 생성
-    canvas.remove(guideRect, outerGuideRect, gridGuide);
+    // 안내선(붉은선/회색선/모눈)을 새 크기에 맞게 다시 생성.
+    // 변수 3개(guideRect/outerGuideRect/gridGuide)만 지우는 대신, isGuide 표시가 붙은
+    // 오브젝트를 캔버스에서 전부 찾아서 지움 — 이렇게 해야 어떤 이유로든 변수 참조가
+    // 실제 캔버스 상태와 어긋나 있어도 안내선이 중복으로 남지 않고 확실히 다 정리됨
+    // (회전할 때마다 예전 재단선이 안 지워지고 겹겹이 쌓여 보이던 문제의 원인).
+    canvas.getObjects().filter(o => o.isGuide).forEach(o => canvas.remove(o));
     buildGuides();
+    if (typeof updateGuideRectVisibility === 'function') updateGuideRectVisibility(); // "👁 문구·붉은선 가리기"로 숨겨둔 상태였다면 새로 만든 붉은선에도 그대로 유지
 
     // 현재 줌 배율을 유지한 채 캔버스 엘리먼트 크기 갱신
     setZoomLevel(zoom);
@@ -871,10 +930,14 @@
   ];
 
   function closeAllMegaMenus(){
-    megaMenus.forEach(({ menu }) => menu.classList.add('hidden'));
+    megaMenus.forEach(({ menu }) => { if (menu) menu.classList.add('hidden'); });
   }
 
   megaMenus.forEach(({ trigger, menu }) => {
+    // 이 중 하나라도 페이지에 없으면(예: HTML 버전이 안 맞아서 특정 버튼이 빠진 경우) 여기서
+    // 예외가 나서 이 뒤에 있는 삭제/레이어/CMYK 색상칸 등록 코드 전체가 통째로 실행이 안 되는
+    // 문제가 있었음 — 반드시 존재 여부를 먼저 확인하고 없으면 그냥 건너뜀
+    if (!trigger || !menu) return;
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
       const willOpen = menu.classList.contains('hidden');
@@ -895,11 +958,63 @@
   // 기존 사각형 생성 기능의 진입로만 모바일용으로 하나 더 뚫어주는 것뿐이라, 만들어진
   // 사각형은 PC에서 만든 것과 똑같이(캔버스 정가운데, 파란색 180x120) 생기고, 그 뒤로는
   // 캔버스 위에서 손가락으로 직접 옮기고 크기 조절해서 가리고 싶은 글씨 위에 덮으면 됨.
-  const mobileCoverTextBtn = document.getElementById('mobileCoverTextBtn');
-  if (mobileCoverTextBtn) {
-    mobileCoverTextBtn.addEventListener('click', () => {
-      const pickRectBtn = document.getElementById('pickRectBtn');
-      if (pickRectBtn) pickRectBtn.click();
+  // 모바일 상단 드롭다운 "◆ 모양 만들기" — PC의 '✏️ 편집하기 > ◆ 모양 만들기'(#openShapePickerBtn)와
+  // 완전히 동일한 기능을 그대로 호출함. 예전엔 사각형 하나만 바로 만들어주는 "글씨 가리기"
+  // 버튼이었는데, 이제는 PC와 똑같이 사각형/둥근사각형/원/삼각형/별/하트/자유모양 중 골라서
+  // 만들 수 있는 모양 만들기 팝업이 그대로 뜸(새 기능이 아니라 100% 재사용).
+  const mobileShapePickerBtn = document.getElementById('mobileShapePickerBtn');
+  if (mobileShapePickerBtn) {
+    mobileShapePickerBtn.addEventListener('click', () => {
+      if (EP.exitPanMode) EP.exitPanMode(); // 손바닥(이동) 도구가 켜져 있으면 새로 만든 모양을 바로 움직일 수 있도록 먼저 꺼둠
+      const openShapePickerBtn = document.getElementById('openShapePickerBtn');
+      if (openShapePickerBtn) openShapePickerBtn.click();
+    });
+  }
+
+  // 모바일 상단 드롭다운 "🅣 텍스트 추가" — PC의 '✏️ 편집하기 > 🅣 텍스트'(#addTextBtn)와 완전히
+  // 동일한 기능을 그대로 호출함. 누르면 텍스트 도구가 무장되고(드롭다운은 자동으로 닫힘),
+  // 캔버스에서 원하는 위치를 한 번 탭하면 그 자리에 빈 텍스트가 생기며 바로 입력할 수 있음
+  // (PC와 완전히 같은 흐름 — 새로 만든 게 아니라 100% 재사용).
+  const mobileAddTextBtn = document.getElementById('mobileAddTextBtn');
+  if (mobileAddTextBtn) {
+    mobileAddTextBtn.addEventListener('click', () => {
+      if (EP.exitPanMode) EP.exitPanMode(); // 손바닥(이동) 도구와 텍스트 도구가 동시에 켜져 있으면 서로 충돌하므로 먼저 꺼둠
+      const addTextBtn = document.getElementById('addTextBtn');
+      if (addTextBtn) addTextBtn.click();
+    });
+  }
+
+  // 모바일 상단 드롭다운 "✒ 펜 도구" — PC의 '✏️ 편집하기 > ✒ 펜 도구'(#penToolBtn)와 완전히
+  // 동일한 기능을 그대로 호출함(새로 만든 게 아니라 100% 재사용).
+  const mobilePenToolBtn = document.getElementById('mobilePenToolBtn');
+  if (mobilePenToolBtn) {
+    mobilePenToolBtn.addEventListener('click', () => {
+      if (EP.exitPanMode) EP.exitPanMode(); // 손바닥(이동) 도구와 펜 도구가 동시에 켜져 있으면 서로 충돌하므로 먼저 꺼둠
+      const penToolBtn = document.getElementById('penToolBtn');
+      if (penToolBtn) penToolBtn.click();
+    });
+  }
+
+  // 모바일 상단 드롭다운 "↻ 캔버스 90도 회전" / "↺ 반대 90도 회전" — PC의 '↻ 회전 > 캔버스 90도
+  // 회전'/'반대 90도 회전'(#rotateCanvasRightBtn/#rotateCanvasLeftBtn)과 완전히 동일한 기능을
+  // 그대로 호출함(새로 만든 게 아니라 100% 재사용). 캔버스 위 모든 오브젝트가 캔버스와 함께 회전됨.
+  const mobileRotateCanvasRightBtn = document.getElementById('mobileRotateCanvasRightBtn');
+  if (mobileRotateCanvasRightBtn) {
+    mobileRotateCanvasRightBtn.addEventListener('click', () => {
+      const rotateCanvasRightBtn = document.getElementById('rotateCanvasRightBtn');
+      if (rotateCanvasRightBtn) rotateCanvasRightBtn.click();
+    });
+  }
+
+  // 모바일 상단 드롭다운의 "🖼 이미지 불러오기"/"📂 파일 불러오기"는 HTML에서
+  // <label for="imageInput">/<label for="projectInput">로 PC와 같은 파일 입력을 그대로
+  // 가리키고 있어서 별도 JS 없이 네이티브 동작으로 파일 선택창이 뜸.
+  // "💾 저장"만 버튼이라 PC의 실제 저장 버튼(#saveProjectBtn)을 그대로 클릭해줌.
+  const mobileSaveProjectBtn = document.getElementById('mobileSaveProjectBtn');
+  if (mobileSaveProjectBtn) {
+    mobileSaveProjectBtn.addEventListener('click', () => {
+      const saveProjectBtn = document.getElementById('saveProjectBtn');
+      if (saveProjectBtn) saveProjectBtn.click();
     });
   }
 
@@ -916,7 +1031,7 @@
   function serializeCurrentCanvas(){
     const objs = canvas.getObjects().filter(o => !o.isGuide);
     return {
-      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
+      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
       background: canvas.backgroundColor || '#ffffff'
     };
   }
@@ -1376,7 +1491,7 @@
   let saveTimer = null;
 
   function snapshot(){
-    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText',
+    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText',
       // 모양필터(M버튼 — 지폐/기하모자이크/물결/원형장식 등) 관련 내부 상태. 이게 빠져있으면
       // 실행취소/다시실행으로 오브젝트가 새로 만들어질 때 이 정보가 사라져서, 눈에 보이는
       // 모양(패턴 채우기 자체)은 그대로여도 "지금 정확히 어떤 필터가 몇 개 적용돼있는지"를
@@ -1718,6 +1833,10 @@
       canvas.requestRenderAll();
       return;
     }
+    // 클리핑 마스크가 적용된 이미지(below)는 더블클릭해도 자르기 모드로 들어가지 않고,
+    // 그냥 선택된 상태로 남아서 예전처럼 모서리를 드래그해 크기를 늘리고 줄일 수 있게 함
+    // (자르기 모드는 마스크 경계와는 별개의 기능이라 지금 맥락에선 오히려 방해가 됨).
+    if (opt.target.clipPath) return;
     if (isImageObject(opt.target)) enterCropMode(opt.target);
   });
 
@@ -1916,15 +2035,47 @@
   const addTextBtn = document.getElementById('addTextBtn');
   let textToolActive = false;
 
+  // 기본 브라우저 'text' 커서(가늘고 색이 흐릿함)는 캔버스 위에서 잘 안 보인다는 요청이 있어서,
+  // 굵고 빨간 I자 모양 커서를 직접 SVG로 그려서 씀(스포이드 커서와 같은 방식).
+  const TEXT_TOOL_CURSOR_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'>" +
+    "<g stroke='#e74c3c' stroke-width='3.4' stroke-linecap='round'>" +
+    "<line x1='7' y1='4' x2='19' y2='4'/>" +
+    "<line x1='13' y1='4' x2='13' y2='22'/>" +
+    "<line x1='7' y1='22' x2='19' y2='22'/>" +
+    "</g></svg>";
+  const TEXT_TOOL_CURSOR = 'url("data:image/svg+xml,' + encodeURIComponent(TEXT_TOOL_CURSOR_SVG) + '") 13 13, text';
+
+  // 텍스트 도구를 처음(딱 한 번만) 무장할 때 사용법을 짧게 안내하는 토스트 메시지.
+  // localStorage에 한 번 봤다는 표시를 남겨서, 이후로는(새로고침해도) 다시 뜨지 않음.
+  const TEXT_TOOL_HINT_KEY = 'ecopro3_text_tool_hint_seen_v1';
+  function showTextToolHintOnce(){
+    try {
+      if (localStorage.getItem(TEXT_TOOL_HINT_KEY)) return;
+      localStorage.setItem(TEXT_TOOL_HINT_KEY, '1');
+    } catch (err) {
+      // 시크릿 모드 등으로 localStorage를 못 쓰는 환경이면 그냥 매번 안내해도 무방하므로 조용히 통과
+    }
+    const toast = document.createElement('div');
+    toast.className = 'text-tool-hint-toast';
+    toast.textContent = '캔버스를 클릭한 후 글을 적어주세요';
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
+
   function setTextToolMode(active){
     textToolActive = active;
     addTextBtn.classList.toggle('active', active);
     canvas.selection = !active;
     canvas.skipTargetFind = active;
     canvas.discardActiveObject();
-    canvas.defaultCursor = active ? 'text' : 'default';
-    canvas.hoverCursor = active ? 'text' : 'move';
+    canvas.defaultCursor = active ? TEXT_TOOL_CURSOR : 'default';
+    canvas.hoverCursor = active ? TEXT_TOOL_CURSOR : 'move';
     canvas.renderAll();
+    if (active) showTextToolHintOnce();
   }
 
   addTextBtn.addEventListener('click', () => {
@@ -2040,10 +2191,10 @@
 
     function addShapeObject(obj){
       canvas.add(obj); bringGuideToFront(); canvas.setActiveObject(obj); canvas.renderAll();
-      // (예전엔 여기서 모양을 만들 때마다 hideShapePickerModal()로 창을 자동으로 닫았는데,
-      // 계속 열어둔 채로 여러 모양을 연달아 만들 수 있게 요청대로 제거함 — 닫는 건 모달의
-      // ✕ 버튼(shapePickerModalCloseBtn)을 직접 눌러야만 닫히도록 함. history는
-      // canvas.on('object:added', pushHistory)에서 이미 자동으로 기록되므로 따로 안 부름)
+      // (PC에서는 여러 모양을 연달아 만들 수 있게 자동으로 안 닫음 — 모달의 ✕ 버튼을
+      // 직접 눌러야만 닫힘. 모바일에서만 화면이 좁아 캔버스를 가리는 게 더 불편하므로,
+      // 모양을 하나 만들면 바로 창이 자동으로 닫히게 함)
+      if (EP.isMobileModeActive && EP.isMobileModeActive()) hideShapePickerModal();
     }
 
     document.getElementById('pickRectBtn').addEventListener('click', () => {
@@ -2256,6 +2407,7 @@
       evented: true,
       objectCaching: false
     });
+    path.isPenToolPath = true; // 펜 도구로 만든 패스임을 표시 — K 버튼(테두리 색상/불투명도/두께 팝업)은 이 표시가 있는 오브젝트에만 뜸
     canvas.add(path);
     bringGuideToFront();
     canvas.setActiveObject(path);
@@ -2333,18 +2485,28 @@
   }
   deleteBtn.addEventListener('click', deleteSelected);
   deleteSideBtn.addEventListener('click', deleteSelected);
+  EP.deleteSelected = deleteSelected; // 모바일 휴지통 버튼(ecopro3mobiletools.js)에서 재사용
 
   document.getElementById('duplicateBtn').addEventListener('click', () => {
     if (cropState) return;
     const obj = canvas.getActiveObject();
     if (!obj || obj.isGuide) return;
     obj.clone(clone => {
-      clone.set({ left: obj.left + 20, top: obj.top + 20 });
+      clone.set({
+        left: obj.left + 20, top: obj.top + 20,
+        // 잠긴(선택 불가) 오브젝트를 롱프레스로 선택한 뒤 복제한 경우에도, 새로 만든
+        // 복제본은 원본의 잠금 상태를 물려받지 않고 항상 바로 선택·이동 가능한 상태로
+        // 시작하게 함 (요청: "복제로 만든 레이어들 모두 선택 가능하게")
+        selectable: true, evented: true, imageLocked: false,
+        hasControls: true, hasBorders: true,
+        lockMovementX: false, lockMovementY: false,
+        hoverCursor: 'move'
+      });
       canvas.add(clone); bringGuideToFront();
       if (EP.reindexPastedTable) EP.reindexPastedTable(clone); // 표를 복제한 경우 새 tableId로 재등록
       canvas.setActiveObject(clone);
       canvas.renderAll();
-    }, ['selectable', 'evented', 'imageLocked'].concat(EP.tableCloneProps || []));
+    }, ['selectable', 'evented', 'imageLocked', 'isPenToolPath'].concat(EP.tableCloneProps || []));
   });
 
   document.addEventListener('keydown', (e) => {
@@ -2381,7 +2543,7 @@
   function copySelected(){
     const obj = canvas.getActiveObject();
     if (!obj || obj.isGuide || cropState) return;
-    obj.clone((cloned) => { clipboard = cloned; }, ['selectable', 'evented', 'imageLocked'].concat(EP.tableCloneProps || []));
+    obj.clone((cloned) => { clipboard = cloned; }, ['selectable', 'evented', 'imageLocked', 'isPenToolPath'].concat(EP.tableCloneProps || []));
   }
 
   function pasteClipboard(pointer){
@@ -2391,8 +2553,12 @@
       clonedObj.set({
         left: pointer ? pointer.x : (clonedObj.left || 0) + 24,
         top: pointer ? pointer.y : (clonedObj.top || 0) + 24,
-        evented: true,
-        imageLocked: false
+        // 잠긴 오브젝트를 복사한 뒤 붙여넣은 경우에도, 붙여넣기 결과는 항상 바로
+        // 선택·이동 가능한 상태로 시작하게 함(복제 버튼과 동일한 이유)
+        selectable: true, evented: true, imageLocked: false,
+        hasControls: true, hasBorders: true,
+        lockMovementX: false, lockMovementY: false,
+        hoverCursor: 'move'
       });
       if (clonedObj.type === 'activeSelection') {
         clonedObj.canvas = canvas;
@@ -2409,7 +2575,7 @@
       canvas.setActiveObject(clonedObj);
       canvas.requestRenderAll();
       pushHistory();
-    }, ['selectable', 'evented', 'imageLocked'].concat(EP.tableCloneProps || []));
+    }, ['selectable', 'evented', 'imageLocked', 'isPenToolPath'].concat(EP.tableCloneProps || []));
   }
 
   /* ============================================================
@@ -2448,6 +2614,8 @@
     canvas.requestRenderAll();
     pushHistory();
   }
+  EP.lockImage = lockImage;     // 모바일 잠금 버튼(ecopro3mobiletools.js)에서 재사용
+  EP.unlockImage = unlockImage; // 위와 동일
 
   let longPressTimer = null;
   let longPressTarget = null;
@@ -2542,36 +2710,48 @@
       if (target.imageLocked) {
         addCtxItem('🔓 잠금 해제', () => unlockImage(target));
         if (isImageObject(target)) addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
-        addCtxDivider();
         addCtxItem('🗑 삭제', () => { canvas.remove(target); canvas.discardActiveObject(); canvas.renderAll(); pushHistory(); }, true);
       } else {
         if (canvas.getActiveObject() !== target) {
           canvas.setActiveObject(target);
           canvas.renderAll();
         }
-        addCtxItem('⧉ 복사', () => copySelected());
-        addCtxItem('📋 붙여넣기', () => pasteClipboard(pointer));
-        addCtxDivider();
-        addCtxItem('↶ 실행 취소', () => undoBtn.click());
-        addCtxItem('↷ 다시 실행', () => redoBtn.click());
-        addCtxDivider();
-        addCtxItem('⬆ 레이어 앞으로', () => { canvas.bringToFront(target); bringGuideToFront(); canvas.renderAll(); pushHistory(); });
-        addCtxItem('⬇ 레이어 뒤로', () => { canvas.sendToBack(target); canvas.renderAll(); pushHistory(); });
-        addCtxDivider();
         if (isImageObject(target)) {
-          addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
           addCtxItem('🔒 이미지 잠금', () => lockImage(target));
           addCtxItem('🗑 이미지 삭제', () => deleteSelected(), true);
         } else {
           addCtxItem('🔒 잠금', () => lockImage(target));
           addCtxItem('🗑 삭제', () => deleteSelected(), true);
         }
+        addCtxDivider();
+        addCtxItem('⧉ 복제', () => { const duplicateBtn = document.getElementById('duplicateBtn'); if (duplicateBtn) duplicateBtn.click(); });
+        addCtxDivider();
+        if (target.type === 'group') {
+          addCtxItem('🔓 풀기', () => {
+            const sel = target.toActiveSelection();
+            canvas.setActiveObject(sel);
+            canvas.requestRenderAll();
+            pushHistory();
+          });
+        } else if (target.type === 'activeSelection' && target.size() >= 2) {
+          addCtxItem('🔗 묶기', () => {
+            const group = target.toGroup();
+            canvas.setActiveObject(group);
+            canvas.requestRenderAll();
+            pushHistory();
+          });
+        }
+        addCtxDivider();
+        addCtxItem('⬆ 레이어 앞으로', () => { canvas.bringToFront(target); bringGuideToFront(); canvas.renderAll(); pushHistory(); });
+        addCtxItem('⬇ 레이어 뒤로', () => { canvas.sendToBack(target); canvas.renderAll(); pushHistory(); });
+        addCtxItem('↻ 90도 회전', () => { const rotateObjectBtn = document.getElementById('rotateObjectBtn'); if (rotateObjectBtn) rotateObjectBtn.click(); });
+        if (isImageObject(target)) {
+          addCtxDivider();
+          addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
+        }
       }
     } else {
       addCtxItem('📋 붙여넣기', () => pasteClipboard(pointer));
-      addCtxDivider();
-      addCtxItem('↶ 실행 취소', () => undoBtn.click());
-      addCtxItem('↷ 다시 실행', () => redoBtn.click());
     }
 
     ctxMenu.classList.remove('hidden');
@@ -2585,6 +2765,49 @@
 
   canvas.upperCanvasEl.addEventListener('contextmenu', openContextMenu);
   canvasWrap.addEventListener('contextmenu', (e) => { if (e.target === canvasWrap) e.preventDefault(); });
+
+  /* ============================================================
+     9e-2. 길게 누르기(1초 이상)로 우클릭 메뉴 열기 — PC/모바일 공통
+     - 마우스든 손가락(터치)이든 캔버스 위에서 1초 이상 같은 자리를 누르고 있으면,
+       실제 우클릭(contextmenu)과 완전히 같은 메뉴가 그 자리에서 열림(openContextMenu를
+       그대로 재사용하므로 메뉴 내용·동작은 100% 동일함).
+     - 누른 채로 일정 거리 이상(10px) 움직이면 오브젝트를 드래그해서 옮기려는 의도로
+       보고 자동으로 취소함(그래야 평소처럼 드래그로 이동하는 데 지장이 없음).
+  ============================================================ */
+  let ctxLongPressTimer = null;
+  let ctxLongPressStart = null; // { x, y, e }
+  const CTX_LONG_PRESS_MS = 1000;
+  const CTX_LONG_PRESS_MOVE_TOLERANCE = 10; // px
+
+  function clearCtxLongPress(){
+    if (ctxLongPressTimer) { clearTimeout(ctxLongPressTimer); ctxLongPressTimer = null; }
+    ctxLongPressStart = null;
+  }
+  function clientPointOf(evt){
+    return (evt.touches && evt.touches.length) ? evt.touches[0] : evt;
+  }
+
+  canvas.on('mouse:down', (opt) => {
+    clearCtxLongPress();
+    const evt = opt.e;
+    if (!evt) return;
+    const p = clientPointOf(evt);
+    ctxLongPressStart = { x: p.clientX, y: p.clientY, e: evt };
+    ctxLongPressTimer = setTimeout(() => {
+      if (!ctxLongPressStart) return;
+      const heldEvent = ctxLongPressStart.e;
+      ctxLongPressStart = null;
+      openContextMenu(heldEvent);
+    }, CTX_LONG_PRESS_MS);
+  });
+  canvas.on('mouse:move', (opt) => {
+    if (!ctxLongPressStart || !opt.e) return;
+    const p = clientPointOf(opt.e);
+    const dx = p.clientX - ctxLongPressStart.x;
+    const dy = p.clientY - ctxLongPressStart.y;
+    if (Math.sqrt(dx * dx + dy * dy) > CTX_LONG_PRESS_MOVE_TOLERANCE) clearCtxLongPress();
+  });
+  canvas.on('mouse:up', clearCtxLongPress);
 
   document.addEventListener('mousedown', (e) => {
     if (!ctxMenu.classList.contains('hidden') && !ctxMenu.contains(e.target)) hideContextMenu();
@@ -2602,11 +2825,14 @@
     canvas.setWidth(CANVAS_W * zoom);
     canvas.setHeight(CANVAS_H * zoom);
     zoomMenuBtnLabel.textContent = Math.round(zoom * 100) + '%';
+    if (EP.onZoomChanged) EP.onZoomChanged(zoom); // 모바일 확대 게이지(ecopro3mobiletools.js)가 값을 맞출 수 있게 알려줌
   }
   document.querySelectorAll('#zoomMenu .dropdown-item').forEach(btn => {
     btn.addEventListener('click', () => setZoomLevel((parseFloat(btn.dataset.zoom) || 100) / 100));
   });
   setZoomLevel(1);
+  EP.setZoomLevel = setZoomLevel;       // 모바일 확대 게이지에서 재사용
+  EP.getZoomLevel = () => zoom;         // 위와 동일(현재 배율 읽기용)
 
   canvasWrap.addEventListener('wheel', (e) => {
     if (!e.ctrlKey) return;
@@ -2802,7 +3028,7 @@
 
           // 2) 회색선(도련)까지 이미지가 채워졌는지 검사
           if (!isFullyBled()) {
-            alert(`${label} — 붉은선 밖 회색선까지 이미지를 채워주세요.`);
+            alert(`${label} — 바탕이미지를 붉은선 밖 회색선까지 이미지를 채워주세요.`);
             await loadDesignForExport(originalIdx, originalSide);
             guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
             canvas.renderAll();
@@ -3324,6 +3550,7 @@
     // 문제가 있었음(그래서 "색상 선택창이 안 뜬다"처럼 보였음). body에 직접 붙이면 그런
     // 조상 zoom의 영향을 전혀 안 받아서 항상 계산한 그대로 정확한 화면 위치에 뜸.
     document.body.appendChild(popover);
+    el._cmykPopover = popover; // 다른 파일(예: ecopro3mobiletools.js)에서 이 색상칸의 팝업을 찾아 버튼 등을 덧붙일 수 있게 참조를 남겨둠
 
     const svCanvas = popover.querySelector('.cmyk-sv');
     const hueCanvas = popover.querySelector('.cmyk-hue');
@@ -3684,118 +3911,28 @@
     canvas.renderAll();
   }
 
-  // 글꼴을 바꿀 때, 브라우저가 그 폰트 파일을 아직 안 받아온 상태면 캔버스에 곧바로 새
-  // 글꼴로 안 바뀌어 보이는 문제가 있음(캔버스는 일반 웹페이지 텍스트와 달리 폰트 로딩
-  // 완료를 자동으로 기다려주지 않음). 이를 해결하기 위해:
-  //  1) 실제로 그 폰트 파일이 로딩 완료될 때까지 기다렸다가(document.fonts.load)
-  //  2) 굵게(볼드)로 살짝 바꿨다가 다시 원래 굵기로 되돌리는 방식으로 캔버스가 새로 로딩된
-  //     폰트를 기준으로 다시 그리도록 강제함(단순히 값만 바꾸는 것보다 이렇게 실제로 화면에
-  //     한 번 그려봐야 캔버스 내부 글자 폭 계산 캐시가 새 폰트 기준으로 확실히 갱신됨)
-  // 이 과정 동안 화면에 순간적으로 볼드로 보이거나 깜빡이지 않도록, 처리하는 동안은 해당
-  // 오브젝트를 잠깐 투명하게(opacity 0) 숨겨뒀다가 다 끝나면 원래대로 되돌림.
-  //
-  // ⚠ 짧은 시간 안에 이 함수가 같은 오브젝트에 대해 여러 번(예: 연달아 다른 폰트를 고르거나,
-  // 처리 중에 다른 조작이 끼어드는 경우) 겹쳐 호출되면, 먼저 시작된 오래된 호출이 "원래
-  // 투명도"로 이미 0(다른 호출이 숨겨둔 값)을 캡처해뒀다가 나중에 그 0을 그대로 "복원"해버려서
-  // 글자가 계속 투명한 채로 남는(사라지는) 문제가 있었음. 이를 막기 위해 오브젝트마다 "지금
-  // 처리 중인 요청 번호(토큰)"를 기록해두고, 나중에 실제로 되돌릴 때 자기가 여전히 가장 최신
-  // 요청인지 확인해서, 그 사이에 더 최신 요청이 들어왔으면 오래된 쪽은 아무 것도 안 하고
-  // 조용히 넘어감(가장 최신 요청만 최종적으로 화면에 반영됨).
-  //
-  // + 볼드 토글만으로는 글자 우측에 이전 폰트로 그려졌던 잔상(캔버스 내부 캐시가 완전히
-  // 안 지워져서 생기는 흔적)이 남는 경우가 있어서, 크기를 살짝(-5%) 줄였다가 다시 원래
-  // 크기로 되돌리는 것도 같이 추가함 — 크기 자체가 바뀌면 캔버스가 그 오브젝트의 캐시를
-  // 완전히 새로 만들 수밖에 없어서 잔상이 확실히 지워짐. 이 과정도 투명하게 숨겨진 동안에만
-  // 일어나므로 화면엔 늘었다 줄었다 하는 게 전혀 안 보임.
-  let fontReloadTokenSeq = 0;
+  // 글꼴을 바꾼 뒤 캔버스가 새 모양으로 다시 그리도록, 크기를 살짝(-5%) 줄였다가 곧바로
+  // 원래 크기로 되돌리는 것만으로 강제 재작성시킴(크기 자체가 바뀌면 캔버스가 그 오브젝트의
+  // 캐시를 새로 만들 수밖에 없어서 이전 폰트로 그려졌던 잔상이 확실히 지워짐).
   function forceFontReloadRedraw(boxes, fontFamilyName){
     boxes = boxes.filter(o => isTextObject(o));
     if (!boxes.length) return;
-    const myToken = ++fontReloadTokenSeq;
-    const originalWeights = boxes.map(o => o.fontWeight);
     const originalScaleXs = boxes.map(o => o.scaleX);
     const originalScaleYs = boxes.map(o => o.scaleY);
     boxes.forEach((o, i) => {
-      // 이 오브젝트에 대해 이미 진행 중인 요청이 없을 때만(=처음 숨기는 시점에만) "진짜 원래
-      // 투명도"를 기록함 — 이미 진행 중인 요청이 있다면 그게 기록해둔 원래값을 그대로 이어받아
-      // 씀(안 그러면 "이미 0으로 숨겨진 상태"를 원래값으로 잘못 기록하게 됨)
-      if (o.__fontReloadToken == null) o.__fontReloadOriginalOpacity = o.opacity;
-      o.__fontReloadToken = myToken;
-      o.set('opacity', 0);
+      o.set('scaleX', originalScaleXs[i] * 0.95);
+      o.set('scaleY', originalScaleYs[i] * 0.95);
       o.dirty = true;
     });
     canvas.requestRenderAll();
-
-    const loadPromises = [];
-    if (window.document.fonts && document.fonts.load) {
-      try {
-        loadPromises.push(document.fonts.load('400 40px "' + fontFamilyName + '"'));
-        loadPromises.push(document.fonts.load('700 40px "' + fontFamilyName + '"'));
-      } catch (e) { /* 폰트명이 특이해서 실패해도 무시하고 진행(아래 타임아웃이 대신 처리) */ }
-    }
-    const readyPromise = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1200)); // 로딩이 안 끝나도 너무 오래 숨겨두지 않게 하는 안전장치
-
-    Promise.race([
-      Promise.all(loadPromises.concat([readyPromise])).catch(() => {}),
-      timeoutPromise
-    ]).then(() => {
-      // 1단계: 폰트가 바뀌었는데도 fabric 내부의 "미리 그려둔 그림(오프스크린 캐시)"이 이전
-      // 폰트 모양 그대로 남아있어서 잔상처럼 보이는 문제가 있었음(단순히 dirty=true만으로는
-      // 캐시가 확실히 새로 안 그려지는 경우가 있었음). 이를 확실히 없애기 위해 캐시 캔버스
-      // 자체를 강제로 파기하고, objectCaching을 껐다 켜서 완전히 새로 만들도록 함. 볼드
-      // 토글·크기 -5%도 같이 걸어서 다중으로 안전하게 강제 재작성시킴(여전히 투명해서 안 보임)
+    setTimeout(() => {
       boxes.forEach((o, i) => {
-        if (o.__fontReloadToken !== myToken) return;
-        if (typeof o._removeCacheCanvas === 'function') o._removeCacheCanvas();
-        o._cacheCanvas = null; o._cacheContext = null; // 위 메서드가 없는 구버전 fabric까지 대비한 보험
-        o.objectCaching = false; // 일단 캐시를 안 쓰는 상태로 만들어서 원본 그대로 다시 그리게 함
-        const flipped = (originalWeights[i] === 'bold' || originalWeights[i] >= 700) ? 'normal' : 'bold';
-        o.set('fontWeight', flipped);
-        o.set('scaleX', originalScaleXs[i] * 0.95);
-        o.set('scaleY', originalScaleYs[i] * 0.95);
-        o.dirty = true;
-      });
-      canvas.requestRenderAll();
-      requestAnimationFrame(() => {
-        // 2단계: 원래 굵기·크기·투명도로 되돌리고, 캐시도 다시 켜서(이번엔 방금 새로 그린
-        // 정확한 모양으로) 재생성되게 함 — 이제 새로 로딩된 폰트가 반영된 채로, 잔상 없이
-        // 깨끗하게 보임. 마찬가지로 자기가 여전히 최신 요청일 때만 실제로 복원함.
-        boxes.forEach((o, i) => {
-          if (o.__fontReloadToken !== myToken) return;
-          o.set('fontWeight', originalWeights[i]);
-          o.set('scaleX', originalScaleXs[i]);
-          o.set('scaleY', originalScaleYs[i]);
-          o.set('opacity', o.__fontReloadOriginalOpacity != null ? o.__fontReloadOriginalOpacity : 1);
-          // 낙서/우주효과 등 "장식이 글자 박스 바깥까지 퍼지는" 필터가 걸려있으면 objectCaching을
-          // 계속 꺼둬야 함(켜면 fabric이 원래 글자 크기 기준 캐시 캔버스를 만들어서 그 바깥으로
-          // 나가는 장식이 잘려 보이는 문제가 있었음) — 그런 효과가 없을 때만 다시 켬
-          o.objectCaching = EP.hasAnyRenderEffect ? !EP.hasAnyRenderEffect(o) : true;
-          if (typeof o._removeCacheCanvas === 'function') o._removeCacheCanvas();
-          o._cacheCanvas = null; o._cacheContext = null;
-          o.__fontReloadToken = null;
-          o.__fontReloadOriginalOpacity = null;
-          o.dirty = true;
-        });
-        canvas.requestRenderAll();
-      });
-    }).catch(() => {
-      // 혹시 위 과정 중 어딘가에서 예상 못한 오류가 나더라도, 이 요청이 여전히 최신이라면
-      // 최소한 투명도·굵기·크기·캐시 상태만은 반드시 원래대로 되돌려서 글자가 영영 안
-      // 보이거나 작아진 채로 남지 않게 함(마지막 안전망)
-      boxes.forEach((o, i) => {
-        if (o.__fontReloadToken !== myToken) return;
-        o.set('fontWeight', originalWeights[i]);
         o.set('scaleX', originalScaleXs[i]);
         o.set('scaleY', originalScaleYs[i]);
-        o.set('opacity', o.__fontReloadOriginalOpacity != null ? o.__fontReloadOriginalOpacity : 1);
-        o.objectCaching = true;
-        o.__fontReloadToken = null;
-        o.__fontReloadOriginalOpacity = null;
         o.dirty = true;
       });
       canvas.requestRenderAll();
-    });
+    }, 150);
   }
 
   textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));
@@ -3945,7 +4082,14 @@
       !e.target.closest('.qa-popover') &&
       !e.target.closest('.ctx-menu') &&
       !e.target.closest('.crop-toolbar') &&
-      !e.target.closest('.cmyk-popover')
+      !e.target.closest('.cmyk-popover') &&
+      // 모바일 전용 상단바(휴지통/색상/스포이드/레이어/확대 아이콘, "글씨 가리기" 드롭다운 등)도
+      // PC의 .toolbar/.side-panel처럼 "도구를 조작하는 영역"이므로 여기서 제외해야 함.
+      // 이게 빠져 있으면 이 버튼들을 누르는 순간(click보다 먼저 발생하는 mousedown 시점에)
+      // 캔버스 선택이 먼저 해제돼버려서, 정작 각 버튼의 click 핸들러가 실행될 때는
+      // 이미 선택된 오브젝트가 없는 상태가 되어 스포이드·휴지통·색상 적용이 전부 안 먹는
+      // 문제가 있었음.
+      !e.target.closest('.mobile-topbar')
     ) {
       if (canvas.getActiveObject()) {
         canvas.discardActiveObject();
@@ -3990,27 +4134,5 @@
   EP.registerFilterPopover(fontPopover);
   EP.clearPerCharStyleOverrides = clearPerCharStyleOverrides;
   EP.forceFontReloadRedraw = forceFontReloadRedraw;
-
-  /* ============================================================
-     가끔 캔버스 뒤를 지나가는 고양이 이스터에그
-     — 20분마다 한 번씩, 매번은 아니고 60% 확률로만("가끔") 캔버스 뒤쪽(투명한 여백)을
-       왼쪽에서 오른쪽으로 걸어서 지나감. 실제 디자인/저장/선택과는 전혀 무관한 순수 장식.
-  ============================================================ */
-  (function setupEasterEggCat(){
-    const catEl = document.getElementById('easterEggCat');
-    if (!catEl) return;
-    const INTERVAL_MS = 20 * 60 * 1000; // 20분
-    const TRIGGER_CHANCE = 0.6; // "가끔"이므로 매번 지나가진 않고 60% 확률로만
-    function walk(){
-      if (catEl.classList.contains('walking')) return; // 이미 걷고 있으면 겹치지 않게 건너뜀
-      catEl.classList.add('walking');
-      catEl.addEventListener('animationend', function onEnd(e){
-        if (e.animationName !== 'easterEggCatWalk') return; // 계속 반복되는 걷기(bob) 애니메이션은 무시
-        catEl.classList.remove('walking');
-        catEl.removeEventListener('animationend', onEnd);
-      });
-    }
-    setInterval(() => { if (Math.random() < TRIGGER_CHANCE) walk(); }, INTERVAL_MS);
-  })();
 
 })();

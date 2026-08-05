@@ -19,6 +19,7 @@
   var EP = window.EP = window.EP || {};
 
   var btn = document.getElementById('eyedropperPickBtn');
+  var mobileBtn = document.getElementById('mobileEyedropperBtn'); // 모바일 상단바용 스포이드 버튼(PC와 완전히 같은 로직을 공유함)
   var pickMode = false;
   var targetObj = null; // 스포이드를 누른 순간 선택돼 있던, 색을 바꿀 오브젝트
 
@@ -32,11 +33,19 @@
   var DROPPER_CURSOR = 'url("data:image/svg+xml,' + encodeURIComponent(DROPPER_CURSOR_SVG) + '") 6 18, crosshair';
 
   var previewSwatch = document.getElementById('eyedropPreviewSwatch');
+  var mobilePreviewSwatch = document.getElementById('mobileEyedropPreviewSwatch'); // 모바일 상단바용 미리보기(같은 값을 항상 같이 반영)
   var DEFAULT_SWATCH_COLOR = '#d8dde3';
+
+  // PC/모바일 두 미리보기 박스를 항상 같은 색으로 맞춰줌(둘 중 하나가 화면에 없어도 안전하게 건너뜀)
+  function setPreviewSwatchColor(hex){
+    previewSwatch.style.borderBottomColor = hex;
+    if (mobilePreviewSwatch) mobilePreviewSwatch.style.borderBottomColor = hex;
+  }
 
   function setPickMode(on){
     pickMode = on;
     btn.classList.toggle('active', on);
+    if (mobileBtn) mobileBtn.classList.toggle('active', on); // 모바일 버튼도 같이 무장 표시(파란 링)
     if (on) {
       if (EP.exitImageToolModes) EP.exitImageToolModes();
       // 색을 따올 "다른 오브젝트를 클릭"해서 골라야 하니 선택 기능은 그대로 살려둠
@@ -48,21 +57,25 @@
       targetObj = null;
       EP.canvas.defaultCursor = 'default';
       EP.canvas.hoverCursor = 'move';
-      previewSwatch.style.borderBottomColor = DEFAULT_SWATCH_COLOR; // 무장 해제되면 미리보기도 기본색으로 초기화
+      setPreviewSwatchColor(DEFAULT_SWATCH_COLOR); // 무장 해제되면 미리보기도 기본색으로 초기화
     }
     EP.canvas.requestRenderAll();
   }
 
-  btn.addEventListener('click', function(){
+  function armFromCurrentSelection(){
     if (pickMode) { setPickMode(false); return; } // 무장 중에 다시 누르면 취소
     var active = EP.canvas.getActiveObject();
     if (!active || isGuideObj(active)) {
       alert('먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 스포이드를 눌러주세요.');
       return;
     }
+    if (EP.exitPanMode) EP.exitPanMode(); // 손바닥(이동) 도구가 켜져 있으면 캔버스 클릭이 스포이드 채집과 충돌하므로 먼저 꺼둠
     targetObj = active;
     setPickMode(true);
-  });
+  }
+
+  btn.addEventListener('click', armFromCurrentSelection);
+  if (mobileBtn) mobileBtn.addEventListener('click', armFromCurrentSelection); // PC와 완전히 같은 스포이드 로직을 그대로 씀
 
   // 화면에 실제로 그려진 픽셀을 읽어서 색을 추출(그라디언트/패턴 등 단색이 아닌 경우의 대비용)
   function pickColorAtEvent(e){
@@ -102,7 +115,7 @@
   EP.canvas.on('mouse:move', function(opt){
     if (!pickMode || !targetObj) return;
     var colorHex = sampleColorAt(opt.target, opt.e);
-    if (colorHex) previewSwatch.style.borderBottomColor = colorHex;
+    if (colorHex) setPreviewSwatchColor(colorHex);
   });
 
   EP.canvas.on('mouse:down', function(opt){
@@ -112,14 +125,14 @@
 
     if (colorHex && targetObj) {
       targetObj.set('fill', colorHex);
-      previewSwatch.style.borderBottomColor = colorHex;
+      setPreviewSwatchColor(colorHex);
       EP.canvas.requestRenderAll();
       if (EP.pushHistory) EP.pushHistory();
     }
 
     var appliedTo = targetObj;
     setPickMode(false);
-    previewSwatch.style.borderBottomColor = colorHex || DEFAULT_SWATCH_COLOR; // setPickMode(false)가 기본색으로 되돌리므로, 방금 적용한 색으로 다시 덮어써서 결과가 남아있게 함
+    setPreviewSwatchColor(colorHex || DEFAULT_SWATCH_COLOR); // setPickMode(false)가 기본색으로 되돌리므로, 방금 적용한 색으로 다시 덮어써서 결과가 남아있게 함
     if (appliedTo) EP.canvas.setActiveObject(appliedTo); // 바뀐 결과가 보이도록 대상 오브젝트를 다시 선택
     EP.canvas.requestRenderAll();
   });
@@ -132,7 +145,7 @@
   // 취소함 — 다른 기능으로 넘어갔는데 스포이드가 뒤에서 계속 켜진 채로 남지 않게 함
   document.addEventListener('mousedown', function(e){
     if (!pickMode) return;
-    if (e.target.closest && e.target.closest('#eyedropperPickBtn')) return;
+    if (e.target.closest && (e.target.closest('#eyedropperPickBtn') || e.target.closest('#mobileEyedropperBtn'))) return;
     var canvasWrap = document.getElementById('canvasWrap');
     if (canvasWrap && !canvasWrap.contains(e.target)) setPickMode(false);
   }, true);

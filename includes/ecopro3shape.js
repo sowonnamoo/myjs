@@ -614,7 +614,10 @@
     EP.canvas.setActiveObject(obj);
     EP.canvas.requestRenderAll();
     if (EP.pushHistory) EP.pushHistory();
-    // 여러 개를 연달아 골라 추가할 수 있게, 넣은 뒤에도 갤러리를 자동으로 닫지 않음(✕로만 닫힘)
+    // PC에서는 여러 개를 연달아 골라 추가할 수 있게 자동으로 안 닫음(✕로만 닫힘).
+    // 모바일에서만 화면이 좁아 갤러리가 캔버스를 계속 가리는 게 더 불편하므로,
+    // 모양을 하나 넣으면 바로 갤러리가 자동으로 닫히게 함
+    if (EP.isMobileModeActive && EP.isMobileModeActive()) hideFreeShapeGallery();
   }
 
   function showFreeShapeGallery(){

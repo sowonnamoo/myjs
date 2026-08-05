@@ -35,10 +35,38 @@
        추가할 때는 #mobileMenuDropdown 안에 dropdown-item 버튼만 더 넣으면 됨. -->
   <div class="mobile-topbar" id="mobileTopbar">
     <div class="dropdown mobile-menu-dropdown">
-      <button type="button" class="btn mobile-menu-btn" id="mobileMenuBtn">🔲 글씨 가리기 <span>▾</span></button>
+      <button type="button" class="btn mobile-menu-btn" id="mobileMenuBtn">메뉴 <span>▾</span></button>
       <div class="dropdown-menu hidden" id="mobileMenuDropdown">
-        <button type="button" class="dropdown-item" id="mobileCoverTextBtn" title="흰색 사각형을 만들어서 상품 이미지 위 기존 글씨를 가릴 수 있어요 (PC의 '모양 만들기 > 사각형'과 동일한 기능)">🔲 글씨 가리기</button>
+        <button type="button" class="dropdown-item" id="mobileShapePickerBtn" title="사각형·원·삼각형·별·하트·자유모양 등 원하는 모양을 골라 만들어요 (PC의 '편집하기 > 모양 만들기'와 동일한 기능)">◆ 모양 만들기</button>
+        <button type="button" class="dropdown-item" id="mobileAddTextBtn" title="캔버스에 새 텍스트를 추가해요 (PC의 '편집하기 > 텍스트'와 동일한 기능)">🅣 텍스트 추가</button>
+        <button type="button" class="dropdown-item" id="mobilePenToolBtn" title="펜 도구 — 손가락으로 점을 찍어 자유로운 모양을 그려요 (더블탭: 완료, 시작점 탭: 닫힌 도형) (PC의 '편집하기 > 펜 도구'와 동일한 기능)">✒ 펜 도구</button>
+        <div class="dropdown-divider"></div>
+        <button type="button" class="dropdown-item" id="mobileRotateCanvasRightBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)">↻ 캔버스 90도 회전</button>
+        <div class="dropdown-divider"></div>
+        <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기</label>
+        <label class="dropdown-item" for="projectInput">📂 파일 불러오기</label>
+        <button type="button" class="dropdown-item" id="mobileSaveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
       </div>
+    </div>
+
+    <!-- ============ 모바일 전용: 빠른 도구 아이콘 (PC 툴바/우측 패널에 있던 기능을 그대로 재사용) ============
+         🗑 삭제, 색상 적용(텍스트·모양 공통 — PC와 같은 CMYK 팝업 + "완료" 버튼),
+         스포이드(PC와 완전히 같은 로직을 ecopro3eyedrop.js에서 공유), 레이어 맨 앞/뒤로, 확대/축소,
+         실행취소/다시실행.
+         자세한 동작은 ecopro3mobiletools.js와 ecopro3eyedrop.js 참고. -->
+    <div class="mobile-tool-icons" id="mobileToolIcons">
+      <button type="button" class="btn icon danger" id="mobileDeleteBtn" title="선택한 오브젝트 삭제">🗑</button>
+      <div class="cmyk-picker mini" id="mobileColorInput" title="선택한 텍스트·모양의 색상 (탭해서 색 고르기)"></div>
+      <button type="button" class="btn icon" id="mobileEyedropperBtn" title="스포이드 — 먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 이 버튼을 누르고, 색을 따올 다른 오브젝트를 클릭하면 그 색이 그대로 적용돼요">
+        <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 3 L21 7 L11 17 L7 17 L7 13 Z" fill="currentColor"/><rect x="4.6" y="17.6" width="3.6" height="3.6" transform="rotate(45 6.4 19.4)" fill="currentColor"/></svg>
+      </button>
+      <div class="eyedrop-preview-swatch" id="mobileEyedropPreviewSwatch" title="스포이드가 지금 가리키고 있는 색 실시간 미리보기"></div>
+      <button type="button" class="btn icon" id="mobileLayerFrontBtn" title="맨 앞으로">⬆</button>
+      <button type="button" class="btn icon" id="mobileLayerBackBtn" title="맨 뒤로">⬇</button>
+      <button type="button" class="btn icon" id="mobileDuplicateBtn" title="선택한 오브젝트 복제 (PC의 '복제' 버튼과 동일한 기능)">⧉</button>
+      <button type="button" class="btn icon" id="mobileLockBtn" title="선택한 오브젝트 잠금/해제 — 잠그면 실수로 움직이거나 지워지지 않아요. 잠긴 오브젝트를 다시 만지려면 길게(0.5초) 눌러서 선택한 뒤 이 버튼을 다시 누르세요">🔒</button>
+      <button type="button" class="btn icon" id="mobileUndoBtn" title="실행 취소">↶</button>
+      <button type="button" class="btn icon" id="mobileRedoBtn" title="다시 실행">↷</button>
     </div>
   </div>
 
@@ -179,17 +207,18 @@
     </div>
 
     <div class="canvas-wrap" id="canvasWrap">
-      <!-- 가끔(대략 20분에 한 번꼴로) 캔버스 뒤쪽(투명한 여백 부분)을 지나가는 고양이
-           이스터에그 — 실제 디자인과는 무관한 순수 장식용이라 저장/선택/내보내기에 전혀
-           영향 없음(클릭도 안 되고 오브젝트도 아님). canvas-shell보다 먼저 나와있어서
-           자연스럽게 그 뒤쪽에 깔림 -> 불투명한 캔버스 부분을 지나갈 땐 가려지고,
-           캔버스 바깥 여백(체크무늬)에서만 보임 -->
-      <div class="easter-egg-cat" id="easterEggCat" aria-hidden="true">🐈</div>
       <div class="canvas-shell">
         <canvas id="mainCanvas"></canvas>
         <div class="crop-toolbar hidden" id="tableEditToolbar">
           <span class="crop-toolbar-hint">표 편집 중 — 셀 우클릭(모바일은 꾹 누르기)으로 정렬·글수정·합치기</span>
           <button type="button" class="btn primary" id="tableEditDoneBtn">✓ 표 편집 완료</button>
+        </div>
+        <!-- 흰 박스(캔버스) 바로 바깥, 회색 테두리 밑에 붙는 아주 작은 안내 문구.
+             캔버스(fabric) 오브젝트가 아니라 순수 HTML 요소라서 PNG/JPG/SVG 내보내기나
+             상품담기/구입 시 만들어지는 시안 이미지에는 애초에 포함될 수가 없음. -->
+        <div class="canvas-caption-row" id="canvasCaptionRow">
+          <div class="canvas-red-line-caption" id="canvasRedLineCaption"><span class="cap-red">붉은선 : 재단선 (실출력시 보이지 않음/글씨가 가까이 있는경우 잘림)</span><br><span class="cap-black">회색선 : 작업선 (실접수 사이즈)</span></div>
+          <button type="button" class="canvas-caption-toggle-btn" id="canvasCaptionToggleBtn" title="문구·붉은선 가리기/보이기">👁</button>
         </div>
       </div>
       <div class="guide-legend">
@@ -2404,6 +2433,32 @@
   </div>
 </div>
 
+<!-- 모양(도형)·펜 도구 패스 공용 "K" 버튼 팝업 — T(텍스트)와 같은 구조(작은 원형 버튼 → 근처에 뜨는
+     설정 팝업). 테두리 색상 / 전체 불투명도 / 본문(채우기) 불투명도 / 테두리 두께 / 클리핑 마스크를
+     다루는 팝업이라 M/J 팝업과 같은 .qa-popover 틀을 그대로 재사용함. -->
+<div class="qa-popover hidden" id="kStrokePopover">
+  <button type="button" class="font-popover-close" id="kStrokePopoverCloseBtn" title="닫기">✕</button>
+  <div class="row">
+    <label>테두리 색상</label>
+    <div class="cmyk-picker mini" id="kStrokeColorInput" title="테두리 색상 (CMYK)"></div>
+  </div>
+  <div class="row">
+    <label>전체 불투명도</label>
+    <input type="range" id="kOpacityInput" min="0" max="1" step="0.02" title="테두리·본문을 포함한 오브젝트 전체 불투명도">
+  </div>
+  <div class="row">
+    <label>본문 불투명도</label>
+    <input type="range" id="kFillOpacityInput" min="0" max="1" step="0.02" title="테두리는 그대로 두고 안쪽 채우기(본문)만 투명하게">
+  </div>
+  <div class="row">
+    <label>두께</label>
+    <input type="number" id="kStrokeWidthInput" min="0" max="60" step="1" title="테두리 두께(px)">
+  </div>
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="kClipMaskBtn" style="width:100%;" title="바로 뒤(아래) 레이어를 이 모양·패스 윤곽으로 잘라냄(클리핑 마스크) — 적용 후 이 모양·패스는 이미지 바로 뒤로 이동하고, 두 오브젝트는 각각 선택할 수 있어요">✂ 클리핑마스크(뒷레이어)</button>
+  </div>
+</div>
+
 <div class="font-popover hidden" id="fontPopover">
   <button type="button" class="font-popover-close" id="fontPopoverCloseBtn" title="닫기">✕</button>
   <div class="font-popover-top-row">
@@ -2571,6 +2626,15 @@
      상품담기/구입 버튼은 아직 아무 기능도 없는 자리표시 버튼임(나중에 실제 장바구니/결제
      연동이 정해지면 그때 기능을 붙일 예정) — PNG/JPG/SVG 저장은 상단 "🖼 이미지" 메뉴에서만 함. -->
 <div class="floating-action-bar" id="floatingActionBar">
+  <!-- 모바일 전용: 손바닥(화면 이동) 아이콘 + 이미지 확대 게이지. PC에서는 항상 숨김
+       (PC는 기존처럼 상단 🔍 확대 메뉴/Ctrl+휠을 그대로 씀). 자세한 동작은 ecopro3mobiletools.js 참고. -->
+  <div class="mobile-canvas-tools" id="mobileCanvasTools">
+    <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)">✋</button>
+    <div class="mobile-zoom-gauge">
+      <input type="range" id="mobileZoomGauge" min="20" max="300" step="5" value="100" title="화면 확대/축소">
+      <span id="mobileZoomGaugeLabel">100%</span>
+    </div>
+  </div>
   <label class="btn" for="imageInput">이미지 불러오기</label>
   <button type="button" class="btn primary" id="floatingSaveBtn">상품담기/구입</button>
 </div>
@@ -2581,10 +2645,12 @@
 <script src="ecopro3m.js" defer></script>
 <script src="ecopro3j.js" defer></script>
 <script src="ecopro3z.js" defer></script>
+<script src="ecopro3k.js" defer></script>
 <script src="ecopro3bg.js" defer></script>
 <script src="ecopro3shape.js" defer></script>
 <script src="ecopro3imgtool.js" defer></script>
 <script src="ecopro3eyedrop.js" defer></script>
+<script src="ecopro3mobiletools.js" defer></script>
 <script src="ecopro3text.js" defer></script>
 <script src="ecopro3map.js" defer></script>
 <script src="ecopro3logo.js" defer></script>

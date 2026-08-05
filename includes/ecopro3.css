@@ -634,6 +634,7 @@ button,input,select{font-family:inherit;}
 #selectToolBtn{outline:none;}
 #selectToolBtn.sel-active{background:#eff0f2;border-color:#e0e3e6;color:var(--ink);}
 #eyedropperPickBtn.active{box-shadow:0 0 0 2px var(--accent) inset;}
+#mobileEyedropperBtn.active{box-shadow:0 0 0 2px var(--accent) inset;}
 
 /* 스포이드 실시간 미리보기용 세모 컬러박스 — 스포이드가 무장(active) 상태로 캔버스 위를 움직이는
    동안 커서 아래 색이 실시간으로 여기 채워짐. 클릭해서 실제 적용하기 전까지는 미리보기 용도. */
@@ -654,6 +655,16 @@ button,input,select{font-family:inherit;}
 .hidden{display:none !important;}
 
 .zoom-label{font-size:12px;color:#75808f;min-width:42px;text-align:center;font-weight:600;}
+
+/* ---------- 텍스트 도구를 처음 무장할 때 한 번만 보여주는 안내 토스트 ---------- */
+.text-tool-hint-toast{
+  position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-14px);
+  background:#e74c3c;color:#fff;font-size:13.5px;font-weight:700;line-height:1.4;
+  padding:11px 20px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  z-index:2000;opacity:0;transition:opacity .25s ease,transform .25s ease;
+  pointer-events:none;text-align:center;max-width:calc(100vw - 32px);
+}
+.text-tool-hint-toast.show{ opacity:1;transform:translateX(-50%) translateY(0); }
 
 .dropdown{position:relative;}
 .dropdown-menu{
@@ -685,6 +696,22 @@ button,input,select{font-family:inherit;}
   padding:14px 24px;font-size:26px;border-radius:14px;
 }
 .floating-action-bar label.btn{display:inline-flex;align-items:center;background:#ffffff;}
+
+/* ---------- 모바일 전용: 손바닥(이동) 아이콘 + 이미지 확대 게이지 (PC에서는 항상 숨김) ----------
+   상단 🔍 확대 메뉴 대신, 하단 "이미지 불러오기" 왼쪽에 슬라이더(게이지) 형태로 확대/축소를
+   바로 조절할 수 있게 함. 손바닥 아이콘은 켜두면(활성 표시) 오브젝트를 선택하는 대신
+   손가락으로 화면을 끌어서 움직일 수 있음(포토샵 스페이스바 이동과 같은 기능).
+   자세한 동작은 ecopro3mobiletools.js 참고. */
+.mobile-canvas-tools{
+  display:none; /* PC에서는 항상 숨김 — 아래 @media(max-width:900px)에서만 flex로 보여줌 */
+  align-items:center;gap:0; /* 손바닥 아이콘과 게이지 사이 여백 없이 붙임 */
+  background:transparent;box-shadow:none;padding:0; /* 게이지 바깥 둥근사각 배경 제거(투명하게) */
+}
+.mobile-zoom-gauge{display:flex;align-items:center;gap:6px;}
+.mobile-zoom-gauge input[type=range]{width:96px;accent-color:var(--accent);}
+#mobileZoomGaugeLabel{font-size:12px;color:var(--sub);font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;margin-right:20px;}
+/* 손바닥 버튼: 아이콘(이모지) 크기는 그대로 두고, 그 주위 둥근사각(버튼 배경)만 절반 크기로 축소 */
+#mobilePanBtn{ padding:6px 9px;border-radius:6px; }
 
 /* ---------- 작업 규격 상태바 ---------- */
 .status-bar{
@@ -755,38 +782,43 @@ button,input,select{font-family:inherit;}
   background-size:20px 20px;
   background-position:0 0,0 10px,10px -10px,-10px 0;
   background-color:#f6f8fa;
-  display:flex;align-items:center;justify-content:center;
+  display:grid;
   padding:24px;
 }
 .canvas-shell{
+  position:relative; /* 아래 .canvas-red-line-caption을 이 박스 기준 바깥에 붙이기 위한 기준점 */
+  justify-self:start;align-self:start;
+  margin:auto;
   box-shadow:0 4px 26px rgba(0,0,0,.18);background:#fff;
   /* 화면에 보이는 색감만 전체 채도 -10%로 낮춰서 보여주는 표시 전용 필터.
      실제 오브젝트의 색상값(저장/내보내기/쿼리 전달용)은 전혀 바뀌지 않습니다. */
   filter:saturate(0.9);
 }
+/* 흰 박스(캔버스) 바로 밖, 회색 테두리 아래쪽에 붙는 아주 작은 안내 문구 + 가리기 버튼 (딱 2줄) */
+.canvas-caption-row{
+  position:absolute;left:0;bottom:-40px; /* 글자가 길어서 줄바꿈되면 위쪽으로 자라 흰 박스와 겹치므로,
+    아래 white-space:nowrap로 줄바꿈 자체를 막고, 이 값도 2줄 높이보다 넉넉하게 잡아 박스 밖에 확실히 위치시킴 */
+  display:flex;align-items:flex-start;gap:6px;
+}
+.canvas-red-line-caption{
+  font-size:12px;line-height:1.4;
+  white-space:nowrap;user-select:none; /* 각 줄이 중간에 줄바꿈되지 않고 항상 한 줄로 유지됨(줄바꿈은 <br>로만) */
+}
+.canvas-red-line-caption.hidden{display:none;}
+.canvas-red-line-caption .cap-red{color:#ff0000;}
+.canvas-red-line-caption .cap-black{color:#000000;}
+.canvas-caption-toggle-btn{
+  flex-shrink:0;border:1px solid var(--line);background:var(--panel);color:var(--sub);
+  border-radius:6px;width:20px;height:20px;font-size:11px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
+}
+.canvas-caption-toggle-btn:hover{background:var(--panel-2);}
+.canvas-caption-toggle-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .empty-hint{
   position:absolute;pointer-events:none;text-align:center;color:#9aa4b2;font-size:14px;line-height:1.7;
   max-width:320px;
 }
 
-/* ---------- 가끔 캔버스 뒤를 지나가는 고양이 이스터에그 ---------- */
-.easter-egg-cat{
-  position:absolute;left:-120px;bottom:18px;font-size:78px;line-height:1;
-  pointer-events:none;user-select:none;z-index:0;opacity:0;
-  transform:scaleX(-1); /* 기본은 왼쪽을 보고 있으니 오른쪽으로 걸어가는 방향으로 뒤집음 */
-}
-.easter-egg-cat.walking{
-  animation:easterEggCatWalk 14s linear 1, easterEggCatBob 0.5s ease-in-out infinite;
-}
-@keyframes easterEggCatWalk{
-  0%{ left:-120px; opacity:1; }
-  97%{ opacity:1; }
-  100%{ left:calc(100% + 120px); opacity:1; }
-}
-@keyframes easterEggCatBob{
-  0%,100%{ transform:scaleX(-1) translateY(0); }
-  50%{ transform:scaleX(-1) translateY(-6px); }
-}
 .empty-hint b{color:var(--accent);}
 .guide-legend{
   position:absolute;left:34px;bottom:34px;background:rgba(242,243,244,.92);border:1px solid var(--line);
@@ -1309,6 +1341,11 @@ input[type=file]{display:none;}
 
   /* ---------- 필터(🎲/P)·글꼴(T) 플로팅 패널: 화면폭 안으로 제한 ---------- */
   .qa-popover,.font-popover{max-width:calc(100vw - 16px);}
+
+  /* ---------- 자유모양 갤러리: 좁은 화면에서 창이 화면을 꽉 채울 만큼 커지지 않도록 더 작게,
+     아이콘 칸도 살짝 줄여서 스크롤이 자연스럽게 시작되게 함 ---------- */
+  .free-shape-modal-inner{ width:min(360px,90vw); max-height:74vh; }
+  .free-shape-grid{ grid-template-columns:repeat(auto-fill,minmax(48px,1fr)); padding:12px; }
 }
 
 /* 더 좁은 화면(작은 폰)에서는 속성 패널을 사실상 전체화면처럼 넓게 */
@@ -1326,10 +1363,12 @@ input[type=file]{display:none;}
 .free-shape-modal-inner{
   background:var(--panel);border-radius:12px;width:min(680px,92vw);max-height:82vh;
   display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3);
+  overflow:hidden; /* 아래 그리드가 넘치는 부분은 이 박스 밖으로 새지 않고 그리드 안에서만 스크롤되게 함 */
 }
 .free-shape-modal-header{
   display:flex;align-items:center;justify-content:space-between;padding:14px 18px;
   border-bottom:1px solid var(--line);font-weight:700;font-size:15px;color:var(--ink);
+  flex-shrink:0; /* 아이콘이 아무리 많아져도 헤더는 항상 그대로 보이게 */
 }
 .free-shape-close-btn{
   border:none;background:var(--panel-2);width:28px;height:28px;border-radius:50%;
@@ -1339,6 +1378,9 @@ input[type=file]{display:none;}
 .free-shape-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px;
   padding:16px;overflow-y:auto;background:#fff;border-radius:0 0 12px 12px;
+  flex:1 1 auto;min-height:0; /* 이 두 줄이 핵심: 없으면 그리드가 내용(약 170개 아이콘) 크기만큼
+     계속 늘어나면서 부모의 max-height를 밀어내버려서, 모달 전체가 화면보다 커지고 정작
+     이 안의 overflow-y:auto는 발동을 안 하는 문제가 있었음(플렉스 세로 컨테이너의 흔한 함정) */
 }
 .free-shape-item{
   aspect-ratio:1/1;border:1px solid var(--line);border-radius:8px;display:flex;
@@ -1366,6 +1408,7 @@ input[type=file]{display:none;}
   background:var(--panel);border-bottom:1px solid var(--line);
   padding:10px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05);
   position:relative;z-index:45;flex-shrink:0;
+  gap:8px;flex-wrap:wrap; /* 아이콘이 늘어나 폭이 부족하면 다음 줄로 자연스럽게 내려감 */
 }
 .mobile-menu-dropdown{ position:relative; }
 .mobile-menu-btn{
@@ -1384,6 +1427,43 @@ input[type=file]{display:none;}
   border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);
 }
 #mobileMenuDropdown .dropdown-item{ font-size:14.5px;padding:12px 12px; }
+
+/* ---------- 모바일 전용: 빠른 도구 아이콘(삭제/색상/스포이드/레이어/복제/잠금) ----------
+   주의: 이 줄에는 overflow(스크롤)를 걸지 않음 — 부모(.mobile-topbar)나 이 줄 자체에
+   overflow:auto/hidden을 걸면, 그 안의 절대/고정 위치로 튀어나오는 팝업까지 같이 잘려서
+   안 보이게 되는 문제가 있었음(overflow-x만 지정해도 overflow-y가 자동으로 auto로
+   취급되는 CSS 규칙 때문). 아이콘 개수가 늘어도 .mobile-topbar 자체가 flex-wrap:wrap이라
+   다음 줄로 자연스럽게 내려가므로 스크롤이 굳이 필요 없음. */
+.mobile-tool-icons{
+  display:flex;align-items:center;gap:3px;flex-wrap:wrap;
+}
+.mobile-tool-icons .btn.icon{flex-shrink:0;}
+.mobile-tool-icons .cmyk-picker.mini{flex-shrink:0;}
+
+/* ---------- 모바일 전용: 색상 적용 CMYK 팝업 안의 "완료" 버튼 ----------
+   PC의 CMYK 팝업 구조(.cmyk-popover)를 그대로 재사용하고, 그 안 맨 아래에 이 버튼만
+   하나 더 추가해서 붙임(ecopro3mobiletools.js에서 모바일 색상칸 팝업에만 붙여줌 —
+   PC 쪽 색상칸들에는 이 버튼이 없어서 기존 PC 동작에는 전혀 영향 없음). */
+.cmyk-popover .cmyk-confirm-btn{
+  width:100%;margin-top:12px;padding:13px 0;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#2ecc71,#27ae60);
+  color:#fff;font-size:15px;font-weight:800;letter-spacing:.02em;cursor:pointer;
+  box-shadow:0 6px 16px rgba(39,174,96,.45);
+  animation:cmykConfirmPulse 1.6s ease-in-out infinite;
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.cmyk-popover .cmyk-confirm-btn:hover{ transform:translateY(-1px); box-shadow:0 8px 22px rgba(39,174,96,.6); }
+.cmyk-popover .cmyk-confirm-btn:active{ animation-play-state:paused; transform:translateY(0) scale(.96); box-shadow:0 3px 10px rgba(39,174,96,.4); }
+@keyframes cmykConfirmPulse{
+  0%,100%{ box-shadow:0 6px 16px rgba(39,174,96,.45); }
+  50%{ box-shadow:0 6px 22px rgba(39,174,96,.8); }
+}
+
+/* 스포이드 실시간 미리보기 세모 컬러박스: PC용(#eyedropPreviewSwatch)은 .toolbar 안에 있어서
+   모바일에서는 화면에 안 보이므로, 모바일 상단바에는 같은 .eyedrop-preview-swatch 클래스를 쓰는
+   #mobileEyedropPreviewSwatch를 하나 더 두고 ecopro3eyedrop.js가 두 박스를 동시에 갱신하게 함
+   (스타일은 위쪽 .eyedrop-preview-swatch 규칙을 그대로 공유하므로 여기서 따로 정의할 필요 없음). */
+#mobileEyedropPreviewSwatch{ margin-left:-2px; }
 
 /* ---------- 모바일 전용: 앞면/뒷면 개별 편집 전환 바 ---------- */
 /* 기본은 숨겨두고, 양면 주문일 때만 JS가 .show 클래스를 붙임(화면이 좁을 때만 실제로 보임) */
@@ -1416,6 +1496,8 @@ input[type=file]{display:none;}
   .floating-action-bar .btn{
     padding:12px 18px;font-size:15px;border-radius:12px;
   }
+  .mobile-canvas-tools{ display:flex; }
+  .mobile-zoom-gauge input[type=range]{ width:76px; }
 
   /* 캔버스 옆 "붉은선 : 재단/안전선 · 회색선 : 원본 캔버스 여백" 범례는 숨김 */
   .guide-legend{ display:none !important; }
