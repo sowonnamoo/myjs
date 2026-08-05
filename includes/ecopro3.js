@@ -2832,7 +2832,10 @@
   let ctxLongPressTimer = null;
   let ctxLongPressStart = null; // { x, y, e }
   const CTX_LONG_PRESS_MS = 1000;
-  const CTX_LONG_PRESS_MOVE_TOLERANCE = 10; // px
+  const CTX_LONG_PRESS_MOVE_TOLERANCE = 10; // px — 마우스(포인터)는 원래도 잘 안 흔들리므로 그대로 둠
+  const CTX_LONG_PRESS_MOVE_TOLERANCE_TOUCH = 26; // px — 손가락은 가만히 누르고 있어도 몇 px씩 미세하게
+  // 흔들리는 게 정상이라, 마우스와 같은 10px 기준을 쓰면 안드로이드에서 타이머가 1초를 채우기도
+  // 전에 "움직였다"고 오판해서 계속 취소돼버려 길게 눌러도 메뉴가 안 뜨는 문제가 있었음.
 
   function clearCtxLongPress(){
     if (ctxLongPressTimer) { clearTimeout(ctxLongPressTimer); ctxLongPressTimer = null; }
@@ -2841,13 +2844,16 @@
   function clientPointOf(evt){
     return (evt.touches && evt.touches.length) ? evt.touches[0] : evt;
   }
+  function isTouchEvent(evt){
+    return !!(evt.touches || evt.pointerType === 'touch' || evt.type === 'touchstart');
+  }
 
   canvas.on('mouse:down', (opt) => {
     clearCtxLongPress();
     const evt = opt.e;
     if (!evt) return;
     const p = clientPointOf(evt);
-    ctxLongPressStart = { x: p.clientX, y: p.clientY, e: evt };
+    ctxLongPressStart = { x: p.clientX, y: p.clientY, e: evt, touch: isTouchEvent(evt) };
     ctxLongPressTimer = setTimeout(() => {
       if (!ctxLongPressStart) return;
       const heldEvent = ctxLongPressStart.e;
@@ -2860,7 +2866,8 @@
     const p = clientPointOf(opt.e);
     const dx = p.clientX - ctxLongPressStart.x;
     const dy = p.clientY - ctxLongPressStart.y;
-    if (Math.sqrt(dx * dx + dy * dy) > CTX_LONG_PRESS_MOVE_TOLERANCE) clearCtxLongPress();
+    const tolerance = ctxLongPressStart.touch ? CTX_LONG_PRESS_MOVE_TOLERANCE_TOUCH : CTX_LONG_PRESS_MOVE_TOLERANCE;
+    if (Math.sqrt(dx * dx + dy * dy) > tolerance) clearCtxLongPress();
   });
   canvas.on('mouse:up', clearCtxLongPress);
 

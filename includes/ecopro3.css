@@ -1497,7 +1497,7 @@ input[type=file]{display:none;}
 .mobile-tool-icons{
   display:flex;align-items:center;gap:3px;flex-wrap:wrap;
 }
-.mobile-tool-icons .btn.icon{flex-shrink:0;}
+.mobile-tool-icons .btn.icon{flex-shrink:0;padding:5px 6px;min-width:0;}
 .mobile-tool-icons .cmyk-picker.mini{flex-shrink:0;}
 
 /* ---------- 모바일 전용: 색상 적용 CMYK 팝업 안의 "완료" 버튼 ----------
