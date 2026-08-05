@@ -4130,6 +4130,32 @@
   });
 
   /* ============================================================
+     15b. 모바일: 하단 바 높이만큼 캔버스 영역에 여백을 실시간으로 확보
+     — 하단 바(#floatingActionBar)가 이제 화면 아래에 딱 붙는 고정 바라서, 그 높이만큼
+     #canvasWrap 아래에 padding을 줘야 흰 캔버스 박스가 하단 바에 가려지지 않고, 또
+     "위(상단바)~아래(하단바) 사이 중앙"에 정확히 오게 됨(.canvas-shell은 margin:auto로
+     이미 #canvasWrap 안에서 중앙 정렬되므로, 이 padding만 실제 높이에 맞게 맞춰주면
+     나머지는 브라우저가 알아서 정중앙에 배치해줌). 하단 바 내용이 줄바꿈되거나 화면 회전
+     등으로 실제 높이가 바뀔 수 있어서, ResizeObserver로 계속 실시간 감지해서 맞춤.
+  ============================================================ */
+  (function syncMobileBottomBarSpacing(){
+    const bar = document.getElementById('floatingActionBar');
+    const wrap = document.getElementById('canvasWrap');
+    if (!bar || !wrap) return;
+    function apply(){
+      if (!EP.isMobileModeActive || !EP.isMobileModeActive()) { wrap.style.paddingBottom = ''; return; }
+      wrap.style.paddingBottom = (bar.offsetHeight + 24) + 'px'; // 24px = 캔버스와 하단 바 사이 최소 여백
+    }
+    apply();
+    if (window.ResizeObserver) {
+      new ResizeObserver(apply).observe(bar);
+    } else {
+      window.addEventListener('resize', apply); // 구형 브라우저 대비
+    }
+    window.addEventListener('resize', apply);
+  })();
+
+  /* ============================================================
      16. 캔버스 바깥(패널/툴바 제외) 클릭 시 선택 해제
   ============================================================ */
   document.addEventListener('mousedown', (e) => {
