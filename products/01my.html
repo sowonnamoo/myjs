@@ -880,6 +880,37 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (window.syncSizeTypeButtons) window.syncSizeTypeButtons();
     }
 
+    // [추가] 재구입 흐름일 때: 예전에 실제로 구입했던 옵션 값이 아니면 아예 선택하지
+    // 못하도록(옵션 자체를 disabled) 막는다. 예전 주문의 상품명 문구(예: "명함 (양면
+    // 무광)") 안에 그때 고른 옵션 값들이 공백으로 이어붙여져 그대로 들어있으므로,
+    // 이 문구(+ 인쇄면 값)에 포함된 값만 "구입했던 옵션"으로 인정한다.
+    const reorderPurchasedText = `${reorderItemName} ${reorderSide}`;
+
+    // select 하나를 받아서, 예전에 구입한 적 없는 값의 <option>은 disabled 처리하고
+    // 구입했던 값이 있으면 그 값으로 선택을 맞춰준다. (해당 그룹 자체가 예전엔 없던
+    // 새 옵션이라 일치하는 값이 하나도 없으면, 판단할 근거가 없으므로 그대로 둔다)
+    function lockSelectToPurchasedOptions(sel) {
+        if (!sel || !isReorderFlow) return;
+        let matchedValue = '';
+        Array.from(sel.options).forEach(opt => {
+            if (!opt.value) return; // "선택안함" 같은 빈 값 옵션은 항상 선택 가능하게 둠
+            if (reorderPurchasedText.includes(opt.value)) {
+                if (!matchedValue) matchedValue = opt.value;
+            } else {
+                opt.disabled = true;
+            }
+        });
+        if (matchedValue) sel.value = matchedValue;
+    }
+
+    // 지금 화면에 이미 만들어져 있는 옵션 select들(일반 옵션 + 후가공)을 한 번에 잠근다.
+    function restrictReorderOptionsToPurchased() {
+        if (!isReorderFlow) return;
+        document.querySelectorAll('#dynamicOptionsContainer select').forEach(lockSelectToPurchasedOptions);
+        document.querySelectorAll('.finishing-select').forEach(lockSelectToPurchasedOptions);
+        document.querySelectorAll('.finishing-sub-select').forEach(lockSelectToPurchasedOptions);
+    }
+
     // 재구입 흐름일 때: 시안 업로드 없이 바로 장바구니에 담고 cart.html로 이동
     async function addReorderItemToCartAndGo() {
         // 후가공 중복 선택 체크 (기존 handleOrder와 동일한 규칙)
@@ -1136,6 +1167,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
         subSelect.addEventListener("change", updatePrice);
         anchor.insertAdjacentElement("afterend", subSelect); // wrap 바로 뒤, row의 직계 자식으로 삽입
+        // [추가] 재구입 흐름이면, 방금 새로 만들어진 서브옵션(색상 등)도 예전에
+        // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
+        lockSelectToPurchasedOptions(subSelect);
         window.enableMobileCustomPicker(subSelect);
         // enableMobileCustomPicker가 subSelect를 flex:1짜리 .select-wrap div로 감싸는데,
         // 그대로 두면 메인 후가공 select(flex:1)와 폭을 나눠 가지면서 계속 좁아집니다.
@@ -1176,6 +1210,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         const newSelect = newRow.querySelector(".finishing-select");
         loadFinishingOptions(newSelect);
         setupFinishingListener(newSelect);
+        // [추가] 재구입 흐름이면, "추가하기"로 새로 늘어난 후가공 줄도 예전에
+        // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
+        lockSelectToPurchasedOptions(newSelect);
         window.enableMobileCustomPicker(newSelect);
     });
 
@@ -1639,6 +1676,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (isReorderFlow) {
                 applyReorderSide(reorderSide);
             }
+            // [추가] 재구입 흐름이면, 지금까지 만들어진 모든 옵션(일반 옵션 + 후가공)
+            // 중에서 예전에 실제로 구입했던 값이 아닌 옵션은 아예 선택하지 못하게 막는다.
+            restrictReorderOptionsToPurchased();
 
             updateSizeMode();
             updatePrice();
