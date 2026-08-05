@@ -720,6 +720,11 @@ body.mobile-expert-mode #mobileMenuBtn span{color:#fff;}
   padding:14px 24px;font-size:26px;border-radius:14px;
 }
 .floating-action-bar label.btn{display:inline-flex;align-items:center;background:#ffffff;}
+/* "이미지 불러오기"·"상품담기" 두 버튼을 감싸는 묶음 — 모바일에서 그 둘 사이 간격만 따로
+   (10px) 주기 위해 추가한 감싸개인데, 미디어쿼리 안에만 스타일을 넣어뒀더니 PC에서는
+   div 기본값(display:block)으로 렌더링돼서 두 버튼이 옆으로 나란히 안 서고 이상하게
+   쌓여 보였음 — PC 포함 기본값으로 flex를 깔아두고, 모바일에서만 gap을 10px로 좁힘. */
+.mobile-action-buttons{ display:flex;align-items:center;gap:14px; }
 
 /* ---------- 모바일 전용: 손바닥(이동) 아이콘 + 이미지 확대 게이지 (PC에서는 항상 숨김) ----------
    상단 🔍 확대 메뉴 대신, 하단 "이미지 불러오기" 왼쪽에 슬라이더(게이지) 형태로 확대/축소를
@@ -1322,7 +1327,8 @@ input[type=file]{display:none;}
     background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -1px 4px rgba(0,0,0,.05);
     padding:8px 10px;border-radius:0;justify-content:space-between;gap:6px;
   }
-  .floating-action-bar .btn{ padding:7px 10px; font-size:12px; border-radius:9px; }
+  .floating-action-bar .btn{ padding:9px 13px; font-size:15.5px; border-radius:12px; }
+  .mobile-action-buttons{ display:flex;align-items:center;gap:10px; }
 
 
   /* ---------- 상단 툴바: 가로 스크롤 한 줄로 재편 ---------- */
@@ -1581,8 +1587,9 @@ input[type=file]{display:none;}
     padding:8px 10px;border-radius:0;
   }
   .floating-action-bar .btn{
-    padding:7px 10px;font-size:12px;border-radius:9px;
+    padding:9px 13px;font-size:15.5px;border-radius:12px;
   }
+  .mobile-action-buttons{ display:flex;align-items:center;gap:10px; }
   #mobileZoomGaugeLabel{ margin-right:6px; }
   .mobile-canvas-tools{ display:flex; }
   .mobile-zoom-gauge input[type=range]{ width:50px; }

@@ -4131,20 +4131,28 @@
 
   /* ============================================================
      15b. 모바일: 하단 바 높이만큼 캔버스 영역에 여백을 실시간으로 확보
-     — 하단 바(#floatingActionBar)가 이제 화면 아래에 딱 붙는 고정 바라서, 그 높이만큼
-     #canvasWrap 아래에 padding을 줘야 흰 캔버스 박스가 하단 바에 가려지지 않고, 또
-     "위(상단바)~아래(하단바) 사이 중앙"에 정확히 오게 됨(.canvas-shell은 margin:auto로
-     이미 #canvasWrap 안에서 중앙 정렬되므로, 이 padding만 실제 높이에 맞게 맞춰주면
-     나머지는 브라우저가 알아서 정중앙에 배치해줌). 하단 바 내용이 줄바꿈되거나 화면 회전
-     등으로 실제 높이가 바뀔 수 있어서, ResizeObserver로 계속 실시간 감지해서 맞춤.
+     — 하단 바(#floatingActionBar)가 화면 아래에 딱 붙는 고정(position:fixed) 바라서,
+     #canvasWrap 자신의 박스 크기에는 반영되지 않음. 그래서 padding만 줬을 때는 흰 박스는
+     안 가려졌지만, 확대해서 생기는 "가로 스크롤바"는 #canvasWrap 자신의 맨 아래 가장자리에
+     그려지는데 그 가장자리가 하단 바 뒤에 숨어있어서 안 보이는 문제가 있었음(세로 스크롤바는
+     오른쪽엔 가리는 게 없어서 문제 없이 보였음). margin-bottom으로 #canvasWrap 자신의
+     박스 자체를 하단 바 바로 위에서 끝나게 만들어서, 가로 스크롤바가 하단 바 위쪽에
+     또렷하게 보이게 함. 거기에 더해 padding-bottom을 살짝 더 줘서 흰 박스 중앙 기준점을
+     20px 위로 올려둠(지난 요청 반영분 유지). 하단 바 높이가 바뀔 수 있어서 ResizeObserver로
+     계속 실시간 감지해서 맞춤.
   ============================================================ */
   (function syncMobileBottomBarSpacing(){
     const bar = document.getElementById('floatingActionBar');
     const wrap = document.getElementById('canvasWrap');
     if (!bar || !wrap) return;
     function apply(){
-      if (!EP.isMobileModeActive || !EP.isMobileModeActive()) { wrap.style.paddingBottom = ''; return; }
-      wrap.style.paddingBottom = (bar.offsetHeight + 24) + 'px'; // 24px = 캔버스와 하단 바 사이 최소 여백
+      if (!EP.isMobileModeActive || !EP.isMobileModeActive()) {
+        wrap.style.marginBottom = '';
+        wrap.style.paddingBottom = '';
+        return;
+      }
+      wrap.style.marginBottom = bar.offsetHeight + 'px'; // #canvasWrap 자신의 아래 가장자리(=가로 스크롤바 위치)를 하단 바 바로 위로
+      wrap.style.paddingBottom = (24 + 40) + 'px'; // 24px 기본 여백 + 40px(중앙 기준점을 20px 위로 올리기 위함, 절반만 이동하므로 2배로 줌)
     }
     apply();
     if (window.ResizeObserver) {
