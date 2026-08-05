@@ -275,6 +275,7 @@
   var kControl = new fabric.Control({
     x: 0.5, y: -0.5,
     offsetX: 20, offsetY: -36, // T가 텍스트 전용이라 도형/패스에서는 비어있는 자리라 그대로 재사용(M/J와도 안 겹침)
+    sizeX: 28, sizeY: 28, // 그려지는 원(지름28) 전체가 클릭 영역이 되도록 맞춤
     cursorStyle: 'pointer',
     render: renderKButton,
     mouseUpHandler: function(eventData, transformData){

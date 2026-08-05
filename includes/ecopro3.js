@@ -163,6 +163,7 @@
     const tControl = new fabric.Control({
       x: 0.5, y: -0.5,
       offsetX: 20, offsetY: -36,
+      sizeX: 28, sizeY: 28, // 그려지는 원(반지름14=지름28) 전체가 클릭 영역이 되도록 맞춤(기본값은 이보다 작아서 글자 부분만 눌리는 것처럼 느껴졌음)
       cursorStyle: 'pointer',
       render: renderTButton,
       mouseUpHandler: function(eventData, transformData){
@@ -926,7 +927,10 @@
     { trigger: document.getElementById('rotateMenuBtn'), menu: document.getElementById('rotateMenu') },
     { trigger: document.getElementById('zoomMenuBtn'), menu: document.getElementById('zoomMenu') },
     // 모바일 전용 상단 드롭다운(#mobileMenuBtn) — PC 메가메뉴와 완전히 같은 열기/닫기 동작을 씀
-    { trigger: document.getElementById('mobileMenuBtn'), menu: document.getElementById('mobileMenuDropdown') }
+    { trigger: document.getElementById('mobileMenuBtn'), menu: document.getElementById('mobileMenuDropdown') },
+    // 모바일 전용 "통합"(공통적용/부분적용/모두저장) 드롭다운 — 건수 2개 이상일 때만 실제로
+    // 보이지만(숨겨져 있으면 어차피 못 누르므로), 열고/닫는 동작만 다른 메가메뉴들과 동일하게 등록
+    { trigger: document.getElementById('mobileUnifyBtn'), menu: document.getElementById('mobileUnifyMenu') }
   ];
 
   function closeAllMegaMenus(){
@@ -1128,25 +1132,59 @@
 
   // 모바일 전용 "앞면/뒷면" 전환 바 — PC 좌측 디자인목록 패널의 앞/뒤 버튼(위 side-switch)과
   // 완전히 같은 switchTo(idx, side) 함수를 그대로 호출함. 새 기능이 아니라 그 기능의
-  // 진입로 하나를 모바일에서도 쓸 수 있게 옮겨 붙인 것뿐임. 양면 주문(isDouble)일 때만
-  // 보이고, 단면 주문이면 PC와 마찬가지로 계속 숨겨둠.
+  // 진입로 하나를 모바일에서도 쓸 수 있게 옮겨 붙인 것뿐임. 앞/뒤 버튼은 양면 주문(isDouble)일
+  // 때만 보이고, "통합" 드롭다운(공통적용/부분적용/모두저장) + 건수 번호 이동은 건수(count)가
+  // 2개 이상일 때만 보임 — 둘 중 하나라도 해당되면 이 바 자체가 보임(단면 1건이면 계속 숨김).
+  // PC 좌측 패널의 디자인 "이름 바꾸기" 입력칸은 모바일에서는 요청대로 넣지 않음.
   (function setupMobileSideSwitch(){
     const bar = document.getElementById('mobileSideSwitch');
     const frontBtn = document.getElementById('mobileFrontBtn');
     const backBtn = document.getElementById('mobileBackBtn');
+    const unifyDropdown = document.getElementById('mobileUnifyDropdown');
+    const designIndex = document.getElementById('mobileDesignIndex');
     if (!bar || !frontBtn || !backBtn) return;
-    if (!isDouble) return; // 단면 주문이면 아예 안 씀(항상 숨김 상태 유지)
-    bar.classList.add('show');
-    frontBtn.addEventListener('click', () => switchTo(currentIdx, 'front'));
-    backBtn.addEventListener('click', () => switchTo(currentIdx, 'back'));
+
+    if (isDouble) {
+      frontBtn.addEventListener('click', () => switchTo(currentIdx, 'front'));
+      backBtn.addEventListener('click', () => switchTo(currentIdx, 'back'));
+    } else {
+      frontBtn.style.display = 'none';
+      backBtn.style.display = 'none';
+    }
+
+    if (count > 1) {
+      const mobileUnifyDesignBtn = document.getElementById('mobileUnifyDesignBtn');
+      const mobilePartialUnifyBtn = document.getElementById('mobilePartialUnifyBtn');
+      const mobileSaveAllZipBtn = document.getElementById('mobileSaveAllZipBtn');
+      if (mobileUnifyDesignBtn) mobileUnifyDesignBtn.addEventListener('click', () => { const b = document.getElementById('unifyDesignBtn'); if (b) b.click(); });
+      if (mobilePartialUnifyBtn) mobilePartialUnifyBtn.addEventListener('click', () => { const b = document.getElementById('partialUnifyBtn'); if (b) b.click(); });
+      if (mobileSaveAllZipBtn) mobileSaveAllZipBtn.addEventListener('click', () => { const b = document.getElementById('saveAllZipBtn'); if (b) b.click(); });
+
+      const prevBtn = document.getElementById('mobileDesignPrevBtn');
+      const nextBtn = document.getElementById('mobileDesignNextBtn');
+      if (prevBtn) prevBtn.addEventListener('click', () => { if (currentIdx > 0) switchTo(currentIdx - 1, currentSide); });
+      if (nextBtn) nextBtn.addEventListener('click', () => { if (currentIdx < count - 1) switchTo(currentIdx + 1, currentSide); });
+    } else {
+      if (unifyDropdown) unifyDropdown.style.display = 'none';
+      if (designIndex) designIndex.style.display = 'none';
+    }
+
+    if (isDouble || count > 1) bar.classList.add('show');
   })();
 
   function syncMobileSideSwitch(){
     const frontBtn = document.getElementById('mobileFrontBtn');
     const backBtn = document.getElementById('mobileBackBtn');
-    if (!frontBtn || !backBtn) return;
-    frontBtn.classList.toggle('active', currentSide === 'front');
-    backBtn.classList.toggle('active', currentSide === 'back');
+    if (frontBtn && backBtn) {
+      frontBtn.classList.toggle('active', currentSide === 'front');
+      backBtn.classList.toggle('active', currentSide === 'back');
+    }
+    const indexLabel = document.getElementById('mobileDesignIndexLabel');
+    if (indexLabel) indexLabel.textContent = String(currentIdx + 1);
+    const prevBtn = document.getElementById('mobileDesignPrevBtn');
+    const nextBtn = document.getElementById('mobileDesignNextBtn');
+    if (prevBtn) prevBtn.disabled = currentIdx <= 0;
+    if (nextBtn) nextBtn.disabled = currentIdx >= count - 1;
   }
 
   renderTabs();

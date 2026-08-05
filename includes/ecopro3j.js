@@ -47,6 +47,7 @@
   const jControl = new fabric.Control({
     x: 0.5, y: -0.5,
     offsetX: -14, offsetY: -36, // 주사위(P/M)가 좌측 모서리로 옮겨가서 빈 자리(-14)를 채워 T 바로 옆으로 당김
+    sizeX: 28, sizeY: 28, // 그려지는 원(지름28) 전체가 클릭 영역이 되도록 맞춤
     cursorStyle: 'pointer',
     render: renderJButton,
     mouseUpHandler: function(eventData, transformData){

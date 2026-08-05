@@ -114,6 +114,7 @@
   var zControl = new fabric.Control({
     x: 0.5, y: -0.5,
     offsetX: -46, offsetY: -36, // 주사위(P/M)가 좌측 모서리로 옮겨가서 한 칸씩 당겨짐 — J 바로 왼쪽
+    sizeX: 28, sizeY: 28, // 그려지는 원(지름28) 전체가 클릭 영역이 되도록 맞춤
     cursorStyle: 'pointer',
     render: renderZButton,
     mouseUpHandler: function(eventData, transformData){

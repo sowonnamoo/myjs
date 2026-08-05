@@ -47,6 +47,7 @@
   const mControl = new fabric.Control({
     x: -0.5, y: -0.5,
     offsetX: -20, offsetY: -36, // 좌측 상단 모서리(P버튼과 같은 자리) — 오른쪽 툴박스와 겹치지 않고 위치도 안정적
+    sizeX: 28, sizeY: 28, // 그려지는 원(지름28) 전체가 클릭 영역이 되도록 맞춤
     cursorStyle: 'pointer',
     render: renderMButton,
     mouseUpHandler: function(eventData, transformData){

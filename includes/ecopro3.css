@@ -709,9 +709,31 @@ button,input,select{font-family:inherit;}
 }
 .mobile-zoom-gauge{display:flex;align-items:center;gap:6px;}
 .mobile-zoom-gauge input[type=range]{width:96px;accent-color:var(--accent);}
-#mobileZoomGaugeLabel{font-size:12px;color:var(--sub);font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;margin-right:20px;}
+#mobileZoomGaugeLabel{font-size:12px;color:var(--sub);font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;margin-right:10px;}
 /* 손바닥 버튼: 아이콘(이모지) 크기는 그대로 두고, 그 주위 둥근사각(버튼 배경)만 절반 크기로 축소 */
 #mobilePanBtn{ padding:6px 9px;border-radius:6px; }
+/* 눈 아이콘(화면 정리 토글) — 손바닥 버튼과 같은 축소 크기, 살짝 간격만 띄움 */
+#mobileFocusToggleBtn{ padding:6px 9px;border-radius:6px;margin-left:4px; }
+#mobileFocusToggleBtn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
+
+/* ---------- 모바일 "화면 정리(미리보기)" 모드 ----------
+   눈 아이콘을 누르면 <body>에 이 클래스가 붙어서, 캔버스 안 디자인만 남기고 상단바·하단
+   플로팅바·열려있던 팝업 등 나머지 UI를 전부 숨김(눈 아이콘 자기 자신은 계속 보이게 예외
+   처리해서 다시 눌러 원래대로 돌아올 수 있게 함). 다시 누르면 이 클래스가 빠지면서 원래대로. */
+body.mobile-focus-mode .mobile-topbar,
+body.mobile-focus-mode .mobile-side-switch,
+body.mobile-focus-mode .qa-popover,
+body.mobile-focus-mode .font-popover,
+body.mobile-focus-mode .ctx-menu,
+body.mobile-focus-mode .free-shape-modal,
+body.mobile-focus-mode .guide-legend,
+body.mobile-focus-mode .canvas-caption-row{
+  display:none !important;
+}
+body.mobile-focus-mode .mobile-canvas-tools > *:not(#mobileFocusToggleBtn),
+body.mobile-focus-mode .floating-action-bar > *:not(.mobile-canvas-tools){
+  display:none !important;
+}
 
 /* ---------- 작업 규격 상태바 ---------- */
 .status-bar{
@@ -1477,6 +1499,26 @@ input[type=file]{display:none;}
   border-radius:10px;padding:10px 0;font-size:14.5px;font-weight:700;cursor:pointer;
 }
 .mobile-side-btn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
+
+/* ---------- 모바일: "통합"(공통적용/부분적용/모두저장) 드롭다운 + 건수 번호 이동 ---------- */
+.mobile-unify-dropdown{ position:relative;flex-shrink:0; }
+.mobile-unify-btn{
+  border:none;background:#1f2430;color:#fff;border-radius:10px;
+  padding:0 14px;height:100%;font-size:14.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+}
+#mobileUnifyMenu{ min-width:160px; }
+.mobile-design-index{
+  flex-shrink:0;display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:6px 10px;
+}
+.mobile-design-index span{font-size:16px;font-weight:800;color:var(--ink);min-width:18px;text-align:center;}
+.mobile-design-index-arrows{display:flex;flex-direction:column;gap:1px;}
+.mobile-design-index-arrows button{
+  border:none;background:transparent;color:var(--sub);cursor:pointer;
+  font-size:9px;line-height:1;padding:2px 3px;
+}
+.mobile-design-index-arrows button:hover{color:var(--ink);}
+.mobile-design-index-arrows button:disabled{opacity:.3;cursor:not-allowed;}
 
 /* ---------- 화면 폭 900px 이하: 자동으로 모바일 인터페이스로 전환 ---------- */
 @media (max-width:900px){

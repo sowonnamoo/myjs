@@ -233,6 +233,21 @@
   }
 
   /* ============================================================
+     4c. 👁 화면 정리(미리보기) 토글 — 캔버스 안 디자인만 남기고 상단바·하단 플로팅바·열려있던
+     팝업 등 나머지 UI를 전부 숨김/복원함. 단순히 <body>에 클래스 하나 붙였다 뗐다 하는
+     방식이라 별도 상태 관리가 필요 없음(실제 숨김 처리는 ecopro3.css의
+     body.mobile-focus-mode 규칙이 담당). 눈 아이콘 자기 자신은 CSS에서 예외 처리해뒀기
+     때문에 계속 눌러서 다시 원래대로 돌릴 수 있음.
+  ============================================================ */
+  var mobileFocusToggleBtn = document.getElementById('mobileFocusToggleBtn');
+  if (mobileFocusToggleBtn) {
+    mobileFocusToggleBtn.addEventListener('click', function(){
+      var on = document.body.classList.toggle('mobile-focus-mode');
+      mobileFocusToggleBtn.classList.toggle('active', on);
+    });
+  }
+
+  /* ============================================================
      5. ⧉ 복제 — PC 우측 패널의 실제 복제 버튼(#duplicateBtn)을 그대로 클릭
   ============================================================ */
   var mobileDuplicateBtn = document.getElementById('mobileDuplicateBtn');
