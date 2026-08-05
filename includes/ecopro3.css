@@ -735,9 +735,9 @@ body.mobile-expert-mode #mobileMenuBtn span{color:#fff;}
 .mobile-zoom-gauge input[type=range]{width:96px;accent-color:var(--accent);}
 #mobileZoomGaugeLabel{font-size:12px;color:var(--sub);font-weight:700;min-width:34px;text-align:right;font-variant-numeric:tabular-nums;margin-right:10px;}
 /* 손바닥 버튼: 아이콘(이모지) 크기는 그대로 두고, 그 주위 둥근사각(버튼 배경)만 절반 크기로 축소 */
-#mobilePanBtn{ padding:6px 9px;border-radius:6px;margin-left:4px; }
+#mobilePanBtn{ padding:3px 5px;border-radius:6px;margin-left:2px; }
 /* 눈 아이콘(화면 정리 토글) — 손바닥 버튼과 같은 축소 크기, 살짝 간격만 띄움 */
-#mobileFocusToggleBtn{ padding:6px 9px;border-radius:6px; }
+#mobileFocusToggleBtn{ padding:3px 5px;border-radius:6px; }
 #mobileFocusToggleBtn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
 
 /* ---------- 모바일 "화면 정리(미리보기)" 모드 ----------
@@ -1584,10 +1584,10 @@ input[type=file]{display:none;}
     padding:10px 14px;border-radius:0;
   }
   .floating-action-bar .btn{
-    padding:12px 18px;font-size:15px;border-radius:12px;
+    padding:9px 14px;font-size:13.5px;border-radius:10px;
   }
   .mobile-canvas-tools{ display:flex; }
-  .mobile-zoom-gauge input[type=range]{ width:76px; }
+  .mobile-zoom-gauge input[type=range]{ width:50px; }
 
   /* 캔버스 옆 "붉은선 : 재단/안전선 · 회색선 : 원본 캔버스 여백" 범례는 숨김 */
   .guide-legend{ display:none !important; }
