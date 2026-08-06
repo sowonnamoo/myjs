@@ -128,15 +128,6 @@
     }
     .order-checkout-btn { background: var(--accent); color: #fff; }
     .self-edit-btn { background: #fff; color: var(--accent); border: 1.5px solid var(--accent); }
-    .download-pay-btn { background: #1f2937; color: #fff; }
-    .download-pay-btn:disabled { opacity: .6; cursor: not-allowed; }
-    .download-unlocked-box { margin-top: 4px; }
-    .download-link-btn {
-        display: block; width: 100%; margin-top: 12px; padding: 12px;
-        border-radius: 8px; border: none; font-size: 15px; font-weight: 700; cursor: pointer;
-        background: #1f8f5f; color: #fff; text-align: center; text-decoration: none;
-        box-sizing: border-box;
-    }
 
     /* ===== 사진 맞추기 모달 ===== */
     .crop-overlay {
@@ -198,7 +189,6 @@
     .crop-apply-btn { background: var(--accent); color: #fff; }
 </style>
 </head>
-<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 <body>
 
 <div class="card">
@@ -288,10 +278,6 @@
 // ⚠️ 실제 배포된 Cloudflare Worker 주소로 교체하세요.
 const API_BASE = "https://photo-process-api.sowonnamoo.workers.dev";
 
-// 카드결제(원본 다운로드 유료 기능)용 채널 정보 제공 Worker — cart.html과 동일한 결제 주소 재사용
-const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/";
-const DOWNLOAD_PRICE = 1000; // 원본 다운로드 가격 (원)
-
 // ---------------- 주문 사이즈(비율) — URL 쿼리에서 읽음 ----------------
 // 예: index.html?width=90&height=50&type=명함&...
 const urlParams = new URLSearchParams(location.search);
@@ -339,7 +325,6 @@ const STRETCH_MIN_SIZE = 24; // 이미지가 이 픽셀 이하로 작아지지 �
 let pollTimer = null;
 let currentItems = [];
 let currentIndex = 0;
-let currentJobId = null;
 
 // ---------------- 사진 맞추기 상태 ----------------
 let cropTargetSide = null; // 'front' | 'back'
@@ -743,11 +728,10 @@ function renderError(text) {
     `;
 }
 
-function renderResult(items, jobId) {
+function renderResult(items) {
     stopPolling();
     currentItems = items;
     currentIndex = 0;
-    currentJobId = jobId;
     renderCurrentPage();
 }
 
@@ -755,7 +739,6 @@ function renderCurrentPage() {
     const item = currentItems[currentIndex];
     const total = currentItems.length;
     const sideLabel = item.side === "front" ? "앞면" : "뒷면";
-    const downloadUnlocked = currentJobId && sessionStorage.getItem("unlocked_download_" + currentJobId) === "1";
 
     document.getElementById("viewStatus").innerHTML = `
         <div class="result-wrap">
@@ -776,64 +759,10 @@ function renderCurrentPage() {
         </div>
         <button type="button" class="order-action-btn order-checkout-btn" onclick="goToOrderBoard()">상품담기/결제</button>
         <button type="button" class="order-action-btn self-edit-btn" onclick="goToSelfEdit()">셀프 편집하기</button>
-        ${ downloadUnlocked
-            ? `<div class="download-unlocked-box">
-                   ${currentItems.map((it, idx) => `<a class="order-action-btn download-link-btn" href="${it.result_url}" target="_blank" rel="noopener">${it.side === "front" ? "앞면" : "뒷면"} 원본 다운로드</a>`).join("")}
-                   <div class="business-hours-notice">다운로드 링크는 1일 후 자동 삭제됩니다.</div>
-               </div>`
-            : `<button type="button" class="order-action-btn download-pay-btn" id="downloadPayBtn" onclick="startOriginalDownloadPayment()">원본 다운로드 (유료 1000원)</button>` }
     `;
 
     initZoomViewer();
 }
-
-// "원본 다운로드 (유료 1000원)" — 카드결제 즉시 실행, 성공하면 다운로드 링크로 화면 전환.
-// (이름/전화/주소를 따로 안 받는 단건 결제라 cart.html의 processPayment보다 단순화된 버전)
-window.startOriginalDownloadPayment = async function() {
-    if (typeof PortOne === "undefined") {
-        alert("결제 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.");
-        return;
-    }
-
-    const btn = document.getElementById("downloadPayBtn");
-    const originalText = btn ? btn.textContent : "";
-    if (btn) { btn.disabled = true; btn.textContent = "결제창 준비 중..."; }
-
-    try {
-        const res = await fetch(WORKER_CARD);
-        const channelData = await res.json();
-
-        const paymentId = "ORIGDL_" + Date.now();
-        const customerName = sessionStorage.getItem("customer_name") || "고객";
-
-        const response = await PortOne.requestPayment({
-            storeId: channelData.STORE_ID,
-            channelKey: channelData.CHANNEL_KEY_CARD,
-            paymentId: paymentId,
-            orderName: "시안 원본 다운로드",
-            totalAmount: DOWNLOAD_PRICE,
-            currency: "KRW",
-            payMethod: "CARD",
-            customer: { name: customerName },
-        });
-
-        if (response.code != null) {
-            alert("결제 실패: " + response.message);
-            return;
-        }
-
-        // 결제 성공 -> 이 job의 다운로드를 이 세션에서 잠금 해제하고 화면 갱신
-        if (currentJobId) {
-            sessionStorage.setItem("unlocked_download_" + currentJobId, "1");
-        }
-        renderCurrentPage();
-    } catch (e) {
-        console.error(e);
-        alert("결제창 호출 실패. 서버 연결을 확인하세요.");
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = originalText; }
-    }
-};
 
 // 같은 폴더(GitHub의 includes 폴더)에 있는 실제 파일명 그대로 상대경로로 연결
 const SIAN_PAGE_URL = "sian.html";
@@ -1001,7 +930,7 @@ async function pollStatus() {
         if (!res.ok) throw new Error(data.error || "조회 실패");
 
         if (data.overall_status === "done") {
-            renderResult(data.items.filter(it => it.status === "done"), data.job_id);
+            renderResult(data.items.filter(it => it.status === "done"));
         } else if (data.overall_status === "failed") {
             renderError("처리 중 오류가 발생했습니다. 담당자에게 문의해주세요.");
         } else {
