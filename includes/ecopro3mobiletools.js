@@ -153,6 +153,12 @@
     };
     if (EP.getZoomLevel) EP.onZoomChanged(EP.getZoomLevel()); // 처음 로드 시 현재 배율(보통 100%)로 맞춰둠
   }
+  // 게이지 옆 "100%" 글자를 버튼으로 만들어서, 누르면 바로 100%(원래 크기)로 되돌아가게 함
+  if (mobileZoomGaugeLabel && EP.setZoomLevel) {
+    mobileZoomGaugeLabel.addEventListener('click', function(){
+      EP.setZoomLevel(1);
+    });
+  }
 
   /* ============================================================
      4b. ✋ 손바닥(화면 이동) 도구 — 켜두면 오브젝트를 선택/이동하는 대신, 캔버스 아무 곳이나

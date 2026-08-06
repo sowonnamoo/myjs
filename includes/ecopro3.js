@@ -4154,7 +4154,7 @@
         return;
       }
       wrap.style.marginBottom = bar.offsetHeight + 'px'; // #canvasWrap 자신의 아래 가장자리(=가로 스크롤바 위치)를 하단 바 바로 위로
-      wrap.style.paddingBottom = (24 + 40) + 'px'; // 24px 기본 여백 + 40px(중앙 기준점을 20px 위로 올리기 위함, 절반만 이동하므로 2배로 줌)
+      wrap.style.paddingBottom = (24 + 80) + 'px'; // 24px 기본 여백 + 80px(중앙 기준점을 총 40px 위로 올리기 위함 — 20px씩 두 번 반영, 절반만 이동하므로 2배로 줌)
     }
     apply();
     if (window.ResizeObserver) {
