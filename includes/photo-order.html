@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+    // PC(넓은) 화면에서는 에디터 페이지(ecopro1.html)로 이동
+    // (기준: 768px 이상 = PC). 같은 폴더에 ecopro1.html이 있어야 함.
+    if (window.innerWidth >= 768) {
+        location.replace('ecopro1.html' + location.search + location.hash);
+    }
+</script>
 <title>사진 시안 접수</title>
 <style>
     :root {
@@ -25,14 +32,11 @@
     }
     .card {
         width: 100%;
-        max-width: 560px;
+        max-width: 440px;
         background: var(--card);
         border: 1px solid var(--border);
         border-radius: 14px;
         padding: 28px 24px;
-    }
-    @media (min-width: 768px) {
-        .card { max-width: 600px; }
     }
     h1 { font-size: 19px; margin: 0 0 4px; }
     p.sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
@@ -95,15 +99,14 @@
     .result-wrap { text-align: center; }
     .zoom-viewport {
         width: 100%; height: 320px; margin-top: 14px;
-        border-radius: 10px; border: none;
-        background: #fff; overflow: hidden; position: relative;
+        border-radius: 10px; border: 1px solid var(--border);
+        background: #eee; overflow: hidden; position: relative;
         touch-action: none; user-select: none;
     }
     .zoom-viewport img {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         object-fit: contain; transform-origin: center center;
         pointer-events: none; -webkit-user-drag: none; user-select: none;
-        -webkit-touch-callout: none; /* 모바일 사파리 길게눌러 저장 방지 */
     }
     .zoom-control {
         display: flex; align-items: center; gap: 10px; margin-top: 12px;
@@ -137,7 +140,7 @@
     }
     .crop-overlay.hidden { display: none; }
     .crop-modal {
-        background: #fff; border-radius: 12px; width: 100%; max-width: 520px;
+        background: #fff; border-radius: 12px; width: 100%; max-width: 420px;
         overflow: hidden; display: flex; flex-direction: column;
     }
     .crop-modal-header {
@@ -276,7 +279,7 @@
 
 <script>
 // ⚠️ 실제 배포된 Cloudflare Worker 주소로 교체하세요.
-const API_BASE = "https://photo-process-api.sowonnamoo.workers.dev";
+const API_BASE = "https://photo-process-api.ecogr.workers.dev";
 
 // ---------------- 주문 사이즈(비율) — URL 쿼리에서 읽음 ----------------
 // 예: index.html?width=90&height=50&type=명함&...
@@ -755,7 +758,7 @@ function renderCurrentPage() {
                 <span class="count">${currentIndex + 1} / ${total}</span>
                 <button onclick="nextPage()" ${currentIndex === total - 1 ? "disabled" : ""}>다음 ›</button>
             </div>
-            <div class="business-hours-notice">시안 이미지는 1일간만 보관되며, 1일 후 자동 삭제됩니다. (신규생성시 기존 시안은 삭제됩니다.)</div>
+            <div class="business-hours-notice">시안 이미지는 1일간만 보관되며, 1일 후 자동 삭제됩니다.<br>필요하시면 미리 저장해두세요.</div>
         </div>
         <button type="button" class="order-action-btn order-checkout-btn" onclick="goToOrderBoard()">상품담기/결제</button>
         <button type="button" class="order-action-btn self-edit-btn" onclick="goToSelfEdit()">셀프 편집하기</button>
