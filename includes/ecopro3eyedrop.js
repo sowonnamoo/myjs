@@ -66,7 +66,8 @@
     if (pickMode) { setPickMode(false); return; } // 무장 중에 다시 누르면 취소
     var active = EP.canvas.getActiveObject();
     if (!active || isGuideObj(active)) {
-      alert('먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 스포이드를 눌러주세요.');
+      if (EP.showBottomHintToast) EP.showBottomHintToast('먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 스포이드를 눌러주세요.');
+      else alert('먼저 색을 바꾸고 싶은 오브젝트를 선택한 뒤 스포이드를 눌러주세요.');
       return;
     }
     if (EP.exitPanMode) EP.exitPanMode(); // 손바닥(이동) 도구가 켜져 있으면 캔버스 클릭이 스포이드 채집과 충돌하므로 먼저 꺼둠

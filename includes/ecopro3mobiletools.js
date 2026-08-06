@@ -93,7 +93,8 @@
       var target = findColorTarget();
       if (!target) {
         e.stopPropagation(); // 내부 팝업 열기 로직(swatch의 버블 클릭 리스너)까지 도달하지 못하게 막음
-        alert('먼저 색을 바꾸고 싶은 텍스트나 모양을 선택해주세요.');
+        if (EP.showBottomHintToast) EP.showBottomHintToast('먼저 색을 바꾸고 싶은 텍스트나 모양을 선택해주세요.');
+        else alert('먼저 색을 바꾸고 싶은 텍스트나 모양을 선택해주세요.');
         return;
       }
       var hex = (EP.toHex && EP.toHex(target.fill)) || '#3498db';

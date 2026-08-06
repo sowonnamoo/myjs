@@ -197,7 +197,8 @@
     var objs = canvas.getObjects().filter(function(o){ return !o.isGuide; });
     var idx = objs.indexOf(shapeObj);
     if (idx <= 0) {
-      alert('클리핑 마스크를 적용할 뒤(아래) 레이어가 없어요. 이 모양/패스 바로 아래에 다른 오브젝트가 있어야 해요.');
+      if (EP.showBottomHintToast) EP.showBottomHintToast('클리핑 마스크를 적용할 뒤(아래) 레이어가 없어요. 이 모양/패스 바로 아래에 다른 오브젝트가 있어야 해요.');
+      else alert('클리핑 마스크를 적용할 뒤(아래) 레이어가 없어요. 이 모양/패스 바로 아래에 다른 오브젝트가 있어야 해요.');
       return;
     }
     var below = objs[idx - 1]; // 레이어 순서상 바로 뒤(아래)

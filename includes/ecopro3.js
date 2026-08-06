@@ -2870,13 +2870,32 @@
   // 열림(화면 맨 아래에 있는 버튼이라 아래로 열면 화면 밖으로 나가버리므로). 이 버튼을 누르는
   // 순간 선택이 풀리지 않도록 위 "16. 캔버스 바깥 클릭 시 선택 해제"에서 .floating-action-bar를
   // 이미 예외 처리해뒀음.
+  // alert() 없이 화면 아래쪽에 잠깐 떴다 사라지는 안내 토스트 — alert()은 브라우저 네이티브
+  // 대화상자라서 뜨는 즉시 전체화면이 강제로 풀려버리는데(브라우저 표준 동작, 막을 수 없음),
+  // 이 토스트는 그냥 일반 DOM 요소라 전체화면 상태에 전혀 영향을 주지 않음.
+  function showBottomHintToast(text){
+    const toast = document.createElement('div');
+    toast.className = 'mobile-focus-hint-toast';
+    toast.textContent = text;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 2200);
+  }
+  EP.showBottomHintToast = showBottomHintToast; // 다른 파일(스포이드 등)에서도 alert() 대신 재사용
+
   const mobileCtxMenuBtn = document.getElementById('mobileCtxMenuBtn');
   if (mobileCtxMenuBtn) {
     mobileCtxMenuBtn.addEventListener('click', () => {
       if (!ctxMenu.classList.contains('hidden')) { hideContextMenu(); return; } // 다시 누르면 토글로 닫힘
       const target = canvas.getActiveObject();
       if (!target || target.isGuide) {
-        alert('먼저 메뉴를 쓸 오브젝트를 선택해주세요.');
+        // alert()은 브라우저 네이티브 대화상자라서 뜨는 순간 전체화면이 강제로 풀려버림
+        // (브라우저 표준 동작이라 막을 수 없음) — 그래서 alert 대신 화면 안에 잠깐 떴다 사라지는
+        // 토스트 문구로 안내함(전체화면이 풀리지 않음).
+        showBottomHintToast('먼저 메뉴를 쓸 오브젝트를 선택해주세요.');
         return;
       }
       openContextMenu(null, { explicitTarget: target, anchorRect: mobileCtxMenuBtn.getBoundingClientRect() });
