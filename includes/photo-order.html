@@ -758,6 +758,7 @@ function renderCurrentPage() {
                 <span class="count">${currentIndex + 1} / ${total}</span>
                 <button onclick="nextPage()" ${currentIndex === total - 1 ? "disabled" : ""}>다음 ›</button>
             </div>
+            <div class="business-hours-notice">시안 이미지는 1일간만 보관되며, 1일 후 자동 삭제됩니다.<br>필요하시면 미리 저장해두세요.</div>
         </div>
         <button type="button" class="order-action-btn order-checkout-btn" onclick="goToOrderBoard()">상품담기/결제</button>
         <button type="button" class="order-action-btn self-edit-btn" onclick="goToSelfEdit()">셀프 편집하기</button>

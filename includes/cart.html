@@ -367,6 +367,28 @@
         .bank-btn:hover{ border-color:var(--ink); background:var(--paper); }
         .bank-btn:disabled{ opacity:.6; cursor:not-allowed; }
 
+        .broken-image-warning{
+            margin-top:12px;
+            padding:12px 14px;
+            background:var(--red-soft);
+            color:var(--red);
+            border-radius:var(--radius-sm);
+            font-size:12.5px;
+            font-weight:700;
+            line-height:1.6;
+            text-align:center;
+        }
+        .item-broken-badge{
+            display:inline-block;
+            margin-top:4px;
+            padding:2px 8px;
+            background:var(--red-soft);
+            color:var(--red);
+            border-radius:20px;
+            font-size:11px;
+            font-weight:700;
+        }
+
         .receipt-footnote{
             margin:16px 0 0;
             font-size:11px;
@@ -508,8 +530,12 @@
                 <div id="total-price" class="total-price">총 결제금액 : 0원</div>
 
                 <div class="pay-actions">
-                    <button class="pay-btn" onclick="goCard()">카드결제</button>
-                    <button class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+                    <button id="payCardBtn" class="pay-btn" onclick="goCard()">카드결제</button>
+                    <button id="payBankBtn" class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+                </div>
+
+                <div id="broken-image-warning" class="broken-image-warning" style="display:none;">
+                    ⚠ 만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.<br>해당 상품을 삭제 후 다시 담아주세요.
                 </div>
 
                 <p class="receipt-footnote">결제를 진행하면 이용약관 및 개인정보 처리방침에 동의한 것으로 간주됩니다.</p>
@@ -528,6 +554,11 @@
 const HANDOFF_DB_NAME = 'ecogrHandoff';
 const HANDOFF_STORE_NAME = 'kv';
 const CART_KEY = 'ecogr_cart';
+// 카트 보관시간 — 카트에 상품이 처음 담긴 것을 이 페이지가 확인한 시점부터 1시간 후 전체 삭제.
+// (sian.html에서 담는 시점 자체는 이 파일이 알 수 없어서, cart.html이 그 상태를 처음 확인한
+// 시점을 기준으로 타이머를 시작함)
+const CART_EXPIRY_KEY = 'ecogr_cart_expires_at';
+const CART_TTL_MS = 60 * 60 * 1000; // 1시간
 function openHandoffDB(){
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(HANDOFF_DB_NAME, 1);
@@ -651,6 +682,53 @@ async function uploadRemainingOriginals(onProgress){
 let cart = [];
 let total = 0;
 
+// ---- 만료된(깨진) 시안 이미지 감지 -> 결제 차단 ----
+let brokenImageIndexes = new Set(); // 로드 실패(만료)한 시안 이미지가 있는 cart index들
+
+function testImageLoads(url){
+    return new Promise((resolve) => {
+        if(!url){ resolve(false); return; }
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+    });
+}
+
+// 상품 하나의 시안 이미지가 정상인지 확인. compositeImage가 실패하면 fallback도 시도.
+// 애초에 시안 이미지 URL 자체가 없는 상품(기존 방식)은 "만료"가 아니라 "없음"이므로 통과시킴.
+async function checkItemImage(item){
+    const primary = (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) ? item.compositeImage : '';
+    const fallback = (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback)) ? item.compositeImageFallback : '';
+
+    if(!primary && !fallback) return true; // 표시할 시안 이미지 자체가 없음 -> 만료 판정 대상 아님
+
+    if(primary && await testImageLoads(primary)) return true;
+    if(fallback && await testImageLoads(fallback)) return true;
+    return false; // 있는 이미지가 전부 로드 실패 -> 만료(깨진 링크)
+}
+
+async function validateCartImages(){
+    const newBroken = new Set();
+    await Promise.all(cart.map(async (item, index) => {
+        const ok = await checkItemImage(item);
+        if(!ok) newBroken.add(index);
+    }));
+    brokenImageIndexes = newBroken;
+    render();
+    updateCheckoutAvailability();
+}
+
+function updateCheckoutAvailability(){
+    const hasBroken = brokenImageIndexes.size > 0;
+    const cardBtn = document.getElementById('payCardBtn');
+    const bankBtn = document.getElementById('payBankBtn');
+    if(cardBtn) cardBtn.disabled = hasBroken;
+    if(bankBtn) bankBtn.disabled = hasBroken;
+    const warningEl = document.getElementById('broken-image-warning');
+    if(warningEl) warningEl.style.display = hasBroken ? 'block' : 'none';
+}
+
 // ---- 다음(카카오) 우편번호 서비스로 주소 검색 ----
 document.getElementById('addressSearchBtn').addEventListener('click', function () {
     new daum.Postcode({
@@ -743,11 +821,14 @@ function render(){
                     </div>
                     ${detailLines ? `<div class="item-detail">${detailLines}</div>` : ''}
                     <div class="item-price">${priceNumber.toLocaleString()}원</div>
+                    ${brokenImageIndexes.has(index) ? `<div class="item-broken-badge">⚠ 시안 이미지 만료됨</div>` : ''}
                 </div>
                 <div class="item-actions">
-                    ${ (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) || (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback))
-                        ? `<button onclick="viewComposite(${index})" class="item-btn view-btn">시안보기</button>`
-                        : `<button disabled class="item-btn view-btn disabled">시안보기</button>` }
+                    ${ brokenImageIndexes.has(index)
+                        ? `<button disabled class="item-btn view-btn disabled">만료됨</button>`
+                        : (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) || (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback))
+                            ? `<button onclick="viewComposite(${index})" class="item-btn view-btn">시안보기</button>`
+                            : `<button disabled class="item-btn view-btn disabled">시안보기</button>` }
                     <button onclick="deleteItem(${index})" class="item-btn delete-btn">삭제</button>
                 </div>
             </div>`;
@@ -791,7 +872,11 @@ function render(){
 window.deleteItem = async function(index){
     cart.splice(index,1);
     await idbSet(CART_KEY, cart);
+    if(cart.length === 0){
+        await idbDelete(CART_EXPIRY_KEY); // 카트가 비면 보관시간 카운트도 초기화
+    }
     render();
+    validateCartImages();
 };
 
 // R2 원본(compositeImage)을 1차로 보여주고, 나중에 관리자가 R2에서 지우고
@@ -859,6 +944,10 @@ function saveOrder(type, paymentId){
 // [1] 카드 결제 전용 (KCP)
 window.goCard = async function() {
     if(!validateOrderForm()) return;
+    if(brokenImageIndexes.size > 0){
+        alert("만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.\n해당 상품을 삭제 후 다시 담아주세요.");
+        return;
+    }
 
     const btn = document.querySelector('.pay-btn');
     const originalText = btn ? btn.textContent : '';
@@ -916,6 +1005,7 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
 
         await saveOrderToFirestore(orderData);
         await idbDelete(CART_KEY);
+        await idbDelete(CART_EXPIRY_KEY);
         location.href = "success.html";
     } catch(error) {
         console.error(error);
@@ -925,6 +1015,10 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
 
 window.goBankTransfer = async function(){
     if(!validateOrderForm()) return;
+    if(brokenImageIndexes.size > 0){
+        alert("만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.\n해당 상품을 삭제 후 다시 담아주세요.");
+        return;
+    }
 
     const name = document.getElementById("name").value.trim();
     const phone = document.getElementById("phone").value.trim();
@@ -950,6 +1044,7 @@ window.goBankTransfer = async function(){
         const orderData = saveOrder("무통장입금", orderId);
         await saveOrderToFirestore(orderData);
         await idbDelete(CART_KEY);
+        await idbDelete(CART_EXPIRY_KEY);
         location.href = "/myjs/success2";
     } catch(e) {
         console.error(e);
@@ -970,7 +1065,48 @@ document.addEventListener('keydown', (e) => {
         console.error('장바구니를 불러오지 못했습니다:', e);
         cart = [];
     }
+
+    // ---- 카트 보관시간(1시간) 체크 ----
+    try {
+        let expiresAt = await idbGet(CART_EXPIRY_KEY);
+        const now = Date.now();
+
+        if(cart.length > 0){
+            if(!expiresAt){
+                // 이 카트에 상품이 담긴 걸 처음 확인한 시점부터 1시간 카운트 시작
+                expiresAt = now + CART_TTL_MS;
+                await idbSet(CART_EXPIRY_KEY, expiresAt);
+            } else if(now >= expiresAt){
+                // 보관시간(1시간) 초과 -> 카트 전체 삭제
+                cart = [];
+                await idbDelete(CART_KEY);
+                await idbDelete(CART_EXPIRY_KEY);
+                expiresAt = null;
+                alert('장바구니 보관 시간(1시간)이 지나 담아두신 상품이 모두 삭제되었습니다.\n다시 담아주세요.');
+            }
+        } else if(expiresAt){
+            // 카트가 비어있는데 만료 타이머만 남아있으면 같이 정리
+            await idbDelete(CART_EXPIRY_KEY);
+            expiresAt = null;
+        }
+
+        // 페이지를 계속 열어둔 상태로 보관시간이 지나면, 새로고침 없이도 자동으로 비움
+        if(expiresAt && expiresAt > now){
+            setTimeout(async () => {
+                cart = [];
+                await idbDelete(CART_KEY);
+                await idbDelete(CART_EXPIRY_KEY);
+                render();
+                validateCartImages();
+                alert('장바구니 보관 시간(1시간)이 지나 담아두신 상품이 모두 삭제되었습니다.\n다시 담아주세요.');
+            }, expiresAt - now);
+        }
+    } catch (e) {
+        console.error('장바구니 보관시간 처리 실패:', e);
+    }
+
     render();
+    validateCartImages();
 })();
 </script>
 
