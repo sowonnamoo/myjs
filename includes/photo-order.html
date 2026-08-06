@@ -833,6 +833,11 @@ function goToSelfEdit() {
             angle: 0, opacity: 1, visible: true,
             flipX: false, flipY: false,
             src: url,
+            // Worker(photo-process-api...)에서 오는 다른 도메인 이미지라서 이게 없으면
+            // fabric이 crossorigin 속성 없이 <img>를 로드 -> 캔버스가 오염(tainted)되어
+            // 나중에 "상품담기/구입" 시 canvas.toDataURL()이 SecurityError로 실패함
+            // (Worker의 /files/ 라우트는 Access-Control-Allow-Origin: * 를 이미 보내고 있음)
+            crossOrigin: "anonymous",
             selectable: true, evented: true,
         };
     }
