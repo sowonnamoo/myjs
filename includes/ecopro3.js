@@ -879,9 +879,6 @@
     // 그리고 지금 이미 열려있는 T/P 팝업창이 있다면 즉시 같은 각도로 회전·재배치함
     EP.canvasRotationDeg = ((EP.canvasRotationDeg || 0) + dir * 90 + 360) % 360;
     EP.refreshRotatablePopovers();
-    // 캔버스 아래 안내 문구(붉은선/회색선 설명 + 눈 아이콘)도 캔버스와 같은 각도로 같이 회전시킴
-    const captionRow = document.getElementById('canvasCaptionRow');
-    if (captionRow && EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(captionRow);
 
     // 안내선(붉은선/회색선/모눈)을 새 크기에 맞게 다시 생성.
     // 변수 3개(guideRect/outerGuideRect/gridGuide)만 지우는 대신, isGuide 표시가 붙은
@@ -2853,12 +2850,12 @@
     return !!(evt.touches || evt.pointerType === 'touch' || evt.type === 'touchstart');
   }
 
+  // 마우스 입력은 기존 그대로 fabric의 mouse:down/move/up 이벤트로 처리(PC에서 이미 잘 동작함).
   canvas.on('mouse:down', (opt) => {
-    clearCtxLongPress();
     const evt = opt.e;
-    if (!evt) return;
-    const p = clientPointOf(evt);
-    ctxLongPressStart = { x: p.clientX, y: p.clientY, e: evt, touch: isTouchEvent(evt) };
+    if (!evt || isTouchEvent(evt)) return; // 터치는 아래 네이티브 리스너가 따로(더 안정적으로) 처리함
+    clearCtxLongPress();
+    ctxLongPressStart = { x: evt.clientX, y: evt.clientY, e: evt, touch: false };
     ctxLongPressTimer = setTimeout(() => {
       if (!ctxLongPressStart) return;
       const heldEvent = ctxLongPressStart.e;
@@ -2867,14 +2864,39 @@
     }, CTX_LONG_PRESS_MS);
   });
   canvas.on('mouse:move', (opt) => {
-    if (!ctxLongPressStart || !opt.e) return;
-    const p = clientPointOf(opt.e);
-    const dx = p.clientX - ctxLongPressStart.x;
-    const dy = p.clientY - ctxLongPressStart.y;
-    const tolerance = ctxLongPressStart.touch ? CTX_LONG_PRESS_MOVE_TOLERANCE_TOUCH : CTX_LONG_PRESS_MOVE_TOLERANCE;
-    if (Math.sqrt(dx * dx + dy * dy) > tolerance) clearCtxLongPress();
+    if (!ctxLongPressStart || ctxLongPressStart.touch || !opt.e) return;
+    const dx = opt.e.clientX - ctxLongPressStart.x;
+    const dy = opt.e.clientY - ctxLongPressStart.y;
+    if (Math.sqrt(dx * dx + dy * dy) > CTX_LONG_PRESS_MOVE_TOLERANCE) clearCtxLongPress();
   });
-  canvas.on('mouse:up', clearCtxLongPress);
+  canvas.on('mouse:up', (opt) => { if (!opt.e || !isTouchEvent(opt.e)) clearCtxLongPress(); });
+
+  // 터치 입력은 fabric을 거치지 않고 캔버스 DOM 엘리먼트에 직접 붙인 네이티브
+  // touchstart/touchmove/touchend/touchcancel로 따로 처리함 — fabric이 내부적으로 터치를
+  // mouse:* 이벤트로 변환해주는 과정에서 안드로이드 일부 기종·브라우저 조합에서 타이밍이
+  // 어긋나 길게 눌러도 메뉴가 안 뜨는 경우가 있어서, 더 원초적이고 확실한 방식으로 바꿈.
+  const upperCanvasEl = canvas.upperCanvasEl;
+  upperCanvasEl.addEventListener('touchstart', (evt) => {
+    if (!evt.touches || evt.touches.length !== 1) { clearCtxLongPress(); return; } // 두 손가락(핀치줌 등)이면 무시
+    clearCtxLongPress();
+    const t = evt.touches[0];
+    ctxLongPressStart = { x: t.clientX, y: t.clientY, e: evt, touch: true };
+    ctxLongPressTimer = setTimeout(() => {
+      if (!ctxLongPressStart) return;
+      const heldEvent = ctxLongPressStart.e;
+      ctxLongPressStart = null;
+      openContextMenu(heldEvent);
+    }, CTX_LONG_PRESS_MS);
+  }, { passive: true });
+  upperCanvasEl.addEventListener('touchmove', (evt) => {
+    if (!ctxLongPressStart || !ctxLongPressStart.touch || !evt.touches || !evt.touches.length) return;
+    const t = evt.touches[0];
+    const dx = t.clientX - ctxLongPressStart.x;
+    const dy = t.clientY - ctxLongPressStart.y;
+    if (Math.sqrt(dx * dx + dy * dy) > CTX_LONG_PRESS_MOVE_TOLERANCE_TOUCH) clearCtxLongPress();
+  }, { passive: true });
+  upperCanvasEl.addEventListener('touchend', () => { if (ctxLongPressStart && ctxLongPressStart.touch) clearCtxLongPress(); });
+  upperCanvasEl.addEventListener('touchcancel', () => { if (ctxLongPressStart && ctxLongPressStart.touch) clearCtxLongPress(); });
 
   document.addEventListener('mousedown', (e) => {
     if (!ctxMenu.classList.contains('hidden') && !ctxMenu.contains(e.target)) hideContextMenu();

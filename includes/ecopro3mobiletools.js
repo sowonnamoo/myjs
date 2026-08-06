@@ -161,6 +161,42 @@
   }
 
   /* ============================================================
+     4a-2. ⛶ 전체화면 토글 — 브라우저 표준 Fullscreen API를 그대로 씀. 켜면 주소창·브라우저
+     하단 메뉴까지 다 가려지고 화면을 더 넓게 쓸 수 있음(기기/브라우저별로 API 이름이
+     조금씩 달라서 표준명 + 구형 접두사(webkit)까지 순서대로 시도함). 아이폰 사파리처럼
+     이 API를 아예 지원하지 않는 브라우저에서는 버튼을 그냥 숨겨서 헛눌림을 막음.
+  ============================================================ */
+  var mobileFullscreenBtn = document.getElementById('mobileFullscreenBtn');
+  if (mobileFullscreenBtn) {
+    function fsRequest(el){
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.msRequestFullscreen;
+      if (fn) fn.call(el);
+    }
+    function fsExit(){
+      var fn = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen || document.msExitFullscreen;
+      if (fn) fn.call(document);
+    }
+    function fsElement(){
+      return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+    }
+    var fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen ||
+      document.documentElement.webkitRequestFullScreen || document.documentElement.msRequestFullscreen);
+    if (!fsSupported) {
+      mobileFullscreenBtn.style.display = 'none'; // 아이폰 사파리 등 미지원 브라우저에서는 버튼 자체를 숨김
+    } else {
+      mobileFullscreenBtn.addEventListener('click', function(){
+        if (fsElement()) fsExit();
+        else fsRequest(document.documentElement);
+      });
+      ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(function(evtName){
+        document.addEventListener(evtName, function(){
+          mobileFullscreenBtn.classList.toggle('active', !!fsElement());
+        });
+      });
+    }
+  }
+
+  /* ============================================================
      4b. ✋ 손바닥(화면 이동) 도구 — 켜두면 오브젝트를 선택/이동하는 대신, 캔버스 아무 곳이나
      손가락으로 끌어서 화면(스크롤 위치)만 움직임. 확대했을 때 유용하도록 만든 도구로,
      포토샵의 스페이스바 이동 도구와 같은 역할을 함(다만 모바일엔 스페이스바가 없으므로

@@ -77,14 +77,24 @@
   btn.addEventListener('click', armFromCurrentSelection);
   if (mobileBtn) mobileBtn.addEventListener('click', armFromCurrentSelection); // PC와 완전히 같은 스포이드 로직을 그대로 씀
 
+  // 마우스 이벤트든 터치 이벤트든 상관없이 clientX/clientY를 뽑아주는 공용 헬퍼 — TouchEvent
+  // 자체에는 clientX/clientY가 없고(그 안의 개별 터치 포인트에만 있음), 이걸 그냥 e.clientX로
+  // 읽으면 undefined가 되어(모바일에서만) 이미지/그라디언트/패턴 색상을 못 뽑아오는 문제가 있었음.
+  function clientPointOf(e){
+    if (e.touches && e.touches.length) return e.touches[0];
+    if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0];
+    return e;
+  }
+
   // 화면에 실제로 그려진 픽셀을 읽어서 색을 추출(그라디언트/패턴 등 단색이 아닌 경우의 대비용)
   function pickColorAtEvent(e){
     var canvasEl = EP.canvas.lowerCanvasEl;
     var rect = canvasEl.getBoundingClientRect();
     var scaleX = canvasEl.width / rect.width;
     var scaleY = canvasEl.height / rect.height;
-    var px = Math.floor((e.clientX - rect.left) * scaleX);
-    var py = Math.floor((e.clientY - rect.top) * scaleY);
+    var p = clientPointOf(e);
+    var px = Math.floor((p.clientX - rect.left) * scaleX);
+    var py = Math.floor((p.clientY - rect.top) * scaleY);
     if (px < 0 || py < 0 || px >= canvasEl.width || py >= canvasEl.height) return null;
     var ctx = canvasEl.getContext('2d');
     var d;

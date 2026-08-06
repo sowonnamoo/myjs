@@ -737,6 +737,8 @@ body.mobile-expert-mode #mobileMenuBtn span{color:#fff;}
   background:transparent;box-shadow:none;padding:0; /* 바 전체가 하나의 회색 박스이므로 안에서 또 감싸지 않음 */
 }
 .mobile-zoom-gauge{display:flex;align-items:center;gap:6px;}
+#mobileFullscreenBtn{ padding:3px 5px;border-radius:6px; }
+#mobileFullscreenBtn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
 .mobile-zoom-gauge input[type=range]{width:96px;accent-color:var(--accent);}
 #mobileZoomGaugeLabel{
   font-size:12px;color:var(--sub);font-weight:700;min-width:34px;text-align:center;
