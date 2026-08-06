@@ -153,10 +153,20 @@
     };
     if (EP.getZoomLevel) EP.onZoomChanged(EP.getZoomLevel()); // 처음 로드 시 현재 배율(보통 100%)로 맞춰둠
   }
-  // 게이지 옆 "100%" 글자를 버튼으로 만들어서, 누르면 바로 100%(원래 크기)로 되돌아가게 함
+  // 게이지 옆 "100%" 글자를 버튼으로 만들어서, 누르면 캔버스 박스의 가장 긴 변이 좌우측
+  // 화면 끝(가로가 더 길 때) 또는 상단바~하단바 사이(세로가 더 길 때)와 30px 정도만 남기고
+  // 꽉 차도록 확대/축소함(단순 100% 리셋이 아니라 "화면에 맞추기" 배율을 계산해서 적용).
   if (mobileZoomGaugeLabel && EP.setZoomLevel) {
     mobileZoomGaugeLabel.addEventListener('click', function(){
-      EP.setZoomLevel(1);
+      var size = EP.getCanvasDesignSize ? EP.getCanvasDesignSize() : null;
+      var wrap = document.getElementById('canvasWrap');
+      if (!size || !wrap) { EP.setZoomLevel(1); return; }
+      var MARGIN = 30; // 요청대로 좌우/상하 각각 30px 여백
+      var availW = window.innerWidth - MARGIN * 2;
+      var availH = wrap.getBoundingClientRect().height - MARGIN * 2; // 상단바~하단바 사이 실제 공간(#canvasWrap 자신의 높이)
+      var zoom = Math.min(availW / size.w, availH / size.h);
+      zoom = Math.max(0.2, Math.min(3, zoom)); // setZoomLevel과 같은 20%~300% 한도
+      EP.setZoomLevel(zoom);
     });
   }
 

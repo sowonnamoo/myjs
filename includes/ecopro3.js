@@ -2981,6 +2981,7 @@
   });
   setZoomLevel(1);
   EP.setZoomLevel = setZoomLevel;       // 모바일 확대 게이지에서 재사용
+  EP.getCanvasDesignSize = function(){ return { w: CANVAS_W, h: CANVAS_H }; }; // 모바일 "화면에 꽉 채우기" 확대 계산용
   EP.getZoomLevel = () => zoom;         // 위와 동일(현재 배율 읽기용)
 
   canvasWrap.addEventListener('wheel', (e) => {
