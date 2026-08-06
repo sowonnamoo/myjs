@@ -879,6 +879,9 @@
     // 그리고 지금 이미 열려있는 T/P 팝업창이 있다면 즉시 같은 각도로 회전·재배치함
     EP.canvasRotationDeg = ((EP.canvasRotationDeg || 0) + dir * 90 + 360) % 360;
     EP.refreshRotatablePopovers();
+    // 캔버스 아래 안내 문구(붉은선/회색선 설명 + 눈 아이콘)도 캔버스와 같은 각도로 같이 회전시킴
+    const captionRow = document.getElementById('canvasCaptionRow');
+    if (captionRow && EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(captionRow);
 
     // 안내선(붉은선/회색선/모눈)을 새 크기에 맞게 다시 생성.
     // 변수 3개(guideRect/outerGuideRect/gridGuide)만 지우는 대신, isGuide 표시가 붙은
