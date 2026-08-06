@@ -225,12 +225,19 @@
         word-break: keep-all;
         line-height: 1.5;
     }
+    /* 견적서 출력 / 작업선 버튼: 모바일에서는 PC보다 작게, 두 버튼을 한 줄에 나란히 배치 */
     .total-price > div:first-child {
         flex-direction: row !important;
         gap: 8px !important;
         width: 100%;
     }
-    #printQuoteBtn,
+    #printQuoteBtn {
+        flex: 1 1 0;
+        width: auto;
+        height: 34px !important;
+        padding: 0 8px !important;
+        font-size: 12px !important;
+    }
     #printCutlineBtn {
         flex: 1 1 0;
         width: auto;
@@ -238,6 +245,13 @@
         padding: 0 8px !important;
         font-size: 12px !important;
         margin-left: 0 !important;
+    }
+
+    /* 규격사이즈 / 희망사이즈 입력 토글 버튼: 위아래 여백을 기존(10px)의 절반(5px)으로 축소 */
+    #sizeTypeBtnStandard,
+    #sizeTypeBtnCustom {
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
     }
 }
 
@@ -1076,7 +1090,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 실제 select의 value(=서버로 전송/가격계산에 쓰이는 값)는 원본 이름 그대로 유지되고,
     // 화면에 보이는 라벨(textContent)만 바뀐다.
     const MOBILE_FINISH_FILE_ORIGINAL = "완성파일 접수";
-    const MOBILE_FINISH_FILE_LABEL = "폰사진, 폰이미지 접수 (선시안)";
+    const MOBILE_FINISH_FILE_LABEL = "폰사진, 폰이미지 접수";
     function isMobileFinishFileTarget(name) {
         if (!name.includes(MOBILE_FINISH_FILE_ORIGINAL)) return false;
         const lower = name.toLowerCase();
