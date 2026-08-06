@@ -2748,11 +2748,19 @@
     ctxMenu.appendChild(hr);
   }
 
-  function openContextMenu(e){
+  function openContextMenu(e, opts){
     if (cropState) return;
-    e.preventDefault();
-    const pointer = canvas.getPointer(e);
-    const target = canvas.findTarget(e, false);
+    opts = opts || {};
+    let pointer, target;
+    if (opts.explicitTarget !== undefined) {
+      // 버튼으로 연 경우: 클릭 좌표가 없으므로 "지금 선택된 오브젝트"를 그대로 대상으로 씀
+      target = opts.explicitTarget;
+      pointer = null;
+    } else {
+      e.preventDefault();
+      pointer = canvas.getPointer(e);
+      target = canvas.findTarget(e, false);
+    }
     ctxMenu.innerHTML = '';
 
     if (target && (target.isTableCell || target.isTableCellText) && EP.buildTableContextMenu) {
@@ -2807,21 +2815,51 @@
           addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
         }
       }
+    } else if (opts.explicitTarget !== undefined) {
+      return; // 버튼으로 열었는데 선택된 오브젝트가 없으면(호출하는 쪽에서 이미 걸러내지만 이중 안전장치) 그냥 아무것도 안 함
     } else {
       addCtxItem('📋 붙여넣기', () => pasteClipboard(pointer));
     }
 
     ctxMenu.classList.remove('hidden');
     const menuRect = ctxMenu.getBoundingClientRect();
-    let x = e.clientX, y = e.clientY;
-    if (x + menuRect.width > window.innerWidth - 8) x = window.innerWidth - menuRect.width - 8;
-    if (y + menuRect.height > window.innerHeight - 8) y = window.innerHeight - menuRect.height - 8;
+    let x, y;
+    if (opts.anchorRect) {
+      // 버튼 위쪽(상단 방향)으로 열림 — 버튼 바로 위에 메뉴 아래쪽 끝이 오도록 배치
+      x = opts.anchorRect.left;
+      y = opts.anchorRect.top - menuRect.height - 8;
+      if (x + menuRect.width > window.innerWidth - 8) x = window.innerWidth - menuRect.width - 8;
+      if (y < 8) y = 8; // 화면 위로 넘치면 최소한 맨 위(8px)에는 붙임
+    } else {
+      x = e.clientX; y = e.clientY;
+      if (x + menuRect.width > window.innerWidth - 8) x = window.innerWidth - menuRect.width - 8;
+      if (y + menuRect.height > window.innerHeight - 8) y = window.innerHeight - menuRect.height - 8;
+    }
     ctxMenu.style.left = Math.max(8, x) + 'px';
     ctxMenu.style.top = Math.max(8, y) + 'px';
   }
 
   canvas.upperCanvasEl.addEventListener('contextmenu', openContextMenu);
   canvasWrap.addEventListener('contextmenu', (e) => { if (e.target === canvasWrap) e.preventDefault(); });
+
+  // 모바일 하단 바 "우클릭메뉴" 버튼 — 길게 누르기(터치)가 일부 기기에서 잘 안 먹혀서, 우클릭
+  // 메뉴와 완전히 같은 내용을 이 버튼으로도 열 수 있게 함. 지금 선택돼 있는 오브젝트를
+  // 그대로 대상으로 쓰고(따로 뭘 다시 클릭할 필요 없음), 메뉴는 버튼 아래가 아니라 위쪽으로
+  // 열림(화면 맨 아래에 있는 버튼이라 아래로 열면 화면 밖으로 나가버리므로). 이 버튼을 누르는
+  // 순간 선택이 풀리지 않도록 위 "16. 캔버스 바깥 클릭 시 선택 해제"에서 .floating-action-bar를
+  // 이미 예외 처리해뒀음.
+  const mobileCtxMenuBtn = document.getElementById('mobileCtxMenuBtn');
+  if (mobileCtxMenuBtn) {
+    mobileCtxMenuBtn.addEventListener('click', () => {
+      if (!ctxMenu.classList.contains('hidden')) { hideContextMenu(); return; } // 다시 누르면 토글로 닫힘
+      const target = canvas.getActiveObject();
+      if (!target || target.isGuide) {
+        alert('먼저 메뉴를 쓸 오브젝트를 선택해주세요.');
+        return;
+      }
+      openContextMenu(null, { explicitTarget: target, anchorRect: mobileCtxMenuBtn.getBoundingClientRect() });
+    });
+  }
 
   /* ============================================================
      9e-2. 길게 누르기(1초 이상)로 우클릭 메뉴 열기 — PC/모바일 공통
@@ -4212,7 +4250,11 @@
       // 캔버스 선택이 먼저 해제돼버려서, 정작 각 버튼의 click 핸들러가 실행될 때는
       // 이미 선택된 오브젝트가 없는 상태가 되어 스포이드·휴지통·색상 적용이 전부 안 먹는
       // 문제가 있었음.
-      !e.target.closest('.mobile-topbar')
+      !e.target.closest('.mobile-topbar') &&
+      // 하단 바(손바닥/화면정리/확대게이지/전체화면/우클릭메뉴 버튼 등)도 마찬가지 이유로 제외 —
+      // 특히 새로 추가한 "우클릭메뉴" 버튼은 지금 선택된 오브젝트를 대상으로 동작해야 하므로,
+      // 누르는 순간 선택이 먼저 풀려버리면 안 됨.
+      !e.target.closest('.floating-action-bar')
     ) {
       if (canvas.getActiveObject()) {
         canvas.discardActiveObject();
