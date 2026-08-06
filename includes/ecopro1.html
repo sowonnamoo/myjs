@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        // 모바일 화면 폭에서는 고객용 접수 페이지(photo-order.html)로 이동
+        // (기준: 768px 미만 = 모바일). 같은 폴더에 photo-order.html이 있어야 함.
+        if (window.innerWidth < 768) {
+            location.replace('photo-order.html' + location.search + location.hash);
+        }
+    </script>
     <title>고해상도 멀티 디자인 에디터</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
