@@ -553,9 +553,12 @@
 
   // 정렬 옆 픽셀입력창: "일정간격 정렬" 기능 — 묶어 선택한 텍스트 박스들을, 첫 줄(맨 위) 박스를 기준으로
   // 입력한 픽셀만큼 세로 간격이 일정하게 벌어지도록 배치함. (텍스트 박스가 2개 이상 묶였을 때만 동작)
+  // 정렬 기준 정렬/이동 모두 raw top이 아니라 화면 기준 실제 위치(getBoundingRect)로 계산하고,
+  // 이동도 중심점 이동방식을 씀 — 캔버스를 90도 회전해서 오브젝트에 angle이 붙어있어도 항상
+  // 화면 기준으로 정확하게 동작함(가로 정렬 때와 같은 이유의 같은 수정).
   function currentBoxGapPx(boxes){
     if (boxes.length < 2) return 0;
-    const sorted = boxes.slice().sort((a, b) => a.top - b.top);
+    const sorted = boxes.slice().sort((a, b) => a.getBoundingRect(true, true).top - b.getBoundingRect(true, true).top);
     const br0 = sorted[0].getBoundingRect(true, true);
     const br1 = sorted[1].getBoundingRect(true, true);
     return Math.round(br1.top - (br0.top + br0.height));
@@ -563,14 +566,15 @@
   function applyBoxGapPx(gapPx){
     const boxes = fontPopoverTargets;
     if (boxes.length < 2) return; // 묶인 텍스트가 2개 이상일 때만 의미가 있음
-    const sorted = boxes.slice().sort((a, b) => a.top - b.top);
+    const sorted = boxes.slice().sort((a, b) => a.getBoundingRect(true, true).top - b.getBoundingRect(true, true).top);
     let br = sorted[0].getBoundingRect(true, true);
     let cursorBottom = br.top + br.height;
     for (let i = 1; i < sorted.length; i++) {
       const o = sorted[i];
       const curBr = o.getBoundingRect(true, true);
       const dy = (cursorBottom + gapPx) - curBr.top;
-      o.set('top', o.top + dy);
+      const c = o.getCenterPoint();
+      o.setPositionByOrigin(new fabric.Point(c.x, c.y + dy), 'center', 'center');
       o.setCoords();
       const newBr = o.getBoundingRect(true, true);
       cursorBottom = newBr.top + newBr.height;
@@ -584,18 +588,24 @@
   boxGapPxInput.addEventListener('change', () => pushHistory());
 
   // 상단정렬 버튼: 둘 이상의 텍스트를 묶어 선택했을 때, 선택박스들의 윗변을 서로 맞춤
-  // (기준: 맨 위(첫 줄)에 있는 텍스트 박스의 윗변)
+  // (기준: 맨 위(첫 줄)에 있는 텍스트 박스의 윗변) — 마찬가지로 화면 기준 위치로 계산하고
+  // 중심점 이동방식을 씀(90도 회전 후에도 정확하게 동작하도록)
   document.getElementById('topAlignBtn').addEventListener('click', () => {
     const boxes = fontPopoverTargets;
     if (boxes.length < 2) return;
     let ref = boxes[0];
-    for (const o of boxes) { if (o.top < ref.top) ref = o; }
+    let refTop = ref.getBoundingRect(true, true).top;
+    for (const o of boxes) {
+      const t = o.getBoundingRect(true, true).top;
+      if (t < refTop) { ref = o; refTop = t; }
+    }
     const refBr = ref.getBoundingRect(true, true);
     boxes.forEach(o => {
       if (o === ref) return;
       const br = o.getBoundingRect(true, true);
       const dy = refBr.top - br.top;
-      o.set('top', o.top + dy);
+      const c = o.getCenterPoint();
+      o.setPositionByOrigin(new fabric.Point(c.x, c.y + dy), 'center', 'center');
       o.setCoords();
     });
     canvas.requestRenderAll();
@@ -686,13 +696,24 @@
   });
 
   // 텍스트 박스끼리 서로 정렬 (텍스트 안의 줄맞춤이 아니라, 캔버스 위 텍스트 박스들의 위치를 맞춤)
-  // 기준: 캔버스에서 가장 위쪽(첫 줄)에 있는 텍스트 박스
+  // 기준: 화면에 실제로 보이는 위치 기준으로 가장 위쪽에 있는 텍스트 박스
   function alignTextBoxesToFirstLine(mode){
     const boxes = fontPopoverTargets;
     if (boxes.length < 2) return; // 맞춰볼 다른 텍스트 박스가 없음
 
+    // 기준 박스를 고를 때 raw top이 아니라 getBoundingRect(화면 기준 실제 위치)로 비교해야 함 —
+    // 캔버스를 90도 회전한 뒤에는 오브젝트의 angle이 바뀌어서 raw top이 더 이상 "화면상 위쪽"과
+    // 일치하지 않게 되고(그래서 엉뚱한 박스가 기준으로 뽑히던 문제), br.left/width로 계산한
+    // dx(밀어야 할 거리)도 raw left에 그대로 더하면 회전된 오브젝트에서는 엉뚱한 방향으로
+    // 밀려버림(회전 안 됐을 때만 우연히 raw left 변화 = 화면상 가로 이동과 같았음). 그래서
+    // 아래에서는 중심점(getCenterPoint)을 화면 좌표 기준으로 옮기는 방식으로 고쳤음 —
+    // 중심점 이동은 오브젝트가 몇 도로 회전돼 있든 항상 화면 기준으로 정확하게 적용됨.
     let ref = boxes[0];
-    for (const o of boxes) { if (o.top < ref.top) ref = o; }
+    let refTop = ref.getBoundingRect(true, true).top;
+    for (const o of boxes) {
+      const t = o.getBoundingRect(true, true).top;
+      if (t < refTop) { ref = o; refTop = t; }
+    }
     const refBr = ref.getBoundingRect(true, true);
 
     boxes.forEach(o => {
@@ -702,7 +723,8 @@
       if (mode === 'left') dx = refBr.left - br.left;
       else if (mode === 'center') dx = (refBr.left + refBr.width / 2) - (br.left + br.width / 2);
       else if (mode === 'right') dx = (refBr.left + refBr.width) - (br.left + br.width);
-      o.set('left', o.left + dx);
+      const c = o.getCenterPoint();
+      o.setPositionByOrigin(new fabric.Point(c.x + dx, c.y), 'center', 'center');
       o.setCoords();
     });
 
