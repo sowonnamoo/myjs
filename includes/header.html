@@ -37,6 +37,8 @@
 .suggestion-item:hover { background:#f0f0f0; }
 .suggestion-item .sg-leaf { color:#222; font-weight:bold; }
 .suggestion-item .sg-path { color:#999; font-size:11px; }
+.suggestion-item.suggestion-empty { color:#999; text-align:center; cursor:default; }
+.suggestion-item.suggestion-empty:hover { background:transparent; }
 
 /* 버튼 */
 .icons { display:flex; gap:8px; }
@@ -1940,8 +1942,13 @@ renderMobileMenu();
     window.executeSearch = function() {
         const query = input.value.trim();
         if (!query) return;
-        const item = searchData.find(d => d.leaf === query || d.display === query);
-        location.href = item ? item.url : "/search?q=" + encodeURIComponent(query);
+        const filtered = searchData.filter(d => d.leaf.includes(query) || d.display.includes(query));
+        if (filtered.length > 0) {
+            location.href = filtered[0].url;
+        } else {
+            suggBox.innerHTML = '<div class="suggestion-item suggestion-empty">검색내용이 없습니다.</div>';
+            suggBox.style.display = 'block';
+        }
     };
 
     // 검색창 외부 클릭 시 닫기
@@ -1954,7 +1961,7 @@ renderMobileMenu();
     if (input) {
         input.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.executeSearch(); });
         input.addEventListener('input', () => {
-            const val = input.value;
+            const val = input.value.trim();
             suggBox.innerHTML = '';
             if (val.length < 1) { suggBox.style.display = 'none'; return; }
             const filtered = searchData.filter(d => d.leaf.includes(val) || d.display.includes(val)).slice(0, 8);
@@ -1967,7 +1974,10 @@ renderMobileMenu();
                     suggBox.appendChild(div);
                 });
                 suggBox.style.display = 'block';
-            } else { suggBox.style.display = 'none'; }
+            } else {
+                suggBox.innerHTML = '<div class="suggestion-item suggestion-empty">검색내용이 없습니다.</div>';
+                suggBox.style.display = 'block';
+            }
         });
     }
 })();
