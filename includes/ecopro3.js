@@ -127,6 +127,22 @@
     });
   })();
 
+  // 모바일 모드에서는 오브젝트 선택 시 뜨는 리사이즈 핸들(네모 8개)이 화면 대비 너무 커
+  // 보인다는 요청으로, 기본 크기의 절반으로 줄임. (터치로 인식되는 범위는 위
+  // touchCornerSize로 이미 넉넉하게 잡혀있어서, 핸들이 작아 보여도 실제 터치 조작감에는
+  // 영향 없음.) 화면 폭이 바뀌어 모바일<->PC 경계를 넘나들 때도 실시간으로 반영되도록
+  // resize에서 다시 계산함.
+  (function setupResponsiveCornerSize(){
+    const DEFAULT_CORNER_SIZE = fabric.Object.prototype.cornerSize; // fabric 기본값
+    function apply(){
+      const mobile = !!(EP.isMobileModeActive && EP.isMobileModeActive());
+      fabric.Object.prototype.cornerSize = mobile ? Math.round(DEFAULT_CORNER_SIZE / 2) : DEFAULT_CORNER_SIZE;
+      canvas.requestRenderAll();
+    }
+    apply();
+    window.addEventListener('resize', apply);
+  })();
+
   /* ============================================================
      2c. 텍스트 전용 "T" 버튼 컨트롤 → 글꼴/투명도 플로팅 패널
      - 텍스트(IText) 오브젝트를 선택하면 우측에 보라색 T 버튼이 뜨고,
@@ -209,10 +225,78 @@
     el.style.transform = EP.canvasRotationDeg ? ('rotate(' + EP.canvasRotationDeg + 'deg)') : '';
   }
   EP.clampPopoverCenter = clampPopoverCenter;
+
+  // 캔버스 오브젝트를 직렬화(저장/실행취소/프로젝트 저장)할 때마다 fabric의 기본 속성 외에
+  // 추가로 같이 담아야 하는 커스텀 속성 전체 목록. 텍스트 효과(원형/물결/기차 등), 도형
+  // 필터 콤보 상태, 클립마스크 위치 기준값 등이 여기 없으면 실행취소나 저장 후 다시 불러올
+  // 때 조용히 사라짐 — snapshot()/serializeCurrentCanvas()/flattenSideDataForSave() 세 곳
+  // 전부 이 하나의 목록만 쓰도록 통일해서, 앞으로 새 효과가 추가돼도 한 곳만 고치면 됨.
+  /* ============================================================
+     캔버스 오브젝트 커스텀 속성 레지스트리
+     - 실행취소(snapshot)·디자인전환(serializeCurrentCanvas)·프로젝트저장(flattenSideDataForSave)·
+       복제/복사·붙여넣기(clone) — 이 모든 곳에서 "fabric 기본 속성 외에 추가로 같이 챙겨야
+       하는 커스텀 속성 목록"을 예전엔 ecopro3.js 안에 하드코딩된 배열 하나로 전부 관리했음.
+       문제는 새 텍스트 효과나 도형 필터가 다른 파일(ecopro3text.js/m.js/k.js/l.js 등)에
+       추가될 때마다 이 배열에도 "깜빡하지 않고" 똑같이 추가해줘야 했다는 것 — 하나라도
+       빠뜨리면 그 속성은 실행취소/저장/SVG내보내기/복제 시 조용히 사라짐(실제로 trainText·
+       toteText·_clipMaskRelativeMatrix가 이렇게 빠져있던 걸 발견해서 고쳤었음).
+     - 그래서 구조를 뒤집음: 각 효과/필터를 "만드는" 파일이 자기가 쓰는 속성 이름을
+       EP.registerCustomObjectProps([...])로 직접 등록하게 하고, ecopro3.js는 그 등록된
+       목록을 그때그때 그대로 읽어서만 씀. 앞으로 새 효과를 추가할 때는 그 효과를 만드는
+       파일 안에서 등록 한 줄만 추가하면 실행취소/저장/SVG내보내기/복제 네 군데 전부에
+       자동으로 반영되고, ecopro3.js는 다시 손댈 필요가 없음.
+  ============================================================ */
+  EP.customObjectProps = EP.customObjectProps || new Set([
+    'selectable', 'evented', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders',
+    'lockMovementX', 'lockMovementY', 'hoverCursor', 'isGuide'
+  ]);
+  EP.registerCustomObjectProps = function(names){
+    (names || []).forEach((n) => EP.customObjectProps.add(n));
+  };
+  // 실제 목록이 필요한 시점(실행취소/저장 등, 항상 사용자 조작 이후 = 모든 파일이 이미
+  // 로드되어 등록을 마친 뒤)마다 매번 새로 배열로 뽑아씀 — 페이지 로드 시점에 미리 굳혀두면
+  // ecopro3.js보다 나중에 로드되는 파일들이 등록한 속성이 누락되므로 반드시 함수로 둠.
+  function getCustomObjectProps(){
+    return Array.from(EP.customObjectProps);
+  }
+
   EP.clampPopoverRect = clampPopoverRect;
   EP.applyPopoverRotationStyle = applyPopoverRotationStyle;
   EP.rotatablePopovers = EP.rotatablePopovers || [];
   EP.registerRotatablePopover = function(el){ EP.rotatablePopovers.push(el); };
+
+  /* ============================================================
+     "상세조정하기"류 필터 팝업(P=텍스트 필터, M=모양 필터 등)을 PC에서 오브젝트 근처가
+     아니라 캔버스 박스(재단선) 좌측 상단 모서리에 가지런히 배치하는 공용 유틸(PC 전용).
+     이미 그 자리에 다른 필터 팝업이 열려 있으면 그 오른쪽으로 나란히 이어붙임.
+     캔버스 회전 각도는 전혀 고려하지 않음 — 항상 고정된 화면 좌표에 그대로 붙음.
+  ============================================================ */
+  EP.cornerAnchoredPopovers = EP.cornerAnchoredPopovers || [];
+  EP.positionPopoverAtCanvasCorner = function(popoverEl){
+    popoverEl.classList.remove('hidden'); // 실제 크기를 재려면 먼저 보이는 상태여야 함
+    popoverEl.style.transform = ''; // 회전 스타일은 절대 적용 안 함
+    const pw = popoverEl.offsetWidth || 200;
+    const ph = popoverEl.offsetHeight || 140;
+    const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
+    const margin = 10;
+    const cornerX = canvasRect.left + margin;
+    const cornerY = canvasRect.top + margin;
+
+    // 지금 이 모서리에 이미 나란히 붙어서 보이고 있는 다른 팝업들의 폭만큼 오른쪽으로 밀어서 배치
+    const others = EP.cornerAnchoredPopovers.filter((p) =>
+      p && p !== popoverEl && document.body.contains(p) && !p.classList.contains('hidden')
+    );
+    let left = cornerX;
+    others.forEach((p) => { left += p.offsetWidth + margin; });
+    const top = cornerY;
+
+    // 화면 밖으로 나가지 않게만 단순 클램프(회전 없음, rot 항상 0으로 취급)
+    const r = EP.clampPopoverRect(left, top, pw, ph, 0);
+    popoverEl.style.left = r.left + 'px';
+    popoverEl.style.top = r.top + 'px';
+
+    if (!EP.cornerAnchoredPopovers.includes(popoverEl)) EP.cornerAnchoredPopovers.push(popoverEl);
+  };
 
   /* ============================================================
      여러 필터 팝업(T 글꼴 / P 텍스트필터 / M 도형필터 / J 공통필터 / Z 이미지블렌드필터)이
@@ -587,30 +671,87 @@
   });
   boxGapPxInput.addEventListener('change', () => pushHistory());
 
-  // 상단정렬 버튼: 둘 이상의 텍스트를 묶어 선택했을 때, 선택박스들의 윗변을 서로 맞춤
-  // (기준: 맨 위(첫 줄)에 있는 텍스트 박스의 윗변) — 마찬가지로 화면 기준 위치로 계산하고
-  // 중심점 이동방식을 씀(90도 회전 후에도 정확하게 동작하도록)
-  document.getElementById('topAlignBtn').addEventListener('click', () => {
+  // 가로정렬 픽셀입력창: 세로정렬(위)과 완전히 동일한 방식으로, 축만 가로(X)로 바꾼 버전.
+  // 묶어 선택한 텍스트 박스들을 맨 왼쪽 박스 기준으로 입력한 픽셀만큼 가로 간격이 일정하게
+  // 벌어지도록 배치함.
+  function currentBoxGapPxX(boxes){
+    if (boxes.length < 2) return 0;
+    const sorted = boxes.slice().sort((a, b) => a.getBoundingRect(true, true).left - b.getBoundingRect(true, true).left);
+    const br0 = sorted[0].getBoundingRect(true, true);
+    const br1 = sorted[1].getBoundingRect(true, true);
+    return Math.round(br1.left - (br0.left + br0.width));
+  }
+  function applyBoxGapPxX(gapPx){
     const boxes = fontPopoverTargets;
     if (boxes.length < 2) return;
-    let ref = boxes[0];
-    let refTop = ref.getBoundingRect(true, true).top;
-    for (const o of boxes) {
-      const t = o.getBoundingRect(true, true).top;
-      if (t < refTop) { ref = o; refTop = t; }
-    }
-    const refBr = ref.getBoundingRect(true, true);
-    boxes.forEach(o => {
-      if (o === ref) return;
-      const br = o.getBoundingRect(true, true);
-      const dy = refBr.top - br.top;
+    const sorted = boxes.slice().sort((a, b) => a.getBoundingRect(true, true).left - b.getBoundingRect(true, true).left);
+    let br = sorted[0].getBoundingRect(true, true);
+    let cursorRight = br.left + br.width;
+    for (let i = 1; i < sorted.length; i++) {
+      const o = sorted[i];
+      const curBr = o.getBoundingRect(true, true);
+      const dx = (cursorRight + gapPx) - curBr.left;
       const c = o.getCenterPoint();
-      o.setPositionByOrigin(new fabric.Point(c.x, c.y + dy), 'center', 'center');
+      o.setPositionByOrigin(new fabric.Point(c.x + dx, c.y), 'center', 'center');
       o.setCoords();
-    });
+      const newBr = o.getBoundingRect(true, true);
+      cursorRight = newBr.left + newBr.width;
+    }
+    canvas.requestRenderAll();
+  }
+  const boxGapPxXInput = document.getElementById('boxGapPxXInput');
+  boxGapPxXInput.addEventListener('input', () => {
+    const px = parseFloat(boxGapPxXInput.value) || 0;
+    applyBoxGapPxX(px);
+  });
+  boxGapPxXInput.addEventListener('change', () => pushHistory());
+
+  // 상단정렬/중단정렬/하단정렬 — 좌단/가운데/우측(가로)의 세로 버전.
+  // 상단: 맨 위(가장 작은 top) 박스의 윗변에 맞춤 / 하단: 맨 아래(가장 큰 bottom) 박스의
+  // 아랫변에 맞춤 / 중단: 선택된 박스들 전체(맨 위~맨 아래)의 한가운데 높이에 각자의 세로
+  // 중심을 맞춤.
+  function alignTextBoxesVertical(mode){
+    const boxes = fontPopoverTargets;
+    if (boxes.length < 2) return;
+
+    if (mode === 'middle') {
+      let minTop = Infinity, maxBottom = -Infinity;
+      boxes.forEach(o => {
+        const br = o.getBoundingRect(true, true);
+        minTop = Math.min(minTop, br.top);
+        maxBottom = Math.max(maxBottom, br.top + br.height);
+      });
+      const midY = (minTop + maxBottom) / 2;
+      boxes.forEach(o => {
+        const br = o.getBoundingRect(true, true);
+        const dy = midY - (br.top + br.height / 2);
+        const c = o.getCenterPoint();
+        o.setPositionByOrigin(new fabric.Point(c.x, c.y + dy), 'center', 'center');
+        o.setCoords();
+      });
+    } else {
+      let ref = boxes[0];
+      let refBr = ref.getBoundingRect(true, true);
+      boxes.forEach(o => {
+        const br = o.getBoundingRect(true, true);
+        const better = mode === 'top' ? (br.top < refBr.top) : ((br.top + br.height) > (refBr.top + refBr.height));
+        if (better) { ref = o; refBr = br; }
+      });
+      boxes.forEach(o => {
+        if (o === ref) return;
+        const br = o.getBoundingRect(true, true);
+        const dy = mode === 'top' ? (refBr.top - br.top) : ((refBr.top + refBr.height) - (br.top + br.height));
+        const c = o.getCenterPoint();
+        o.setPositionByOrigin(new fabric.Point(c.x, c.y + dy), 'center', 'center');
+        o.setCoords();
+      });
+    }
     canvas.requestRenderAll();
     pushHistory();
-  });
+  }
+  document.getElementById('topAlignBtn').addEventListener('click', () => alignTextBoxesVertical('top'));
+  document.getElementById('middleAlignBtn').addEventListener('click', () => alignTextBoxesVertical('middle'));
+  document.getElementById('bottomAlignBtn').addEventListener('click', () => alignTextBoxesVertical('bottom'));
 
   // 묶기/풀기 버튼: 텍스트끼리 서로 묶는 기능. 묶으면 이후엔 어디를 클릭해도 묶인 텍스트가
   // 통으로 선택되고, 풀기를 누르면 다시 개별 텍스트로 선택할 수 있게 풀어짐.
@@ -701,13 +842,6 @@
     const boxes = fontPopoverTargets;
     if (boxes.length < 2) return; // 맞춰볼 다른 텍스트 박스가 없음
 
-    // 기준 박스를 고를 때 raw top이 아니라 getBoundingRect(화면 기준 실제 위치)로 비교해야 함 —
-    // 캔버스를 90도 회전한 뒤에는 오브젝트의 angle이 바뀌어서 raw top이 더 이상 "화면상 위쪽"과
-    // 일치하지 않게 되고(그래서 엉뚱한 박스가 기준으로 뽑히던 문제), br.left/width로 계산한
-    // dx(밀어야 할 거리)도 raw left에 그대로 더하면 회전된 오브젝트에서는 엉뚱한 방향으로
-    // 밀려버림(회전 안 됐을 때만 우연히 raw left 변화 = 화면상 가로 이동과 같았음). 그래서
-    // 아래에서는 중심점(getCenterPoint)을 화면 좌표 기준으로 옮기는 방식으로 고쳤음 —
-    // 중심점 이동은 오브젝트가 몇 도로 회전돼 있든 항상 화면 기준으로 정확하게 적용됨.
     let ref = boxes[0];
     let refTop = ref.getBoundingRect(true, true).top;
     for (const o of boxes) {
@@ -836,6 +970,15 @@
     updateGuideRectVisibility();
   });
 
+  // 모바일 전용 — 문구 가리기 눈 아이콘 옆의 "▦" 안내선 버튼은 위 guideToggleBtn을 그대로
+  // 클릭해주는 것뿐(100% 재사용, 새 로직 없음).
+  const mobileCanvasGuideToggleBtn = document.getElementById('mobileCanvasGuideToggleBtn');
+  if (mobileCanvasGuideToggleBtn) {
+    mobileCanvasGuideToggleBtn.addEventListener('click', () => {
+      document.getElementById('guideToggleBtn').click();
+    });
+  }
+
   // "👁 문구·붉은선 가리기" — 캔버스 바깥의 안내 문구(붉은선/회색선 설명)와 캔버스 안의
   // 붉은 재단선만 같이 숨김(회색선·모눈은 그대로 둠). 다시 누르면 원래대로 돌아옴.
   const EYE_OPEN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -859,6 +1002,13 @@
        캔버스에 붙어있는 것처럼 함께 회전합니다 (상대 위치·각도 그대로 유지).
   ============================================================ */
   function rotateCanvas90(dir){ // dir: 1 = 시계방향, -1 = 반시계방향
+    // 여러 오브젝트를 묶어 선택한(ActiveSelection) 상태로 회전을 실행하면, fabric이 그
+    // 선택묶음 자체의 좌표계를 따로 캐싱하고 있어서 그 상태로 개별 오브젝트의 위치를 하나씩
+    // 바꾸면 좌표가 꼬여 엉뚱한 곳으로 튀어보일 수 있음(특히 텍스트 여러 개를 묶어 캔버스
+    // 중앙에 배치해둔 경우에 두드러짐). 그래서 선택 해제를 맨 뒤가 아니라 맨 앞에서 먼저
+    // 해줘서, 모든 오브젝트가 항상 순수 캔버스 절대좌표 기준으로 이동하도록 함.
+    canvas.discardActiveObject();
+
     const oldW = CANVAS_W, oldH = CANVAS_H;
 
     // 오브젝트 하나(모양/패스/텍스트/이미지 등)의 중심점·각도를 새 캔버스 크기 기준으로 회전시킴.
@@ -910,6 +1060,11 @@
     canvas.getObjects().filter(o => o.isGuide).forEach(o => canvas.remove(o));
     buildGuides();
     if (typeof updateGuideRectVisibility === 'function') updateGuideRectVisibility(); // "👁 문구·붉은선 가리기"로 숨겨둔 상태였다면 새로 만든 붉은선에도 그대로 유지
+
+    // 곡선/원형/물결 등 특수 효과가 걸린 텍스트는 렌더링 방식이 패치되어 있는데, 회전으로
+    // angle·위치가 바뀐 뒤에도 그 패치가 정확히 다시 반영되도록 강제로 재적용
+    if (EP.reapplyCircularTextPatches) EP.reapplyCircularTextPatches();
+    if (EP.reapplyShapeComboPatches) EP.reapplyShapeComboPatches();
 
     // 현재 줌 배율을 유지한 채 캔버스 엘리먼트 크기 갱신
     setZoomLevel(zoom);
@@ -990,6 +1145,31 @@
   // 완전히 동일한 기능을 그대로 호출함. 예전엔 사각형 하나만 바로 만들어주는 "글씨 가리기"
   // 버튼이었는데, 이제는 PC와 똑같이 사각형/둥근사각형/원/삼각형/별/하트/자유모양 중 골라서
   // 만들 수 있는 모양 만들기 팝업이 그대로 뜸(새 기능이 아니라 100% 재사용).
+  // "🆕 새로 만들기" — 캔버스에 흰색 바탕을 깔아줌. 새 기능을 따로 만들지 않고, 이미 있는
+  // "🎨 바탕 채우기" 모달의 "⬜ 바탕생성 (흰 바탕)" 버튼(#bgFillWhiteBtn, ecopro3bg.js)을 그대로
+  // 클릭해줌 — 모달이 화면에 열려있지 않아도 클릭 이벤트는 그대로 실행되므로 모달을 굳이
+  // 열었다 닫을 필요 없이 흰 배경 사각형만 조용히 만들어짐.
+  const newCanvasBtn = document.getElementById('newCanvasBtn');
+  if (newCanvasBtn) {
+    newCanvasBtn.addEventListener('click', () => {
+      const bgFillWhiteBtn = document.getElementById('bgFillWhiteBtn');
+      if (bgFillWhiteBtn) bgFillWhiteBtn.click();
+      // 방금 만들어진 흰 배경을 자동으로 잠가서, 다른 오브젝트 작업하다가 실수로 배경이
+      // 움직이거나 선택돼서 지워지는 일이 없게 함(기존 🔒 잠금 버튼과 완전히 같은 동작 재사용).
+      // bgFillWhiteBtn 클릭 직후엔 방금 만든 흰 배경이 항상 활성 오브젝트로 선택돼 있음.
+      const bgRect = canvas.getActiveObject();
+      if (bgRect && bgRect.isCanvasBgFill && EP.lockImage) EP.lockImage(bgRect);
+      if (EP.showBottomHintToast) EP.showBottomHintToast('새창이 생성되었습니다. 배경에 흰색바탕이 깔려있어요.');
+      else alert('새창이 생성되었습니다. 배경에 흰색바탕이 깔려있어요.');
+    });
+  }
+  const mobileNewCanvasBtn = document.getElementById('mobileNewCanvasBtn');
+  if (mobileNewCanvasBtn) {
+    mobileNewCanvasBtn.addEventListener('click', () => {
+      if (newCanvasBtn) newCanvasBtn.click();
+    });
+  }
+
   const mobileShapePickerBtn = document.getElementById('mobileShapePickerBtn');
   if (mobileShapePickerBtn) {
     mobileShapePickerBtn.addEventListener('click', () => {
@@ -1063,6 +1243,45 @@
     });
   }
 
+  // 커스텀메뉴(초록 메뉴) 항목들 — PC의 "✏️ 편집하기"/"🖼 이미지" 메가메뉴에 있는 실제 버튼을
+  // 그대로 클릭해주는 것뿐이라 새 기능은 하나도 없음(100% 재사용). 손바닥 도구가 켜져 있으면
+  // 새로 만든 오브젝트를 바로 움직일 수 있도록 먼저 꺼주는 것도 기존 모바일 버튼들과 동일.
+  function forwardMobileCustomBtn(mobileId, targetId){
+    const btn = document.getElementById(mobileId);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (EP.exitPanMode) EP.exitPanMode();
+      const target = document.getElementById(targetId);
+      if (target) target.click();
+    });
+  }
+  forwardMobileCustomBtn('mobileCustomAddTextBtn', 'addTextBtn');
+  forwardMobileCustomBtn('mobileCustomFixTextShapeBtn', 'fixTextShapeBtn');
+  forwardMobileCustomBtn('mobileCustomShapePickerBtn', 'openShapePickerBtn');
+  forwardMobileCustomBtn('mobileCustomPenToolBtn', 'penToolBtn');
+  forwardMobileCustomBtn('mobileCustomAddTableBtn', 'addTableBtn');
+  forwardMobileCustomBtn('mobileCustomAddMapBtn', 'addMapBtn');
+  forwardMobileCustomBtn('mobileCustomAddLogoBtn', 'addLogoBtn');
+  forwardMobileCustomBtn('mobileCustomAddMenuBtn', 'addMenuBtn');
+  forwardMobileCustomBtn('mobileCustomAddBgFillBtn', 'addBgFillBtn');
+  forwardMobileCustomBtn('mobileCustomSaveProjectBtn', 'saveProjectBtn');
+  forwardMobileCustomBtn('mobileCustomAutoSaveToggleBtn', 'autoSaveToggleBtn');
+
+  // PNG/JPG/SVG 내보내기 버튼들은 PC의 파일 메뉴 안에 data-export 속성으로만 구분되어 있어서
+  // (고유 id가 없음) querySelector로 정확히 그 버튼을 찾아 그대로 클릭해줌
+  function forwardMobileExportBtn(mobileId, exportType){
+    const btn = document.getElementById(mobileId);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const target = document.querySelector('#fileMenu [data-export="' + exportType + '"]');
+      if (target) target.click();
+    });
+  }
+  forwardMobileExportBtn('mobileCustomExportPngBtn', 'png');
+  forwardMobileExportBtn('mobileCustomExportJpgBtn', 'jpg');
+  forwardMobileExportBtn('mobileCustomExportSvgBtn', 'svg');
+  forwardMobileExportBtn('mobileCustomExportSvgVectorBtn', 'svg-vector');
+
   /* ============================================================
      4. 디자인(건수) / 앞뒤(면) 데이터 & 전환
   ============================================================ */
@@ -1076,7 +1295,7 @@
   function serializeCurrentCanvas(){
     const objs = canvas.getObjects().filter(o => !o.isGuide);
     return {
-      objects: objs.map(o => o.toObject(['selectable', 'evented', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText'])),
+      objects: objs.map(o => o.toObject(getCustomObjectProps())),
       background: canvas.backgroundColor || '#ffffff'
     };
   }
@@ -1570,17 +1789,7 @@
   let saveTimer = null;
 
   function snapshot(){
-    return JSON.stringify(canvas.toJSON(['selectable', 'evented', 'isGuide', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY', 'hoverCursor', 'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText', 'curveText', 'waveText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText', 'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText', 'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText', 'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText', 'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText', 'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText', 'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText', 'bubbleText', 'zebraText', 'speedText', 'reflectionText', 'crackText', 'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText', 'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo', 'glitchText', 'tearText', 'lightText',
-      // 모양필터(M버튼 — 지폐/기하모자이크/물결/원형장식 등) 관련 내부 상태. 이게 빠져있으면
-      // 실행취소/다시실행으로 오브젝트가 새로 만들어질 때 이 정보가 사라져서, 눈에 보이는
-      // 모양(패턴 채우기 자체)은 그대로여도 "지금 정확히 어떤 필터가 몇 개 적용돼있는지"를
-      // 앱이 잊어버림 -> 그 상태에서 다시 선택해 조절하려고 하면 실제 지금 상태가 아니라
-      // 엉뚱한(실행취소 직전 메모리에 남아있던) 필터 정보를 기준으로 동작하는 문제가 있었음.
-      '_comboLayers', '_comboSize', '_comboPrevFill',
-      // P버튼(텍스트) 랜덤 필터의 ◀1/N▶ 목록 복원용 — 마찬가지로 실행취소 후에도
-      // "이 오브젝트에 정확히 어떤 조합이 적용돼있었는지"를 잃지 않게 하기 위함.
-      '_lastRollComboIds'
-    ]));
+    return JSON.stringify(canvas.toJSON(getCustomObjectProps()));
   }
   function pushHistory(){
     if (restoring || cropState) return; // 자르기 모드 중 임시 사각형은 실행취소 기록에서 제외
@@ -2172,7 +2381,12 @@
     const t = new fabric.IText('', {
       left: p.x, top: p.y,
       originX: 'left', originY: 'top',
-      fontFamily: 'Pretendard', fontSize: 40, fill: '#222222'
+      fontFamily: 'Pretendard', fontSize: 40, fill: '#222222',
+      // 캔버스가 90/180/270도 회전된 상태면 새 텍스트도 그 각도로 바로 맞춰서 만들어짐 —
+      // 그래야 화면(회전된 디자인) 기준으로 눕지 않고 똑바로 읽히는 방향으로 생김.
+      // 모바일 모드에서만 캔버스 회전 각도를 새 텍스트에 바로 적용함(요청에 따라 PC는 제외 —
+      // PC는 항상 angle 0으로 예전 그대로 생성됨)
+      angle: (EP.isMobileModeActive && EP.isMobileModeActive()) ? (EP.canvasRotationDeg || 0) : 0
     });
     canvas.add(t);
     bringGuideToFront();
@@ -2572,7 +2786,7 @@
     if (!obj || obj.isGuide) return;
     obj.clone(clone => {
       clone.set({
-        left: obj.left + 20, top: obj.top + 20,
+        left: obj.left, top: obj.top + 20,
         // 잠긴(선택 불가) 오브젝트를 롱프레스로 선택한 뒤 복제한 경우에도, 새로 만든
         // 복제본은 원본의 잠금 상태를 물려받지 않고 항상 바로 선택·이동 가능한 상태로
         // 시작하게 함 (요청: "복제로 만든 레이어들 모두 선택 가능하게")
@@ -2585,7 +2799,7 @@
       if (EP.reindexPastedTable) EP.reindexPastedTable(clone); // 표를 복제한 경우 새 tableId로 재등록
       canvas.setActiveObject(clone);
       canvas.renderAll();
-    }, ['selectable', 'evented', 'imageLocked', 'isPenToolPath'].concat(EP.tableCloneProps || []));
+    }, getCustomObjectProps().concat(EP.tableCloneProps || []));
   });
 
   document.addEventListener('keydown', (e) => {
@@ -2622,7 +2836,7 @@
   function copySelected(){
     const obj = canvas.getActiveObject();
     if (!obj || obj.isGuide || cropState) return;
-    obj.clone((cloned) => { clipboard = cloned; }, ['selectable', 'evented', 'imageLocked', 'isPenToolPath'].concat(EP.tableCloneProps || []));
+    obj.clone((cloned) => { clipboard = cloned; }, getCustomObjectProps().concat(EP.tableCloneProps || []));
   }
 
   function pasteClipboard(pointer){
@@ -2630,7 +2844,7 @@
     clipboard.clone((clonedObj) => {
       canvas.discardActiveObject();
       clonedObj.set({
-        left: pointer ? pointer.x : (clonedObj.left || 0) + 24,
+        left: pointer ? pointer.x : (clonedObj.left || 0),
         top: pointer ? pointer.y : (clonedObj.top || 0) + 24,
         // 잠긴 오브젝트를 복사한 뒤 붙여넣은 경우에도, 붙여넣기 결과는 항상 바로
         // 선택·이동 가능한 상태로 시작하게 함(복제 버튼과 동일한 이유)
@@ -2654,7 +2868,7 @@
       canvas.setActiveObject(clonedObj);
       canvas.requestRenderAll();
       pushHistory();
-    }, ['selectable', 'evented', 'imageLocked', 'isPenToolPath'].concat(EP.tableCloneProps || []));
+    }, getCustomObjectProps().concat(EP.tableCloneProps || []));
   }
 
   /* ============================================================
@@ -2864,6 +3078,11 @@
   canvas.upperCanvasEl.addEventListener('contextmenu', openContextMenu);
   canvasWrap.addEventListener('contextmenu', (e) => { if (e.target === canvasWrap) e.preventDefault(); });
 
+  // 페이지 전체에서 브라우저 기본 우클릭 메뉴를 막음(요청: "우클릭 안되는 기능 추가").
+  // 캔버스 위는 위에서 이미 openContextMenu(자체 메뉴)로 대체돼 있어서 그대로 유지되고,
+  // 그 외 영역(툴바/빈 배경 등)에서도 우클릭 시 브라우저 메뉴가 안 뜨게 됨.
+  document.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+
   // 모바일 하단 바 "우클릭메뉴" 버튼 — 길게 누르기(터치)가 일부 기기에서 잘 안 먹혀서, 우클릭
   // 메뉴와 완전히 같은 내용을 이 버튼으로도 열 수 있게 함. 지금 선택돼 있는 오브젝트를
   // 그대로 대상으로 쓰고(따로 뭘 다시 클릭할 필요 없음), 메뉴는 버튼 아래가 아니라 위쪽으로
@@ -2994,6 +3213,12 @@
     canvas.setHeight(CANVAS_H * zoom);
     zoomMenuBtnLabel.textContent = Math.round(zoom * 100) + '%';
     if (EP.onZoomChanged) EP.onZoomChanged(zoom); // 모바일 확대 게이지(ecopro3mobiletools.js)가 값을 맞출 수 있게 알려줌
+    // 고정형 배경사진(목업)용 별도 훅 — EP.onZoomChanged는 mobiletools.js가 자기 것으로
+    // 덮어써버려서 재사용할 수 없어 이름을 다르게 둠. rotateCanvas90()이 캔버스 크기를
+    // 다시 맞추려고 "바뀌지 않은" 같은 zoom 값으로 이 함수를 또 부르는 경우가 있는데,
+    // 그 호출까지 여기서 같이 걸러내면 "회전에는 반응하면 안 됨" 요구사항이 자동으로
+    // 지켜짐(아래 훅 구현 쪽에서 실제 줌 값이 바뀌었을 때만 반응하도록 처리함).
+    if (EP.onFixedBgZoomChange) EP.onFixedBgZoomChange(zoom);
   }
   document.querySelectorAll('#zoomMenu .dropdown-item').forEach(btn => {
     btn.addEventListener('click', () => setZoomLevel((parseFloat(btn.dataset.zoom) || 100) / 100));
@@ -3034,13 +3259,29 @@
   // (SVG로 내보낼 때 사용 — 결과 SVG가 그 폰트 파일 없이도 어디서나 똑같이 보이도록)
   function buildFontFlattenedClone(){
     return new Promise((resolve) => {
+      // 클론(canvas.clone)으로 새로 만들어지는 오브젝트는 원본에 런타임으로 붙어있던 특수효과
+      // 렌더 패치(_render 오버라이드, ecopro3text.js의 patchUnifiedRender)를 물려받지 않음 —
+      // 그래서 "어떤 오브젝트를 이미지로 바꿔야 하는지" 판단과 "실제로 그 이미지를 뽑는" 작업
+      // 둘 다 항상 원본(patch가 살아있는) 오브젝트 기준으로 먼저 해두고, 클론 쪽에서는 그
+      // 자리만 이미지로 바꿔치기함.
+      const liveObjects = canvas.getObjects().filter(o => !o.isGuide);
       canvas.clone((cloned) => {
-        const targets = cloned.getObjects().filter(o => !o.isGuide && isTextObject(o) && isCustomFontName(o.fontFamily));
-        if (!targets.length) { resolve(cloned); return; }
-        let remaining = targets.length;
-        targets.forEach((obj) => {
-          const imgJSON = rasterizeTextObjectToImageJSON(obj);
-          cloned.remove(obj);
+        const clonedObjects = cloned.getObjects().filter(o => !o.isGuide);
+        // 업로드한 임시 폰트를 쓴 텍스트뿐 아니라, 원형/물결/기차/불꽃 등 특수 효과가 걸린
+        // 텍스트도 SVG로는 표현할 방법이 없어서(캔버스 전용 렌더 방식이라) 마찬가지로
+        // 이미지로 바꿔서 내보내야 실제 보이는 모양 그대로 SVG에 담김.
+        const pairs = [];
+        for (let i = 0; i < liveObjects.length && i < clonedObjects.length; i++) {
+          const live = liveObjects[i];
+          const needsRasterize = (isTextObject(live) && isCustomFontName(live.fontFamily)) ||
+            (EP.hasAnyRenderEffect && EP.hasAnyRenderEffect(live));
+          if (needsRasterize) pairs.push({ live, clonedObj: clonedObjects[i] });
+        }
+        if (!pairs.length) { resolve(cloned); return; }
+        let remaining = pairs.length;
+        pairs.forEach(({ live, clonedObj }) => {
+          const imgJSON = rasterizeTextObjectToImageJSON(live); // 원본 기준으로 뽑아야 효과가 실제로 찍힘
+          cloned.remove(clonedObj);
           fabric.Image.fromURL(imgJSON.src, (img) => {
             img.set({
               left: imgJSON.left, top: imgJSON.top,
@@ -3278,7 +3519,7 @@
           if (isTextObject(obj) && isCustomFontName(obj.fontFamily)) {
             results[idx] = rasterizeTextObjectToImageJSON(obj);
           } else {
-            results[idx] = obj.toObject(['selectable', 'evented']);
+            results[idx] = obj.toObject(getCustomObjectProps());
           }
           remaining--;
           if (remaining === 0) resolve({ objects: results, background: data.background });
@@ -3308,7 +3549,10 @@
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
       designNames,
-      designData: exportDesignData
+      designData: exportDesignData,
+      // 참고용 배경사진(미관용) — json 저장/불러오기·갤러리 템플릿에는 같이 담기지만,
+      // PNG/JPG/SVG 등 실제 인쇄용 내보내기 쪽 코드에서는 일부러 아예 참조하지 않음
+      bgReferenceImages: EP.getBgReferenceImagesForSave ? EP.getBgReferenceImagesForSave() : null
     };
   }
 
@@ -3426,6 +3670,13 @@
         }
       }
     }
+    // ⚠️ 참고용 배경사진(bgReferenceImages)은 여기서 자동으로 복원하지 않음 — 이걸 켜두면
+    // ?project=... 쿼리로 자동 불러오기될 때(=페이지 열릴 때마다)나 "프로젝트 불러오기" 시
+    // 레이아웃이 아직 안 잡힌 상태에서 이미지가 나타났다 자리를 잡는 과정이 "깜빡임"으로
+    // 보이는 문제가 있었음(실제로 templates 폴더의 저장된 json에 배경이미지가 들어있어서
+    // 페이지 열 때마다 재현됐음). "저장"할 때는 계속 json에 같이 담아두되(내보내기 쪽은
+    // 안 건드림), 자동으로 다시 보여주는 것만 꺼서 문제를 확실히 없앰. 필요하면 사용자가
+    // 직접 "🖼 배경사진 호출" 버튼으로 다시 불러오면 됨.
     currentIdx = 0; currentSide = 'front';
     loadCanvasObjects(designData[currentIdx][currentSide], () => {
       resetHistory();
@@ -3890,6 +4141,23 @@
       const x = e.clientX - r.left, y = e.clientY - r.top;
       svCanvas.style.cursor = isInBlockedTriangle(x, y) ? 'not-allowed' : 'crosshair';
     });
+    // 모바일(터치)에서도 PC 마우스 드래그와 똑같이 손가락을 누른 채 움직이며 색을 고를 수 있게
+    // touch 이벤트를 mouse 이벤트와 동일한 방식으로 처리함. touchmove에서 preventDefault를
+    // 해줘야 손가락을 움직이는 동안 화면이 스크롤되지 않고 색 선택 드래그만 됨.
+    svCanvas.addEventListener('touchstart', (e) => {
+      draggingSv = true;
+      const t = e.touches[0];
+      pickSv(t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+    svCanvas.addEventListener('touchmove', (e) => {
+      if (!draggingSv) return;
+      const t = e.touches[0];
+      pickSv(t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+    svCanvas.addEventListener('touchend', () => { draggingSv = false; });
+    svCanvas.addEventListener('touchcancel', () => { draggingSv = false; });
 
     // ---- 색상 띠 클릭/드래그로 색상(hue) 선택 ----
     let draggingHue = false;
@@ -3902,6 +4170,19 @@
     hueCanvas.addEventListener('mousedown', (e) => { draggingHue = true; pickHue(e.clientX); });
     window.addEventListener('mousemove', (e) => { if (draggingHue) pickHue(e.clientX); });
     window.addEventListener('mouseup', () => { draggingHue = false; });
+    // 색상 띠도 SV 사각형과 동일하게 터치 드래그 지원
+    hueCanvas.addEventListener('touchstart', (e) => {
+      draggingHue = true;
+      pickHue(e.touches[0].clientX);
+      e.preventDefault();
+    }, { passive: false });
+    hueCanvas.addEventListener('touchmove', (e) => {
+      if (!draggingHue) return;
+      pickHue(e.touches[0].clientX);
+      e.preventDefault();
+    }, { passive: false });
+    hueCanvas.addEventListener('touchend', () => { draggingHue = false; });
+    hueCanvas.addEventListener('touchcancel', () => { draggingHue = false; });
 
     // ---- Hex 직접 입력 ----
     hexInput.addEventListener('change', () => {
@@ -4237,6 +4518,53 @@
   });
 
   /* ============================================================
+     15a. PC: 전체화면 토글 — 모바일의 ⛶ 전체화면 버튼(ecopro3mobiletools.js)과 완전히 같은
+     방식(브라우저 표준 Fullscreen API, 구형 접두사까지 순서대로 시도)을 그대로 재사용함.
+  ============================================================ */
+  (function setupPcFullscreenToggle(){
+    const btn = document.getElementById('pcFullscreenBtn');
+    if (!btn) return;
+    function fsRequest(el){
+      const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.msRequestFullscreen;
+      if (fn) fn.call(el);
+    }
+    function fsExit(){
+      const fn = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen || document.msExitFullscreen;
+      if (fn) fn.call(document);
+    }
+    function fsElement(){
+      return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+    }
+    const fsSupported = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen ||
+      document.documentElement.webkitRequestFullScreen || document.documentElement.msRequestFullscreen);
+    if (!fsSupported) {
+      btn.style.display = 'none'; // 이 API를 지원 안 하는 브라우저에서는 버튼 자체를 숨김
+      return;
+    }
+    btn.addEventListener('click', () => {
+      if (fsElement()) fsExit();
+      else fsRequest(document.documentElement);
+    });
+    ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach((evtName) => {
+      document.addEventListener(evtName, () => {
+        btn.classList.toggle('active', !!fsElement());
+      });
+    });
+  })();
+
+  // 🔄 리셋 버튼(PC/모바일 공통) — F5(새로고침)와 완전히 같은 동작. 새 기능이 아니라 그냥
+  // location.reload()만 호출함.
+  (function setupResetButtons(){
+    function reload(){
+      if (confirm('새로고침 하시겠습니까?')) location.reload();
+    }
+    const pcResetBtn = document.getElementById('pcResetBtn');
+    if (pcResetBtn) pcResetBtn.addEventListener('click', reload);
+    const mobileResetBtn = document.getElementById('mobileResetBtn');
+    if (mobileResetBtn) mobileResetBtn.addEventListener('click', reload);
+  })();
+
+  /* ============================================================
      15b. 모바일: 하단 바 높이만큼 캔버스 영역에 여백을 실시간으로 확보
      — 하단 바(#floatingActionBar)가 화면 아래에 딱 붙는 고정(position:fixed) 바라서,
      #canvasWrap 자신의 박스 크기에는 반영되지 않음. 그래서 padding만 줬을 때는 흰 박스는
@@ -4286,6 +4614,7 @@
       !e.target.closest('.ctx-menu') &&
       !e.target.closest('.crop-toolbar') &&
       !e.target.closest('.cmyk-popover') &&
+      !e.target.closest('.custom-select-list') &&
       // 모바일 전용 상단바(휴지통/색상/스포이드/레이어/확대 아이콘, "글씨 가리기" 드롭다운 등)도
       // PC의 .toolbar/.side-panel처럼 "도구를 조작하는 영역"이므로 여기서 제외해야 함.
       // 이게 빠져 있으면 이 버튼들을 누르는 순간(click보다 먼저 발생하는 mousedown 시점에)
@@ -4341,5 +4670,604 @@
   EP.registerFilterPopover(fontPopover);
   EP.clearPerCharStyleOverrides = clearPerCharStyleOverrides;
   EP.forceFontReloadRedraw = forceFontReloadRedraw;
+
+  /* ============================================================
+     17. 폰트 선택창 — 구조는 그대로(트리거 박스 + 바로 아래 펼쳐지는 목록) 두고,
+     열었을 때 목록 개수(10개+스크롤)와 가로폭(트리거의 절반)만 제한.
+     원래 <select>는 화면에서만 숨기고 그대로 DOM에 남겨서 값 읽기/쓰기, 'change' 리스너,
+     커스텀폰트 appendChild(2059번줄) 등 기존 코드는 전혀 손대지 않음.
+  ============================================================ */
+  function makeCompactFontDropdown(selectEl, opts){
+    if (!selectEl || selectEl._compactDropdownReady) return;
+    selectEl._compactDropdownReady = true;
+    const showArrows = !opts || opts.showArrows !== false;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'custom-select-wrap';
+    selectEl.parentNode.insertBefore(wrap, selectEl);
+    wrap.appendChild(selectEl);
+    selectEl.style.display = 'none';
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    const triggerLabel = document.createElement('span');
+    trigger.appendChild(triggerLabel);
+    const caret = document.createElement('span');
+    caret.className = 'custom-select-caret';
+    caret.textContent = '▾';
+    trigger.appendChild(caret);
+    wrap.appendChild(trigger);
+
+    // 위/아래 화살표 — 목록을 열지 않고도 눌러서 바로 이전/다음 폰트로 자연스럽게 넘어감
+    // (방향키 상하 탐색과 완전히 같은 동작을 손가락으로 탭할 수 있게 버튼으로도 만든 것 —
+    // 모바일에서 물리 키보드 없이도 같은 기능을 쓸 수 있게 하기 위함). 우측 속성 패널처럼
+    // 폭이 좁은 곳에서는 화살표가 자리만 차지하므로 showArrows=false로 아예 안 만듦
+    // (요청: "T버튼 팝업 쪽에만 화살표, 우측 패널 쪽은 빼줘").
+    let arrowUpBtn = null, arrowDownBtn = null;
+    if (showArrows) {
+      const arrowsWrap = document.createElement('div');
+      arrowsWrap.className = 'custom-select-arrows';
+      arrowUpBtn = document.createElement('button');
+      arrowUpBtn.type = 'button';
+      arrowUpBtn.className = 'custom-select-arrow-btn';
+      arrowUpBtn.textContent = '▲';
+      arrowUpBtn.title = '이전 폰트 (꾹 누르면 계속 넘어감)';
+      arrowDownBtn = document.createElement('button');
+      arrowDownBtn.type = 'button';
+      arrowDownBtn.className = 'custom-select-arrow-btn';
+      arrowDownBtn.textContent = '▼';
+      arrowDownBtn.title = '다음 폰트 (꾹 누르면 계속 넘어감)';
+      arrowsWrap.appendChild(arrowUpBtn);
+      arrowsWrap.appendChild(arrowDownBtn);
+      wrap.appendChild(arrowsWrap);
+    }
+
+    const list = document.createElement('div');
+    list.className = 'custom-select-list hidden';
+    document.body.appendChild(list);
+
+    function syncTriggerLabel(){
+      const opt = selectEl.options[selectEl.selectedIndex];
+      triggerLabel.textContent = opt ? opt.textContent : '';
+    }
+    syncTriggerLabel();
+
+    function closeList(){
+      list.classList.add('hidden');
+    }
+
+    function commitIndex(idx){
+      const opt = selectEl.options[idx];
+      if (!opt) return;
+      selectEl.value = opt.value;
+      selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+      syncTriggerLabel();
+      closeList();
+    }
+
+    function stepFont(dir){
+      const next = Math.max(0, Math.min(selectEl.options.length - 1, selectEl.selectedIndex + dir));
+      commitIndex(next);
+    }
+
+    if (showArrows) {
+      // 꾹 누르고 있으면 키보드 방향키를 계속 누르고 있을 때처럼 폰트가 계속 자동으로
+      // 넘어감 — 처음엔 살짝 대기했다가(단순 탭과 구분되도록) 그 다음부터는 일정 간격으로
+      // 천천히 계속 반복함. 손을 떼거나(mouseup/touchend) 버튼 밖으로 나가면(mouseleave) 멈춤.
+      const HOLD_START_DELAY = 400; // 누른 뒤 이 시간 안에 떼면 "한 번 클릭"으로만 처리됨
+      const HOLD_REPEAT_INTERVAL = 440; // 반복 간격 — 요청에 따라 기존(220ms)의 2배로 늦춤
+
+      function bindHold(btn, dir){
+        let holdTimeout = null, holdInterval = null, didRepeat = false;
+        function stopHold(){
+          clearTimeout(holdTimeout);
+          clearInterval(holdInterval);
+          holdTimeout = null;
+          holdInterval = null;
+        }
+        function startHold(){
+          stopHold();
+          didRepeat = false;
+          holdTimeout = setTimeout(() => {
+            didRepeat = true;
+            holdInterval = setInterval(() => stepFont(dir), HOLD_REPEAT_INTERVAL);
+          }, HOLD_START_DELAY);
+        }
+        btn.addEventListener('mousedown', (e) => { e.stopPropagation(); startHold(); });
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); startHold(); }, { passive: false });
+        ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach((evt) => {
+          btn.addEventListener(evt, stopHold);
+        });
+        // click은 "짧게 한 번 탭"일 때만 스텝을 실행함 — 꾹 눌러서 이미 반복 이동이 시작된
+        // 경우엔 click에서 한 번 더 이동하지 않도록 didRepeat로 구분함
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!didRepeat) stepFont(dir);
+        });
+      }
+      bindHold(arrowUpBtn, -1);
+      bindHold(arrowDownBtn, 1);
+    }
+
+    function openList(){
+      list.innerHTML = '';
+      Array.from(selectEl.options).forEach((opt, idx) => {
+        const item = document.createElement('div');
+        item.className = 'custom-select-option' + (opt.selected ? ' selected' : '');
+        item.textContent = opt.textContent;
+        item.addEventListener('click', () => commitIndex(idx));
+        list.appendChild(item);
+      });
+
+      // 크기 계산은 항상 트리거의 "회전과 무관한 실제 레이아웃 크기"(offsetWidth/offsetHeight)
+      // 기준으로 함 — getBoundingClientRect는 팝업이 회전(90/270도)돼 있으면 화면상 가로세로가
+      // 뒤바뀐 값을 주기 때문에 그대로 쓰면 폭이 찌그러짐.
+      const localW = trigger.offsetWidth;
+      const localTriggerH = trigger.offsetHeight;
+      list.style.width = localW + 'px';
+      list.classList.remove('hidden'); // 실제 렌더 높이를 재려면 먼저 보이는 상태여야 함
+
+      // 옵션 10개 높이만큼만 보이고 나머지는 스크롤 (실제 렌더된 한 줄 높이를 재서 정확히 맞춤)
+      const firstItem = list.querySelector('.custom-select-option');
+      const itemH = firstItem ? firstItem.offsetHeight : 34;
+      const maxVisible = 10;
+      const localListMaxH = Math.round(itemH * maxVisible + 8);
+      list.style.maxHeight = localListMaxH + 'px';
+      const localListH = Math.min(list.scrollHeight, localListMaxH);
+
+      // 캔버스를 90/180/270도 돌리면 팝업 전체(.font-popover)가 그 각도만큼 CSS로 회전
+      // 표시되는데(registerRotatablePopover), 이 목록은 팝업 밖(document.body)에 붙어있어서
+      // 그 회전이 자동으로 적용되지 않음 — 그래서 목록도 같은 각도로 직접 회전시키고,
+      // "트리거 바로 아래"라는 방향(로컬 +Y)도 그 각도만큼 돌려서 화면상 올바른 방향에 붙게 함.
+      // .font-popover(T 글꼴창)뿐 아니라 .qa-popover(공통필터 등 P/M/J/Z 팝업)도 캔버스 회전에
+      // 맞춰 같은 방식으로 회전 표시되므로, 그 안에 있는 드롭다운도 똑같이 회전 각도를 반영함
+      const rot = trigger.closest('.font-popover, .qa-popover') ? (((EP.canvasRotationDeg || 0) % 360 + 360) % 360) : 0;
+      function rotateVec(dx, dy, deg){
+        const rad = deg * Math.PI / 180;
+        const c = Math.cos(rad), s = Math.sin(rad);
+        return { x: dx * c - dy * s, y: dx * s + dy * c };
+      }
+      const gap = 4;
+      const belowLocal = { x: 0, y: localTriggerH / 2 + gap + localListH / 2 };
+      const aboveLocal = { x: 0, y: -(localTriggerH / 2 + gap + localListH / 2) };
+      const belowRot = rotateVec(belowLocal.x, belowLocal.y, rot);
+      const aboveRot = rotateVec(aboveLocal.x, aboveLocal.y, rot);
+
+      // 트리거의 화면상(=회전 반영된) 실제 중심점 — getBoundingClientRect는 조상의 transform까지
+      // 감안한 진짜 화면 좌표를 주므로, 이 중심점 자체는 회전 여부와 무관하게 항상 정확함
+      const tr = trigger.getBoundingClientRect();
+      const triggerCenterX = tr.left + tr.width / 2;
+      const triggerCenterY = tr.top + tr.height / 2;
+
+      // 화면상 세로 여유가 부족하면 위쪽으로 뒤집음(90/270도에선 "위/아래"가 화면에서
+      // "좌/우"가 될 수 있어 회전 후 실제 세로 크기 기준으로 판단)
+      const visH = (rot === 90 || rot === 270) ? localW : localListH;
+      let chosen = belowRot;
+      if (triggerCenterY + belowRot.y + visH / 2 > window.innerHeight - 8) chosen = aboveRot;
+
+      const desiredCenterX = triggerCenterX + chosen.x;
+      const desiredCenterY = triggerCenterY + chosen.y;
+      const clamped = EP.clampPopoverCenter
+        ? EP.clampPopoverCenter(desiredCenterX, desiredCenterY, localW, localListH, rot)
+        : { cx: desiredCenterX, cy: desiredCenterY };
+
+      list.style.left = (clamped.cx - localW / 2) + 'px';
+      list.style.top = (clamped.cy - localListH / 2) + 'px';
+      if (EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(list); // 팝업과 같은 각도로 함께 회전
+
+      const selectedEl = list.querySelector('.custom-select-option.selected');
+      if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!list.classList.contains('hidden')) { closeList(); return; }
+      openList();
+    });
+
+    // 방향키로 폰트 선택 — 네이티브 <select>에서 되던 상하 화살표 탐색을 그대로 재현
+    // (목록을 열지 않고도 포커스만 있으면 바로 다음/이전 폰트로 즉시 적용됨)
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const dir = e.key === 'ArrowDown' ? 1 : -1;
+        const next = Math.max(0, Math.min(selectEl.options.length - 1, selectEl.selectedIndex + dir));
+        commitIndex(next);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        list.classList.contains('hidden') ? openList() : closeList();
+      } else if (e.key === 'Escape') {
+        closeList();
+      }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (list.classList.contains('hidden')) return;
+      if (e.target === trigger || trigger.contains(e.target)) return;
+      if (list.contains(e.target)) return;
+      closeList();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeList();
+    });
+    window.addEventListener('resize', closeList);
+    // 페이지의 다른 부분이 스크롤될 때만 닫음 — 목록 자신의 스크롤(수동 스크롤/열릴 때 자동
+    // scrollIntoView)까지 여기 걸리면 "열자마자 닫힘"/"스크롤이 안 먹음" 문제가 생기므로 제외.
+    window.addEventListener('scroll', (e) => {
+      if (e.target === list || (e.target.nodeType === 1 && list.contains(e.target))) return;
+      closeList();
+    }, true);
+
+    // 다른 코드가 select.value를 직접 바꾸는 경우(예: 오브젝트 다시 선택 시 폰트 동기화)에도
+    // 트리거에 보이는 글자가 항상 최신 상태를 따라가도록 값 setter를 감시함
+    const origDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(selectEl, 'value', {
+      get(){ return origDescriptor.get.call(this); },
+      set(v){ origDescriptor.set.call(this, v); syncTriggerLabel(); },
+      configurable: true
+    });
+  }
+
+  makeCompactFontDropdown(fontFamilySelect, { showArrows: false });
+  makeCompactFontDropdown(floatingFontSelect); // T버튼 팝업 — 화살표 그대로 유지
+  // 공통필터(J버튼 팝업) 선택 목록도 T 글꼴창과 똑같이 회전 각도에 맞춰 아래쪽으로 정확히
+  // 펼쳐지도록 동일하게 적용함 (요청: "폰트선택시 회전각도에 맞춰 펼치는 기능, 공통필터
+  // 선택창에도 적용해줘")
+  makeCompactFontDropdown(document.getElementById('qaJFilterSelect'), { showArrows: false });
+
+  /* ============================================================
+     18. 초기화면 전용 "기본 레이아웃" 미리보기 패널 + 검색창
+     - side-panel(#noSelectionSection/#selectionSections)의 기존 로직은 절대 안 건드리고,
+       그 상태를 "읽기만" 해서 내 새 패널을 보였다 숨겼다만 함.
+     - 데이터 소스: 저장소의 templates/ 폴더에 이름별로 넣어둔 .json 파일들.
+       "목록"은 GitHub Pages가 폴더 목록 기능이 없어서 GitHub API로 조회하고,
+       실제 각 json "내용"은 https://sowonnamoo.github.io/myjs/templates/{파일명} 에서 fetch함.
+       파일명(확장자 제외)이 그대로 검색되는 "이름"이 됨. 예) templates/명함기본.json → "명함기본"
+     - 각 레이아웃 json은 저장 파일과 같은 형식: { objects, background, canvasWidth, canvasHeight }
+     - 검색창에 입력하면 이미 불러온 목록 중 이름에 포함되는 것만 걸러서 보여줌(다시 fetch 안 함).
+     - 목록이 길어지면 .template-gallery-list 자체가 스크롤됨(검색창은 위에 고정).
+  ============================================================ */
+  (function setupTemplateGalleryPanel(){
+    const panel = document.getElementById('templateGalleryPanel');
+    const listEl = document.getElementById('templateGalleryList');
+    const hintEl = document.getElementById('templateGalleryHint');
+    const searchInput = document.getElementById('templateGallerySearch');
+    if (!panel || !listEl || !hintEl || !searchInput) return;
+
+    const FOLDER_API_URL = 'https://api.github.com/repos/sowonnamoo/myjs/contents/templates';
+
+    let templates = []; // [{ name, url, data, itemEl }]
+    let panelEnabled = false; // 목록을 정상적으로 불러왔을 때만 true
+
+    // side-panel이 지금 "선택 없음" 상태인지를 그 DOM 상태만 읽어서 판단 — side-panel 쪽
+    // 코드/동작은 전혀 건드리지 않음
+    function isNoSelectionState(){
+      const noSelSection = document.getElementById('noSelectionSection');
+      return !!(noSelSection && !noSelSection.classList.contains('hidden'));
+    }
+    function updateGalleryVisibility(){
+      if (!panelEnabled) { panel.classList.add('hidden'); return; }
+      panel.classList.toggle('hidden', !isNoSelectionState());
+    }
+    // side-panel의 표시 상태를 바꾸는 것과 같은 이벤트들을 그대로 구독(읽기 전용) —
+    // updateSelectionPanel 등 기존 함수는 손대지 않고, 같은 타이밍에 내 패널만 동기화함
+    canvas.on('selection:created', updateGalleryVisibility);
+    canvas.on('selection:updated', updateGalleryVisibility);
+    canvas.on('selection:cleared', updateGalleryVisibility);
+
+    // 템플릿 json 하나를 오프스크린(화면에 안 보이는) 임시 캔버스에 그려서 작은 미리보기
+    // 이미지(PNG data URL)를 만듦. 실제 메인 캔버스는 전혀 건드리지 않음.
+    function renderThumbnail(data, cb){
+      const srcW = data.canvasWidth || CANVAS_W;
+      const srcH = data.canvasHeight || CANVAS_H;
+      // 템플릿 안에 이미지 오브젝트가 있으면 crossOrigin을 지정해둬야 함 — 없으면 다른
+      // 도메인 이미지를 불러왔을 때 캔버스가 "오염"되어 아래 toDataURL이 막힘(사진접수
+      // 시스템 자체 편집 진입 때와 동일한 이유의 같은 수정, photo-order.html 참고).
+      const objectsWithCrossOrigin = (data.objects || []).map((o) => {
+        if (o && o.type === 'image' && !o.crossOrigin) return Object.assign({}, o, { crossOrigin: 'anonymous' });
+        return o;
+      });
+      const tempEl = document.createElement('canvas');
+      const tempCanvas = new fabric.StaticCanvas(tempEl, { width: srcW, height: srcH });
+      tempCanvas.loadFromJSON(
+        { objects: objectsWithCrossOrigin, background: data.background || '#ffffff' },
+        () => {
+          const THUMB_W = 132;
+          try {
+            const dataUrl = tempCanvas.toDataURL({ format: 'png', multiplier: THUMB_W / srcW });
+            cb(dataUrl, Math.round(THUMB_W * (srcH / srcW)));
+          } catch (err) {
+            // crossOrigin을 지정해도, 이미지 서버가 CORS(Access-Control-Allow-Origin)를 아예
+            // 안 열어주면 여전히 오염될 수 있음 — 그래도 목록/클릭 기능은 계속 동작해야 하므로
+            // 미리보기 이미지만 생략하고 조용히 넘어감
+            console.error('템플릿 미리보기 생성 실패:', err);
+            cb(null, 90);
+          } finally {
+            tempCanvas.dispose();
+          }
+        }
+      );
+    }
+
+    function renderGalleryList(){
+      listEl.innerHTML = '';
+      templates.forEach((tpl) => {
+        const item = document.createElement('div');
+        item.className = 'template-gallery-item hidden'; // 평소엔 안 보이고 검색으로 매칭될 때만 나타남
+        tpl.itemEl = item;
+        const img = document.createElement('img');
+        img.alt = tpl.name;
+        tpl.imgEl = img;
+        tpl.thumbnailReady = false; // 미리보기는 실제로 화면에 보일 때 그때 처음 만듦(아래 lazy 렌더)
+        item.appendChild(img);
+        const nameEl = document.createElement('div');
+        nameEl.className = 'template-gallery-name';
+        nameEl.textContent = tpl.name;
+        item.appendChild(nameEl);
+        listEl.appendChild(item);
+
+        // 클릭하면 지금 작업 중인 디자인/면 캔버스로 이 레이아웃을 그대로 불러옴
+        // (파일 불러오기 때와 동일하게, 캔버스 크기가 다르면 rescaleSideDataToCurrentCanvas로
+        // 지금 캔버스 크기에 맞게 자동 보정됨)
+        // ⚠️ bgReferenceImages는 여기서도 자동 복원 안 함(위 applyProjectData와 같은 이유 —
+        // 깜빡임 문제 때문에 자동 복원 경로를 전부 꺼둠)
+        item.addEventListener('click', () => {
+          const scaled = rescaleSideDataToCurrentCanvas(tpl.data, tpl.data.canvasWidth, tpl.data.canvasHeight);
+          loadCanvasObjects(scaled, () => {
+            resetHistory();
+            pushHistory();
+          });
+        });
+      });
+    }
+
+    // 미리보기(썸네일)는 만드는 비용이 꽤 커서(오프스크린 캔버스에 json 전체를 실제로
+    // 그려서 이미지로 뽑는 과정) 목록에 있는 템플릿 전부를 한꺼번에 미리 만들어두면 페이지가
+    // 느려짐 — 실제로 검색 결과로 화면에 나타나는 것만, 그것도 처음 나타나는 그 순간에 딱
+    // 한 번만 만들도록 지연시킴(요청: "미리보기 때문에 늦어지는 거 맞아").
+    function ensureThumbnail(tpl){
+      if (tpl.thumbnailReady) return;
+      tpl.thumbnailReady = true; // 중복 생성 방지(생성 중에도 다시 안 만들도록 먼저 표시)
+      renderThumbnail(tpl.data, (dataUrl, h) => {
+        if (dataUrl) {
+          tpl.imgEl.src = dataUrl;
+          tpl.imgEl.style.height = h + 'px';
+        } else {
+          tpl.imgEl.style.display = 'none'; // 미리보기 생성 실패 시 이미지 없이 이름만 보임(클릭은 정상 동작)
+        }
+      });
+    }
+
+    // 검색창 — 다시 fetch하지 않고, 이미 불러온 목록을 이름 기준으로 걸러서 보이기/숨기기만 함.
+    // 평소(검색어 없음)에는 아무것도 안 보이고, 뭔가 입력했을 때만 매칭되는 것만 나타남.
+    function applySearchFilter(){
+      const q = searchInput.value.trim().toLowerCase();
+      templates.forEach((tpl) => {
+        if (!tpl.itemEl) return;
+        const match = !!q && tpl.name.toLowerCase().includes(q);
+        tpl.itemEl.classList.toggle('hidden', !match);
+        if (match) ensureThumbnail(tpl); // 실제로 보이게 되는 순간에만 미리보기 생성
+      });
+      hintEl.classList.toggle('hidden', !!q);
+    }
+    searchInput.addEventListener('input', applySearchFilter);
+    searchInput.addEventListener('click', (e) => e.stopPropagation());
+
+    // 파일 "목록"은 GitHub Pages가 폴더 목록 기능을 제공하지 않아서(정적 호스팅이라 index 파일이
+    // 없으면 목록을 못 줌) 어쩔 수 없이 GitHub API로 조회하고, 실제 각 json "내용"은 요청하신
+    // https://sowonnamoo.github.io/myjs/templates/ 폴더에서 그대로 fetch함.
+    const TEMPLATES_PAGES_BASE = 'https://sowonnamoo.github.io/myjs/templates/';
+
+    // templates 폴더에 넣는 json이 두 형태 중 뭐든 가능하도록 정규화함:
+    //  1) 단일 캔버스 형태: { objects, background, canvasWidth, canvasHeight }
+    //  2) "저장" 버튼(saveProjectBtn)이 만드는 전체 프로젝트 파일 형태:
+    //     { designData: [{front, back}, ...], canvasWidth, canvasHeight, designNames }
+    //     — 이 경우 첫 번째 디자인의 앞면을 템플릿 레이아웃으로 씀.
+    // 미리보기가 안 뜨고 클릭해도 안 불러와지던 문제는 대부분 이 형태 불일치 때문이었음
+    // (raw.objects가 없으면 빈 캔버스로 그려져서 아무것도 안 보였던 것).
+    function normalizeTemplateData(raw){
+      if (raw && Array.isArray(raw.objects)) return raw;
+      if (raw && Array.isArray(raw.designData) && raw.designData[0] && raw.designData[0].front) {
+        const front = raw.designData[0].front;
+        return {
+          objects: front.objects || [],
+          background: front.background || '#ffffff',
+          canvasWidth: raw.canvasWidth,
+          canvasHeight: raw.canvasHeight,
+          bgReferenceImages: raw.bgReferenceImages || null // 참고용 배경사진도 있으면 같이 넘김
+        };
+      }
+      return { objects: [], background: '#ffffff' };
+    }
+
+    // 앞 페이지(photo-order.html 등)에서 쿼리로 넘어온 "실제 읽을 수 있는 상품명" — productId
+    // 같은 코드(예: "01my")는 실사용자가 검색할 리 없으니 쓰지 않고, 사람이 읽는 한글 이름
+    // (예: "명함")을 씀. 우선순위: orderData.paper(예: paper=명함) → orderData.options 안의
+    // options1 값(같은 예시 URL에서 명함으로 겹쳐 들어오는 필드) → 그래도 없으면 productId.
+    function resolveReadableProductName(){
+      if (orderData.paper) return orderData.paper.trim();
+      if (orderData.options) {
+        try {
+          const opts = JSON.parse(orderData.options);
+          if (opts && opts.options1) return String(opts.options1).trim();
+        } catch (err) { /* JSON이 아니면 무시하고 다음 후보로 */ }
+      }
+      return (orderData.productId || '').trim();
+    }
+    // 앞 쿼리에서 상품명을 못 알아낸 경우(예: 쿼리 없이 그냥 에디터를 열었을 때)에도 패널을
+    // 텅 비워두지 않고, "기본"으로 시작하는 기본 레이아웃들(예: 기본1~기본5.json)을 대신
+    // 보여줌 — 검색창은 그대로 살아있어서 사용자가 원하면 다른 걸로 다시 검색할 수 있음.
+    const productName = resolveReadableProductName();
+    const searchTerm = productName || '기본';
+
+    hintEl.textContent = '불러오는 중...';
+    fetch(FOLDER_API_URL)
+      .then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then((files) => {
+        const jsonFiles = (Array.isArray(files) ? files : [])
+          .filter((f) => f.type === 'file' && /\.json$/i.test(f.name));
+        if (!jsonFiles.length) throw new Error('templates 폴더에 json 파일 없음');
+        return Promise.all(jsonFiles.map((f) => {
+          const pageUrl = TEMPLATES_PAGES_BASE + encodeURIComponent(f.name);
+          return fetch(pageUrl)
+            .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then((raw) => ({ name: f.name.replace(/\.json$/i, ''), url: pageUrl, data: normalizeTemplateData(raw) }))
+            .catch(() => null); // 개별 레이아웃 하나가 깨져 있어도 나머지는 계속 보여줌
+        }));
+      })
+      .then((results) => {
+        templates = results.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        if (!templates.length) throw new Error('불러온 레이아웃 없음');
+        panelEnabled = true;
+        renderGalleryList();
+        updateGalleryVisibility();
+        // 상품명을 알면 그걸로, 모르면 "기본"으로 자동 검색 — 사용자가 직접 입력 안 해도 바로 매칭 결과가 보임
+        searchInput.value = searchTerm;
+        applySearchFilter();
+      })
+      .catch(() => {
+        // templates 폴더가 없거나 비어있거나 API 호출이 실패하면 조용히 실패 — 패널은 계속 숨김
+        panelEnabled = false;
+        panel.classList.add('hidden');
+      });
+  })();
+
+  /* ============================================================
+     19. 참고용 배경사진 2종 (미관용 — 인쇄되는 디자인 파일에는 절대 포함 안 됨)
+     - 둘 다 fabric 오브젝트가 아니라 순수 DOM <img>라서, PNG/JPG/SVG 내보내기나
+       "상품담기/구입" 시안 이미지(canvas.toDataURL/toSVG)에는 애초에 잡힐 수가 없음.
+     - 🖼 배경채우기: 캔버스 박스 주변(체커무늬 영역) 전체를 이 사진으로 채움. CSS
+       width:100%/height:100%라서 창 크기·줌이 바뀌면 자동으로 같이 늘었다 줄었다 함.
+     - 🖼 고정형(목업): 파일을 고른 그 순간의 디자인 박스 화면 위치·크기를 기준으로
+       딱 한 번만 left/top/width/height를 픽셀 단위로 계산해서 인라인 스타일로 고정함.
+       그 뒤로는 줌을 바꾸든 캔버스를 90도 회전시키든 이 값을 다시 건드리는 코드가
+       전혀 없어서, 말 그대로 화면에 "고정"되어 안 움직임(티셔츠 등 목업 사진 위에
+       인쇄 영역을 한 번 맞춰두면 계속 그 자리에 있어야 하는 용도).
+  ============================================================ */
+  (function setupBackgroundReferenceImages(){
+    const fillImg = document.getElementById('bgFillRefImage');
+    const fixedImg = document.getElementById('bgFixedRefImage');
+    const fillInput = document.getElementById('bgFillImageInput');
+    const fixedInput = document.getElementById('bgFixedImageInput');
+    if (!fillImg || !fixedImg || !fillInput || !fixedInput) return;
+
+    let bgFillDataUrl = null;
+    // 고정형은 "줌 1배 기준" 크기(widthAtZoom1/heightAtZoom1)로 저장해두고, 화면에 그릴 때마다
+    // 그 값에 지금 줌 배율을 곱해서 실제 px를 계산함 — 이렇게 해야 줌을 여러 번 바꿔도 오차가
+    // 누적되지 않고, 캔버스를 확대하면 같이 커지고 축소하면 같은 비율로 같이 작아짐(요청사항).
+    let bgFixedState = null; // { dataUrl, widthAtZoom1, heightAtZoom1 }
+    let lastZoomForFixedImg = null;
+
+    function readFileAsDataUrl(file, cb){
+      const reader = new FileReader();
+      reader.onload = (e) => cb(e.target.result);
+      reader.readAsDataURL(file);
+    }
+
+    fillInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      readFileAsDataUrl(file, (dataUrl) => {
+        bgFillDataUrl = dataUrl;
+        fillImg.src = dataUrl;
+        fillImg.classList.remove('hidden');
+      });
+      e.target.value = '';
+    });
+
+    // 지금 디자인 박스(캔버스)의 화면상 정중앙을 canvasWrap 좌표계로 환산 — 매번 새로 계산해서
+    // 쓰기 때문에 "이미지 중앙 = 캔버스 중앙"이 항상 정확히 유지됨(요청: "정 일치시켜야 함").
+    function getShellCenterInWrap(){
+      const wrapRect = canvasWrap.getBoundingClientRect();
+      const shellRect = canvas.upperCanvasEl.getBoundingClientRect();
+      return {
+        x: shellRect.left + shellRect.width / 2 - wrapRect.left + canvasWrap.scrollLeft,
+        y: shellRect.top + shellRect.height / 2 - wrapRect.top + canvasWrap.scrollTop
+      };
+    }
+
+    // 지금 줌 배율 기준으로 실제 화면 px 크기를 계산해서 다시 그림. 이미지 바깥이 캔버스
+    // 영역 밖으로 잘려나가는 건 상관없음(요청: "이미지 바깥 잘려도 괜찮음") — 그냥 canvasWrap의
+    // overflow에 맡겨둠.
+    function applyFixedImageStyle(){
+      if (!bgFixedState) { fixedImg.classList.add('hidden'); return; }
+      const z = (EP.getZoomLevel && EP.getZoomLevel()) || 1;
+      const w = bgFixedState.widthAtZoom1 * z;
+      const h = bgFixedState.heightAtZoom1 * z;
+      const center = getShellCenterInWrap();
+      fixedImg.src = bgFixedState.dataUrl;
+      fixedImg.style.left = (center.x - w / 2) + 'px';
+      fixedImg.style.top = (center.y - h / 2) + 'px';
+      fixedImg.style.width = w + 'px';
+      fixedImg.style.height = h + 'px';
+      fixedImg.classList.remove('hidden');
+      lastZoomForFixedImg = z;
+    }
+
+    fixedInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      readFileAsDataUrl(file, (dataUrl) => {
+        const probe = new Image();
+        probe.onload = () => {
+          const shellRect = canvas.upperCanvasEl.getBoundingClientRect();
+          const z = (EP.getZoomLevel && EP.getZoomLevel()) || 1;
+          const naturalW = probe.naturalWidth || shellRect.width * 2;
+          const naturalH = probe.naturalHeight || shellRect.height * 2;
+          // 기본 크기: 원본 비율 유지, 디자인 박스의 2배 폭으로 시작(목업 사진이 인쇄
+          // 영역보다 훨씬 넓은 경우가 보통이라 처음부터 자연스럽게 보이도록) — 이 크기를
+          // "줌 1배 기준"으로 환산해서 저장해둠.
+          const baseW = Math.max(shellRect.width * 2, naturalW);
+          const scale = baseW / naturalW;
+          bgFixedState = {
+            dataUrl,
+            widthAtZoom1: (naturalW * scale) / z,
+            heightAtZoom1: (naturalH * scale) / z
+          };
+          applyFixedImageStyle();
+        };
+        probe.src = dataUrl;
+      });
+      e.target.value = '';
+    });
+
+    // 줌이 실제로 바뀌었을 때만 다시 그림 — rotateCanvas90()이 캔버스 크기를 다시 맞추려고
+    // "바뀌지 않은" 같은 zoom 값으로 이 훅을 호출하는 경우가 있는데, 그때는 그냥 건너뛰어서
+    // 회전에는 절대 반응하지 않게 함(요청: "캔버스 회전 기능과 적용되면 안 됨").
+    EP.onFixedBgZoomChange = function(newZoom){
+      if (!bgFixedState) return;
+      if (lastZoomForFixedImg != null && Math.abs(newZoom - lastZoomForFixedImg) < 1e-6) return;
+      applyFixedImageStyle();
+    };
+
+    // 프로젝트 저장(json)·템플릿 갤러리 불러오기에서 재사용할 수 있게 노출.
+    // 인쇄용 PNG/JPG/SVG 내보내기 쪽 함수에서는 일부러 이걸 전혀 참조하지 않음
+    // (요청: "파일 저장에는 개입 안 해도 됨 — 그냥 이건 미관용이니까").
+    EP.getBgReferenceImagesForSave = function(){
+      if (!bgFillDataUrl && !bgFixedState) return null;
+      return { bgFill: bgFillDataUrl, bgFixed: bgFixedState };
+    };
+    EP.applyBgReferenceImagesFromSave = function(data){
+      if (!data) return;
+      // 페이지 초기화 중(프로젝트 자동 불러오기 등)에 이 함수가 너무 일찍 불리면, 브라우저가
+      // 아직 레이아웃 계산을 다 안 끝낸 상태라 이미지가 순간적으로 원래보다 커 보였다 다시
+      // 제자리로 줄어드는 "깜빡임"이 생길 수 있어서, 화면이 최소 두 번 그려진 뒤(레이아웃이
+      // 확실히 자리잡은 뒤)에 실제로 보여주도록 함.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (data.bgFill) {
+            bgFillDataUrl = data.bgFill;
+            fillImg.src = bgFillDataUrl;
+            fillImg.classList.remove('hidden');
+          }
+          if (data.bgFixed) {
+            bgFixedState = data.bgFixed;
+            applyFixedImageStyle();
+          }
+        });
+      });
+    };
+  })();
 
 })();

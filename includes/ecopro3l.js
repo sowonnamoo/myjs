@@ -317,4 +317,10 @@
       step();
     });
   }
+
+  // 이 파일이 쓰는 랜덤 필터 조합 기억용 속성을 중앙 레지스트리에 등록 — 실행취소·저장·
+  // SVG내보내기·복제에 자동으로 반영됨.
+  if (EP.registerCustomObjectProps) {
+    EP.registerCustomObjectProps(['_lastRollComboIds']);
+  }
 })();

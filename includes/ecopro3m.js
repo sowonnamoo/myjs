@@ -278,8 +278,13 @@
     setQaMDetailExpanded(!qaMPopover.classList.contains('qa-expanded'));
   });
 
-  // P의 positionQaPopover와 동일한 방식(대상 중앙 아래쪽, 공간 부족하면 위쪽).
+  // PC에서는 캔버스 좌측 상단 모서리에 가지런히 배치(회전 고려 없음, T/글씨 팝업과 동일).
+  // 모바일은 예전 그대로 오브젝트 근처에 뜸.
   function positionQaMPopover(target){
+    if (!(EP.isMobileModeActive && EP.isMobileModeActive())) {
+      EP.positionPopoverAtCanvasCorner(qaMPopover);
+      return;
+    }
     qaMPopover.classList.remove('hidden');
     const pw = qaMPopover.offsetWidth || 200;
     const ph = qaMPopover.offsetHeight || 140;
@@ -391,7 +396,8 @@
   EP.canvas.on('selection:updated', autoOpenQaMPopoverIfHasEffect);
 
   EP.makeDraggablePopover(qaMPopover);
-  EP.registerRotatablePopover(qaMPopover);
+  // registerRotatablePopover는 일부러 안 함 — PC에서는 캔버스 회전을 완전히 무시해야
+  // 하므로, 팝업이 열려있는 채로 회전 버튼을 눌러도 전역 재회전 로직에 걸려 돌아가면 안 됨.
 
   /* ============================================================
      여기서부터는 모든 모양필터를 "벡터(SVG)"로 만듭니다.
@@ -1445,4 +1451,10 @@
   EP.qaShapeDetails = qaShapeDetails;
   EP.qaMFilterSelect = qaMFilterSelect;
   EP.rollShapeDice = rollShapeDice; // M의 "랜덤 적용" 로직을 다른 기능(예: 캔버스 바탕 랜덤 생성)에서도 재사용
+
+  // 이 파일이 쓰는 도형 필터 커스텀 속성을 중앙 레지스트리에 등록 — 실행취소·저장·SVG내보내기·
+  // 복제에 자동으로 반영됨(ecopro3text.js와 동일한 이유).
+  if (EP.registerCustomObjectProps) {
+    EP.registerCustomObjectProps(['_comboLayers', '_comboSize', '_comboPrevFill']);
+  }
 })();

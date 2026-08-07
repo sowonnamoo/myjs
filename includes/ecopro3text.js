@@ -8620,4 +8620,24 @@
 
   EP.reapplyCircularTextPatches = reapplyCircularTextPatches;
   EP.hasAnyRenderEffect = hasAnyRenderEffect;
+
+  // 이 파일이 쓰는 텍스트 효과 커스텀 속성 전부를 중앙 레지스트리에 등록 — 이렇게 해두면
+  // 실행취소·저장(json)·SVG내보내기·복제 네 군데 전부에서 ecopro3.js를 다시 손대지 않아도
+  // 자동으로 챙겨짐. 앞으로 이 파일에 새 효과를 추가할 때는 이 목록에 한 줄만 추가하면 됨.
+  if (EP.registerCustomObjectProps) {
+    EP.registerCustomObjectProps([
+      'circularText', 'verticalText', 'puffyText', 'vineText', 'rollText', 'perspectiveText',
+      'curveText', 'waveText', 'trainText', 'tiredText', 'spiralText', 'magazineText', 'puzzleText',
+      'skyText', 'chalkText', 'postalText', 'grassText', 'bigbangText', 'eventText', 'golfText',
+      'christmasText', 'autumnText', 'spaceText', 'doodleText', 'butterflyText', 'soapbubbleText',
+      'lightningText', 'halloweenText', 'musicnoteText', 'gemText', 'tropicalText', 'candyText',
+      'jumpText', 'pulseText', 'swayText', 'waddleText', 'popcornText', 'hiccupText', 'breatheText',
+      'flickerText', 'chatterText', 'walkText', 'doubleOutline', 'threeDText', 'metalText',
+      'popArtText', 'inkTrapText', 'leafVineText', 'sakuraText', 'shyText', 'fireText', 'meltText',
+      'bubbleText', 'zebraText', 'toteText', 'speedText', 'reflectionText', 'crackText',
+      'footprintText', 'animalText', 'seafoodText', 'heartText', 'coffeeText', 'sportsText',
+      'clubText', 'splashText', 'tileText', 'fruitVegText', 'snowText', 'rainText', 'randomTypo',
+      'glitchText', 'tearText', 'lightText'
+    ]);
+  }
 })();

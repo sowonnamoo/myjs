@@ -114,7 +114,13 @@
   });
 
   // T버튼 팝오버와 동일한 방식: 오브젝트 중앙 아래쪽에 표시 (공간 부족하면 위쪽)
+  // PC에서는 캔버스 좌측 상단 모서리에 가지런히 배치(회전 고려 없음). 모바일은 예전 그대로
+  // 오브젝트 근처에 뜸.
   function positionQaPopover(target){
+    if (!(EP.isMobileModeActive && EP.isMobileModeActive())) {
+      EP.positionPopoverAtCanvasCorner(qaPopover);
+      return;
+    }
     qaPopover.classList.remove('hidden');
     const pw = qaPopover.offsetWidth || 200;
     const ph = qaPopover.offsetHeight || 140;
@@ -627,7 +633,8 @@
   // 패널을 자유롭게 드래그로 이동 (드롭다운/게이지/스와치/닫기버튼 위에서는 드래그 시작 안 함)
 
   EP.makeDraggablePopover(qaPopover);
-  EP.registerRotatablePopover(qaPopover);
+  // registerRotatablePopover는 일부러 안 함 — PC에서는 캔버스 회전을 완전히 무시해야
+  // 하므로, 팝업이 열려있는 채로 회전 버튼을 눌러도 전역 재회전 로직에 걸려 돌아가면 안 됨.
 
   function populate_shadow(anchor){
         const sh = anchor.shadow;

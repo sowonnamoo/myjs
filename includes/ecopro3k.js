@@ -305,4 +305,10 @@
   EP.canvas.on('selection:created', closeIfTargetChanged);
   EP.canvas.on('selection:updated', closeIfTargetChanged);
   EP.canvas.on('selection:cleared', hideKPopover);
+
+  // 이 파일이 쓰는 클립마스크 위치 기준값을 중앙 레지스트리에 등록 — 실행취소·저장·
+  // SVG내보내기·복제에 자동으로 반영됨.
+  if (EP.registerCustomObjectProps) {
+    EP.registerCustomObjectProps(['_clipMaskRelativeMatrix']);
+  }
 })();
