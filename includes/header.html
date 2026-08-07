@@ -58,7 +58,15 @@
 }
 
 /* 메가메뉴 */
-.mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; position: relative; }
+.mega-menu-wrap {
+    width: 1199px;
+    margin: 0 auto;
+    margin-bottom: 40px;
+    background: #fcfcfc;
+    position: relative;
+    box-shadow: 0 0 0 100vmax #fcfcfc;   /* 배경을 화면 좌우 끝까지 확장 */
+    clip-path: inset(0 -100vmax);        /* 확장된 배경 때문에 가로 스크롤 생기지 않도록 */
+}
 .mega-menu-wrap::before,
 .mega-menu-wrap::after {
     content: "";
