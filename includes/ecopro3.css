@@ -1182,15 +1182,17 @@ body.mobile-focus-mode{
 .template-gallery-list{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .template-gallery-item{
   border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;
-  padding:0;overflow:hidden;transition:.12s;flex-shrink:0;
+  padding:0;overflow:hidden;transition:.12s;flex-shrink:0;position:relative;
 }
 .template-gallery-item.hidden{display:none;}
 .template-gallery-item:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.08);}
-.template-gallery-item img{width:100%;display:block;background:#f4f5f7;}
+.template-gallery-item img{width:100%;height:90px;object-fit:cover;display:block;background:#f4f5f7;}
 .template-gallery-item .template-gallery-name{
   font-size:10.5px;color:var(--sub);padding:5px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   border-top:1px solid var(--line);
 }
+/* 클릭해서 실제 json을 받아오는 동안(짧게) 살짝 흐리게 표시 */
+.template-gallery-item-loading{opacity:.5;pointer-events:none;}
 /* 모바일에서는 화면 폭이 좁아 side-panel 자체가 드로어(서랍)로 바뀌므로, 이 패널은 PC에서만 보임 */
 @media (max-width:900px){
   .template-gallery-panel{display:none !important;}

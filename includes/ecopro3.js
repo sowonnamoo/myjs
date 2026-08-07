@@ -4936,8 +4936,9 @@
     if (!panel || !listEl || !hintEl || !searchInput) return;
 
     const FOLDER_API_URL = 'https://api.github.com/repos/sowonnamoo/myjs/contents/templates';
+    const TEMPLATES_PAGES_BASE = 'https://sowonnamoo.github.io/myjs/templates/';
 
-    let templates = []; // [{ name, url, data, itemEl }]
+    let templates = []; // [{ name, jsonUrl, jpgUrl, itemEl }] — json 내용은 클릭 전까지 아예 안 받아옴
     let panelEnabled = false; // 목록을 정상적으로 불러왔을 때만 true
 
     // side-panel이 지금 "선택 없음" 상태인지를 그 DOM 상태만 읽어서 판단 — side-panel 쪽
@@ -4956,116 +4957,11 @@
     canvas.on('selection:updated', updateGalleryVisibility);
     canvas.on('selection:cleared', updateGalleryVisibility);
 
-    // 템플릿 json 하나를 오프스크린(화면에 안 보이는) 임시 캔버스에 그려서 작은 미리보기
-    // 이미지(PNG data URL)를 만듦. 실제 메인 캔버스는 전혀 건드리지 않음.
-    function renderThumbnail(data, cb){
-      const srcW = data.canvasWidth || CANVAS_W;
-      const srcH = data.canvasHeight || CANVAS_H;
-      // 템플릿 안에 이미지 오브젝트가 있으면 crossOrigin을 지정해둬야 함 — 없으면 다른
-      // 도메인 이미지를 불러왔을 때 캔버스가 "오염"되어 아래 toDataURL이 막힘(사진접수
-      // 시스템 자체 편집 진입 때와 동일한 이유의 같은 수정, photo-order.html 참고).
-      const objectsWithCrossOrigin = (data.objects || []).map((o) => {
-        if (o && o.type === 'image' && !o.crossOrigin) return Object.assign({}, o, { crossOrigin: 'anonymous' });
-        return o;
-      });
-      const tempEl = document.createElement('canvas');
-      const tempCanvas = new fabric.StaticCanvas(tempEl, { width: srcW, height: srcH });
-      tempCanvas.loadFromJSON(
-        { objects: objectsWithCrossOrigin, background: data.background || '#ffffff' },
-        () => {
-          const THUMB_W = 132;
-          try {
-            const dataUrl = tempCanvas.toDataURL({ format: 'png', multiplier: THUMB_W / srcW });
-            cb(dataUrl, Math.round(THUMB_W * (srcH / srcW)));
-          } catch (err) {
-            // crossOrigin을 지정해도, 이미지 서버가 CORS(Access-Control-Allow-Origin)를 아예
-            // 안 열어주면 여전히 오염될 수 있음 — 그래도 목록/클릭 기능은 계속 동작해야 하므로
-            // 미리보기 이미지만 생략하고 조용히 넘어감
-            console.error('템플릿 미리보기 생성 실패:', err);
-            cb(null, 90);
-          } finally {
-            tempCanvas.dispose();
-          }
-        }
-      );
-    }
-
-    function renderGalleryList(){
-      listEl.innerHTML = '';
-      templates.forEach((tpl) => {
-        const item = document.createElement('div');
-        item.className = 'template-gallery-item hidden'; // 평소엔 안 보이고 검색으로 매칭될 때만 나타남
-        tpl.itemEl = item;
-        const img = document.createElement('img');
-        img.alt = tpl.name;
-        tpl.imgEl = img;
-        tpl.thumbnailReady = false; // 미리보기는 실제로 화면에 보일 때 그때 처음 만듦(아래 lazy 렌더)
-        item.appendChild(img);
-        const nameEl = document.createElement('div');
-        nameEl.className = 'template-gallery-name';
-        nameEl.textContent = tpl.name;
-        item.appendChild(nameEl);
-        listEl.appendChild(item);
-
-        // 클릭하면 지금 작업 중인 디자인/면 캔버스로 이 레이아웃을 그대로 불러옴
-        // (파일 불러오기 때와 동일하게, 캔버스 크기가 다르면 rescaleSideDataToCurrentCanvas로
-        // 지금 캔버스 크기에 맞게 자동 보정됨)
-        // ⚠️ bgReferenceImages는 여기서도 자동 복원 안 함(위 applyProjectData와 같은 이유 —
-        // 깜빡임 문제 때문에 자동 복원 경로를 전부 꺼둠)
-        item.addEventListener('click', () => {
-          const scaled = rescaleSideDataToCurrentCanvas(tpl.data, tpl.data.canvasWidth, tpl.data.canvasHeight);
-          loadCanvasObjects(scaled, () => {
-            resetHistory();
-            pushHistory();
-          });
-        });
-      });
-    }
-
-    // 미리보기(썸네일)는 만드는 비용이 꽤 커서(오프스크린 캔버스에 json 전체를 실제로
-    // 그려서 이미지로 뽑는 과정) 목록에 있는 템플릿 전부를 한꺼번에 미리 만들어두면 페이지가
-    // 느려짐 — 실제로 검색 결과로 화면에 나타나는 것만, 그것도 처음 나타나는 그 순간에 딱
-    // 한 번만 만들도록 지연시킴(요청: "미리보기 때문에 늦어지는 거 맞아").
-    function ensureThumbnail(tpl){
-      if (tpl.thumbnailReady) return;
-      tpl.thumbnailReady = true; // 중복 생성 방지(생성 중에도 다시 안 만들도록 먼저 표시)
-      renderThumbnail(tpl.data, (dataUrl, h) => {
-        if (dataUrl) {
-          tpl.imgEl.src = dataUrl;
-          tpl.imgEl.style.height = h + 'px';
-        } else {
-          tpl.imgEl.style.display = 'none'; // 미리보기 생성 실패 시 이미지 없이 이름만 보임(클릭은 정상 동작)
-        }
-      });
-    }
-
-    // 검색창 — 다시 fetch하지 않고, 이미 불러온 목록을 이름 기준으로 걸러서 보이기/숨기기만 함.
-    // 평소(검색어 없음)에는 아무것도 안 보이고, 뭔가 입력했을 때만 매칭되는 것만 나타남.
-    function applySearchFilter(){
-      const q = searchInput.value.trim().toLowerCase();
-      templates.forEach((tpl) => {
-        if (!tpl.itemEl) return;
-        const match = !!q && tpl.name.toLowerCase().includes(q);
-        tpl.itemEl.classList.toggle('hidden', !match);
-        if (match) ensureThumbnail(tpl); // 실제로 보이게 되는 순간에만 미리보기 생성
-      });
-      hintEl.classList.toggle('hidden', !!q);
-    }
-    searchInput.addEventListener('input', applySearchFilter);
-    searchInput.addEventListener('click', (e) => e.stopPropagation());
-
-    // 파일 "목록"은 GitHub Pages가 폴더 목록 기능을 제공하지 않아서(정적 호스팅이라 index 파일이
-    // 없으면 목록을 못 줌) 어쩔 수 없이 GitHub API로 조회하고, 실제 각 json "내용"은 요청하신
-    // https://sowonnamoo.github.io/myjs/templates/ 폴더에서 그대로 fetch함.
-    const TEMPLATES_PAGES_BASE = 'https://sowonnamoo.github.io/myjs/templates/';
-
     // templates 폴더에 넣는 json이 두 형태 중 뭐든 가능하도록 정규화함:
     //  1) 단일 캔버스 형태: { objects, background, canvasWidth, canvasHeight }
     //  2) "저장" 버튼(saveProjectBtn)이 만드는 전체 프로젝트 파일 형태:
     //     { designData: [{front, back}, ...], canvasWidth, canvasHeight, designNames }
     //     — 이 경우 첫 번째 디자인의 앞면을 템플릿 레이아웃으로 씀.
-    // 미리보기가 안 뜨고 클릭해도 안 불러와지던 문제는 대부분 이 형태 불일치 때문이었음
-    // (raw.objects가 없으면 빈 캔버스로 그려져서 아무것도 안 보였던 것).
     function normalizeTemplateData(raw){
       if (raw && Array.isArray(raw.objects)) return raw;
       if (raw && Array.isArray(raw.designData) && raw.designData[0] && raw.designData[0].front) {
@@ -5074,12 +4970,75 @@
           objects: front.objects || [],
           background: front.background || '#ffffff',
           canvasWidth: raw.canvasWidth,
-          canvasHeight: raw.canvasHeight,
-          bgReferenceImages: raw.bgReferenceImages || null // 참고용 배경사진도 있으면 같이 넘김
+          canvasHeight: raw.canvasHeight
         };
       }
       return { objects: [], background: '#ffffff' };
     }
+
+    function renderGalleryList(){
+      listEl.innerHTML = '';
+      templates.forEach((tpl) => {
+        const item = document.createElement('div');
+        item.className = 'template-gallery-item hidden'; // 평소엔 안 보이고 검색으로 매칭될 때만 나타남
+        tpl.itemEl = item;
+
+        // 미리보기는 json을 그려서 만드는 게 아니라, 같은 이름의 jpg를 그냥 <img>로 보여줌
+        // (요청: "같은 이름의 jpg로 미리보기를 대처") — 캔버스 렌더링 비용이 전혀 없어서
+        // 훨씬 빠름. loading="lazy"까지 붙여서 실제로 화면에 나타날 때만 브라우저가 받아옴.
+        const img = document.createElement('img');
+        img.alt = tpl.name;
+        img.loading = 'lazy';
+        img.src = tpl.jpgUrl;
+        img.onerror = () => { img.style.display = 'none'; }; // 같은 이름 jpg가 없으면 이름만 보임(클릭은 정상 동작)
+        item.appendChild(img);
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'template-gallery-name';
+        nameEl.textContent = tpl.name;
+        item.appendChild(nameEl);
+        listEl.appendChild(item);
+
+        // 클릭한 그 순간에야 비로소 실제 json을 받아와서 캔버스에 불러옴(요청: "그 이미지를
+        // 클릭하면 그때 json을 불러오는거지") — 그전까지는 네트워크 요청 자체가 안 나감.
+        // ⚠️ bgReferenceImages는 자동 복원 안 함(깜빡임 문제로 자동 복원 경로를 전부 꺼둠)
+        item.addEventListener('click', () => {
+          item.classList.add('template-gallery-item-loading');
+          fetch(tpl.jsonUrl)
+            .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then((raw) => {
+              const data = normalizeTemplateData(raw);
+              const scaled = rescaleSideDataToCurrentCanvas(data, data.canvasWidth, data.canvasHeight);
+              loadCanvasObjects(scaled, () => {
+                resetHistory();
+                pushHistory();
+              });
+            })
+            .catch((err) => {
+              console.error('템플릿 불러오기 실패:', err);
+              if (EP.showBottomHintToast) EP.showBottomHintToast('이 레이아웃을 불러오지 못했어요.');
+            })
+            .finally(() => {
+              item.classList.remove('template-gallery-item-loading');
+            });
+        });
+      });
+    }
+
+    // 검색창 — 다시 fetch하지 않고, 이미 불러온 파일명 목록을 이름 기준으로 걸러서
+    // 보이기/숨기기만 함. 평소(검색어 없음)에는 아무것도 안 보이고, 뭔가 입력했을 때만
+    // 매칭되는 것만 나타남.
+    function applySearchFilter(){
+      const q = searchInput.value.trim().toLowerCase();
+      templates.forEach((tpl) => {
+        if (!tpl.itemEl) return;
+        const match = !!q && tpl.name.toLowerCase().includes(q);
+        tpl.itemEl.classList.toggle('hidden', !match);
+      });
+      hintEl.classList.toggle('hidden', !!q);
+    }
+    searchInput.addEventListener('input', applySearchFilter);
+    searchInput.addEventListener('click', (e) => e.stopPropagation());
 
     // 앞 페이지(photo-order.html 등)에서 쿼리로 넘어온 "실제 읽을 수 있는 상품명" — productId
     // 같은 코드(예: "01my")는 실사용자가 검색할 리 없으니 쓰지 않고, 사람이 읽는 한글 이름
@@ -5101,6 +5060,10 @@
     const productName = resolveReadableProductName();
     const searchTerm = productName || '기본';
 
+    // 파일 "목록"은 GitHub Pages가 폴더 목록 기능을 제공하지 않아서(정적 호스팅이라 index 파일이
+    // 없으면 목록을 못 줌) 어쩔 수 없이 GitHub API로 조회함. 여기서는 파일명만 필요하고 json
+    // 내용은 전혀 안 받아오기 때문에(미리보기는 jpg로 대체, json은 클릭해야 받아옴) 이 목록
+    // 조회 하나로 끝남 — 예전처럼 모든 json을 미리 다 받아오지 않아서 훨씬 빠름.
     hintEl.textContent = '불러오는 중...';
     fetch(FOLDER_API_URL)
       .then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
@@ -5108,17 +5071,16 @@
         const jsonFiles = (Array.isArray(files) ? files : [])
           .filter((f) => f.type === 'file' && /\.json$/i.test(f.name));
         if (!jsonFiles.length) throw new Error('templates 폴더에 json 파일 없음');
-        return Promise.all(jsonFiles.map((f) => {
-          const pageUrl = TEMPLATES_PAGES_BASE + encodeURIComponent(f.name);
-          return fetch(pageUrl)
-            .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-            .then((raw) => ({ name: f.name.replace(/\.json$/i, ''), url: pageUrl, data: normalizeTemplateData(raw) }))
-            .catch(() => null); // 개별 레이아웃 하나가 깨져 있어도 나머지는 계속 보여줌
-        }));
-      })
-      .then((results) => {
-        templates = results.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-        if (!templates.length) throw new Error('불러온 레이아웃 없음');
+        templates = jsonFiles
+          .map((f) => {
+            const base = f.name.replace(/\.json$/i, '');
+            return {
+              name: base,
+              jsonUrl: TEMPLATES_PAGES_BASE + encodeURIComponent(f.name),
+              jpgUrl: TEMPLATES_PAGES_BASE + encodeURIComponent(base) + '.jpg'
+            };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
         panelEnabled = true;
         renderGalleryList();
         updateGalleryVisibility();
