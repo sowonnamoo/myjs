@@ -554,11 +554,15 @@
 const HANDOFF_DB_NAME = 'ecogrHandoff';
 const HANDOFF_STORE_NAME = 'kv';
 const CART_KEY = 'ecogr_cart';
-// 카트 보관시간 — 카트에 상품이 처음 담긴 것을 이 페이지가 확인한 시점부터 1시간 후 전체 삭제.
+// 카트 보관시간 — 카트에 상품이 담긴 그날 자정(00:00)이 지나면 전체 삭제.
 // (sian.html에서 담는 시점 자체는 이 파일이 알 수 없어서, cart.html이 그 상태를 처음 확인한
-// 시점을 기준으로 타이머를 시작함)
+// 시점을 기준으로 "다음에 돌아오는 자정" 을 삭제 시각으로 잡음)
 const CART_EXPIRY_KEY = 'ecogr_cart_expires_at';
-const CART_TTL_MS = 60 * 60 * 1000; // 1시간
+function getNextMidnightMs(){
+    const d = new Date();
+    d.setHours(24, 0, 0, 0); // 오늘 24:00 = 다음날 00:00
+    return d.getTime();
+}
 function openHandoffDB(){
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(HANDOFF_DB_NAME, 1);
@@ -1066,23 +1070,22 @@ document.addEventListener('keydown', (e) => {
         cart = [];
     }
 
-    // ---- 카트 보관시간(1시간) 체크 ----
+    // ---- 카트 보관시간(그날 자정까지) 체크 ----
     try {
         let expiresAt = await idbGet(CART_EXPIRY_KEY);
         const now = Date.now();
 
         if(cart.length > 0){
             if(!expiresAt){
-                // 이 카트에 상품이 담긴 걸 처음 확인한 시점부터 1시간 카운트 시작
-                expiresAt = now + CART_TTL_MS;
+                // 이 카트에 상품이 담긴 걸 처음 확인한 시점 기준, 다음에 돌아오는 자정을 삭제 시각으로 저장
+                expiresAt = getNextMidnightMs();
                 await idbSet(CART_EXPIRY_KEY, expiresAt);
             } else if(now >= expiresAt){
-                // 보관시간(1시간) 초과 -> 카트 전체 삭제
+                // 자정이 지남 -> 카트 전체 삭제 (메시지 없음)
                 cart = [];
                 await idbDelete(CART_KEY);
                 await idbDelete(CART_EXPIRY_KEY);
                 expiresAt = null;
-                alert('장바구니 보관 시간(1시간)이 지나 담아두신 상품이 모두 삭제되었습니다.\n다시 담아주세요.');
             }
         } else if(expiresAt){
             // 카트가 비어있는데 만료 타이머만 남아있으면 같이 정리
@@ -1090,7 +1093,7 @@ document.addEventListener('keydown', (e) => {
             expiresAt = null;
         }
 
-        // 페이지를 계속 열어둔 상태로 보관시간이 지나면, 새로고침 없이도 자동으로 비움
+        // 페이지를 계속 열어둔 상태로 자정을 넘기면, 새로고침 없이도 자동으로 비움 (메시지 없음)
         if(expiresAt && expiresAt > now){
             setTimeout(async () => {
                 cart = [];
@@ -1098,7 +1101,6 @@ document.addEventListener('keydown', (e) => {
                 await idbDelete(CART_EXPIRY_KEY);
                 render();
                 validateCartImages();
-                alert('장바구니 보관 시간(1시간)이 지나 담아두신 상품이 모두 삭제되었습니다.\n다시 담아주세요.');
             }, expiresAt - now);
         }
     } catch (e) {
