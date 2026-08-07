@@ -13,22 +13,13 @@
 .search-wrap { display: flex; align-items: center; background: #fff; border: 2px solid #ccc; border-radius: 40px; padding: 0 10px; height: 40px; }
 .search-wrap input { border: none; width: 100%; outline: none; padding: 0 10px; }
 .search-btn { 
-    width: 25px; 
-    height: 25px; 
+    width: 15px; 
+    height: 15px; 
     background: #68b600; 
-    color: white;             /* 특수문자 색상 */
     border-radius: 50%; 
     border: none; 
     cursor: pointer; 
-    flex: 0 0 25px;           /* 찌그러짐 방지 */
-    
-    /* 글자 중앙 정렬 */
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    
-    font-size: 12px;          /* 글자 크기 조절 */
-    line-height: 1;           /* 줄간격 제거 */
+    flex: 0 0 15px;           /* 찌그러짐 방지 */
     padding: 0; 
 }
 
@@ -74,7 +65,7 @@
 .menu-item > a[onclick] { cursor: default; }
 
 /* "전체상품보기" — 다른 카테고리와 똑같이 메가메뉴 아이템으로 동작(호버 시 패널이 열림) */
-.all-products-item > a { display: flex; align-items: center; gap: 7px; color: #68b600; }
+.all-products-item > a { display: flex; align-items: center; gap: 7px; color: #333; }
 /* 메인페이지에서는 호버 없이도 이 패널이 항상 펼쳐진 상태로 보임 */
 .all-products-item.force-open .mega-panel { display: block; }
 
@@ -167,7 +158,7 @@
             <div class="search-container">
                 <div class="search-wrap">
                     <input type="text" id="searchInput" placeholder="제품♥을 검색해주세요.">
-                    <button class="search-btn" onclick="executeSearch()">●</button>
+                    <button class="search-btn" onclick="executeSearch()" aria-label="검색"></button>
                 </div>
                 <div id="suggestions" class="search-suggestions"></div>
             </div>
