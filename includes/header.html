@@ -58,7 +58,19 @@
 }
 
 /* 메가메뉴 */
-.mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; border-top: 2px solid #333; border-bottom: 2px solid #333; position: relative; }
+.mega-menu-wrap { width: 1199px; margin: 0 auto; margin-bottom: 40px; background: #fcfcfc; position: relative; }
+.mega-menu-wrap::before,
+.mega-menu-wrap::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    width: 100vw;
+    height: 2px;
+    background: #333;
+    transform: translateX(-50%);
+}
+.mega-menu-wrap::before { top: 0; }
+.mega-menu-wrap::after { bottom: 0; }
 .mega-menu-list { display: flex; justify-content: center; list-style: none; margin: 0; padding: 0; }
 .menu-item { position: static; padding: 15px 20px; }
 .menu-item > a { text-decoration: none; color: #333; font-weight: bold; }
