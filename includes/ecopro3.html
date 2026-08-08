@@ -41,6 +41,7 @@
         <div class="mobile-menu-group" id="mobileMenuBasicGroup">
           <button type="button" class="dropdown-item" id="mobileNewCanvasBtn" title="캔버스에 흰색 바탕을 새로 깔아요">🆕 새로 만들기</button>
           <button type="button" class="dropdown-item" id="mobileRandomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 랜덤 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 랜덤 디자인 생성</button>
+          <button type="button" class="dropdown-item" id="mobileBasicBgFillBtn" title="캔버스 전체를 채우는 배경을 만들어요">🎨 바탕 채우기</button>
           <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="mobileShapePickerBtn" title="사각형·원·삼각형·별·하트·자유모양 등 원하는 모양을 골라 만들어요 (PC의 '편집하기 > 모양 만들기'와 동일한 기능)">◆ 모양 만들기</button>
           <button type="button" class="dropdown-item" id="mobileAddTextBtn" title="캔버스에 새 텍스트를 추가해요 (PC의 '편집하기 > 텍스트'와 동일한 기능)">🅣 텍스트 추가</button>
@@ -336,8 +337,7 @@
           <input type="text" id="logoNameInput" style="width:340px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;" placeholder="예: 대신 일렉트로닉스" maxlength="40">
         </div>
         <div class="table-toolbar-row">
-          <button type="button" class="btn primary" id="applyLogoBtn" disabled>🔤 로고 만들기</button>
-          <button type="button" class="btn" id="randomLogoBtn" disabled title="큰 이니셜 뒤에 금속(메탈) 그라디언트 원형 배지를 무작위 색상으로 넣어서 만들어요">🎲 랜덤 로고 만들기</button>
+          <button type="button" class="btn primary" id="randomLogoBtn" disabled title="큰 이니셜 뒤에 금속(메탈) 그라디언트 원형 배지를 무작위 색상으로 넣어서 만들어요 — 누를 때마다 새 조합으로 계속 바뀝니다">🎲 랜덤로고만들기 (연속클릭)</button>
           <button type="button" class="btn" id="cancelLogoBtn">✕ 닫기</button>
         </div>
       </div>

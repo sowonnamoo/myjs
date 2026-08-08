@@ -1705,6 +1705,7 @@
   forwardMobileCustomBtn('mobileCustomAddLogoBtn', 'addLogoBtn');
   forwardMobileCustomBtn('mobileCustomAddMenuBtn', 'addMenuBtn');
   forwardMobileCustomBtn('mobileCustomAddBgFillBtn', 'addBgFillBtn');
+  forwardMobileCustomBtn('mobileBasicBgFillBtn', 'addBgFillBtn');
   forwardMobileCustomBtn('mobileCustomSaveProjectBtn', 'saveProjectBtn');
   forwardMobileCustomBtn('mobileCustomAutoSaveToggleBtn', 'autoSaveToggleBtn');
 
@@ -3946,9 +3947,9 @@
           // 2) 회색선(도련)까지 이미지가 채워졌는지 검사
           if (!isFullyBled()) {
             await showBoldAlertModal(
-              `${label} — 바탕이미지를 붉은선 밖 회색선까지 이미지를 채워주세요.<br>` +
               `<b>회색선 너머까지 이미지를 늘려 주세요.</b><br>` +
-              `[이미지 또는 바탕으로 사용한 흰색 배경을 붉은선(재단선) 밖 회색선 너머까지 꽉 채워주세요]`
+              `[이미지 또는 바탕으로 사용한 흰색 배경을 붉은선(재단선) 밖 회색선 너머까지 꽉 채워주세요]<br>` +
+              `바탕생성 방법 : 상단 편집 메뉴클릭 → 바탕채우기`
             );
             await loadDesignForExport(originalIdx, originalSide);
             guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
