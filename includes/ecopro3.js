@@ -471,6 +471,22 @@
      캔버스 회전 각도는 전혀 고려하지 않음 — 항상 고정된 화면 좌표에 그대로 붙음.
   ============================================================ */
   EP.cornerAnchoredPopovers = EP.cornerAnchoredPopovers || [];
+  // "상세조정하기"를 펼치거나 접어서 팝업 크기(주로 높이)만 바뀌었을 때 쓰는 가벼운 함수 —
+  // 코너 앵커 스택 순서를 다시 계산하지 않고, 지금 있는 그 자리를 기준으로 화면 밖으로 안
+  // 나가게만 다시 클램프하고 회전 스타일만 재적용함. 펼치기/접기 때마다 EP.positionPopoverAtCanvasCorner를
+  // 통째로 다시 돌리면(코너 스택 재계산) 다른 자리로 훌쩍 옮겨간 뒤에 펼쳐지는 것처럼 보이는
+  // 문제가 있었음(요청: "밑으로 이동후 펼쳐지는게 문제") — 이 함수는 그 자리에서 그냥
+  // 자연스럽게 커지도록(다른 드롭다운처럼 "바로 아래 펼쳐짐") 만들어줌.
+  EP.reclampPopoverInPlace = function(popoverEl){
+    const pw = popoverEl.offsetWidth, ph = popoverEl.offsetHeight;
+    const curLeft = parseFloat(popoverEl.style.left) || 0;
+    const curTop = parseFloat(popoverEl.style.top) || 0;
+    const r = EP.clampPopoverRect(curLeft, curTop, pw, ph, EP.canvasRotationDeg);
+    popoverEl.style.left = r.left + 'px';
+    popoverEl.style.top = r.top + 'px';
+    EP.applyPopoverRotationStyle(popoverEl);
+  };
+
   EP.positionPopoverAtCanvasCorner = function(popoverEl){
     popoverEl.classList.remove('hidden'); // 실제 크기를 재려면 먼저 보이는 상태여야 함
     const pw = popoverEl.offsetWidth || 200;
@@ -3664,6 +3680,11 @@
   upperCanvasEl.addEventListener('touchcancel', () => { if (ctxLongPressStart && ctxLongPressStart.touch) clearCtxLongPress(); });
 
   document.addEventListener('mousedown', (e) => {
+    // 모바일 "도구" 버튼 자신을 눌렀을 때는 여기서 먼저 닫아버리면 안 됨 — mousedown이
+    // click보다 먼저 일어나서, 여기서 먼저 닫히고 나면 버튼의 자체 토글 로직이 "지금 닫혀
+    // 있으니 다시 열자"로 오판해서 곧바로 재오픈되는 문제가 있었음(요청: "도구 한번 더
+    // 클릭하면 도구창 닫아지게" — 안 닫히는 것처럼 보였던 원인).
+    if (mobileCtxMenuBtn && mobileCtxMenuBtn.contains(e.target)) return;
     if (!ctxMenu.classList.contains('hidden') && !ctxMenu.contains(e.target)) hideContextMenu();
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
@@ -4443,6 +4464,48 @@
     el._cmykPopover = popover; // 다른 파일(예: ecopro3mobiletools.js)에서 이 색상칸의 팝업을 찾아 버튼 등을 덧붙일 수 있게 참조를 남겨둠
     if (EP.registerRotatablePopover) EP.registerRotatablePopover(popover); // 열려있는 채로 캔버스를 회전해도 즉시 같이 재회전됨
 
+    // 이 색상 선택창 자체를 터치·마우스로 끌어서 옮길 수 있게 함(요청) — EP.makeDraggablePopover는
+    // 재사용 못 함(그 함수의 제외 목록에 .cmyk-popover 자신이 들어있어서, 그건 "다른 팝업 안에
+    // 중첩된 색상칸을 눌렀을 때 그 부모 팝업이 안 끌리게" 하려는 목적이라 정반대 상황임).
+    // 여기서는 실제 조작 컨트롤(캔버스·입력창·버튼) 위에서만 드래그 시작을 막고, 그 외
+    // 빈 공간(슬라이더 사이 여백 등)을 누르면 창 전체가 움직이도록 별도로 구현함.
+    (function makeCmykPopoverDraggable(){
+      let dragging = false, dcx = 0, dcy = 0;
+      function startDrag(clientX, clientY, targetEl){
+        if (targetEl.closest('canvas, input, button')) return false;
+        dragging = true;
+        const r = popover.getBoundingClientRect();
+        dcx = clientX - (r.left + r.width / 2);
+        dcy = clientY - (r.top + r.height / 2);
+        return true;
+      }
+      function moveDrag(clientX, clientY){
+        if (!dragging) return;
+        const pw = popover.offsetWidth, ph = popover.offsetHeight;
+        const c = clampPopoverCenter(clientX - dcx, clientY - dcy, pw, ph, EP.canvasRotationDeg);
+        popover.style.left = (c.cx - pw / 2) + 'px';
+        popover.style.top = (c.cy - ph / 2) + 'px';
+      }
+      popover.addEventListener('mousedown', (e) => {
+        if (startDrag(e.clientX, e.clientY, e.target)) e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+      document.addEventListener('mouseup', () => { dragging = false; });
+      popover.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (startDrag(t.clientX, t.clientY, e.target)) e.preventDefault();
+      }, { passive: false });
+      document.addEventListener('touchmove', (e) => {
+        if (!dragging || !e.touches || !e.touches.length) return;
+        const t = e.touches[0];
+        moveDrag(t.clientX, t.clientY);
+        e.preventDefault();
+      }, { passive: false });
+      document.addEventListener('touchend', () => { dragging = false; });
+      document.addEventListener('touchcancel', () => { dragging = false; });
+    })();
+
     const svCanvas = popover.querySelector('.cmyk-sv');
     const hueCanvas = popover.querySelector('.cmyk-hue');
     const svCtx = svCanvas.getContext('2d');
@@ -4595,10 +4658,31 @@
 
     // ---- SV 사각형 클릭/드래그로 채도·명도 선택 ----
     let draggingSv = false;
+    // 화면 좌표(clientX/Y)를 캔버스 요소 "자기 자신의" 로컬 좌표로 변환함 — 팝업 전체가
+    // CSS로 회전(applyPopoverRotationStyle)돼 있으면, getBoundingClientRect()가 돌려주는
+    // 사각형은 회전 "이후"의 화면상 테두리라서 단순히 clientX - rect.left로 계산하면 실제
+    // 캔버스 안에서 클릭한 지점과 안 맞아 색이 엉뚱하게 골라지거나 반응이 없는 것처럼
+    // 보였음(요청: "cmyk 색상선택이 먹통이 되지 않고"). 회전 중심(요소의 정중앙)을 기준으로
+    // 포인터 벡터를 반대 방향으로 되돌려서(역회전) 캔버스 고유의 가로/세로 축으로 바꿔줌.
+    function screenToLocal(canvasEl, clientX, clientY){
+      const rect = canvasEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const rot = -(EP.canvasRotationDeg || 0) * Math.PI / 180; // 화면→로컬은 반대 방향으로 되돌림
+      const dx = clientX - cx, dy = clientY - cy;
+      const cos = Math.cos(rot), sin = Math.sin(rot);
+      const localDx = dx * cos - dy * sin;
+      const localDy = dx * sin + dy * cos;
+      return {
+        x: localDx + canvasEl.width / 2,
+        y: localDy + canvasEl.height / 2
+      };
+    }
+
     function pickSv(clientX, clientY){
-      const r = svCanvas.getBoundingClientRect();
-      const x = Math.max(0, Math.min(SV_W, clientX - r.left));
-      const y = Math.max(0, Math.min(SV_H, clientY - r.top));
+      const p = screenToLocal(svCanvas, clientX, clientY);
+      const x = Math.max(0, Math.min(SV_W, p.x));
+      const y = Math.max(0, Math.min(SV_H, p.y));
       if (isInBlockedTriangle(x, y)) return; // 이 영역은 선택할 수 없음
       sat = x / SV_W;
       val = 1 - y / SV_H;
@@ -4608,9 +4692,8 @@
     window.addEventListener('mousemove', (e) => { if (draggingSv) pickSv(e.clientX, e.clientY); });
     window.addEventListener('mouseup', () => { draggingSv = false; });
     svCanvas.addEventListener('mousemove', (e) => {
-      const r = svCanvas.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      svCanvas.style.cursor = isInBlockedTriangle(x, y) ? 'not-allowed' : 'crosshair';
+      const p = screenToLocal(svCanvas, e.clientX, e.clientY);
+      svCanvas.style.cursor = isInBlockedTriangle(p.x, p.y) ? 'not-allowed' : 'crosshair';
     });
     // 모바일(터치)에서도 PC 마우스 드래그와 똑같이 손가락을 누른 채 움직이며 색을 고를 수 있게
     // touch 이벤트를 mouse 이벤트와 동일한 방식으로 처리함. touchmove에서 preventDefault를
@@ -4632,24 +4715,24 @@
 
     // ---- 색상 띠 클릭/드래그로 색상(hue) 선택 ----
     let draggingHue = false;
-    function pickHue(clientX){
-      const r = hueCanvas.getBoundingClientRect();
-      const x = Math.max(0, Math.min(HUE_W, clientX - r.left));
+    function pickHue(clientX, clientY){
+      const p = screenToLocal(hueCanvas, clientX, clientY != null ? clientY : hueCanvas.getBoundingClientRect().top);
+      const x = Math.max(0, Math.min(HUE_W, p.x));
       hue = (x / HUE_W) * 360;
       refreshFromHsv(true);
     }
-    hueCanvas.addEventListener('mousedown', (e) => { draggingHue = true; pickHue(e.clientX); });
-    window.addEventListener('mousemove', (e) => { if (draggingHue) pickHue(e.clientX); });
+    hueCanvas.addEventListener('mousedown', (e) => { draggingHue = true; pickHue(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', (e) => { if (draggingHue) pickHue(e.clientX, e.clientY); });
     window.addEventListener('mouseup', () => { draggingHue = false; });
     // 색상 띠도 SV 사각형과 동일하게 터치 드래그 지원
     hueCanvas.addEventListener('touchstart', (e) => {
       draggingHue = true;
-      pickHue(e.touches[0].clientX);
+      pickHue(e.touches[0].clientX, e.touches[0].clientY);
       e.preventDefault();
     }, { passive: false });
     hueCanvas.addEventListener('touchmove', (e) => {
       if (!draggingHue) return;
-      pickHue(e.touches[0].clientX);
+      pickHue(e.touches[0].clientX, e.touches[0].clientY);
       e.preventDefault();
     }, { passive: false });
     hueCanvas.addEventListener('touchend', () => { draggingHue = false; });
