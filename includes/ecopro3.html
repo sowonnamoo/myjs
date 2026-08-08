@@ -40,6 +40,7 @@
         <!-- 기본모드(회색 "메뉴" 버튼)일 때 보이는 지금까지의 기존 메뉴 그대로 -->
         <div class="mobile-menu-group" id="mobileMenuBasicGroup">
           <button type="button" class="dropdown-item" id="mobileNewCanvasBtn" title="캔버스에 흰색 바탕을 새로 깔아요">🆕 새로 만들기</button>
+          <button type="button" class="dropdown-item" id="mobileRandomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 랜덤 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 랜덤 디자인 생성</button>
           <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="mobileShapePickerBtn" title="사각형·원·삼각형·별·하트·자유모양 등 원하는 모양을 골라 만들어요 (PC의 '편집하기 > 모양 만들기'와 동일한 기능)">◆ 모양 만들기</button>
           <button type="button" class="dropdown-item" id="mobileAddTextBtn" title="캔버스에 새 텍스트를 추가해요 (PC의 '편집하기 > 텍스트'와 동일한 기능)">🅣 텍스트 추가</button>
@@ -69,16 +70,16 @@
           <div class="dropdown-divider"></div>
           <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기 (JPG·PNG)</label>
           <label class="dropdown-item" for="fontInput">Aa 폰트 불러오기</label>
-          <label class="dropdown-item" for="bgFillImageInput">🖼 배경사진 호출 (배경채우기)</label>
-          <label class="dropdown-item" for="bgFixedImageInput">🖼 배경사진 호출 (고정형/목업)</label>
+          <label class="dropdown-item" for="bgFillImageInput">🖼 배경채우기</label>
+          <label class="dropdown-item" for="bgFixedImageInput">🖼 목형배경</label>
           <label class="dropdown-item" for="projectInput">📂 프로젝트 불러오기</label>
           <button type="button" class="dropdown-item" id="mobileCustomSaveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
           <button type="button" class="dropdown-item" id="mobileCustomAutoSaveToggleBtn" title="켜두면 10초마다 한 번씩, 처음 고른 파일에 지금까지 작업 내용을 조용히 덮어써서 저장해둬요">🔄 자동저장</button>
           <div class="dropdown-divider"></div>
-          <button type="button" class="dropdown-item" id="mobileCustomExportPngBtn">🖼 PNG로 저장</button>
-          <button type="button" class="dropdown-item" id="mobileCustomExportJpgBtn">🖼 JPG로 저장</button>
-          <button type="button" class="dropdown-item" id="mobileCustomExportSvgBtn">📄 SVG로 저장</button>
-          <button type="button" class="dropdown-item" id="mobileCustomExportSvgVectorBtn" title="업로드한 폰트를 이미지로 바꾸는 과정 없이, 글자·도형 전부 래스터화(이미지화) 없이 벡터 그대로 저장합니다.">📄 SVG로 저장 (벡터 원본)</button>
+          <button type="button" class="dropdown-item export-menu-temp-hidden" id="mobileCustomExportPngBtn">🖼 PNG로 저장</button>
+          <button type="button" class="dropdown-item export-menu-temp-hidden" id="mobileCustomExportJpgBtn">🖼 JPG로 저장</button>
+          <button type="button" class="dropdown-item export-menu-temp-hidden" id="mobileCustomExportSvgBtn">📄 SVG로 저장</button>
+          <button type="button" class="dropdown-item export-menu-temp-hidden" id="mobileCustomExportSvgVectorBtn" title="업로드한 폰트를 이미지로 바꾸는 과정 없이, 글자·도형 전부 래스터화(이미지화) 없이 벡터 그대로 저장합니다.">📄 SVG로 저장 (벡터 원본)</button>
         </div>
       </div>
     </div>
@@ -142,20 +143,21 @@
       <button type="button" class="btn" id="fileMenuBtn">🖼 이미지 ▾</button>
       <div class="dropdown-menu hidden" id="fileMenu">
         <button type="button" class="dropdown-item" id="newCanvasBtn" title="캔버스에 흰색 바탕을 새로 깔아요">🆕 새로 만들기</button>
+        <button type="button" class="dropdown-item" id="randomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 랜덤 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 랜덤 디자인 생성</button>
         <div class="dropdown-divider"></div>
         <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기 (JPG·PNG)</label>
         <label class="dropdown-item hidden" for="svgInput">📄 SVG 불러오기</label>
         <label class="dropdown-item" for="fontInput">Aa 폰트 불러오기</label>
-        <label class="dropdown-item" for="bgFillImageInput" title="캔버스 박스 주변(체커무늬 영역)을 이 사진으로 채워요 — 인쇄되는 디자인 파일에는 전혀 포함되지 않는 화면 안내용입니다">🖼 배경사진 호출 (배경채우기)</label>
-        <label class="dropdown-item" for="bgFixedImageInput" title="티셔츠 등 목업 사진 위에 인쇄 영역을 맞춰볼 때 씀 — 한 번 배치하면 확대/축소·회전 등에 반응하지 않고 화면에 고정됩니다. 인쇄되는 디자인 파일에는 전혀 포함되지 않아요">🖼 배경사진 호출 (고정형/목업)</label>
+        <label class="dropdown-item" for="bgFillImageInput" title="캔버스 박스 주변(체커무늬 영역)을 이 사진으로 채워요 — 인쇄되는 디자인 파일에는 전혀 포함되지 않는 화면 안내용입니다">🖼 배경채우기</label>
+        <label class="dropdown-item" for="bgFixedImageInput" title="티셔츠 등 목업 사진 위에 인쇄 영역을 맞춰볼 때 씀 — 한 번 배치하면 확대/축소·회전 등에 반응하지 않고 화면에 고정됩니다. 인쇄되는 디자인 파일에는 전혀 포함되지 않아요">🖼 목형배경</label>
         <label class="dropdown-item" for="projectInput">📂 프로젝트 불러오기</label>
         <button type="button" class="dropdown-item" id="saveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
         <button type="button" class="dropdown-item" id="autoSaveToggleBtn" title="켜두면 10초마다 한 번씩, 처음 고른 파일에 지금까지 작업 내용을 조용히 덮어써서 저장해둬요(저장됐다는 표시는 따로 안 뜸)">🔄 자동저장</button>
         <div class="dropdown-divider"></div>
-        <button type="button" class="dropdown-item" data-export="png">🖼 PNG로 저장</button>
-        <button type="button" class="dropdown-item" data-export="jpg">🖼 JPG로 저장</button>
-        <button type="button" class="dropdown-item" data-export="svg">📄 SVG로 저장</button>
-        <button type="button" class="dropdown-item" data-export="svg-vector" title="업로드한 폰트를 이미지로 바꾸는 과정 없이, 글자·도형 전부 래스터화(이미지화) 없이 벡터 그대로 저장합니다. 단, 업로드한 임시 폰트를 쓴 글자가 있으면 그 폰트가 없는 환경(다른 컴퓨터·프로그램)에서는 다른 글꼴로 보일 수 있어요.">📄 SVG로 저장 (벡터 원본)</button>
+        <button type="button" class="dropdown-item export-menu-temp-hidden" data-export="png">🖼 PNG로 저장</button>
+        <button type="button" class="dropdown-item export-menu-temp-hidden" data-export="jpg">🖼 JPG로 저장</button>
+        <button type="button" class="dropdown-item export-menu-temp-hidden" data-export="svg">📄 SVG로 저장</button>
+        <button type="button" class="dropdown-item export-menu-temp-hidden" data-export="svg-vector" title="업로드한 폰트를 이미지로 바꾸는 과정 없이, 글자·도형 전부 래스터화(이미지화) 없이 벡터 그대로 저장합니다. 단, 업로드한 임시 폰트를 쓴 글자가 있으면 그 폰트가 없는 환경(다른 컴퓨터·프로그램)에서는 다른 글꼴로 보일 수 있어요.">📄 SVG로 저장 (벡터 원본)</button>
       </div>
       <input type="file" id="imageInput" accept="image/jpeg,image/png,image/jpg">
       <input type="file" id="svgInput" accept=".svg,image/svg+xml">
@@ -193,7 +195,7 @@
     </div>
 
     <div class="toolbar-group">
-      <button type="button" class="btn" id="rollAllBtn" title="잠금 안 된 모든 텍스트·모양에 랜덤 필터를 한 번에 적용합니다 (텍스트는 텍스트용, 모양은 모양용 필터가 각각 적용됨)">🎲 전체 랜덤 적용</button>
+      <button type="button" class="btn" id="rollAllBtn" title="랜덤필터를 한번에 적용합니다. 기존 이 문구들 다 지우고 임의의 디자인을 생성합니다.">🎲 랜덤디자인적용</button>
     </div>
 
     <div class="toolbar-group dropdown megamenu">
@@ -2281,6 +2283,88 @@
   </div>
 </div>
 
+<!-- 이미지 전용 S버튼 팝업 — 모바일에서 PC 우측 속성패널의 "이미지" 섹션(워터마크·글씨삭제,
+     자르기, 이미지지우개, 밝기/대비/채도, 스케치효과, 자동누끼, 가장자리블러)을 그대로 쓸 수
+     있게 만든 팝업. 새 로직을 만들지 않고, 여기 있는 컨트롤을 조작하면 그대로 PC 쪽 실제
+     입력칸(#imgBrightnessInput 등)에 값을 반영하고 input/change 이벤트를 그대로 흘려보내는
+     "중계" 방식이라, 실제 이미지 처리 로직(ecopro3imgtool.js)은 전혀 새로 안 만듦. -->
+<div class="qa-popover hidden" id="qaSPopover" style="max-height:70vh;overflow-y:auto;">
+  <button type="button" class="font-popover-close" id="qaSPopoverCloseBtn" title="닫기">✕</button>
+
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="qaSMarqueeEraseBtn" title="지우고 싶은 영역을 드래그로 선택한 뒤 지우면, 그 부분만 골라둔 방식으로 채워 자연스럽게 지워집니다 (글씨·워터마크 제거용)">▭ 글씨 워터마크삭제</button>
+  </div>
+  <div class="row">
+    <label style="font-size:11px;">지우기 강도</label>
+    <input type="range" id="qaSMarqueeStrength" min="10" max="150" step="5" value="60">
+  </div>
+  <div class="row">
+    <label style="font-size:11px;">덮는 색상</label>
+    <div class="seg" id="qaSMarqueeColorModeSeg">
+      <button type="button" class="on" id="qaSMarqueeAutoModeBtn">자동(주변색)</button>
+      <button type="button" id="qaSMarqueeCustomModeBtn">지정색</button>
+    </div>
+  </div>
+  <div class="row hidden" id="qaSMarqueeCustomColorRow">
+    <label style="font-size:11px;">덮을 색상</label>
+    <div class="cmyk-picker mini" id="qaSMarqueeCustomColor" title="영역을 덮을 색상"></div>
+  </div>
+
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="qaSCropBtn" style="flex:1;">✂ 자르기</button>
+    <button type="button" class="qa-btn hidden" id="qaSCropResetBtn" style="flex:1;">↺ 원본으로</button>
+  </div>
+
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="qaSEraseBrushBtn" title="브러시로 문지른 부분이 투명하게 지워집니다. 다시 누르면 꺼집니다">🧽 이미지 지우기</button>
+  </div>
+  <div class="row">
+    <label style="font-size:11px;">브러시 크기</label>
+    <input type="range" id="qaSEraseBrushSize" min="4" max="150" step="1" value="30">
+  </div>
+
+  <div class="row">
+    <label style="font-size:11px;">밝기</label>
+    <input type="range" id="qaSBrightness" min="-100" max="100" step="1" value="0">
+  </div>
+  <div class="row">
+    <label style="font-size:11px;">대비</label>
+    <input type="range" id="qaSContrast" min="-100" max="100" step="1" value="0">
+  </div>
+  <div class="row">
+    <label style="font-size:11px;">채도</label>
+    <input type="range" id="qaSSaturation" min="-100" max="100" step="1" value="0">
+  </div>
+
+  <div class="row">
+    <label style="font-size:11px;">스케치 강도</label>
+    <input type="range" id="qaSSketchAmount" min="1" max="10" step="1" value="4">
+  </div>
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="qaSSketchBtn" title="사진을 연필로 그린 듯한 흑백 스케치 느낌으로 바꿉니다">✏️ 스케치 효과</button>
+  </div>
+
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="qaSMagicWandBtn" title="비슷한 색상 영역을 클릭 한 번으로 자동 선택해서 투명하게 만듭니다 (자동 누끼)">🪄 자동누끼</button>
+  </div>
+  <div class="row" id="qaSMagicWandToleranceRow">
+    <label style="font-size:11px;">허용오차</label>
+    <input type="range" id="qaSMagicWandTolerance" min="0" max="100" step="1" value="30">
+  </div>
+
+  <div class="row">
+    <label style="font-size:11px;">블러 정도</label>
+    <input type="range" id="qaSEdgeBlurAmount" min="1" max="10" step="1" value="5">
+  </div>
+  <div class="row">
+    <label style="font-size:11px;">번짐 색상</label>
+    <div class="cmyk-picker mini" id="qaSEdgeBlurColor" title="가장자리에 뿌려질 색상"></div>
+  </div>
+  <div class="row" style="margin-bottom:0;">
+    <button type="button" class="qa-btn" id="qaSEdgeBlurBtn" title="사진 가장자리로 갈수록 선택한 색으로 점점 부드럽게 흐려지며 사라지게 만듭니다 (중심은 선명하게 유지)">🌫 가장자리블러</button>
+  </div>
+</div>
+
 <!-- 이미지 전용 Z버튼 팝업 — J/P와 인터페이스(드롭다운으로 선택 → 상세조절 → 끄기버튼,
      드래그·회전 가능한 팝업)는 동일하지만, 안에 들어가는 필터는 완전히 다름: 포토샵의
      곱하기/색상번/선형번/스크린 블렌드(합성) 모드 4종. 이미지에만 붙는 버튼임. -->
@@ -2726,14 +2810,14 @@
   <!-- 모바일 전용: 손바닥(화면 이동) 아이콘 + 이미지 확대 게이지. PC에서는 항상 숨김
        (PC는 기존처럼 상단 🔍 확대 메뉴/Ctrl+휠을 그대로 씀). 자세한 동작은 ecopro3mobiletools.js 참고. -->
   <div class="mobile-canvas-tools" id="mobileCanvasTools">
-    <button type="button" class="btn icon" id="mobileFocusToggleBtn" title="화면 정리 — 누르면 캔버스 안 디자인만 남기고 메뉴·버튼이 전부 숨겨져요(미리보기용). 다시 누르면 원래대로 돌아와요"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-    <button type="button" class="btn icon" id="mobileRotateCanvasBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2.5"/><line x1="18.5" y1="12" x2="19.5" y2="12"/></svg></button>
-    <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-4.53a1.87 1.87 0 0 1 2.6-2.66L6 13"/></svg></button>
+    <button type="button" class="btn icon" id="mobileFocusToggleBtn" title="랜덤디자인적용 — 랜덤필터를 한번에 적용합니다. 기존 이 문구들 다 지우고 임의의 디자인을 생성합니다. (PC의 '🎲 랜덤디자인적용'과 동일한 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.4" fill="currentColor" stroke="none"/></svg></button>
+    <button type="button" class="btn icon" id="mobileRotateCanvasBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2.5"/><line x1="18.5" y1="12" x2="19.5" y2="12"/></svg></button>
+    <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-4.53a1.87 1.87 0 0 1 2.6-2.66L6 13"/></svg></button>
     <div class="mobile-zoom-gauge">
       <input type="range" id="mobileZoomGauge" min="20" max="300" step="5" value="100" title="화면 확대/축소">
       <button type="button" id="mobileZoomGaugeLabel" title="눌러서 100%로 되돌리기">100%</button>
-      <button type="button" class="btn icon" id="mobileFullscreenBtn" title="전체화면 — 주소창·하단 메뉴까지 다 가리고 화면을 조금 더 넓게 써요. 다시 누르면 원래대로 돌아와요"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
-      <button type="button" class="btn icon" id="mobileCtxMenuBtn" title="선택한 오브젝트의 메뉴(우클릭 메뉴와 동일) — 잠금·삭제·복제·묶기·레이어·회전 등을 여기서 바로 쓸 수 있어요"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="6" r="1.3"/><line x1="9" y1="6" x2="21" y2="6"/><circle cx="4" cy="12" r="1.3"/><line x1="9" y1="12" x2="21" y2="12"/><circle cx="4" cy="18" r="1.3"/><line x1="9" y1="18" x2="21" y2="18"/></svg><span>도구</span></button>
+      <button type="button" class="btn icon" id="mobileFullscreenBtn" title="전체화면 — 주소창·하단 메뉴까지 다 가리고 화면을 조금 더 넓게 써요. 다시 누르면 원래대로 돌아와요"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+      <button type="button" class="btn icon" id="mobileCtxMenuBtn" title="선택한 오브젝트의 메뉴(우클릭 메뉴와 동일) — 잠금·삭제·복제·묶기·레이어·회전 등을 여기서 바로 쓸 수 있어요"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="6" r="1.3"/><line x1="9" y1="6" x2="21" y2="6"/><circle cx="4" cy="12" r="1.3"/><line x1="9" y1="12" x2="21" y2="12"/><circle cx="4" cy="18" r="1.3"/><line x1="9" y1="18" x2="21" y2="18"/></svg><span>도구</span></button>
     </div>
   </div>
   <div class="mobile-action-buttons">
@@ -2757,6 +2841,7 @@
 <script src="ecopro3bg.js" defer></script>
 <script src="ecopro3shape.js" defer></script>
 <script src="ecopro3imgtool.js" defer></script>
+<script src="ecopro3s.js" defer></script>
 <script src="ecopro3eyedrop.js" defer></script>
 <script src="ecopro3mobiletools.js" defer></script>
 <script src="ecopro3text.js" defer></script>

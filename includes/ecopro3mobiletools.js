@@ -294,32 +294,11 @@
   ============================================================ */
   var mobileFocusToggleBtn = document.getElementById('mobileFocusToggleBtn');
   if (mobileFocusToggleBtn) {
-    // 눈 아이콘을 처음(딱 한 번만) 켤 때 화면 아래 중간쯤에 짧게 안내 토스트를 보여줌.
-    // localStorage에 한 번 봤다는 표시를 남겨서, 이후로는(새로고침해도) 다시 뜨지 않음
-    // (텍스트 도구 처음 안내 토스트와 같은 방식).
-    var FOCUS_HINT_KEY = 'ecopro3_focus_mode_hint_seen_v1';
-    function showFocusHintOnce(){
-      try {
-        if (localStorage.getItem(FOCUS_HINT_KEY)) return;
-        localStorage.setItem(FOCUS_HINT_KEY, '1');
-      } catch (err) {
-        // 시크릿 모드 등으로 localStorage를 못 쓰는 환경이면 그냥 매번 안내해도 무방하므로 조용히 통과
-      }
-      var toast = document.createElement('div');
-      toast.className = 'mobile-focus-hint-toast';
-      toast.textContent = '버튼위치를 외우신 경우 쾌적한 작업이 가능합니다.';
-      document.body.appendChild(toast);
-      requestAnimationFrame(function(){ toast.classList.add('show'); });
-      setTimeout(function(){
-        toast.classList.remove('show');
-        setTimeout(function(){ toast.remove(); }, 300);
-      }, 2600);
-    }
-
+    // 원래는 "화면 정리(미리보기)" 토글이었는데, 요청에 따라 그 기능은 빼고 PC의
+    // "🎲 전체 랜덤 적용"(#rollAllBtn) 기능을 그대로 여기로 가져옴(재사용, 새 로직 아님).
     mobileFocusToggleBtn.addEventListener('click', function(){
-      var on = document.body.classList.toggle('mobile-focus-mode');
-      mobileFocusToggleBtn.classList.toggle('active', on);
-      if (on) showFocusHintOnce();
+      var rollAllBtn = document.getElementById('rollAllBtn');
+      if (rollAllBtn) rollAllBtn.click();
     });
   }
 

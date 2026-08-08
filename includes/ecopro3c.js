@@ -38,7 +38,6 @@
   ============================================================ */
   (function setupFilterControl(){
     function renderPButton(ctx, left, top, styleOverride, fabricObject){
-      if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
       if (isTableRelatedTarget(fabricObject)) return;
       if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
         const objs = fabricObject.getObjects().filter(o => !o.isGuide);
@@ -55,20 +54,40 @@
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
       ctx.fillStyle = '#ffffff';
-      ctx.font = '14px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🎲', 0, 1); // 주사위 아이콘 — 누르면 곧바로 랜덤 필터가 적용됨
+      // 조금 더 예쁜 주사위 아이콘 — 둥근 사각형 몸체 + "5" 배열의 점 5개(버튼 색과 맞춘 포인트 컬러)
+      (function drawDiceIcon(){
+        const s = 8, r = 3;
+        ctx.beginPath();
+        ctx.moveTo(-s + r, -s);
+        ctx.lineTo(s - r, -s);
+        ctx.quadraticCurveTo(s, -s, s, -s + r);
+        ctx.lineTo(s, s - r);
+        ctx.quadraticCurveTo(s, s, s - r, s);
+        ctx.lineTo(-s + r, s);
+        ctx.quadraticCurveTo(-s, s, -s, s - r);
+        ctx.lineTo(-s, -s + r);
+        ctx.quadraticCurveTo(-s, -s, -s + r, -s);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#e67e22';
+        const off = 4, pipR = 1.3;
+        [[-off, -off], [off, -off], [0, 0], [-off, off], [off, off]].forEach(([px, py]) => {
+          ctx.beginPath();
+          ctx.arc(px, py, pipR, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      })();
       ctx.restore();
     }
 
     const pControl = new fabric.Control({
       x: -0.5, y: -0.5,
       offsetX: -20, offsetY: -36, // 좌측 상단 모서리 바로 위 — 글자가 커져도(오른쪽으로만 넓어짐) 위치가 안 흔들려서 연속 클릭하기 편함
+      sizeX: 28, sizeY: 28, // 그려지는 원(지름28) 전체가 클릭 영역이 되도록 맞춤(M버튼과 동일 — 이제 모바일에서도 쓰이므로)
       cursorStyle: 'pointer',
       render: renderPButton,
       mouseUpHandler: function(eventData, transformData){
-        if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
         const target = transformData && transformData.target;
         if (!target || isTableRelatedTarget(target)) return true;
         if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
@@ -91,6 +110,7 @@
   })();
 
   const qaPopover = document.getElementById('qaPopover');
+  if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(qaPopover);
   // EP.qaTargets 는 파일 상단에서 이미 초기화됨 (T버튼과 동일한 방식: 창을 여는 시점의 대상을 그대로 붙잡아둠)
 
   function hideQaPopover(){
@@ -145,6 +165,10 @@
       const avoided = EP.findNonOverlappingPosition(qaPopover, left, top, pw, ph);
       left = avoided.left; top = avoided.top;
     }
+
+    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
+    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaPopover);
+    if (remembered) { left = remembered.left; top = remembered.top; }
 
     const r2 = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaPopover.style.left = r2.left + 'px';

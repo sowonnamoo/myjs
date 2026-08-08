@@ -259,7 +259,7 @@
         return o && !o.isGuide && !o.imageLocked && (EP.isTextObject(o) || EP.isShapeObject(o));
       });
       if (!objs.length) {
-        alert('랜덤 필터를 적용할, 잠금 안 된 텍스트나 모양이 캔버스에 없습니다.');
+        alert('텍스트나 모양을 입력해 주세요.');
         return;
       }
 

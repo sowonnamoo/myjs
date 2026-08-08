@@ -125,7 +125,10 @@
     let rotateGuideState = 0;
     let rotateGuideTarget = null;
     canvas.on('after:render', () => {
-      if (!rotateGuideState || !rotateGuideTarget || !canvas.contains(rotateGuideTarget)) return;
+      // 안내선은 1(좌측하단)/2(우측상단) 상태일 때만 그림 — 3(각도 리셋)·0(90도 회전) 상태는
+      // 안내선 없이 그냥 지나감. rotateGuideTarget은 이제 사이클 내내(3→0 전환 포함) 계속
+      // 같은 오브젝트를 가리키게 유지하므로, 여기서 상태값 자체로 명확히 걸러야 함.
+      if ((rotateGuideState !== 1 && rotateGuideState !== 2) || !rotateGuideTarget || !canvas.contains(rotateGuideTarget)) return;
       const br = rotateGuideTarget.getBoundingRect(true, true); // 캔버스 논리좌표(줌 반영 전)
       const z = canvas.getZoom();
       const x = (rotateGuideState === 1 ? br.left : br.left + br.width) * z;
@@ -169,19 +172,45 @@
           rotateGuideTarget = target;
           rotateGuideState = 1;
         } else {
-          rotateGuideState = (rotateGuideState + 1) % 3; // 0(꺼짐) → 1(좌측하단) → 2(우측상단) → 0
-          if (rotateGuideState === 0) {
-            // 3번째 클릭 — 안내선 끄면서 기울기도 0도로 복구(요청). 그냥 angle만 0으로
-            // 바꾸면 origin이 'center'가 아닌 오브젝트는 회전축이 모서리 쪽이라 이 사각
-            // 오브젝트의 "중심"이 그 자리에 안 있고 옆으로 튀어버림 — 그래서 각도를 바꾸기
-            // 전에 지금 중심점을 먼저 기억해두고, 각도를 0으로 바꾼 뒤 그 중심점 자리에
-            // 다시 정확히 맞춰줌(캔버스 회전 때 쓰는 것과 동일한 방식).
-            const center = target.getCenterPoint();
-            target.set('angle', 0);
-            target.setPositionByOrigin(center, 'center', 'center');
-            target.setCoords();
-            pushHistory();
-            rotateGuideTarget = null;
+          // 0(꺼짐) → 1(좌측하단 안내선) → 2(우측상단 안내선) → 3(안내선 끄고 각도 0 복구)
+          // → 0(90도 회전) → 다시 1로 순환(요청: "네번째 클릭하면 90도 회전")
+          rotateGuideState = (rotateGuideState + 1) % 4;
+          if (rotateGuideState === 3) {
+            // 3번째 클릭 — 안내선 끄면서 기울기도 0도로 복구. 그냥 angle만 0으로 바꾸면
+            // origin이 'center'가 아닌 오브젝트는 회전축이 모서리 쪽이라 이 사각 오브젝트의
+            // "중심"이 그 자리에 안 있고 옆으로 튀어버림 — 그래서 각도를 바꾸기 전에 지금
+            // 중심점을 먼저 기억해두고, 각도를 0으로 바꾼 뒤 그 중심점 자리에 다시 정확히
+            // 맞춰줌(캔버스 회전 때 쓰는 것과 동일한 방식).
+            // setTimeout(0)으로 한 틱 미뤄서 실행함 — fabric이 이 컨트롤의 transform을 마무리
+            // 짓는 도중에 각도/위치를 바로 바꿔버리면, 그 마무리 처리가 꼬여서 오브젝트 선택이
+            // 풀려버리는 버그가 있었음(그래서 이어서 4번째 클릭을 할 대상 자체가 없어짐).
+            // 지금 클릭 처리가 완전히 끝난 다음 틱에 바꾸면 이 문제가 사라짐.
+            // ⚠️ 여기서 rotateGuideTarget을 null로 지우면 안 됨 — 지우면 바로 다음(4번째)
+            // 클릭에서 "다른 오브젝트를 새로 누른 것"으로 오인해서 사이클이 1단계로 되돌아가
+            // 버리는 버그가 있었음(요청하신 바로 그 증상). 계속 같은 타깃을 가리키고 있어야
+            // 다음 클릭이 정확히 0단계(90도 회전)로 이어짐.
+            setTimeout(() => {
+              const center = target.getCenterPoint();
+              target.set('angle', 0);
+              target.setPositionByOrigin(center, 'center', 'center');
+              target.setCoords();
+              canvas.setActiveObject(target); // 혹시 모를 선택 해제에 대비한 안전장치
+              canvas.requestRenderAll();
+              pushHistory();
+            }, 0);
+          } else if (rotateGuideState === 0) {
+            // 4번째 클릭 — 지금 각도에서 90도 회전(중심점은 마찬가지로 그대로 유지, 같은
+            // 이유로 setTimeout(0)으로 미뤄서 처리)
+            setTimeout(() => {
+              const center = target.getCenterPoint();
+              const newAngle = ((target.angle || 0) + 90) % 360;
+              target.set('angle', newAngle);
+              target.setPositionByOrigin(center, 'center', 'center');
+              target.setCoords();
+              canvas.setActiveObject(target); // 혹시 모를 선택 해제에 대비한 안전장치
+              canvas.requestRenderAll();
+              pushHistory();
+            }, 0);
           }
         }
         canvas.requestRenderAll();
@@ -393,6 +422,29 @@
   EP.registerRotatablePopover = function(el){ EP.rotatablePopovers.push(el); };
 
   /* ============================================================
+     "상세조정하기"류 팝업(T/J/K/M/S/Z 등)이 꺼질 때 마지막 위치를 기억해뒀다가, 다음에
+     열릴 때 그 자리에 그대로 다시 뜨게 함(요청: "랜덤디자인 적용 등으로 꺼졌을 때, 마지막에
+     드래그해둔 그 자리에 다시 등장"). 각 팝업 파일에서 EP.registerPopoverPositionMemory(el)을
+     한 번만 불러주면, 그 팝업이 hidden 클래스로 감춰지는 순간 자동으로 위치를 저장하고,
+     EP.getRememberedPopoverPosition(el)로 다음에 열 때 그 값을 꺼내 쓸 수 있음.
+  ============================================================ */
+  const popoverLastPositions = {}; // { [popoverEl.id]: {left, top} }
+  EP.registerPopoverPositionMemory = function(el){
+    if (!el || !el.id) return;
+    const observer = new MutationObserver(function(){
+      if (el.classList.contains('hidden')) {
+        const left = parseFloat(el.style.left);
+        const top = parseFloat(el.style.top);
+        if (!isNaN(left) && !isNaN(top)) popoverLastPositions[el.id] = { left: left, top: top };
+      }
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+  };
+  EP.getRememberedPopoverPosition = function(el){
+    return (el && el.id) ? (popoverLastPositions[el.id] || null) : null;
+  };
+
+  /* ============================================================
      "상세조정하기"류 필터 팝업(P=텍스트 필터, M=모양 필터 등)을 PC에서 오브젝트 근처가
      아니라 캔버스 박스(재단선) 좌측 상단 모서리에 가지런히 배치하는 공용 유틸(PC 전용).
      이미 그 자리에 다른 필터 팝업이 열려 있으면 그 오른쪽으로 나란히 이어붙임.
@@ -417,8 +469,13 @@
     others.forEach((p) => { left += p.offsetWidth + margin; });
     const top = cornerY;
 
+    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
+    const remembered = EP.getRememberedPopoverPosition(popoverEl);
+    const finalLeft = remembered ? remembered.left : left;
+    const finalTop = remembered ? remembered.top : top;
+
     // 화면 밖으로 나가지 않게만 단순 클램프(회전 없음, rot 항상 0으로 취급)
-    const r = EP.clampPopoverRect(left, top, pw, ph, 0);
+    const r = EP.clampPopoverRect(finalLeft, finalTop, pw, ph, 0);
     popoverEl.style.left = r.left + 'px';
     popoverEl.style.top = r.top + 'px';
 
@@ -494,6 +551,7 @@
   }
 
   const fontPopover = document.getElementById('fontPopover');
+  EP.registerPopoverPositionMemory(fontPopover);
   const floatingFontSelect = document.getElementById('floatingFontSelect');
   const floatingFontSizeInput = document.getElementById('floatingFontSizeInput');
   const floatingOpacityInput = document.getElementById('floatingOpacityInput');
@@ -566,6 +624,10 @@
     // P/M/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
     const avoided = EP.findNonOverlappingPosition(fontPopover, left, top, pw, ph);
     left = avoided.left; top = avoided.top;
+
+    // 마지막으로 닫혔을 때 있던 자리가 기억돼 있으면 그 자리를 우선함(요청)
+    const remembered = EP.getRememberedPopoverPosition(fontPopover);
+    if (remembered) { left = remembered.left; top = remembered.top; }
 
     const r2 = clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     fontPopover.style.left = r2.left + 'px';
@@ -1035,7 +1097,10 @@
   const GRID_SPACING = 10; // 모눈 간격(px) — 요청대로 기존(5)의 2배로 넓힘
 
   function buildGridGuide(){
-    const padding = CANVAS_W * 0.02;
+    // min(W,H) 기준으로 계산해야 90도 회전으로 W/H가 서로 바뀌어도 여백(padding) 값 자체는
+    // 항상 그대로 유지됨(CANVAS_W만 기준으로 하면 회전할 때마다 값이 달라져서 재단선 크기가
+    // 회전 전과 안 맞아 보이는 문제가 있었음 — 아래 buildGuides()와 같은 이유의 같은 수정).
+    const padding = Math.min(CANVAS_W, CANVAS_H) * 0.03;
     const gw = CANVAS_W - padding * 2, gh = CANVAS_H - padding * 2;
     let d = '';
     for (let x = 0; x <= gw; x += GRID_SPACING) d += 'M' + x + ',0 L' + x + ',' + gh + ' ';
@@ -1050,7 +1115,12 @@
   }
 
   function buildGuides(){
-    const padding = CANVAS_W * 0.02;
+    // min(W,H) 기준으로 계산 — CANVAS_W만 기준으로 하면 캔버스를 90도 회전할 때마다
+    // (W/H가 서로 맞바뀌므로) 이 padding 값 자체가 매번 달라져서, 회전을 거듭할수록
+    // 붉은 재단선 박스의 여백(=사실상 실제 인쇄 크기)이 회전 전과 안 맞고 계속 줄어들거나
+    // 커지는 문제가 있었음. min(W,H)는 회전으로 W/H가 서로 바뀌어도 값이 절대 안 바뀌므로,
+    // 몇 번을 회전해도 여백이 항상 정확히 같게 유지됨(요청: "회전 전과 크기 매칭 안되는 문제").
+    const padding = Math.min(CANVAS_W, CANVAS_H) * 0.03;
     guideRect = new fabric.Rect({
       left: padding, top: padding,
       width: CANVAS_W - padding * 2, height: CANVAS_H - padding * 2,
@@ -1067,7 +1137,12 @@
     // 그냥 회색으로 꽉 채워서 그림 — 이렇게 하면 두께가 사방 어디서든 정확히 outerThickness
     // px로 완전히 균일하고, 캔버스 가장자리에 딱 맞물려서 바깥으로 새거나 잘리는 부분이
     // 전혀 없음(선의 "중심 정렬" 개념 자체가 없어져서 이 문제가 원천적으로 사라짐).
-    const outerThickness = 2;
+    // outerThickness를 고정값(예: 2)으로 두면, 규격이 작아서 padding 자체가 작을 때(예:
+    // 좁고 긴 배너) 이 고정 두께가 padding을 통째로 잡아먹어서 재단선(빨강)과 회색 테두리가
+    // 서로 거의 붙어(또는 완전히 붙어) 보이는 문제가 있었음(요청: "재단선이 회색선에 딱
+    // 달라붙어있다"). 그래서 padding에 비례하는 두께로 바꿔서, 어떤 규격이든 항상 눈에
+    // 보이는 일정한 간격이 유지되게 함.
+    const outerThickness = Math.max(1.5, padding * 0.15);
     const outerFrameD =
       `M0,0 L${CANVAS_W},0 L${CANVAS_W},${CANVAS_H} L0,${CANVAS_H} Z ` +
       `M${outerThickness},${outerThickness} L${outerThickness},${CANVAS_H - outerThickness} L${CANVAS_W - outerThickness},${CANVAS_H - outerThickness} L${CANVAS_W - outerThickness},${outerThickness} Z`;
@@ -1307,6 +1382,93 @@
     });
   }
 
+  /* ============================================================
+     "🎲 랜덤 디자인 생성" (PC/모바일 공통 — 새로 만들기 바로 아래)
+     - 누를 때마다: 기존 오브젝트를 전부 지우고 → 흰 배경을 새로 깔고(새로 만들기와 같은
+       방식 재사용) → 가운데에 인사말(매번 다른 문구로 랜덤) + 그 아래 작은 안내문구 2줄을
+       넣고 → "🎲 전체 랜덤 적용"(#rollAllBtn)을 한 번 실행해서 그 텍스트들에 랜덤 필터를
+       입혀줌. 완전히 새 디자인 하나를 즉석에서 만들어보는 용도. 실제 로직은 PC 버튼
+       (#randomDesignBtn)에 붙이고, 모바일 버튼은 그 PC 버튼을 그대로 클릭해주는 방식으로
+       재사용함(100% 동일 동작 보장).
+  ============================================================ */
+  const RANDOM_GREETINGS = [
+    '안녕하세요.', '환영합니다.', '반갑습니다.', '어서오세요.',
+    '만나서 반가워요.', '좋은 하루 되세요.', '오늘도 화이팅!',
+    '방문해주셔서 감사해요.', '행복한 하루예요.', '즐거운 시간 되세요.',
+    '와주셔서 감사합니다.', '늘 감사드려요.', '좋은 인연이길 바래요.',
+    '오늘 하루도 힘내세요.', '함께해서 즐거워요.', '멋진 하루 보내세요.',
+    '늘 건강하세요.', '고맙습니다.', '늘 응원할게요.', '따뜻한 하루 되세요.'
+  ];
+  const randomDesignBtn = document.getElementById('randomDesignBtn');
+  if (randomDesignBtn) {
+    randomDesignBtn.addEventListener('click', () => {
+      // 1) 기존 오브젝트 전부 제거(안내선은 제외) — 누를 때마다 완전히 새로 시작함
+      canvas.getObjects().filter((o) => !o.isGuide).forEach((o) => canvas.remove(o));
+      canvas.discardActiveObject();
+
+      // 2) 흰 배경을 새로 깔음 — "🆕 새로 만들기"와 같은 방식 재사용하되, 여기서는 일부러
+      // 잠그지 않음(요청: "잠궈져 있어서 랜덤이 적용 안되는데 잠금 해제해줘") — 잠그면 아래
+      // "전체 랜덤 적용" 대상에서 빠져서 배경엔 아무 효과가 안 입혀지므로, 잠금 없이 둬서
+      // 배경도 같이 랜덤 필터를 받을 수 있게 함.
+      const bgFillWhiteBtn = document.getElementById('bgFillWhiteBtn');
+      if (bgFillWhiteBtn) bgFillWhiteBtn.click();
+
+      // 3) 인사말(1번째 줄, 매번 다른 문구) — 랜덤 필터 대상이 되어야 하므로 먼저 만듦
+      const greeting = RANDOM_GREETINGS[Math.floor(Math.random() * RANDOM_GREETINGS.length)];
+      const greetingSize = Math.round(CANVAS_W * 0.06) + 2; // "너무 크지 않게" + 요청대로 2pt 키움
+      const greetingText = new fabric.IText(greeting, {
+        left: CANVAS_W / 2, top: CANVAS_H * 0.42,
+        originX: 'center', originY: 'center',
+        fontFamily: 'Pretendard', fontSize: greetingSize, fill: '#222222',
+        textAlign: 'center', selectable: true, evented: true
+      });
+      canvas.add(greetingText);
+      canvas.requestRenderAll();
+
+      // 4) "🎲 랜덤디자인적용"을 먼저 실행 — 잠금 안 된(=배경+인사말) 오브젝트에 랜덤 필터가
+      // 자동으로 입혀짐(재사용, 새 로직 아님)
+      const rollAllBtn = document.getElementById('rollAllBtn');
+      if (rollAllBtn) rollAllBtn.click();
+
+      // 5) 안내문구(2~3번째 줄)는 랜덤 필터를 다 적용한 "다음"에 만듦 — 필터를 먼저 돌리고
+      // 나중에 추가해야, 일부 특수효과(원형/곡선 등 한 줄 기준으로 동작하는 효과)가 이
+      // 문구에 적용될 때 줄바꿈을 무시해버려서 1줄이 됐다 2줄이 됐다 들쭉날쭉하던 문제가
+      // 원천적으로 사라짐(요청: "무조건 두줄로 되게 해줘") — 애초에 이 문구엔 필터가 전혀
+      // 안 걸리므로 항상 작성한 그대로 2줄 유지됨. 문구도 PC/모바일에 맞게 다르게 씀 —
+      // 모바일은 버튼이 화면 "아래"(하단바)에 있고, PC는 "위"(상단 툴바)에 있음.
+      const isMobile = !!(EP.isMobileModeActive && EP.isMobileModeActive());
+      const hintFirstLine = isMobile
+        ? '아래 주사위를 클릭하면 다른디자인을 불러옵니다.'
+        : '위 랜덤디자인적용을 클릭하면 다른디자인을 불러옵니다.';
+      const hintSize = Math.max(10, Math.round(CANVAS_W * 0.025));
+      const hintGap = (greetingSize * 1.3 * 3) / 2; // 요청: 기존 간격의 절반으로 축소
+      // IText는 폭 제한이 없어서, 문구가 길면 캔버스 밖으로 삐져나가 캔버스 경계에서 잘려
+      // 보이는 문제가 있었음(그래서 끝의 정중한 어미가 잘려 반말처럼 보였음). Textbox로
+      // 바꾸고 캔버스 폭 안에 들어오도록 width를 제한해서, 길면 자동으로 줄바꿈되도록 함
+      // (요청: "문구가 잘려서 반말하는거처럼 보인다").
+      const hintText = new fabric.Textbox(
+        hintFirstLine + '\n맘에든 디자인은 잠금 / 저장 처리해 주세요.',
+        {
+          left: CANVAS_W / 2, top: CANVAS_H * 0.42 + hintGap,
+          width: CANVAS_W * 0.85,
+          originX: 'center', originY: 'center',
+          fontFamily: 'Pretendard', fontSize: hintSize, fill: '#888888',
+          textAlign: 'center', selectable: true, evented: true
+        }
+      );
+      canvas.add(hintText);
+      canvas.requestRenderAll();
+
+      pushHistory();
+    });
+  }
+  const mobileRandomDesignBtn = document.getElementById('mobileRandomDesignBtn');
+  if (mobileRandomDesignBtn) {
+    mobileRandomDesignBtn.addEventListener('click', () => {
+      if (randomDesignBtn) randomDesignBtn.click();
+    });
+  }
+
   const mobileShapePickerBtn = document.getElementById('mobileShapePickerBtn');
   if (mobileShapePickerBtn) {
     mobileShapePickerBtn.addEventListener('click', () => {
@@ -1373,6 +1535,10 @@
     mobileRotateCanvasBtn.addEventListener('click', () => {
       const rotateCanvasRightBtn = document.getElementById('rotateCanvasRightBtn');
       if (rotateCanvasRightBtn) rotateCanvasRightBtn.click();
+      // 요청: 회전과 함께 확대율도 100%로 같이 되돌림 — 옆의 "눌러서 100%로 되돌리기"
+      // 버튼(ecopro3mobiletools.js)을 그대로 클릭해줌(재사용, 새 로직 아님)
+      const mobileZoomGaugeLabel = document.getElementById('mobileZoomGaugeLabel');
+      if (mobileZoomGaugeLabel) mobileZoomGaugeLabel.click();
     });
   }
 
@@ -4099,6 +4265,9 @@
 
     popover.style.left = left + 'px';
     popover.style.top = top + 'px';
+    // T/J/K 팝업과 똑같이, 캔버스 회전 각도에 맞춰 이 색상 선택창도 같이 회전 표시함
+    // (요청: "이 색상선택창도 T나 J K 인터페이스처럼 회전각도에 맞게 열리게 해줘")
+    if (EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(popover);
   }
 
   function initCmykPicker(el){
@@ -4129,6 +4298,7 @@
     // 조상 zoom의 영향을 전혀 안 받아서 항상 계산한 그대로 정확한 화면 위치에 뜸.
     document.body.appendChild(popover);
     el._cmykPopover = popover; // 다른 파일(예: ecopro3mobiletools.js)에서 이 색상칸의 팝업을 찾아 버튼 등을 덧붙일 수 있게 참조를 남겨둠
+    if (EP.registerRotatablePopover) EP.registerRotatablePopover(popover); // 열려있는 채로 캔버스를 회전해도 즉시 같이 재회전됨
 
     const svCanvas = popover.querySelector('.cmyk-sv');
     const hueCanvas = popover.querySelector('.cmyk-hue');
@@ -4525,22 +4695,33 @@
   function forceFontReloadRedraw(boxes, fontFamilyName){
     boxes = boxes.filter(o => isTextObject(o));
     if (!boxes.length) return;
-    const originalScaleXs = boxes.map(o => o.scaleX);
-    const originalScaleYs = boxes.map(o => o.scaleY);
-    boxes.forEach((o, i) => {
-      o.set('scaleX', originalScaleXs[i] * 0.95);
-      o.set('scaleY', originalScaleYs[i] * 0.95);
+    // 방향키로 폰트를 빠르게 연속으로 넘기면 이 함수가 150ms 안에 여러 번 겹쳐 호출될 수
+    // 있는데, 그때마다 "지금(이미 살짝 줄어든) 크기"를 새로운 "원본"으로 잘못 기억해버리면
+    // 되돌릴 때마다 조금씩 더 작아지는 문제가 있었음(요청: "키보드로 넘길 때 폰트가 점점
+    // 작아지는 버그"). 그래서 "진짜 원본 크기"는 이 트릭이 시작될 때 딱 한 번만 오브젝트에
+    // 저장해두고, 그 뒤로 겹쳐 호출돼도 항상 그 진짜 원본을 기준으로만 0.95배 하고, 되돌릴
+    // 때도 항상 그 진짜 원본으로 정확히 복귀하도록 함.
+    boxes.forEach((o) => {
+      if (o.__fontReloadRevertTimer) {
+        clearTimeout(o.__fontReloadRevertTimer); // 겹쳐 호출된 경우 이전 되돌리기 타이머만 취소
+      } else {
+        o.__fontReloadTrueScaleX = o.scaleX;
+        o.__fontReloadTrueScaleY = o.scaleY;
+      }
+      o.set('scaleX', o.__fontReloadTrueScaleX * 0.95);
+      o.set('scaleY', o.__fontReloadTrueScaleY * 0.95);
       o.dirty = true;
     });
     canvas.requestRenderAll();
-    setTimeout(() => {
-      boxes.forEach((o, i) => {
-        o.set('scaleX', originalScaleXs[i]);
-        o.set('scaleY', originalScaleYs[i]);
+    boxes.forEach((o) => {
+      o.__fontReloadRevertTimer = setTimeout(() => {
+        o.set('scaleX', o.__fontReloadTrueScaleX);
+        o.set('scaleY', o.__fontReloadTrueScaleY);
         o.dirty = true;
-      });
-      canvas.requestRenderAll();
-    }, 150);
+        o.__fontReloadRevertTimer = null;
+        canvas.requestRenderAll();
+      }, 150);
+    });
   }
 
   textContentInput.addEventListener('input', () => withActive(o => { if (isTextObject(o)) o.set('text', textContentInput.value); }));

@@ -74,6 +74,7 @@
      J 팝업 — P와 비슷한 구조(드롭다운으로 필터 선택 → 상세조절 표시)지만 주사위(랜덤) 없음.
   ============================================================ */
   const qaJPopover = document.getElementById('qaJPopover');
+  if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(qaJPopover);
   const qaJFilterSelect = document.getElementById('qaJFilterSelect');
   const qaJDetails = {
     shadow: document.getElementById('qaJDetailShadow'),
@@ -116,6 +117,10 @@
       const avoided = EP.findNonOverlappingPosition(qaJPopover, left, top, pw, ph);
       left = avoided.left; top = avoided.top;
     }
+
+    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
+    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaJPopover);
+    if (remembered) { left = remembered.left; top = remembered.top; }
 
     const r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaJPopover.style.left = r.left + 'px';

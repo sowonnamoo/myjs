@@ -42,6 +42,7 @@
   }
 
   var kPopover = document.getElementById('kStrokePopover');
+  if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(kPopover);
   var kPopoverCloseBtn = document.getElementById('kStrokePopoverCloseBtn');
   var kStrokeColorInput = document.getElementById('kStrokeColorInput');
   var kColorGaugeInput = document.getElementById('kColorGaugeInput');
@@ -112,6 +113,9 @@
       var avoided = EP.findNonOverlappingPosition(kPopover, left, top, pw, ph);
       left = avoided.left; top = avoided.top;
     }
+
+    var remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(kPopover);
+    if (remembered) { left = remembered.left; top = remembered.top; }
 
     var r = EP.clampPopoverRect ? EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg) : { left: left, top: top };
     kPopover.style.left = r.left + 'px';

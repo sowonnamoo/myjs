@@ -763,6 +763,8 @@ body.mobile-expert-mode #mobileMenuBtn span{color:#fff;}
 #mobileZoomGaugeLabel:hover{background:var(--panel);}
 /* 손바닥 버튼: 아이콘(이모지) 크기는 그대로 두고, 그 주위 둥근사각(버튼 배경)만 절반 크기로 축소 */
 #mobilePanBtn{ padding:3px 5px;border-radius:6px;margin-left:2px; }
+/* 회전(스마트폰) 버튼 — 손바닥 버튼과 완전히 같은 크기·둥근 정도로 맞춤 */
+#mobileRotateCanvasBtn{ padding:3px 5px;border-radius:6px; }
 /* 눈 아이콘(화면 정리 토글) — 손바닥 버튼과 같은 축소 크기, 살짝 간격만 띄움 */
 #mobileFocusToggleBtn{ padding:3px 5px;border-radius:6px; }
 #mobileFocusToggleBtn.active{ background:var(--accent);border-color:var(--accent);color:#fff; }
@@ -1056,6 +1058,15 @@ body.mobile-focus-mode{
 }
 #qaJPopover .qa-btn.on{
   background:#9B7FD4;border-color:#9B7FD4;color:#fff;
+}
+#qaSPopover .qa-btn{
+  background:#FDF3F7;border-color:#F0C9DB;color:#70334A;
+}
+#qaSPopover .qa-btn:hover{
+  background:#F7DCE8;border-color:#E89EBF;
+}
+#qaSPopover .qa-btn.on{
+  background:#E67E9E;border-color:#E67E9E;color:#fff;
 }
 #qaJPopover input[type="range"]{
   accent-color:#9B7FD4;
@@ -1424,7 +1435,10 @@ input[type=file]{display:none;}
     gap:5px;
   }
   .btn{padding:8px 10px;font-size:12.5px;}
-  .btn.icon{padding:8px 9px;min-width:38px;justify-content:center;}
+  .btn.icon{
+    padding:0 9px;min-width:38px;height:32px;box-sizing:border-box;
+    display:flex;align-items:center;justify-content:center;
+  }
   .zoom-label{min-width:34px;font-size:11.5px;}
   .brand{display:none;}
   .mobile-brand-logo{display:flex;}
@@ -1583,7 +1597,7 @@ input[type=file]{display:none;}
 .mobile-tool-icons{
   display:flex;align-items:center;gap:3px;flex-wrap:wrap;
 }
-.mobile-tool-icons .btn.icon{flex-shrink:0;padding:5px 6px;min-width:0;}
+.mobile-tool-icons .btn.icon{flex-shrink:0;padding:0 6px;min-width:0;height:32px;box-sizing:border-box;}
 .mobile-tool-icons .cmyk-picker.mini{flex-shrink:0;}
 
 /* ---------- 모바일 전용: 색상 적용 CMYK 팝업 안의 "완료" 버튼 ----------
@@ -1731,4 +1745,27 @@ input[type=file]{display:none;}
   .custom-select-trigger{padding:9px 8px;font-size:13px;}
   .custom-select-arrows{width:30px;}
   .custom-select-arrow-btn{font-size:11px;}
+}
+
+/* ---------- PNG/JPG/SVG "직접 저장" 메뉴 항목 임시 블라인드 처리 ---------- */
+/* 기능 자체는 그대로 살아있음(버튼/클릭 로직 전혀 안 건드림) — 화면에서만 숨김.
+   "상품담기/구입" 시 만들어지는 시안 파일은 이 버튼들을 거치지 않고 내부 함수를
+   직접 호출하는 별개의 경로라 여기 숨김과 전혀 무관하게 그대로 정상 동작함.
+   나중에 복구할 땐 이 규칙만 지우면 됨. */
+.export-menu-temp-hidden{display:none !important;}
+
+/* ---------- 모바일에서 메뉴판 기능의 "엑셀로 불러오기"/"엑셀 양식 받기" 버튼 숨김 ---------- */
+/* 기능 자체는 그대로 있음(버튼 로직 안 건드림) — 모바일 화면에서만 안 보이게 함. PC에서는 그대로 보임. */
+@media (max-width:900px){
+  label[for="menuExcelInput"], #menuExcelTemplateBtn{display:none !important;}
+}
+
+/* ---------- 모바일 커스텀메뉴에서 "배경사진 호출" 2종 / "Aa 폰트 불러오기" 숨김 ---------- */
+/* 기능 자체는 그대로 있음(파일 입력·클릭 로직 안 건드림) — 모바일 메뉴에서만 안 보이게 함.
+   #mobileMenuExpertGroup 안에 있는 것만 정확히 골라서 숨기므로, PC의 "🖼 이미지" 메뉴 쪽
+   같은 항목들은 그대로 보임. */
+#mobileMenuExpertGroup label[for="fontInput"],
+#mobileMenuExpertGroup label[for="bgFillImageInput"],
+#mobileMenuExpertGroup label[for="bgFixedImageInput"]{
+  display:none !important;
 }

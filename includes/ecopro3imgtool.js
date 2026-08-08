@@ -304,6 +304,10 @@
       h: Math.ceil(Math.max.apply(null, ys) - Math.min.apply(null, ys))
     };
     var targetImg = marqueeTargetImage;
+    // 마키를 처음 찍은(드래그 시작) 그 지점의 이미지 픽셀 좌표 — "주변색"의 기준을 이미지
+    // 전체 평균이 아니라 이 지점 색으로 삼기 위함(요청: "마키툴로 처음 찍을 바로 그
+    // 포인트의 색상 기준으로").
+    var startPixel = screenPointToImagePixel(targetImg, marqueeStartPt);
 
     // 확인 창으로 물어보고, 확인을 누르면 그 자리에서 바로 지운 뒤 도구를 꺼서
     // 원래의 "이미지 선택" 상태로 자동으로 돌아가게 함
@@ -316,7 +320,7 @@
         coverRectWithColor(imgData, rect, w2, h2, marqueeEraseCustomColorInput.value);
       } else {
         var strength = parseInt(marqueeEraseStrengthInput.value, 10) || 60;
-        coverRectWithSurroundingColor(imgData, rect, w2, h2, strength);
+        coverRectWithSurroundingColor(imgData, rect, w2, h2, strength, startPixel);
       }
       ctx.putImageData(imgData, 0, 0);
       targetImg.dirty = true;
@@ -343,7 +347,7 @@
   }
 
   // 선택 사각형 안쪽을 주변 색으로 부드럽게 채워서 지움(간단 인페인트: 이완법/diffusion)
-  function coverRectWithSurroundingColor(imgData, rect, w, h, iterations){
+  function coverRectWithSurroundingColor(imgData, rect, w, h, iterations, startPixel){
     var data = imgData.data;
     var n = w * h;
     var mask = new Uint8Array(n);
@@ -359,11 +363,21 @@
     }
     if (!fillIdx.length) return;
 
-    var sumR = 0, sumG = 0, sumB = 0, cnt = 0;
-    for (var k0 = 0; k0 < n; k0++) {
-      if (!mask[k0]) { var o0 = k0 * 4; sumR += data[o0]; sumG += data[o0 + 1]; sumB += data[o0 + 2]; cnt++; }
+    // 기준(주변) 색상 — 마키를 처음 찍은 그 지점의 색을 우선으로 씀(요청). 그 지점이 이미지
+    // 범위를 벗어났거나 안 넘어온 경우에만, 예전처럼 마키 바깥 전체 픽셀의 평균색으로 대체함.
+    var avgR, avgG, avgB;
+    var sx = startPixel ? Math.round(startPixel.x) : -1;
+    var sy = startPixel ? Math.round(startPixel.y) : -1;
+    if (sx >= 0 && sx < w && sy >= 0 && sy < h) {
+      var so = (sy * w + sx) * 4;
+      avgR = data[so]; avgG = data[so + 1]; avgB = data[so + 2];
+    } else {
+      var sumR = 0, sumG = 0, sumB = 0, cnt = 0;
+      for (var k0 = 0; k0 < n; k0++) {
+        if (!mask[k0]) { var o0 = k0 * 4; sumR += data[o0]; sumG += data[o0 + 1]; sumB += data[o0 + 2]; cnt++; }
+      }
+      avgR = cnt ? sumR / cnt : 255; avgG = cnt ? sumG / cnt : 255; avgB = cnt ? sumB / cnt : 255;
     }
-    var avgR = cnt ? sumR / cnt : 255, avgG = cnt ? sumG / cnt : 255, avgB = cnt ? sumB / cnt : 255;
 
     var bufA = new Float32Array(n * 3);
     for (var i0 = 0; i0 < n; i0++) {

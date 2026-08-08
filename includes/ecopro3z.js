@@ -91,7 +91,6 @@
      1. Z 버튼 컨트롤 — J(offsetX:-14)보다 한 칸 더 왼쪽(-46)에, 이미지에만 부착.
   ============================================================ */
   function renderZButton(ctx, left, top, styleOverride, fabricObject){
-    if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
     if (isTableRelatedTarget(fabricObject)) return;
     ctx.save();
     ctx.translate(left, top);
@@ -118,7 +117,6 @@
     cursorStyle: 'pointer',
     render: renderZButton,
     mouseUpHandler: function(eventData, transformData){
-      if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
       var target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
       if (!qaZPopover.classList.contains('hidden')) { hideQaZPopover(); return true; } // 이미 열려있으면 다시 눌렀을 때 닫힘(토글)
@@ -134,6 +132,7 @@
      2. Z 팝업 — J와 똑같은 구조(드롭다운 → 상세조절 → 끄기버튼)
   ============================================================ */
   var qaZPopover = document.getElementById('qaZPopover');
+  if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(qaZPopover);
   var qaZFilterSelect = document.getElementById('qaZFilterSelect');
   var qaZDetails = {
     multiply: document.getElementById('qaZDetailMultiply'),
@@ -178,6 +177,10 @@
       var avoided = EP.findNonOverlappingPosition(qaZPopover, left, top, pw, ph);
       left = avoided.left; top = avoided.top;
     }
+
+    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
+    var remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaZPopover);
+    if (remembered) { left = remembered.left; top = remembered.top; }
 
     var r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaZPopover.style.left = r.left + 'px';

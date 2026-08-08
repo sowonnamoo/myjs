@@ -20,7 +20,6 @@
      (ecopro3c.js는 더 이상 도형에 qa 컨트롤을 붙이지 않으므로 여기서 붙이는 게 유일한 등록임)
   ============================================================ */
   function renderMButton(ctx, left, top, styleOverride, fabricObject){
-    if (EP.isMobileModeActive && EP.isMobileModeActive()) return; // 모바일에서는 숨김
     if (isTableRelatedTarget(fabricObject)) return;
     if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
       const objs = fabricObject.getObjects().filter(o => !o.isGuide);
@@ -37,10 +36,30 @@
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
     ctx.fillStyle = '#ffffff';
-    ctx.font = '14px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🎲', 0, 1); // 주사위 아이콘 — 누르면 곧바로 랜덤 모양필터가 적용됨
+    // 조금 더 예쁜 주사위 아이콘 — 둥근 사각형 몸체 + "5" 배열의 점 5개(버튼 색과 맞춘 포인트 컬러)
+    (function drawDiceIcon(){
+      const s = 8, r = 3;
+      ctx.beginPath();
+      ctx.moveTo(-s + r, -s);
+      ctx.lineTo(s - r, -s);
+      ctx.quadraticCurveTo(s, -s, s, -s + r);
+      ctx.lineTo(s, s - r);
+      ctx.quadraticCurveTo(s, s, s - r, s);
+      ctx.lineTo(-s + r, s);
+      ctx.quadraticCurveTo(-s, s, -s, s - r);
+      ctx.lineTo(-s, -s + r);
+      ctx.quadraticCurveTo(-s, -s, -s + r, -s);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#6FC983';
+      const off = 4, pipR = 1.3;
+      [[-off, -off], [off, -off], [0, 0], [-off, off], [off, off]].forEach(([px, py]) => {
+        ctx.beginPath();
+        ctx.arc(px, py, pipR, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    })();
     ctx.restore();
   }
 
@@ -51,7 +70,6 @@
     cursorStyle: 'pointer',
     render: renderMButton,
     mouseUpHandler: function(eventData, transformData){
-      if (EP.isMobileModeActive && EP.isMobileModeActive()) return true; // 모바일에서는 눌러도 반응 안 함
       const target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
       // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 랜덤 모양필터를 다시 뽑음(토글로
@@ -75,6 +93,7 @@
      상세조절만 아래 표시). 지금은 등록된 모양 전용 필터가 없어서 목록이 비어있음.
   ============================================================ */
   const qaMPopover = document.getElementById('qaMPopover');
+  if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(qaMPopover);
   const qaMFilterSelect = document.getElementById('qaMFilterSelect');
   const qaShapeDetails = {}; // 앞으로 모양필터를 추가할 때: qaShapeDetails[id] = document.getElementById(...)
   // "랜덤 적용"(주사위) 버튼이 여러 필터를 겹쳐 쓸 때 참고할 등록부 — 각 필터가 자기 build 함수와
@@ -309,6 +328,10 @@
       const avoided = EP.findNonOverlappingPosition(qaMPopover, left, top, pw, ph);
       left = avoided.left; top = avoided.top;
     }
+
+    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
+    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaMPopover);
+    if (remembered) { left = remembered.left; top = remembered.top; }
 
     const r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
     qaMPopover.style.left = r.left + 'px';
