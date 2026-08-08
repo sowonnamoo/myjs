@@ -77,9 +77,11 @@
     function renderRotateIcon(ctx, left, top /*, styleOverride, fabricObject */){
       const red = '#e74c3c';
       const r = 8;
-      const gapDeg = 55;
-      const startDeg = 90 + gapDeg / 2;
-      const endDeg = startDeg + (360 - gapDeg);
+      // 양방향 화살표 대신, 흔히 보는 "새로고침/회전" 아이콘처럼 한쪽 방향으로만 도는
+      // 270도짜리 원호 + 화살표 하나로 바꿈(요청: "회전 같은 아이콘으로"). 이게 훨씬
+      // 직관적으로 "회전"임을 알아볼 수 있음.
+      const startDeg = -30;
+      const endDeg = startDeg + 270;
       const startRad = startDeg * Math.PI / 180;
       const endRad = endDeg * Math.PI / 180;
 
@@ -102,8 +104,7 @@
       ctx.arc(0, 0, r, startRad, endRad);
       ctx.stroke();
 
-      drawArrowHead(ctx, startRad, r, false, red);
-      drawArrowHead(ctx, endRad, r, true, red);
+      drawArrowHead(ctx, endRad, r, true, red); // 화살표는 회전 방향 쪽 끝에 하나만
 
       ctx.restore();
     }
@@ -114,17 +115,143 @@
     fabric.Object.prototype.touchCornerSize = 44;
 
     const cu = fabric.controlsUtils || {};
+
+    // 회전 버튼을 클릭(드래그 없이)했을 때 켜지는 빨간 십자 안내선 — 오브젝트(사각 박스)의
+    // 좌측 하단 지점을 지나는 가로/세로 전체 선(회전 아이콘 자체 위치가 아니라 오브젝트
+    // 바운딩박스의 실제 좌측하단 기준). 오브젝트가 움직이면 그 지점도 매번 새로 계산해서
+    // 그리므로 항상 따라다님.
+    // 0=꺼짐, 1=좌측하단 기준, 2=우측상단 기준 — 클릭할 때마다 이 순서로 순환(요청: "총 2번
+    // 클릭기능" = 두 가지 기준점을 오가며 순환하고, 한 번 더 누르면 꺼짐)
+    let rotateGuideState = 0;
+    let rotateGuideTarget = null;
+    canvas.on('after:render', () => {
+      if (!rotateGuideState || !rotateGuideTarget || !canvas.contains(rotateGuideTarget)) return;
+      const br = rotateGuideTarget.getBoundingRect(true, true); // 캔버스 논리좌표(줌 반영 전)
+      const z = canvas.getZoom();
+      const x = (rotateGuideState === 1 ? br.left : br.left + br.width) * z;
+      const y = (rotateGuideState === 1 ? br.top + br.height : br.top) * z;
+      const ctx = canvas.getContext();
+      ctx.save();
+      ctx.strokeStyle = '#e74c3c';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(0, y); ctx.lineTo(canvas.getWidth(), y); // 가로선(X축)
+      ctx.moveTo(x, 0); ctx.lineTo(x, canvas.getHeight()); // 세로선(Y축)
+      ctx.stroke();
+      ctx.restore();
+    });
+    canvas.on('selection:cleared', () => {
+      rotateGuideState = 0;
+      rotateGuideTarget = null;
+    });
+
     fabric.Object.prototype.controls.mtr = new fabric.Control({
       x: 0,
       y: 0.5,
       offsetY: 36,
-      withConnection: true,
+      withConnection: true, // 파란 이동 손잡이와 동일하게, 끊김 없는 연결선을 fabric이 자동으로 그림
+      sizeX: 32, sizeY: 32, // 마우스 클릭 인식 범위를 눈에 보이는 원(반지름 14=지름 28)보다 넉넉하게
       cursorStyle: 'grab',
       cursorStyleHandler: cu.rotationStyleHandler,
       actionHandler: cu.rotationWithSnapping,
       actionName: 'rotate',
-      render: renderRotateIcon
+      render: renderRotateIcon,
+      // 드래그 없이 그냥 클릭(탭)만 했을 때 — 회전 대신 빨간 십자 안내선을 켜고 끔
+      // (요청: "회전동그라미 버튼을 한번 더 누르면... 안내선이 생기게, 다시 누르면 사라지게")
+      mouseUpHandler: function(eventData, transformData){
+        const transform = transformData || canvas._currentTransform;
+        if (transform && transform.actionPerformed) return true; // 실제로 드래그해서 회전했으면 안내선은 건드리지 않음
+        const target = (transform && transform.target) || canvas.getActiveObject();
+        if (!target) return true;
+        if (rotateGuideTarget !== target) {
+          // 다른 오브젝트를 대상으로 새로 누른 경우 항상 1단계(좌측하단)부터 시작
+          rotateGuideTarget = target;
+          rotateGuideState = 1;
+        } else {
+          rotateGuideState = (rotateGuideState + 1) % 3; // 0(꺼짐) → 1(좌측하단) → 2(우측상단) → 0
+          if (rotateGuideState === 0) {
+            // 3번째 클릭 — 안내선 끄면서 기울기도 0도로 복구(요청). 그냥 angle만 0으로
+            // 바꾸면 origin이 'center'가 아닌 오브젝트는 회전축이 모서리 쪽이라 이 사각
+            // 오브젝트의 "중심"이 그 자리에 안 있고 옆으로 튀어버림 — 그래서 각도를 바꾸기
+            // 전에 지금 중심점을 먼저 기억해두고, 각도를 0으로 바꾼 뒤 그 중심점 자리에
+            // 다시 정확히 맞춰줌(캔버스 회전 때 쓰는 것과 동일한 방식).
+            const center = target.getCenterPoint();
+            target.set('angle', 0);
+            target.setPositionByOrigin(center, 'center', 'center');
+            target.setCoords();
+            pushHistory();
+            rotateGuideTarget = null;
+          }
+        }
+        canvas.requestRenderAll();
+        return true;
+      }
     });
+  })();
+
+  /* ============================================================
+     2b-1. 모바일 전용 "이동 손잡이" — 하단 회전마크(빨간 곡선 화살표)와 완전히 같은
+     막대사탕 모양(선 + 끝에 동그라미)으로, 오브젝트 우측에 하나 더 붙임. 회전·크기조절
+     기능은 전혀 없고, 누른 채 드래그하면 오브젝트가 그 방향으로 그대로 옮겨지는
+     "이동 전용" 손잡이임 — 화살표 없이 그냥 파란 동그라미만 그림(요청대로).
+     PC에서는 마우스로 오브젝트 몸통을 바로 눌러 옮기면 되니 이 손잡이 자체(막대+동그라미)를
+     아예 안 그리고 작동도 안 하게 함 — setControlsVisibility로 매 선택마다 켜고 끔.
+  ============================================================ */
+  (function setupMobileMoveHandle(){
+    function renderMoveHandle(ctx, left, top){
+      ctx.save();
+      ctx.translate(left, top);
+      ctx.beginPath();
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+      ctx.fillStyle = '#3498db';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    fabric.Object.prototype.controls.mobileMoveHandle = new fabric.Control({
+      x: 0.5,
+      y: 0,
+      offsetX: 36,
+      withConnection: true, // 회전마크와 똑같이 오브젝트~손잡이 사이에 막대(선)가 자동으로 그려짐
+      sizeX: 34, sizeY: 34, // 마우스/터치 클릭 인식 범위를 눈에 보이는 원(반지름 15=지름 30)보다 넉넉하게
+      cursorStyle: 'move',
+      render: renderMoveHandle,
+      actionHandler: function(eventData, transform, x, y){
+        if (!(EP.isMobileModeActive && EP.isMobileModeActive())) return false; // 안전장치: PC에선 동작 안 함
+        const target = transform.target;
+        const dx = x - transform.ex; // 드래그 시작 지점(캔버스 좌표) 대비 지금까지 움직인 거리
+        const dy = y - transform.ey;
+        target.set({
+          left: transform.original.left + dx,
+          top: transform.original.top + dy
+        });
+        target.setCoords();
+        return true;
+      },
+      actionName: 'mobileMoveDrag'
+    });
+
+    // 선택될 때마다(그리고 화면 폭이 모바일<->PC 경계를 넘나들 때도) 지금 활성 오브젝트의
+    // 이 손잡이를 보이거나 숨김 — setControlsVisibility를 써야 아이콘뿐 아니라 연결선(막대)도
+    // 같이 사라짐(단순히 render 안에서만 안 그리면 막대 선은 그대로 남아서 어색해짐).
+    function syncMoveHandleVisibility(){
+      const mobile = !!(EP.isMobileModeActive && EP.isMobileModeActive());
+      const targets = [];
+      const active = canvas.getActiveObject();
+      if (active) {
+        if (active.type === 'activeSelection' && active.getObjects) targets.push(...active.getObjects());
+        else targets.push(active);
+      }
+      targets.forEach((o) => { if (o && o.setControlsVisibility) o.setControlsVisibility({ mobileMoveHandle: mobile }); });
+      canvas.requestRenderAll();
+    }
+    canvas.on('selection:created', syncMoveHandleVisibility);
+    canvas.on('selection:updated', syncMoveHandleVisibility);
+    window.addEventListener('resize', syncMoveHandleVisibility);
   })();
 
   // 모바일 모드에서는 오브젝트 선택 시 뜨는 리사이즈 핸들(네모 8개)이 화면 대비 너무 커
@@ -493,6 +620,16 @@
     const bl = Math.round(c1.b + (c2.b - c1.b) * t);
     return rgbToHex(r, g, bl);
   }
+  // 지금 색상(hex)을 봤을 때 무지개 게이지를 어느 위치에 놔야 자연스러운지 대략적으로
+  // 되짚어주는 헬퍼 — K 팝업(ecopro3k.js) 등 T 말고 다른 색상 게이지에서도 그대로 재사용함.
+  function hexToGaugePos(hex){
+    const rgb = hexToRgb(hex);
+    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const inZone = hsv.h >= GAUGE_TRIGGER_MIN && hsv.h <= GAUGE_TRIGGER_MAX;
+    return inZone ? GAUGE_YELLOW_POS : GAUGE_CORNER_POS;
+  }
+  EP.gaugePosToHex = gaugePosToHex;
+  EP.hexToGaugePos = hexToGaugePos;
 
   // T 팝업이 편집할 대상: 드래그로 여러 오브젝트를 묶어 선택했거나 "묶기"로 그룹화한 경우엔 그 묶음 전체
   // (정렬 기능은 이미지에도 필요하므로 텍스트로 제한하지 않음), 묶지 않고 텍스트 하나만 선택한 경우엔 그 하나만.
@@ -1226,6 +1363,14 @@
   const mobileRotateCanvasRightBtn = document.getElementById('mobileRotateCanvasRightBtn');
   if (mobileRotateCanvasRightBtn) {
     mobileRotateCanvasRightBtn.addEventListener('click', () => {
+      const rotateCanvasRightBtn = document.getElementById('rotateCanvasRightBtn');
+      if (rotateCanvasRightBtn) rotateCanvasRightBtn.click();
+    });
+  }
+  // 하단 손바닥(이동) 아이콘 옆의 회전 버튼도 동일하게 재사용
+  const mobileRotateCanvasBtn = document.getElementById('mobileRotateCanvasBtn');
+  if (mobileRotateCanvasBtn) {
+    mobileRotateCanvasBtn.addEventListener('click', () => {
       const rotateCanvasRightBtn = document.getElementById('rotateCanvasRightBtn');
       if (rotateCanvasRightBtn) rotateCanvasRightBtn.click();
     });
@@ -3026,7 +3171,6 @@
         }
         addCtxDivider();
         addCtxItem('⧉ 복제', () => { const duplicateBtn = document.getElementById('duplicateBtn'); if (duplicateBtn) duplicateBtn.click(); });
-        addCtxDivider();
         if (target.type === 'group') {
           addCtxItem('🔓 풀기', () => {
             const sel = target.toActiveSelection();
@@ -3169,6 +3313,19 @@
   });
   canvas.on('mouse:up', (opt) => { if (!opt.e || !isTouchEvent(opt.e)) clearCtxLongPress(); });
 
+  // 잠금 해제 등에 꼭 필요해서 다시 복구함(요청) — 다만 파란 이동 손잡이(mobileMoveHandle)를
+  // 누른 경우에는 시작하지 않음. 그래야 손잡이를 꾹 눌러 천천히 옮기는 중에 메뉴가 끼어들지
+  // 않고 "이동만" 가능함(요청: "파란 원만든거 이거만... 이동만 가능하게").
+  function isTouchNearMoveHandle(evt){
+    const target = canvas.getActiveObject();
+    if (!target || !target.oCoords || !target.oCoords.mobileMoveHandle) return false;
+    const t = (evt.touches && evt.touches[0]) || evt;
+    const pointer = canvas.getPointer(evt, true);
+    const corner = target.oCoords.mobileMoveHandle;
+    const dx = pointer.x - corner.x, dy = pointer.y - corner.y;
+    return Math.sqrt(dx * dx + dy * dy) < 30;
+  }
+
   // 터치 입력은 fabric을 거치지 않고 캔버스 DOM 엘리먼트에 직접 붙인 네이티브
   // touchstart/touchmove/touchend/touchcancel로 따로 처리함 — fabric이 내부적으로 터치를
   // mouse:* 이벤트로 변환해주는 과정에서 안드로이드 일부 기종·브라우저 조합에서 타이밍이
@@ -3177,6 +3334,7 @@
   upperCanvasEl.addEventListener('touchstart', (evt) => {
     if (!evt.touches || evt.touches.length !== 1) { clearCtxLongPress(); return; } // 두 손가락(핀치줌 등)이면 무시
     clearCtxLongPress();
+    if (isTouchNearMoveHandle(evt)) return; // 이동 손잡이 위에서 시작한 터치는 메뉴 타이머를 아예 안 켬
     const t = evt.touches[0];
     ctxLongPressStart = { x: t.clientX, y: t.clientY, e: evt, touch: true };
     ctxLongPressTimer = setTimeout(() => {
@@ -4560,8 +4718,6 @@
     }
     const pcResetBtn = document.getElementById('pcResetBtn');
     if (pcResetBtn) pcResetBtn.addEventListener('click', reload);
-    const mobileResetBtn = document.getElementById('mobileResetBtn');
-    if (mobileResetBtn) mobileResetBtn.addEventListener('click', reload);
   })();
 
   /* ============================================================

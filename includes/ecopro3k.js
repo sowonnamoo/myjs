@@ -44,6 +44,7 @@
   var kPopover = document.getElementById('kStrokePopover');
   var kPopoverCloseBtn = document.getElementById('kStrokePopoverCloseBtn');
   var kStrokeColorInput = document.getElementById('kStrokeColorInput');
+  var kColorGaugeInput = document.getElementById('kColorGaugeInput');
   var kOpacityInput = document.getElementById('kOpacityInput');
   var kFillOpacityInput = document.getElementById('kFillOpacityInput');
   var kStrokeWidthInput = document.getElementById('kStrokeWidthInput');
@@ -123,6 +124,7 @@
   function syncKPopoverFromTarget(target){
     var hex = (EP.toHex && EP.toHex(target.stroke)) || DEFAULT_STROKE_COLOR;
     kStrokeColorInput.value = hex;
+    if (EP.hexToGaugePos) kColorGaugeInput.value = EP.hexToGaugePos(hex);
     kOpacityInput.value = target.opacity != null ? target.opacity : 1;
     kFillOpacityInput.value = parseFillAlpha(target.fill);
     kStrokeWidthInput.value = Math.round(target.strokeWidth || 0);
@@ -136,12 +138,30 @@
 
   if (EP.initCmykPicker) EP.initCmykPicker(kStrokeColorInput);
 
+  // 무지개 게이지 — T(텍스트) 팝업의 색상 게이지와 완전히 같은 방식으로 재사용(EP.gaugePosToHex).
+  // 드래그하는 대로 그 위치의 색이 바로 테두리 색으로 적용되고, 옆 스와치도 같이 맞춰짐.
+  if (kColorGaugeInput) {
+    kColorGaugeInput.addEventListener('input', function(){
+      if (!kTarget || !EP.gaugePosToHex) return;
+      var hex = EP.gaugePosToHex(parseFloat(kColorGaugeInput.value));
+      kTarget.set('stroke', hex);
+      kStrokeColorInput.value = hex;
+      if (!kTarget.strokeWidth || kTarget.strokeWidth <= 0) {
+        kTarget.set('strokeWidth', DEFAULT_STROKE_WIDTH);
+        kStrokeWidthInput.value = DEFAULT_STROKE_WIDTH;
+      }
+      EP.canvas.requestRenderAll();
+    });
+    kColorGaugeInput.addEventListener('change', function(){ if (EP.pushHistory) EP.pushHistory(); });
+  }
+
   // 색상을 고르면 테두리가 실제로 "적용"되게 함 — 도형은 기본적으로 테두리가 없는(strokeWidth:0)
   // 상태로 만들어지므로, 색만 고르고 끝나면 아무 변화도 안 보이는 문제가 있었음. 그래서 색을
   // 고르는 순간 두께가 0이면 기본 두께(2px)로 같이 올려줌.
   kStrokeColorInput.addEventListener('input', function(){
     if (!kTarget) return;
     kTarget.set('stroke', kStrokeColorInput.value);
+    if (kColorGaugeInput && EP.hexToGaugePos) kColorGaugeInput.value = EP.hexToGaugePos(kStrokeColorInput.value);
     if (!kTarget.strokeWidth || kTarget.strokeWidth <= 0) {
       kTarget.set('strokeWidth', DEFAULT_STROKE_WIDTH);
       kStrokeWidthInput.value = DEFAULT_STROKE_WIDTH;

@@ -101,7 +101,6 @@
       <button type="button" class="btn icon" id="mobileLockBtn" title="선택한 오브젝트 잠금/해제 — 잠그면 실수로 움직이거나 지워지지 않아요. 잠긴 오브젝트를 다시 만지려면 길게(0.5초) 눌러서 선택한 뒤 이 버튼을 다시 누르세요">🔒</button>
       <button type="button" class="btn icon" id="mobileUndoBtn" title="실행 취소">↶</button>
       <button type="button" class="btn icon" id="mobileRedoBtn" title="다시 실행">↷</button>
-      <button type="button" class="btn icon" id="mobileResetBtn" title="새로고침 (F5) — 화면을 새로고침해요">🔄</button>
     </div>
   </div>
 
@@ -2527,8 +2526,8 @@
      다루는 팝업이라 M/J 팝업과 같은 .qa-popover 틀을 그대로 재사용함. -->
 <div class="qa-popover hidden" id="kStrokePopover">
   <button type="button" class="font-popover-close" id="kStrokePopoverCloseBtn" title="닫기">✕</button>
-  <div class="row">
-    <label>테두리 색상</label>
+  <div class="font-popover-top-row">
+    <input type="range" id="kColorGaugeInput" class="color-gauge" min="0" max="100" step="0.5" title="테두리 색상">
     <div class="cmyk-picker mini" id="kStrokeColorInput" title="테두리 색상 (CMYK)"></div>
   </div>
   <div class="row">
@@ -2728,6 +2727,7 @@
        (PC는 기존처럼 상단 🔍 확대 메뉴/Ctrl+휠을 그대로 씀). 자세한 동작은 ecopro3mobiletools.js 참고. -->
   <div class="mobile-canvas-tools" id="mobileCanvasTools">
     <button type="button" class="btn icon" id="mobileFocusToggleBtn" title="화면 정리 — 누르면 캔버스 안 디자인만 남기고 메뉴·버튼이 전부 숨겨져요(미리보기용). 다시 누르면 원래대로 돌아와요"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button type="button" class="btn icon" id="mobileRotateCanvasBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2.5"/><line x1="18.5" y1="12" x2="19.5" y2="12"/></svg></button>
     <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-4.53a1.87 1.87 0 0 1 2.6-2.66L6 13"/></svg></button>
     <div class="mobile-zoom-gauge">
       <input type="range" id="mobileZoomGauge" min="20" max="300" step="5" value="100" title="화면 확대/축소">

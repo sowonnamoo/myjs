@@ -625,11 +625,11 @@ button,input,select{font-family:inherit;}
 
 /* ---------- 모바일 전용 로고(상품담기/구입 버튼 옆, 링크 없음) ---------- */
 /* PC에서는 항상 숨김 — 아래 @media(max-width:900px)에서만 flex로 보여줌.
-   .mobile-action-buttons 안에서 floatingSaveBtn 바로 다음에 위치, 30px 간격만 여기서 줌. */
+   .mobile-action-buttons 안에서 floatingSaveBtn 바로 다음에 위치, 25px 간격만 여기서 줌. */
 .mobile-brand-logo{
-  display:none;align-items:center;margin-left:30px;pointer-events:none;
+  display:none;align-items:center;margin-left:25px;pointer-events:none;
 }
-.mobile-brand-logo img{height:22px;width:auto;display:block;}
+.mobile-brand-logo img{height:11px;width:auto;display:block;}
 
 .btn{
   border:1px solid var(--line);background:var(--panel);color:var(--ink);
@@ -950,6 +950,8 @@ body.mobile-focus-mode{
 .ctx-menu button.danger{color:var(--danger);}
 .ctx-menu button.danger:hover{background:#fdeeed;}
 .ctx-menu .ctx-divider{height:1px;background:var(--line);margin:5px 4px;}
+.ctx-menu .ctx-row{display:flex;gap:2px;}
+.ctx-menu .ctx-row button{text-align:center;}
 
 /* ---------- P버튼 → 필터(그림자/배경 ...) 메뉴 + 상세조절 아코디언 ---------- */
 .qa-popover{
