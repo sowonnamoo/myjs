@@ -20,6 +20,34 @@
     min-height:100vh;
   }
 
+  /* 브라우저 기본 스크롤바를 지원하는 환경(주로 PC)에서는 이것도 두껍고 눈에 띄게 —
+     다만 대부분의 모바일 브라우저는 메인 페이지 스크롤바 자체를 CSS로 못 건드리게 막아놔서,
+     모바일에서는 아래 별도의 커스텀 스크롤 표시 막대가 실질적인 역할을 함(요청: "우측
+     스크롤바가 얇아서... 두껍고 튀게"). */
+  ::-webkit-scrollbar{ width:14px; }
+  ::-webkit-scrollbar-track{ background:rgba(255,255,255,0.06); }
+  ::-webkit-scrollbar-thumb{ background:#4aa3e0; border-radius:7px; border:3px solid var(--bg); }
+  html{ scrollbar-width:auto; scrollbar-color:#4aa3e0 rgba(255,255,255,0.06); }
+
+  /* 모바일 등 기본 스크롤바를 못 건드리는 환경을 위한 커스텀 스크롤 표시 막대 — 화면
+     우측 가장자리에 고정, 지금 스크롤 위치를 두껍고 잘 보이는 색으로 표시함 */
+  .scroll-indicator-track{
+    position:fixed;
+    top:0; right:2px;
+    width:10px;
+    height:100%;
+    z-index:50;
+    pointer-events:none;
+  }
+  .scroll-indicator-thumb{
+    position:absolute;
+    left:0;
+    width:100%;
+    background:#4aa3e0;
+    border-radius:5px;
+    box-shadow:0 0 6px rgba(74,163,224,0.7);
+  }
+
   /* 맨 위 페이지 제목 */
   .page-title{
     position:relative;
@@ -38,6 +66,17 @@
     margin-top:8px;
     font-size:13px;
     color:#aaa;
+  }
+
+  /* 확대 게이지 — "결제 해주세요" 바로 아래로 이동됨(요청) */
+  .zoom-controls-top{
+    position:relative;
+    z-index:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    padding: 18px 20px 0;
   }
 
   /* 바닥 그리드 무늬 */
@@ -76,12 +115,10 @@
   .zoom-viewport{
     position:relative;
     width: min(700px, calc(100vw - 40px));
-    height: min(78vh, 760px);
+    height: min(43vh, 420px); /* 이미지 로드 전 임시값 — 로드되면 JS가 실제 비율에 맞게 다시 계산함 */
     overflow:hidden;
     touch-action:none;
     user-select:none;
-    background:#1a1a1a;
-    border-radius:4px;
   }
   .zoom-viewport .photo-frame{
     position:absolute;
@@ -102,24 +139,18 @@
   }
 
   /* 사진이 뜰 때 살짝 떠오르는 연출은 보기 창(프레임) 전체에 적용 — img 자신은 확대/이동용
-     transform을 따로 쓰므로 서로 안 겹치게 분리함. 애니메이션 지연은 각 사진의 묶음
-     (.design-block, 보기창+확대바)을 기준으로 순서를 셈 */
-  .design-block{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-  }
+     transform을 따로 쓰므로 서로 안 겹치게 분리함. 확대 게이지는 이제 상단(zoomControlsTop)에
+     따로 모여있고, board 안에는 각 사진의 .zoom-viewport만 순서대로 직접 자식으로 들어있음 */
   .zoom-viewport{
     opacity:0;
     transform: translateY(40px);
     animation: rise-up 0.7s ease forwards;
   }
-  .design-block:nth-child(2) .zoom-viewport{ animation-delay: 0.05s; }
-  .design-block:nth-child(3) .zoom-viewport{ animation-delay: 0.2s; }
-  .design-block:nth-child(4) .zoom-viewport{ animation-delay: 0.35s; }
-  .design-block:nth-child(5) .zoom-viewport{ animation-delay: 0.5s; }
-  .design-block:nth-child(n+6) .zoom-viewport{ animation-delay: 0.65s; }
+  .zoom-viewport:nth-child(2){ animation-delay: 0.05s; }
+  .zoom-viewport:nth-child(3){ animation-delay: 0.2s; }
+  .zoom-viewport:nth-child(4){ animation-delay: 0.35s; }
+  .zoom-viewport:nth-child(5){ animation-delay: 0.5s; }
+  .zoom-viewport:nth-child(n+6){ animation-delay: 0.65s; }
 
   @keyframes rise-up{
     from{ opacity:0; transform: translateY(40px); }
@@ -167,7 +198,7 @@
       print-color-adjust: exact;
     }
     /* 화면 조작용 UI는 인쇄에서 제외 */
-    .zoom-control, .action-wrap, .page-title{ display:none !important; }
+    .zoom-control, .action-wrap, .page-title, .scroll-indicator-track{ display:none !important; }
     /* 인쇄물은 화면에서 확대/이동해둔 상태와 무관하게 항상 이미지 전체가 보이게 초기화함 */
     .zoom-viewport{
       height:auto !important;
@@ -197,6 +228,14 @@
   }
   .zoom-control span{
     font-size:13px;
+    color:#bbb;
+    flex-shrink:0;
+  }
+  .zoom-control .zoom-label{
+    color:#fff;
+    font-weight:700;
+  }
+  .zoom-control .zoom-icon{
     color:#bbb;
     flex-shrink:0;
   }
@@ -422,6 +461,10 @@
 
 <div class="grid-floor"></div>
 
+<div class="scroll-indicator-track" id="scrollIndicatorTrack">
+  <div class="scroll-indicator-thumb" id="scrollIndicatorThumb"></div>
+</div>
+
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-card">
     <div class="loading-spinner" id="loadingSpinner"></div>
@@ -437,8 +480,12 @@
   <p>시안확인 후 아래 장바구니 담기/결제 해주세요.</p>
 </div>
 
+<div class="zoom-controls-top" id="zoomControlsTop">
+  <!-- 확대 게이지들은 아래 스크립트에서 여기로 이동돼 채워집니다 -->
+</div>
+
 <div class="board" id="board">
-  <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치에 채워집니다 (사진마다 확대 조절 바가 같이 생성됨) -->
+  <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치에 채워집니다 -->
 </div>
 
 <div class="print-notice">
@@ -446,7 +493,8 @@
   ※ 본 시안은 모니터 환경에 따라 실제 인쇄물과 색상 차이가 있을 수 있습니다.<br>
   ※ 결제 완료 시 별도 확인 절차 없이 즉시 인쇄가 진행되며, 이후에는 수정 및 취소가 불가합니다.<br>
   ※ 문구, 이미지, 레이아웃 등 시안 내용을 꼼꼼히 확인 후 결제해 주세요.<br>
-  ※ 인쇄 진행 후 발생하는 오탈자 및 디자인 오류에 대한 책임은 고객에게 있습니다.
+  ※ 인쇄 진행 후 발생하는 오탈자 및 디자인 오류에 대한 책임은 고객에게 있습니다.<br><br>
+  Tip. 작업사이즈에 맞춰 재단후 출고됩니다. 시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.
 </div>
 
 <div class="agree-wrap">
@@ -563,7 +611,9 @@
 
     const control = document.createElement('div');
     control.className = 'zoom-control';
-    control.innerHTML = '<span>🔍</span><input type="range" min="1" max="8" step="0.1" value="1">';
+    const labelHtml = design.label ? `<span class="zoom-label">${design.label}</span>` : '';
+    const zoomIconSvg = '<svg class="zoom-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="20.5" y2="20.5"/></svg>';
+    control.innerHTML = labelHtml + zoomIconSvg + '<input type="range" min="1" max="4" step="0.1" value="1">';
 
     initZoomViewer(viewport, img, control.querySelector('input[type=range]'));
 
@@ -574,6 +624,27 @@
   function initZoomViewer(viewport, img, range){
     let zoom = 1;
     let panX = 0, panY = 0;
+
+    // 여백(검은 레터박스) 없이, 프레임 크기를 사진 자기 자신의 가로세로 비율에 정확히
+    // 맞춤 — 기존엔 프레임이 고정 비율이라 사진 비율과 안 맞으면 위아래(또는 좌우)에
+    // 빈 여백이 생겼는데, 이제 사진이 로드되는 즉시 그 사진의 실제 비율대로 프레임
+    // 자체의 폭/높이를 다시 계산해서 딱 맞춤(요청: "여백없이 시안 비율에 맞춰 초기값 박스").
+    function fitViewportToImageRatio(){
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      const maxW = Math.min(700, window.innerWidth - 40);
+      const maxH = Math.min(window.innerHeight * 0.43, 420);
+      const ratio = img.naturalWidth / img.naturalHeight;
+      let w = maxW, h = w / ratio;
+      if (h > maxH) { h = maxH; w = h * ratio; }
+      viewport.style.width = Math.round(w) + 'px';
+      viewport.style.height = Math.round(h) + 'px';
+    }
+    if (img.complete && img.naturalWidth) {
+      fitViewportToImageRatio();
+    } else {
+      img.addEventListener('load', fitViewportToImageRatio);
+    }
+    window.addEventListener('resize', fitViewportToImageRatio);
 
     function clampPan(){
       const maxX = (viewport.clientWidth * (zoom - 1)) / 2;
@@ -632,6 +703,7 @@
 
   async function renderBoard(){
     const board = document.getElementById('board');
+    const zoomControlsTop = document.getElementById('zoomControlsTop');
     const overlay = document.getElementById('loadingOverlay');
     const barFill = document.getElementById('loadingBarFill');
     const loadingText = document.getElementById('loadingText');
@@ -661,12 +733,12 @@
 
       setTimeout(() => {
         designs.forEach(design => {
-          const block = document.createElement('div');
-          block.className = 'design-block';
           const { viewport, control } = buildZoomViewport(design);
-          block.appendChild(viewport);
-          block.appendChild(control);
-          board.appendChild(block);
+          // 확대 게이지는 "결제 해주세요" 바로 아래(zoomControlsTop)로, 사진은 board로 —
+          // 각각 다른 곳에 붙어도 initZoomViewer 안에서 이미 이 둘을 서로 연결해뒀기 때문에
+          // 게이지를 움직이면 자기 사진이 정확히 반응함(요청: "확대 게이지를... 아래쪽으로 이동").
+          zoomControlsTop.appendChild(control);
+          board.appendChild(viewport);
         });
         board.classList.add('ready');
         overlay.classList.add('fade-out');
@@ -676,6 +748,33 @@
   }
 
   renderBoard();
+
+  // ---- 커스텀 스크롤 표시 막대 — 모바일에서 기본 스크롤바가 안 보이거나 너무 얇아서
+  // 대신 항상 두껍고 잘 보이게 직접 그려주는 표시 막대 ----
+  (function setupScrollIndicator(){
+    const track = document.getElementById('scrollIndicatorTrack');
+    const thumb = document.getElementById('scrollIndicatorThumb');
+    if (!track || !thumb) return;
+
+    function update(){
+      const trackH = track.clientHeight;
+      const doc = document.documentElement;
+      const scrollable = Math.max(1, doc.scrollHeight - doc.clientHeight); // 실제로 더 스크롤할 수 있는 총 길이
+      const thumbH = Math.max(40, (doc.clientHeight / doc.scrollHeight) * trackH); // 너무 작아지지 않게 최소 40px 보장
+      const maxThumbTop = trackH - thumbH;
+      const progress = Math.min(1, (window.scrollY || doc.scrollTop) / scrollable);
+      thumb.style.height = thumbH + 'px';
+      thumb.style.top = (progress * maxThumbTop) + 'px';
+      // 스크롤할 내용이 화면 안에 다 들어와서 더 내릴 게 없으면 막대 자체를 숨김
+      track.style.display = doc.scrollHeight <= doc.clientHeight + 4 ? 'none' : 'block';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    // 이미지들이 로드되며 페이지 길이가 계속 바뀌므로, 로딩 중에도 주기적으로 갱신
+    const poll = setInterval(update, 400);
+    setTimeout(() => clearInterval(poll), 6000);
+    update();
+  })();
 
   // ---- 주문정보(용지/편집/수량/사이즈/가격 등) 쿼리 이어받기 ----
   // 01my.html 에서 에코프로1로 넘어갈 때 쿼리스트링으로 실려온 주문정보가
@@ -743,6 +842,24 @@
     });
   }
 
+  // 캔버스 폭에 맞춰 텍스트를 자동 줄바꿈(단어/글자 단위)해서 몇 줄이 필요한지와 함께 돌려줌
+  function wrapText(ctx, text, maxWidth){
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    words.forEach(word => {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
   async function buildCompositeCanvas(){
     const srcEls = Array.from(document.querySelectorAll('.photo-frame img'));
     const loaded = await Promise.all(srcEls.map(el => loadImageEl(el.src)));
@@ -756,9 +873,22 @@
       return { img: im, sx, sy, sw: cropW, sh: cropH, destH };
     });
 
+    // 하단에 넣을 안내문구 — 작은 글씨로 줄바꿈해서 표시(요청: "시안 다운로드 했을때 밑에
+    // 글 지우고... Tip 문구도 넣어줘")
+    const TIP_TEXT = 'Tip. 위 아래 흰 여백은 인쇄되지 않사오며 작업사이즈에 맞춰 재단후 출고됩니다. 시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.';
+    const TIP_FONT = '11px -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
+    const TIP_LINE_HEIGHT = 17;
+    const TIP_PADDING_X = 20;
+
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    measureCtx.font = TIP_FONT;
+    const tipLines = wrapText(measureCtx, TIP_TEXT, COMPOSITE_WIDTH - TIP_PADDING_X * 2);
+    const tipBlockHeight = tipLines.length * TIP_LINE_HEIGHT + 24; // 위아래 여유 포함
+
     const totalHeight =
       items.reduce((sum, it) => sum + it.destH, 0) +
-      COMPOSITE_GAP * (items.length + 1);
+      COMPOSITE_GAP * (items.length + 1) +
+      tipBlockHeight;
 
     const canvas = document.createElement('canvas');
     canvas.width = COMPOSITE_WIDTH;
@@ -776,13 +906,16 @@
     });
     ctx.filter = 'none';
 
-    // 위 아래(그리고 사진 사이) 여백은 화면 확인용일 뿐 실제 인쇄에는 포함되지
-    // 않는다는 걸 명시적으로 안내 — 우측 하단에 작게 표기
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('위 아래 여백은 인쇄되지 않습니다.', canvas.width - 14, canvas.height - 12);
+    // 하단 안내 문구(Tip) — 작은 글씨, 여러 줄로 자동 줄바꿈되어 표시됨
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.font = TIP_FONT;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    let tipY = y + 16;
+    tipLines.forEach(line => {
+      ctx.fillText(line, TIP_PADDING_X, tipY);
+      tipY += TIP_LINE_HEIGHT;
+    });
 
     return canvas;
   }
