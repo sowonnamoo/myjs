@@ -757,19 +757,24 @@ function stampLiveTextWarning(ctx, width, height){
 // broken overprint, wrong color profile) rather than genuinely empty art.
 function analyzeCanvasBlank(ctx, width, height){
   const data = ctx.getImageData(0, 0, width, height).data;
-  const stride = 4 * 8; // sample every 8th pixel for speed
+  // 요청: "백지 상태인데 접수가능이라 적히는거 막아줘" — 기존엔 8픽셀마다 하나씩만
+  // 성기게 표본을 뽑고, 흰색 판정도 매우 엄격(248 초과)해서, 아주 작은 크롭마크나
+  // 옅은 배경 얼룩 하나만 있어도 "완전 백지"로 안 잡히는 경우가 있었음. 표본을
+  // 더 촘촘히(4픽셀마다) 뽑고, "거의 흰색"으로 인정하는 범위도 살짝 넓히고(245 초과),
+  // 판정 기준도 99.5% → 98%로 낮춰서 이런 경우도 확실히 "백지"로 잡히게 함.
+  const stride = 4 * 4; // sample every 4th pixel (denser than before)
   let whiteCount = 0, blackCount = 0, total = 0;
   for(let i = 0; i < data.length; i += stride){
     const r = data[i], g = data[i+1], b = data[i+2];
     total++;
-    if(r > 248 && g > 248 && b > 248) whiteCount++;
-    else if(r < 8 && g < 8 && b < 8) blackCount++;
+    if(r > 245 && g > 245 && b > 245) whiteCount++;
+    else if(r < 10 && g < 10 && b < 10) blackCount++;
   }
   if(total === 0) return null;
   const whiteRatio = whiteCount / total;
   const blackRatio = blackCount / total;
-  if(whiteRatio > 0.995) return 'blank';
-  if(blackRatio > 0.995) return 'black';
+  if(whiteRatio > 0.98) return 'blank';
+  if(blackRatio > 0.98) return 'black';
   return null;
 }
 
@@ -1114,7 +1119,7 @@ function createRow(filename){
       `<span>${source}</span>`;
     if(hasLiveText){
       const color = enforceLiveTextCheck ? 'var(--fail)' : 'var(--warn)';
-      const note = enforceLiveTextCheck ? '라이브 텍스트 감지 · 아웃라인 처리 필요' : '라이브 텍스트 감지 (검사 꺼짐)';
+      const note = enforceLiveTextCheck ? '접수오류 · 아웃라인 처리 필요' : '텍스트오류 (검사 꺼짐)';
       metaHtml += `<span style="color:${color};">${note}</span>`;
       if(enforceLiveTextCheck){
         metaHtml += commonTipHtml();
@@ -1138,14 +1143,19 @@ function createRow(filename){
     el.className = 'row unknown';
     gaugeEl.innerHTML = `<div class="thumb-wrap clickable unknown"><img src="${dataUrl}" alt=""></div>`;
     gaugeEl.querySelector('.thumb-wrap').addEventListener('click', () => openModal(dataUrl));
-    const label = issue === 'blank' ? '미리보기가 텅 비어 있음' : '미리보기가 전체 검정';
+    // 백지 판정은 "렌더링 이상일 수도 있다"는 애매한 표현 대신, 사유를 명확하게 못박아서
+    // 바로 무엇을 고쳐야 하는지 알려줌(요청: "디자인이 백지에 가까운 형태 입니다. 색채를
+    // 넣은 디자인후 재업로드 해주세요"). 전체 검정(black) 케이스는 실제로 오버프린트 등
+    // 기술적인 문제일 수 있어서 기존 설명을 그대로 둠.
+    const label = issue === 'blank' ? '디자인이 백지에 가까운 형태입니다' : '미리보기가 전체 검정';
+    const subtitle = issue === 'blank' ? '' : ' · 렌더링 이상 가능성, 수동 확인 필요';
     const specificTip = issue === 'blank'
-      ? null
+      ? '색채를 넣은 디자인후 재업로드 해주세요.'
       : '오버프린트 설정이나 색상 프로파일 문제일 수 있어요. 오버프린트 미리보기를 끄고 CMYK로 다시 저장해주세요.';
     metaEl.innerHTML = `
       <div>
-        <div class="issue-title"><b>${label}</b> · 렌더링 이상 가능성, 수동 확인 필요</div>
-        ${specificTip ? tipHtml(specificTip) : ''}
+        <div class="issue-title"><b>${label}</b>${subtitle}</div>
+        ${tipHtml(specificTip)}
         ${commonTipHtml()}
       </div>
     `;
