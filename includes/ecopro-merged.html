@@ -613,18 +613,45 @@ function renderSlotDropzone(slotId){
 // JPG/PNG/PDF upload editor (ecopro1.html).
 const JPEG_PNG_UPLOAD_PAGE_URL = 'ecopro1';
 // Placeholder — point this at the real 시안확인/장바구니 page in your deployment.
-// 시안보기 페이지. sian.html은 sessionStorage의 'ecogr_preview_designs' 키에서
-// [{label, dataUrl}, ...] 형태의 미리보기 이미지 배열을 읽어 화면에 그린다.
+// 시안보기 페이지. sian.html은 IndexedDB(ecogrHandoff DB의 kv 스토어)의
+// 'ecogr_preview_designs' 키에서 [{label, dataUrl}, ...] 형태의 미리보기 이미지
+// 배열을 읽어 화면에 그린다 — 이전엔 sessionStorage를 썼었는데, sessionStorage는
+// 도메인당 5~10MB로 한도가 낮아 고화질(2000px) 이미지 여러 장을 담으면 저장이
+// 조용히 실패해서 시안 페이지로 이미지가 아예 안 넘어가는 문제가 있었음. sian.html
+// 쪽이 이미 한도가 훨씬 넉넉한 IndexedDB로 바뀌어 있어서, 여기도 반드시 같은
+// DB/스토어/키 이름으로 맞춰야 함(요청: "이미지가 시안으로 불러가지지 않는거 같아").
 const SIAN_PAGE_URL = 'sian';
 const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';
 
-document.getElementById('globalCartBtn').addEventListener('click', () => {
+// sian.html과 완전히 동일한 IndexedDB 핸드오프 저장소 — DB 이름/스토어 이름이 반드시
+// sian.html의 HANDOFF_DB_NAME/HANDOFF_STORE_NAME과 같아야 서로 주고받을 수 있음.
+const HANDOFF_DB_NAME = 'ecogrHandoff';
+const HANDOFF_STORE_NAME = 'kv';
+function openHandoffDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, value){
+  const db = await openHandoffDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+    tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+document.getElementById('globalCartBtn').addEventListener('click', async () => {
   const designs = collectPreviewDesigns();
   try{
-    sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(designs));
+    await idbSet(PREVIEW_STORAGE_KEY, designs);
   }catch(e){
     console.error('시안 이미지 저장 실패:', e);
-    alert('미리보기 이미지 용량이 너무 커서 시안 페이지로 전달하지 못했습니다.');
+    alert('미리보기 이미지를 시안 페이지로 전달하지 못했습니다.');
     return;
   }
   // 접수 시 사용한 쿼리(count/width/height 등)를 그대로 이어서 전달
