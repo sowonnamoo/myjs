@@ -11,7 +11,6 @@
     --bg: #232323;
     --gap: 70px; /* 고정 */
     --sat: 58%; /* 채도 -50% 고정 -> 요청에 따라 8%p 상승(58%) */
-    --img-width: 700px;
   }
 
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -19,6 +18,26 @@
   html,body{
     background:var(--bg);
     min-height:100vh;
+  }
+
+  /* 맨 위 페이지 제목 */
+  .page-title{
+    position:relative;
+    z-index:1;
+    text-align:center;
+    padding: 32px 20px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
+  }
+  .page-title h1{
+    font-size:22px;
+    font-weight:800;
+    color:#fff;
+    letter-spacing:.01em;
+  }
+  .page-title p{
+    margin-top:8px;
+    font-size:13px;
+    color:#aaa;
   }
 
   /* 바닥 그리드 무늬 */
@@ -45,68 +64,69 @@
     padding: var(--gap) 0 60px;
   }
 
-  /* 이미지 프레임 (워터마크 오버레이용) */
-  .photo-frame{
+  /* ---------------------------------------------------------------------
+     시안 확대/보기 — photo-order.html의 "최종 시안보기"와 완전히 같은 방식으로 교체함
+     (요청: "네모프래임을 벗어나지 않고 모바일에서 예쁘게... 확대는 크게해서 깨짐 없이").
+     기존엔 이미지 자체의 width를 슬라이더로 직접 키워서 화면 레이아웃 밖으로 넘치는
+     방식이었는데, 이제는 크기가 고정된 "보기 창"(.zoom-viewport) 안에서 이미지를 CSS
+     transform(scale+translate)으로만 확대/이동시킴 — 창 자체는 절대 커지지 않고
+     항상 네모 프레임 안에 딱 맞게 있으면서, 그 안의 이미지만 확대되고 드래그로
+     이동해서 볼 수 있음. 원본 이미지 해상도 그대로 확대하는 방식이라 깨짐도 적음.
+  --------------------------------------------------------------------- */
+  .zoom-viewport{
     position:relative;
-    width: var(--img-width);
-    max-width: calc(100vw - 40px);
-    line-height:0;
+    width: min(700px, calc(100vw - 40px));
+    height: min(78vh, 760px);
+    overflow:hidden;
+    touch-action:none;
+    user-select:none;
+    background:#1a1a1a;
+    border-radius:4px;
   }
-
-  /* 모바일에서도 PC와 같은 방식(네모 프레임 안에서 이미지 자체가 2000px까지 확대되는
-     형식)으로 동작하도록, 각 사진마다 고정 크기의 "보기 창"(.frame-viewport)으로 한 번 더
-     감싸고 그 안에서만 스크롤(팬)되게 함 — 페이지 전체가 옆으로 길어지는 대신, 이 창
-     하나만 잘라서 보여주고 그 안의 이미지가 실제로 커짐. 프레임 자체도 기존보다 넉넉하게
-     키움(요청: "네모프레임 좀 키워주고"). */
-  @media (max-width: 768px){
-    .frame-viewport{
-      width: min(94vw, 640px);
-      height: min(74vh, 720px);
-      overflow: auto;
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 4px;
-      background: rgba(0,0,0,0.15);
-      -webkit-overflow-scrolling: touch;
-    }
-    .photo-frame{
-      max-width: none; /* 보기 창이 대신 잘라 보여주므로, 이미지 자체 크기 제한은 없앰 */
-      margin: 0 auto;
-    }
+  .zoom-viewport .photo-frame{
+    position:absolute;
+    inset:0;
   }
-
-  .board img{
-    position:relative;
-    z-index:1;
+  .zoom-viewport img{
+    position:absolute;
+    inset:0;
     width:100%;
-    height:auto;
-    display:block;
+    height:100%;
+    object-fit:contain;
+    transform-origin:center center;
+    pointer-events:none;
+    -webkit-user-drag:none;
+    user-select:none;
     filter: saturate(var(--sat));
     clip-path: inset(2.5%); /* 가로/세로 각각 95%만 노출, 나머지 5%(상하좌우 2.5%씩)는 숨김 */
+  }
+
+  /* 사진이 뜰 때 살짝 떠오르는 연출은 보기 창(프레임) 전체에 적용 — img 자신은 확대/이동용
+     transform을 따로 쓰므로 서로 안 겹치게 분리함. 애니메이션 지연은 각 사진의 묶음
+     (.design-block, 보기창+확대바)을 기준으로 순서를 셈 */
+  .design-block{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .zoom-viewport{
     opacity:0;
     transform: translateY(40px);
     animation: rise-up 0.7s ease forwards;
   }
-
-  .photo-frame:nth-child(2) img{ animation-delay: 0.05s; }
-  .photo-frame:nth-child(3) img{ animation-delay: 0.2s; }
-  .photo-frame:nth-child(4) img{ animation-delay: 0.35s; }
-  .photo-frame:nth-child(5) img{ animation-delay: 0.5s; }
-  .photo-frame:nth-child(n+6) img{ animation-delay: 0.65s; }
+  .design-block:nth-child(2) .zoom-viewport{ animation-delay: 0.05s; }
+  .design-block:nth-child(3) .zoom-viewport{ animation-delay: 0.2s; }
+  .design-block:nth-child(4) .zoom-viewport{ animation-delay: 0.35s; }
+  .design-block:nth-child(5) .zoom-viewport{ animation-delay: 0.5s; }
+  .design-block:nth-child(n+6) .zoom-viewport{ animation-delay: 0.65s; }
 
   @keyframes rise-up{
-    from{
-      opacity:0;
-      transform: translateY(40px);
-      filter: saturate(var(--sat));
-    }
-    to{
-      opacity:1;
-      transform: translateY(0);
-      filter: saturate(var(--sat));
-    }
+    from{ opacity:0; transform: translateY(40px); }
+    to{ opacity:1; transform: translateY(0); }
   }
 
-  /* 워터마크: 이미지 너비가 700px를 초과할 때만 노출, 인쇄 시에는 항상 숨김 */
+  /* 워터마크: 확대(zoom>1)했을 때만 노출, 인쇄 시에는 항상 숨김 */
   .watermark{
     position:absolute;
     inset: 2.5%; /* 클리핑된 실제 노출 영역과 맞춤 */
@@ -119,7 +139,7 @@
     overflow:hidden;
     z-index:3;
   }
-  body.watermark-on .watermark{
+  .zoom-viewport.watermark-on .watermark{
     display:grid;
   }
   .watermark span{
@@ -147,7 +167,18 @@
       print-color-adjust: exact;
     }
     /* 화면 조작용 UI는 인쇄에서 제외 */
-    .quick-bar, .action-wrap{ display:none !important; }
+    .zoom-control, .action-wrap, .page-title{ display:none !important; }
+    /* 인쇄물은 화면에서 확대/이동해둔 상태와 무관하게 항상 이미지 전체가 보이게 초기화함 */
+    .zoom-viewport{
+      height:auto !important;
+      overflow:visible !important;
+    }
+    .zoom-viewport img{
+      position:relative !important;
+      transform:none !important;
+      width:100% !important;
+      height:auto !important;
+    }
     /* 시안 이미지 + 주의사항은 함께 인쇄 */
     .print-notice{
       -webkit-print-color-adjust: exact;
@@ -155,36 +186,23 @@
     }
   }
 
-  /* 빠른 조절 바 - 상단 공백(gap) 영역 안에 한 줄로 배치, 문서 흐름에 포함되어 스크롤 시 함께 이동하므로 사진을 절대 가리지 않음 */
-  .quick-bar{
-    position:absolute;
-    top:0;
-    left:50%;
-    transform:translateX(-50%);
-    width:min(700px, calc(100vw - 40px));
-    height: var(--gap);
-    max-height:70px;
+  /* 각 시안 사진 아래에 붙는 확대 조절 바 */
+  .zoom-control{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:12px;
-    z-index:2;
+    gap:10px;
+    width: min(700px, calc(100vw - 40px));
+    padding: 0 4px;
   }
-
-  .quick-bar label{
-    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif;
-    font-size:12px;
+  .zoom-control span{
+    font-size:13px;
     color:#bbb;
-    white-space:nowrap;
     flex-shrink:0;
   }
-  .quick-bar .val{
-    font-weight:700;
-    color:#fff;
-  }
-  .quick-bar input[type=range]{
+  .zoom-control input[type=range]{
     width:180px;
-    max-width:40vw;
+    max-width:60vw;
   }
 
   /* 시안 하단 인쇄 주의사항 (화면/인쇄 모두 노출) */
@@ -414,13 +432,13 @@
   </div>
 </div>
 
-<div class="board" id="board">
-  <div class="quick-bar">
-    <label>이미지 너비 <span class="val" id="widthVal">700px</span></label>
-    <input type="range" id="widthSlider" min="300" max="2000" step="10" value="700" />
-  </div>
+<div class="page-title">
+  <h1>시안보기</h1>
+  <p>시안확인 후 아래 장바구니 담기/결제 해주세요.</p>
+</div>
 
-  <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치 뒤에 채워집니다 -->
+<div class="board" id="board">
+  <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치에 채워집니다 (사진마다 확대 조절 바가 같이 생성됨) -->
 </div>
 
 <div class="print-notice">
@@ -521,7 +539,13 @@
     return wm;
   }
 
-  function buildPhotoFrame(design){
+  // photo-order.html의 "최종 시안보기"(zoom-viewport)와 완전히 같은 방식 — 사진 하나당
+  // 고정 크기의 보기 창 + 확대 슬라이더 + 드래그(포인터) 팬을 통째로 만들어줌.
+  function buildZoomViewport(design){
+    const viewport = document.createElement('div');
+    viewport.className = 'zoom-viewport';
+    viewport.oncontextmenu = () => false;
+
     const frame = document.createElement('div');
     frame.className = 'photo-frame';
 
@@ -535,7 +559,64 @@
 
     frame.appendChild(img);
     frame.appendChild(buildWatermarkEl());
-    return frame;
+    viewport.appendChild(frame);
+
+    const control = document.createElement('div');
+    control.className = 'zoom-control';
+    control.innerHTML = '<span>🔍</span><input type="range" min="1" max="8" step="0.1" value="1">';
+
+    initZoomViewer(viewport, img, control.querySelector('input[type=range]'));
+
+    return { viewport, control };
+  }
+
+  // ---- 확대(scale)·드래그(pan) 뷰어 — photo-order.html의 initZoomViewer와 동일한 로직 ----
+  function initZoomViewer(viewport, img, range){
+    let zoom = 1;
+    let panX = 0, panY = 0;
+
+    function clampPan(){
+      const maxX = (viewport.clientWidth * (zoom - 1)) / 2;
+      const maxY = (viewport.clientHeight * (zoom - 1)) / 2;
+      panX = Math.max(-maxX, Math.min(maxX, panX));
+      panY = Math.max(-maxY, Math.min(maxY, panY));
+    }
+
+    function applyTransform(){
+      clampPan();
+      img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+      viewport.style.cursor = zoom > 1 ? 'grab' : 'default';
+      viewport.classList.toggle('watermark-on', zoom > 1);
+    }
+
+    range.addEventListener('input', function(){
+      zoom = parseFloat(range.value);
+      if (zoom <= 1) { panX = 0; panY = 0; }
+      applyTransform();
+    });
+
+    // 드래그(포인터)로 확대된 이미지 이동 — 마우스/터치 공용(Pointer Events)
+    let dragging = false, startX = 0, startY = 0, startPanX = 0, startPanY = 0;
+    viewport.addEventListener('pointerdown', function(e){
+      if (zoom <= 1) return;
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      startPanX = panX; startPanY = panY;
+      viewport.style.cursor = 'grabbing';
+    });
+    document.addEventListener('pointermove', function(e){
+      if (!dragging) return;
+      panX = startPanX + (e.clientX - startX);
+      panY = startPanY + (e.clientY - startY);
+      applyTransform();
+    });
+    document.addEventListener('pointerup', function(){
+      if (!dragging) return;
+      dragging = false;
+      viewport.style.cursor = zoom > 1 ? 'grab' : 'default';
+    });
+
+    applyTransform();
   }
 
   async function loadDesignsFromSession(){
@@ -580,10 +661,12 @@
 
       setTimeout(() => {
         designs.forEach(design => {
-          const viewport = document.createElement('div');
-          viewport.className = 'frame-viewport';
-          viewport.appendChild(buildPhotoFrame(design));
-          board.appendChild(viewport);
+          const block = document.createElement('div');
+          block.className = 'design-block';
+          const { viewport, control } = buildZoomViewport(design);
+          block.appendChild(viewport);
+          block.appendChild(control);
+          board.appendChild(block);
         });
         board.classList.add('ready');
         overlay.classList.add('fade-out');
@@ -642,16 +725,6 @@
   const orderParams = resolveOrderParams();
 
   const root = document.documentElement.style;
-
-  const widthSlider = document.getElementById('widthSlider');
-  const widthVal = document.getElementById('widthVal');
-
-  widthSlider.addEventListener('input', ()=>{
-    const val = Number(widthSlider.value);
-    root.setProperty('--img-width', val + 'px');
-    widthVal.textContent = val + 'px';
-    document.body.classList.toggle('watermark-on', val > 700);
-  });
 
   // ---- 시안 전체 합쳐서 JPEG로 다운로드 (가로 700px 고정) ----
   const downloadBtn = document.getElementById('downloadBtn');
