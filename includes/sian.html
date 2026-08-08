@@ -53,21 +53,24 @@
     line-height:0;
   }
 
-  /* 모바일 화면폭이 좁으면 위 max-width(calc(100vw - 40px))가 슬라이더로 아무리 키워도
-     화면폭 이상으로는 절대 못 커지게 항상 눌러버리고 있었음 — 슬라이더는 움직이고 숫자도
-     바뀌는데 실제 이미지 크기는 그대로라 "확대가 안 먹힌다"처럼 보였던 원인. 모바일
-     너비에서는 이 상한선을 없애서 슬라이더 값이 그대로 적용되게 하고, 화면보다 커진
-     이미지는 좌우로 스크롤해서 볼 수 있게 함. */
+  /* 모바일에서도 PC와 같은 방식(네모 프레임 안에서 이미지 자체가 2000px까지 확대되는
+     형식)으로 동작하도록, 각 사진마다 고정 크기의 "보기 창"(.frame-viewport)으로 한 번 더
+     감싸고 그 안에서만 스크롤(팬)되게 함 — 페이지 전체가 옆으로 길어지는 대신, 이 창
+     하나만 잘라서 보여주고 그 안의 이미지가 실제로 커짐. 프레임 자체도 기존보다 넉넉하게
+     키움(요청: "네모프레임 좀 키워주고"). */
   @media (max-width: 768px){
+    .frame-viewport{
+      width: min(94vw, 640px);
+      height: min(74vh, 720px);
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.15);
+      -webkit-overflow-scrolling: touch;
+    }
     .photo-frame{
-      max-width: none;
-    }
-    html, body{
-      overflow-x: auto;
-    }
-    .board{
-      width: max-content;
-      min-width: 100%;
+      max-width: none; /* 보기 창이 대신 잘라 보여주므로, 이미지 자체 크기 제한은 없앰 */
+      margin: 0 auto;
     }
   }
 
@@ -414,7 +417,7 @@
 <div class="board" id="board">
   <div class="quick-bar">
     <label>이미지 너비 <span class="val" id="widthVal">700px</span></label>
-    <input type="range" id="widthSlider" min="300" max="1800" step="10" value="700" />
+    <input type="range" id="widthSlider" min="300" max="2000" step="10" value="700" />
   </div>
 
   <!-- 시안 이미지들은 아래 스크립트에서 동적으로 이 위치 뒤에 채워집니다 -->
@@ -577,7 +580,10 @@
 
       setTimeout(() => {
         designs.forEach(design => {
-          board.appendChild(buildPhotoFrame(design));
+          const viewport = document.createElement('div');
+          viewport.className = 'frame-viewport';
+          viewport.appendChild(buildPhotoFrame(design));
+          board.appendChild(viewport);
         });
         board.classList.add('ready');
         overlay.classList.add('fade-out');
