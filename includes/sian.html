@@ -20,34 +20,6 @@
     min-height:100vh;
   }
 
-  /* 브라우저 기본 스크롤바를 지원하는 환경(주로 PC)에서는 이것도 두껍고 눈에 띄게 —
-     다만 대부분의 모바일 브라우저는 메인 페이지 스크롤바 자체를 CSS로 못 건드리게 막아놔서,
-     모바일에서는 아래 별도의 커스텀 스크롤 표시 막대가 실질적인 역할을 함(요청: "우측
-     스크롤바가 얇아서... 두껍고 튀게"). */
-  ::-webkit-scrollbar{ width:14px; }
-  ::-webkit-scrollbar-track{ background:rgba(255,255,255,0.06); }
-  ::-webkit-scrollbar-thumb{ background:#4aa3e0; border-radius:7px; border:3px solid var(--bg); }
-  html{ scrollbar-width:auto; scrollbar-color:#4aa3e0 rgba(255,255,255,0.06); }
-
-  /* 모바일 등 기본 스크롤바를 못 건드리는 환경을 위한 커스텀 스크롤 표시 막대 — 화면
-     우측 가장자리에 고정, 지금 스크롤 위치를 두껍고 잘 보이는 색으로 표시함 */
-  .scroll-indicator-track{
-    position:fixed;
-    top:0; right:2px;
-    width:10px;
-    height:100%;
-    z-index:50;
-    pointer-events:none;
-  }
-  .scroll-indicator-thumb{
-    position:absolute;
-    left:0;
-    width:100%;
-    background:#4aa3e0;
-    border-radius:5px;
-    box-shadow:0 0 6px rgba(74,163,224,0.7);
-  }
-
   /* 맨 위 페이지 제목 */
   .page-title{
     position:relative;
@@ -198,7 +170,7 @@
       print-color-adjust: exact;
     }
     /* 화면 조작용 UI는 인쇄에서 제외 */
-    .zoom-control, .action-wrap, .page-title, .scroll-indicator-track{ display:none !important; }
+    .zoom-control, .action-wrap, .page-title{ display:none !important; }
     /* 인쇄물은 화면에서 확대/이동해둔 상태와 무관하게 항상 이미지 전체가 보이게 초기화함 */
     .zoom-viewport{
       height:auto !important;
@@ -460,10 +432,6 @@
 <body>
 
 <div class="grid-floor"></div>
-
-<div class="scroll-indicator-track" id="scrollIndicatorTrack">
-  <div class="scroll-indicator-thumb" id="scrollIndicatorThumb"></div>
-</div>
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-card">
@@ -748,33 +716,6 @@
   }
 
   renderBoard();
-
-  // ---- 커스텀 스크롤 표시 막대 — 모바일에서 기본 스크롤바가 안 보이거나 너무 얇아서
-  // 대신 항상 두껍고 잘 보이게 직접 그려주는 표시 막대 ----
-  (function setupScrollIndicator(){
-    const track = document.getElementById('scrollIndicatorTrack');
-    const thumb = document.getElementById('scrollIndicatorThumb');
-    if (!track || !thumb) return;
-
-    function update(){
-      const trackH = track.clientHeight;
-      const doc = document.documentElement;
-      const scrollable = Math.max(1, doc.scrollHeight - doc.clientHeight); // 실제로 더 스크롤할 수 있는 총 길이
-      const thumbH = Math.max(40, (doc.clientHeight / doc.scrollHeight) * trackH); // 너무 작아지지 않게 최소 40px 보장
-      const maxThumbTop = trackH - thumbH;
-      const progress = Math.min(1, (window.scrollY || doc.scrollTop) / scrollable);
-      thumb.style.height = thumbH + 'px';
-      thumb.style.top = (progress * maxThumbTop) + 'px';
-      // 스크롤할 내용이 화면 안에 다 들어와서 더 내릴 게 없으면 막대 자체를 숨김
-      track.style.display = doc.scrollHeight <= doc.clientHeight + 4 ? 'none' : 'block';
-    }
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    // 이미지들이 로드되며 페이지 길이가 계속 바뀌므로, 로딩 중에도 주기적으로 갱신
-    const poll = setInterval(update, 400);
-    setTimeout(() => clearInterval(poll), 6000);
-    update();
-  })();
 
   // ---- 주문정보(용지/편집/수량/사이즈/가격 등) 쿼리 이어받기 ----
   // 01my.html 에서 에코프로1로 넘어갈 때 쿼리스트링으로 실려온 주문정보가
