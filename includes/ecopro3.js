@@ -3571,6 +3571,25 @@
   }
   EP.showBottomHintToast = showBottomHintToast; // 다른 파일(스포이드 등)에서도 alert() 대신 재사용
 
+  // alert()은 순수 텍스트만 되고 굵은 글씨 같은 강조를 못 넣음 — 굵게 강조가 필요한 경고
+  // 문구용으로 별도 모달을 만듦. HTML을 그대로 넣을 수 있고(<b> 등), 확인 버튼을 눌러야
+  // 닫히며, 닫힐 때 resolve되는 Promise를 반환해서 alert()처럼 await로 이어서 쓸 수 있음.
+  function showBoldAlertModal(html){
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'bold-alert-overlay';
+      const box = document.createElement('div');
+      box.className = 'bold-alert-box';
+      box.innerHTML = `<div class="bold-alert-msg">${html}</div><button type="button" class="bold-alert-ok">확인</button>`;
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      function close(){ overlay.remove(); resolve(); }
+      box.querySelector('.bold-alert-ok').addEventListener('click', close);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    });
+  }
+  EP.showBoldAlertModal = showBoldAlertModal;
+
   const mobileCtxMenuBtn = document.getElementById('mobileCtxMenuBtn');
   if (mobileCtxMenuBtn) {
     mobileCtxMenuBtn.addEventListener('click', () => {
@@ -3926,7 +3945,11 @@
 
           // 2) 회색선(도련)까지 이미지가 채워졌는지 검사
           if (!isFullyBled()) {
-            alert(`${label} — 바탕이미지를 붉은선 밖 회색선까지 이미지를 채워주세요.`);
+            await showBoldAlertModal(
+              `${label} — 바탕이미지를 붉은선 밖 회색선까지 이미지를 채워주세요.<br>` +
+              `<b>회색선 너머까지 이미지를 늘려 주세요.</b><br>` +
+              `[이미지 또는 바탕으로 사용한 흰색 배경을 붉은선(재단선) 밖 회색선 너머까지 꽉 채워주세요]`
+            );
             await loadDesignForExport(originalIdx, originalSide);
             guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
             canvas.renderAll();

@@ -1780,3 +1780,35 @@ input[type=file]{display:none;}
 #qaSPopover::-webkit-scrollbar-track{ background:rgba(0,0,0,.06); border-radius:5px; }
 #qaSPopover::-webkit-scrollbar-thumb{ background:#E67E9E; border-radius:5px; }
 #qaSPopover{ scrollbar-width:auto; scrollbar-color:#E67E9E rgba(0,0,0,.06); }
+
+/* ---------- 굵은 글씨 강조가 필요한 경고 모달 (alert() 대체) ---------- */
+.bold-alert-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.bold-alert-box{
+  background:#fff;border-radius:12px;
+  max-width:420px;width:100%;
+  padding:22px 24px 18px;
+  box-shadow:0 12px 40px rgba(0,0,0,.3);
+  text-align:center;
+}
+.bold-alert-msg{
+  font-size:14.5px;line-height:1.6;color:var(--ink,#1a1a1a);
+  margin-bottom:18px;white-space:pre-line;
+}
+.bold-alert-msg b{
+  color:#e74c3c;
+  font-weight:800;
+}
+.bold-alert-ok{
+  display:inline-block;
+  background:var(--accent,#178fff);color:#fff;
+  border:none;border-radius:8px;
+  padding:9px 28px;
+  font-size:14px;font-weight:600;
+  cursor:pointer;
+}
+.bold-alert-ok:hover{ filter:brightness(1.08); }
