@@ -53,6 +53,24 @@
     line-height:0;
   }
 
+  /* 모바일 화면폭이 좁으면 위 max-width(calc(100vw - 40px))가 슬라이더로 아무리 키워도
+     화면폭 이상으로는 절대 못 커지게 항상 눌러버리고 있었음 — 슬라이더는 움직이고 숫자도
+     바뀌는데 실제 이미지 크기는 그대로라 "확대가 안 먹힌다"처럼 보였던 원인. 모바일
+     너비에서는 이 상한선을 없애서 슬라이더 값이 그대로 적용되게 하고, 화면보다 커진
+     이미지는 좌우로 스크롤해서 볼 수 있게 함. */
+  @media (max-width: 768px){
+    .photo-frame{
+      max-width: none;
+    }
+    html, body{
+      overflow-x: auto;
+    }
+    .board{
+      width: max-content;
+      min-width: 100%;
+    }
+  }
+
   .board img{
     position:relative;
     z-index:1;
