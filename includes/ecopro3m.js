@@ -295,48 +295,14 @@
   }
   qaMDetailToggleBtn.addEventListener('click', () => {
     setQaMDetailExpanded(!qaMPopover.classList.contains('qa-expanded'));
+    const activeTarget = EP.canvas.getActiveObject();
+    if (activeTarget) positionQaMPopover(activeTarget);
   });
 
   // PC에서는 캔버스 좌측 상단 모서리에 가지런히 배치(회전 고려 없음, T/글씨 팝업과 동일).
   // 모바일은 예전 그대로 오브젝트 근처에 뜸.
   function positionQaMPopover(target){
-    if (!(EP.isMobileModeActive && EP.isMobileModeActive())) {
-      EP.positionPopoverAtCanvasCorner(qaMPopover);
-      return;
-    }
-    qaMPopover.classList.remove('hidden');
-    const pw = qaMPopover.offsetWidth || 200;
-    const ph = qaMPopover.offsetHeight || 140;
-
-    const br = target.getBoundingRect(true, true);
-    const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
-    const scaleX = canvasRect.width / EP.canvas.getWidth();
-    const scaleY = canvasRect.height / EP.canvas.getHeight();
-    const z = EP.canvas.getZoom();
-
-    const objLeft = canvasRect.left + br.left * z * scaleX;
-    const objTop = canvasRect.top + br.top * z * scaleY;
-    const objW = br.width * z * scaleX;
-    const objH = br.height * z * scaleY;
-
-    let left = objLeft + objW / 2 - pw / 2;
-    let top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
-
-    // T/P/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
-    if (EP.findNonOverlappingPosition) {
-      const avoided = EP.findNonOverlappingPosition(qaMPopover, left, top, pw, ph);
-      left = avoided.left; top = avoided.top;
-    }
-
-    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
-    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaMPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    const r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-    qaMPopover.style.left = r.left + 'px';
-    qaMPopover.style.top = r.top + 'px';
-    EP.applyPopoverRotationStyle(qaMPopover);
+    EP.positionPopoverAtCanvasCorner(qaMPopover);
   }
 
   function clampQaMPopoverToViewport(){
@@ -419,8 +385,9 @@
   EP.canvas.on('selection:updated', autoOpenQaMPopoverIfHasEffect);
 
   EP.makeDraggablePopover(qaMPopover);
-  // registerRotatablePopover는 일부러 안 함 — PC에서는 캔버스 회전을 완전히 무시해야
-  // 하므로, 팝업이 열려있는 채로 회전 버튼을 눌러도 전역 재회전 로직에 걸려 돌아가면 안 됨.
+  // 다시 등록함 — 이제 회전 각도에 따라 모서리 자체가 바뀌어야 하므로(요청), 팝업이 열려있는
+  // 채로 캔버스를 회전시켜도 즉시 올바른 모서리·방향으로 다시 배치되어야 함.
+  EP.registerRotatablePopover(qaMPopover);
 
   /* ============================================================
      여기서부터는 모든 모양필터를 "벡터(SVG)"로 만듭니다.

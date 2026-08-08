@@ -134,6 +134,11 @@
   var qaZPopover = document.getElementById('qaZPopover');
   if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(qaZPopover);
   var qaZFilterSelect = document.getElementById('qaZFilterSelect');
+  // J버튼 필터 선택과 동일한 커스텀 드롭다운으로 바꿈 — 원래 브라우저 기본 <select>라서
+  // 목록이 열리는 방향을 캔버스 회전 각도에 맞추지 못했음. 이 커스텀 드롭다운은 이미
+  // "트리거 바로 아래로, 캔버스 회전 각도만큼 방향도 같이 회전"하는 로직이 들어있어서
+  // 그대로 감싸주기만 하면 됨(요청: "회전 각도에 따라서 메뉴창이 아래로 펼쳐지게").
+  if (EP.makeCompactFontDropdown) EP.makeCompactFontDropdown(qaZFilterSelect, { showArrows: false });
   var qaZDetails = {
     multiply: document.getElementById('qaZDetailMultiply'),
     colorBurn: document.getElementById('qaZDetailColorBurn'),
@@ -153,39 +158,7 @@
   if (EP.registerFilterPopover) EP.registerFilterPopover(qaZPopover);
 
   function positionQaZPopover(target){
-    qaZPopover.classList.remove('hidden');
-    var pw = qaZPopover.offsetWidth || 200;
-    var ph = qaZPopover.offsetHeight || 140;
-
-    var br = target.getBoundingRect(true, true);
-    var canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
-    var scaleX = canvasRect.width / EP.canvas.getWidth();
-    var scaleY = canvasRect.height / EP.canvas.getHeight();
-    var z = EP.canvas.getZoom();
-
-    var objLeft = canvasRect.left + br.left * z * scaleX;
-    var objTop = canvasRect.top + br.top * z * scaleY;
-    var objW = br.width * z * scaleX;
-    var objH = br.height * z * scaleY;
-
-    var left = objLeft + objW / 2 - pw / 2;
-    var top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
-
-    // T/P/M/J 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
-    if (EP.findNonOverlappingPosition) {
-      var avoided = EP.findNonOverlappingPosition(qaZPopover, left, top, pw, ph);
-      left = avoided.left; top = avoided.top;
-    }
-
-    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
-    var remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaZPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    var r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-    qaZPopover.style.left = r.left + 'px';
-    qaZPopover.style.top = r.top + 'px';
-    EP.applyPopoverRotationStyle(qaZPopover);
+    if (EP.positionPopoverAtCanvasCorner) EP.positionPopoverAtCanvasCorner(qaZPopover);
   }
 
   function clampQaZPopoverToViewport(){

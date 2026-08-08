@@ -60,6 +60,7 @@
           <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="mobileCustomAddTextBtn">🅣 텍스트</button>
           <button type="button" class="dropdown-item" id="mobileCustomFixTextShapeBtn" title="가로로 늘어난 글자는 세로도 그만큼 늘리고, 세로로 늘어난 글자는 자간을 절반으로 줄이고 세로 크기도 줄여서 정비율로 바로잡아요">🔧 늘어진글자교정</button>
+          <button type="button" class="dropdown-item" id="mobileCustomTiltFixBtn" title="선택한 오브젝트의 기울기를 캔버스 회전 각도에 맞춰 반듯하게(0도) 되돌려요">📏 기울기 교정</button>
           <button type="button" class="dropdown-item" id="mobileCustomShapePickerBtn" title="사각형·원·삼각형·별·하트 등 원하는 모양을 골라 만들어요">◆ 모양 만들기</button>
           <button type="button" class="dropdown-item" id="mobileCustomPenToolBtn" title="펜 도구 — 손가락으로 점을 찍어 자유로운 모양을 그려요">✒ 펜 도구</button>
           <button type="button" class="dropdown-item" id="mobileCustomAddTableBtn" title="표를 만들어요 — 기본/랜덤/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
@@ -2288,7 +2289,7 @@
      있게 만든 팝업. 새 로직을 만들지 않고, 여기 있는 컨트롤을 조작하면 그대로 PC 쪽 실제
      입력칸(#imgBrightnessInput 등)에 값을 반영하고 input/change 이벤트를 그대로 흘려보내는
      "중계" 방식이라, 실제 이미지 처리 로직(ecopro3imgtool.js)은 전혀 새로 안 만듦. -->
-<div class="qa-popover hidden" id="qaSPopover" style="max-height:70vh;overflow-y:auto;">
+<div class="qa-popover hidden" id="qaSPopover" style="max-height:35vh;overflow-y:auto;">
   <button type="button" class="font-popover-close" id="qaSPopoverCloseBtn" title="닫기">✕</button>
 
   <div class="row" style="margin-bottom:0;">

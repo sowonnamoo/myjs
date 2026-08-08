@@ -75,37 +75,7 @@
   if (EP.registerFilterPopover) EP.registerFilterPopover(qaSPopover);
 
   function positionQaSPopover(target){
-    qaSPopover.classList.remove('hidden');
-    const pw = qaSPopover.offsetWidth || 200;
-    const ph = qaSPopover.offsetHeight || 140;
-
-    const br = target.getBoundingRect(true, true);
-    const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
-    const scaleX = canvasRect.width / EP.canvas.getWidth();
-    const scaleY = canvasRect.height / EP.canvas.getHeight();
-    const z = EP.canvas.getZoom();
-
-    const objLeft = canvasRect.left + br.left * z * scaleX;
-    const objTop = canvasRect.top + br.top * z * scaleY;
-    const objW = br.width * z * scaleX;
-    const objH = br.height * z * scaleY;
-
-    let left = objLeft + objW / 2 - pw / 2;
-    let top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
-
-    if (EP.findNonOverlappingPosition) {
-      const avoided = EP.findNonOverlappingPosition(qaSPopover, left, top, pw, ph);
-      left = avoided.left; top = avoided.top;
-    }
-
-    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaSPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    const r = EP.clampPopoverRect ? EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg) : { left: left, top: top };
-    qaSPopover.style.left = r.left + 'px';
-    qaSPopover.style.top = r.top + 'px';
-    if (EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(qaSPopover);
+    if (EP.positionPopoverAtCanvasCorner) EP.positionPopoverAtCanvasCorner(qaSPopover);
   }
 
   function openQaSPopover(target){

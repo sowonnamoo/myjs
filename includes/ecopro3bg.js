@@ -18,6 +18,9 @@
   var bgFillWhiteBtn = document.getElementById('bgFillWhiteBtn');
   var bgFillRandomBtn = document.getElementById('bgFillRandomBtn');
   var bgFillRandomColorBtn = document.getElementById('bgFillRandomColorBtn');
+  // 터치·마우스로 이 창을 끌어서 옮길 수 있게 함(요청) — T/J/K/M/S/Z 팝업이 쓰는 것과
+  // 동일한 공용 유틸이라 터치 드래그까지 이미 다 지원됨.
+  if (EP.makeDraggablePopover) EP.makeDraggablePopover(bgFillModal);
 
   // 현재 캔버스의 "논리적" 크기(줌 배율과 무관한 실제 디자인 크기)를 구함
   function getLogicalCanvasSize(){

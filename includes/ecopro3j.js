@@ -93,39 +93,7 @@
   if (EP.registerFilterPopover) EP.registerFilterPopover(qaJPopover);
 
   function positionQaJPopover(target){
-    qaJPopover.classList.remove('hidden');
-    const pw = qaJPopover.offsetWidth || 200;
-    const ph = qaJPopover.offsetHeight || 140;
-
-    const br = target.getBoundingRect(true, true);
-    const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
-    const scaleX = canvasRect.width / EP.canvas.getWidth();
-    const scaleY = canvasRect.height / EP.canvas.getHeight();
-    const z = EP.canvas.getZoom();
-
-    const objLeft = canvasRect.left + br.left * z * scaleX;
-    const objTop = canvasRect.top + br.top * z * scaleY;
-    const objW = br.width * z * scaleX;
-    const objH = br.height * z * scaleY;
-
-    let left = objLeft + objW / 2 - pw / 2;
-    let top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
-
-    // T/P/M/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
-    if (EP.findNonOverlappingPosition) {
-      const avoided = EP.findNonOverlappingPosition(qaJPopover, left, top, pw, ph);
-      left = avoided.left; top = avoided.top;
-    }
-
-    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
-    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaJPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    const r = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-    qaJPopover.style.left = r.left + 'px';
-    qaJPopover.style.top = r.top + 'px';
-    EP.applyPopoverRotationStyle(qaJPopover);
+    EP.positionPopoverAtCanvasCorner(qaJPopover);
   }
 
   function clampQaJPopoverToViewport(){

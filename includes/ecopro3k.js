@@ -90,37 +90,7 @@
   // M팝업(positionQaMPopover)과 완전히 같은 방식 — 대상 중앙 아래쪽에 배치하고, 공간이
   // 부족하면 위쪽으로, 다른 팝업과 겹치면 자동으로 옆으로 비켜서 배치함.
   function positionKPopover(target){
-    kPopover.classList.remove('hidden');
-    var pw = kPopover.offsetWidth || 200;
-    var ph = kPopover.offsetHeight || 140;
-
-    var br = target.getBoundingRect(true, true);
-    var canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
-    var scaleX = canvasRect.width / EP.canvas.getWidth();
-    var scaleY = canvasRect.height / EP.canvas.getHeight();
-    var z = EP.canvas.getZoom();
-
-    var objLeft = canvasRect.left + br.left * z * scaleX;
-    var objTop = canvasRect.top + br.top * z * scaleY;
-    var objW = br.width * z * scaleX;
-    var objH = br.height * z * scaleY;
-
-    var left = objLeft + objW / 2 - pw / 2;
-    var top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14;
-
-    if (EP.findNonOverlappingPosition) {
-      var avoided = EP.findNonOverlappingPosition(kPopover, left, top, pw, ph);
-      left = avoided.left; top = avoided.top;
-    }
-
-    var remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(kPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    var r = EP.clampPopoverRect ? EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg) : { left: left, top: top };
-    kPopover.style.left = r.left + 'px';
-    kPopover.style.top = r.top + 'px';
-    if (EP.applyPopoverRotationStyle) EP.applyPopoverRotationStyle(kPopover);
+    if (EP.positionPopoverAtCanvasCorner) EP.positionPopoverAtCanvasCorner(kPopover);
   }
 
   // 팝업을 열 때, 지금 모양/패스의 실제 값(테두리색/전체 불투명도/본문 불투명도/두께)으로

@@ -107,6 +107,59 @@
     // 도형(사각형/원/삼각형/펜도구 패스) 전용 "M" 버튼은 ecopro3m.js에서 이 자리(controls.qa)에
     // 덮어씌워 등록함 — 도형을 선택하면 이제 P 대신 M이 뜨고, 모양 전용 필터 메뉴가 열림.
     // (이 파일에서는 더 이상 도형 프로토타입에 pControl을 붙이지 않음)
+
+    // 모바일 전용 "연필" 버튼 — 주사위(P) 바로 옆에 붙여서, 탭 한 번으로 곧바로 글자 편집
+    // 모드로 들어감(요청: "텍스트 클릭시 나오는 주사위 옆에 연필모양 아이콘... 터치하면
+    // 글자 수정할수 있게"). 텍스트 오브젝트에만 붙음 — 여러 개 묶어 선택했을 땐 "이 글자를
+    // 편집"이라는 개념 자체가 애매해서 안 붙임.
+    function renderEditPencilButton(ctx, left, top, styleOverride, fabricObject){
+      if (!(EP.isMobileModeActive && EP.isMobileModeActive())) return; // 모바일 전용
+      if (isTableRelatedTarget(fabricObject)) return;
+      ctx.save();
+      ctx.translate(left, top);
+      ctx.rotate(fabric.util.degreesToRadians(EP.canvasRotationDeg || 0));
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#3498db';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      // 연필 아이콘 — 몸통(사선) + 뾰족한 끝
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-5, 5);
+      ctx.lineTo(4, -4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-6, 6);
+      ctx.lineTo(-5, 5);
+      ctx.lineTo(-4, 6);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.restore();
+    }
+    const editPencilControl = new fabric.Control({
+      x: -0.5, y: -0.5,
+      offsetX: 12, offsetY: -36, // P(주사위) 바로 오른쪽 옆
+      sizeX: 28, sizeY: 28,
+      cursorStyle: 'text',
+      render: renderEditPencilButton,
+      mouseUpHandler: function(eventData, transformData){
+        if (!(EP.isMobileModeActive && EP.isMobileModeActive())) return true; // PC에선 동작 안 함
+        const target = transformData && transformData.target;
+        if (!target || isTableRelatedTarget(target)) return true;
+        target.enterEditing();
+        target.selectAll();
+        canvas.requestRenderAll();
+        return true;
+      }
+    });
+    fabric.IText.prototype.controls = Object.assign({}, fabric.IText.prototype.controls, { qaEdit: editPencilControl });
   })();
 
   const qaPopover = document.getElementById('qaPopover');
@@ -131,49 +184,22 @@
   }
   qaDetailToggleBtn.addEventListener('click', () => {
     setQaDetailExpanded(!qaPopover.classList.contains('qa-expanded'));
+    // 펼치거나 접으면 팝업 크기(높이)가 바뀌는데, 회전된 상태에서는 CSS transform이 박스의
+    // "중심"을 기준으로 돌기 때문에 크기가 바뀌면 그 중심점도 같이 움직여서, 위치를 다시
+    // 계산해주지 않으면 엉뚱한 방향(옆/위)으로 삐져나가 보이는 문제가 있었음(요청: "펼치기
+    // 누르니 상세조정하기 창의 옆지점에 펼쳐져 창보다 윗지점부터 펼쳐지고 있어"). 크기가
+    // 바뀐 직후 같은 위치 계산 함수를 다시 돌려서 항상 정확히 재정렬되게 함.
+    const activeTarget = EP.canvas.getActiveObject();
+    if (activeTarget) positionQaPopover(activeTarget);
   });
 
   // T버튼 팝오버와 동일한 방식: 오브젝트 중앙 아래쪽에 표시 (공간 부족하면 위쪽)
   // PC에서는 캔버스 좌측 상단 모서리에 가지런히 배치(회전 고려 없음). 모바일은 예전 그대로
   // 오브젝트 근처에 뜸.
   function positionQaPopover(target){
-    if (!(EP.isMobileModeActive && EP.isMobileModeActive())) {
-      EP.positionPopoverAtCanvasCorner(qaPopover);
-      return;
-    }
-    qaPopover.classList.remove('hidden');
-    const pw = qaPopover.offsetWidth || 200;
-    const ph = qaPopover.offsetHeight || 140;
-
-    const br = target.getBoundingRect(true, true); // 캔버스 논리좌표(줌 반영 전)
-    const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
-    const scaleX = canvasRect.width / EP.canvas.getWidth();
-    const scaleY = canvasRect.height / EP.canvas.getHeight();
-    const z = EP.canvas.getZoom();
-
-    const objLeft = canvasRect.left + br.left * z * scaleX;
-    const objTop = canvasRect.top + br.top * z * scaleY;
-    const objW = br.width * z * scaleX;
-    const objH = br.height * z * scaleY;
-
-    let left = objLeft + objW / 2 - pw / 2;
-    let top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14; // 아래 공간 부족하면 위쪽에 표시
-
-    // T/M/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
-    if (EP.findNonOverlappingPosition) {
-      const avoided = EP.findNonOverlappingPosition(qaPopover, left, top, pw, ph);
-      left = avoided.left; top = avoided.top;
-    }
-
-    // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
-    const remembered = EP.getRememberedPopoverPosition && EP.getRememberedPopoverPosition(qaPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    const r2 = EP.clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-    qaPopover.style.left = r2.left + 'px';
-    qaPopover.style.top = r2.top + 'px';
-    EP.applyPopoverRotationStyle(qaPopover);
+    // 요청: PC처럼 모바일도 항상 캔버스 좌측 상단(겹치지 않게 나란히), 회전 여부와 무관하게
+    // 좌상단이 원칙.
+    EP.positionPopoverAtCanvasCorner(qaPopover);
   }
 
   // ---- 메뉴(그림자/배경 ... 계속 추가될 예정) ↔ 상세조절 아코디언 ----
@@ -657,8 +683,9 @@
   // 패널을 자유롭게 드래그로 이동 (드롭다운/게이지/스와치/닫기버튼 위에서는 드래그 시작 안 함)
 
   EP.makeDraggablePopover(qaPopover);
-  // registerRotatablePopover는 일부러 안 함 — PC에서는 캔버스 회전을 완전히 무시해야
-  // 하므로, 팝업이 열려있는 채로 회전 버튼을 눌러도 전역 재회전 로직에 걸려 돌아가면 안 됨.
+  // 다시 등록함 — 이제 회전 각도에 따라 모서리 자체가 바뀌어야 하므로(요청), 팝업이 열려있는
+  // 채로 캔버스를 회전시켜도 즉시 올바른 모서리·방향으로 다시 배치되어야 함.
+  EP.registerRotatablePopover(qaPopover);
 
   function populate_shadow(anchor){
         const sh = anchor.shadow;

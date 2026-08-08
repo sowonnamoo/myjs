@@ -149,6 +149,21 @@
       rotateGuideTarget = null;
     });
 
+    // "도구" 메뉴의 안내선1/안내선2 항목에서 재사용할 수 있게 공개함 — 같은 십자 안내선
+    // 로직을 그대로 씀(요청: "모양이나 텍스트 오브젝트 클릭 선택시 해당 오브젝트 기준에
+    // 나오게"). 이미 그 상태로 켜져 있으면 다시 눌렀을 때 꺼짐(토글).
+    EP.toggleRotateGuide = function(target, state){
+      if (!target) return;
+      if (rotateGuideTarget === target && rotateGuideState === state) {
+        rotateGuideState = 0;
+        rotateGuideTarget = null;
+      } else {
+        rotateGuideTarget = target;
+        rotateGuideState = state;
+      }
+      canvas.requestRenderAll();
+    };
+
     fabric.Object.prototype.controls.mtr = new fabric.Control({
       x: 0,
       y: 0.5,
@@ -163,6 +178,11 @@
       // 드래그 없이 그냥 클릭(탭)만 했을 때 — 회전 대신 빨간 십자 안내선을 켜고 끔
       // (요청: "회전동그라미 버튼을 한번 더 누르면... 안내선이 생기게, 다시 누르면 사라지게")
       mouseUpHandler: function(eventData, transformData){
+        // 모바일에서는 이 탭-사이클 자체를 끔 — 터치 인식이 들쭉날쭉해서 안 눌렸다 눌렸다
+        // 하는 문제가 있었음(요청: "회전버튼의 터치가 잘 안먹혀... 클릭기능 삭제하고").
+        // 같은 기능(안내선1/안내선2/기울기교정)은 아래에서 "도구" 메뉴 항목으로 옮겨서
+        // 그쪽에서 선택된 오브젝트 기준으로 대신 제공함. PC는 기존 그대로 유지.
+        if (EP.isMobileModeActive && EP.isMobileModeActive()) return true;
         const transform = transformData || canvas._currentTransform;
         if (transform && transform.actionPerformed) return true; // 실제로 드래그해서 회전했으면 안내선은 건드리지 않음
         const target = (transform && transform.target) || canvas.getActiveObject();
@@ -453,31 +473,56 @@
   EP.cornerAnchoredPopovers = EP.cornerAnchoredPopovers || [];
   EP.positionPopoverAtCanvasCorner = function(popoverEl){
     popoverEl.classList.remove('hidden'); // 실제 크기를 재려면 먼저 보이는 상태여야 함
-    popoverEl.style.transform = ''; // 회전 스타일은 절대 적용 안 함
     const pw = popoverEl.offsetWidth || 200;
     const ph = popoverEl.offsetHeight || 140;
     const canvasRect = EP.canvas.upperCanvasEl.getBoundingClientRect();
     const margin = 10;
-    const cornerX = canvasRect.left + margin;
-    const cornerY = canvasRect.top + margin;
 
-    // 지금 이 모서리에 이미 나란히 붙어서 보이고 있는 다른 팝업들의 폭만큼 오른쪽으로 밀어서 배치
+    // 캔버스 "요소" 자체는 화면에서 절대 안 돌아가지만(항상 네모반듯), 디자인 내용은 90도씩
+    // 돌아가므로 "디자인 기준 좌상단"이 실제 화면에서는 매번 다른 모서리에 대응됨 — 시계
+    // 방향으로 90도 돌 때마다 좌상단→우상단→우하단→좌하단 순으로 옮겨감(진짜 물체를
+    // 시계방향으로 돌렸을 때 원래 좌상단 꼭짓점이 이동하는 것과 똑같은 규칙). 그래서 지금
+    // 회전 각도에 맞는 모서리를 골라서 거기서부터 안쪽으로 나란히 쌓음
+    // (요청: "회전한 이후면 좌상단은 우상단이 되잖아").
+    const rot = ((EP.canvasRotationDeg || 0) % 360 + 360) % 360;
+    let cornerX, cornerY, stackDirX, stackDirY;
+    if (rot === 90) {
+      cornerX = canvasRect.right - margin; cornerY = canvasRect.top + margin;
+      stackDirX = -1; stackDirY = 1; // 안쪽(왼쪽)으로 쌓음
+    } else if (rot === 180) {
+      cornerX = canvasRect.right - margin; cornerY = canvasRect.bottom - margin;
+      stackDirX = -1; stackDirY = -1;
+    } else if (rot === 270) {
+      cornerX = canvasRect.left + margin; cornerY = canvasRect.bottom - margin;
+      stackDirX = 1; stackDirY = -1;
+    } else { // 0도(기본) — 좌측 상단
+      cornerX = canvasRect.left + margin; cornerY = canvasRect.top + margin;
+      stackDirX = 1; stackDirY = 1;
+    }
+
+    // 지금 이 모서리에 이미 나란히 붙어서 보이고 있는 다른 팝업들의 폭만큼 안쪽으로 밀어서 배치
     const others = EP.cornerAnchoredPopovers.filter((p) =>
       p && p !== popoverEl && document.body.contains(p) && !p.classList.contains('hidden')
     );
-    let left = cornerX;
-    others.forEach((p) => { left += p.offsetWidth + margin; });
-    const top = cornerY;
+    let offsetAlongEdge = 0;
+    others.forEach((p) => { offsetAlongEdge += p.offsetWidth + margin; });
+
+    // stackDirX가 -1이면 오른쪽 변에 붙었다는 뜻이라, 팝업의 "오른쪽 끝"이 cornerX에 오도록
+    // left를 그만큼 왼쪽으로 당겨줌(폭만큼 빼줌). stackDirY도 동일한 방식으로 위/아래 처리.
+    let left = stackDirX === 1 ? (cornerX + offsetAlongEdge) : (cornerX - offsetAlongEdge - pw);
+    let top = stackDirY === 1 ? cornerY : (cornerY - ph);
 
     // 마지막으로 닫혔을 때 있던(드래그해둔) 자리가 기억돼 있으면 그 자리를 우선함(요청)
     const remembered = EP.getRememberedPopoverPosition(popoverEl);
     const finalLeft = remembered ? remembered.left : left;
     const finalTop = remembered ? remembered.top : top;
 
-    // 화면 밖으로 나가지 않게만 단순 클램프(회전 없음, rot 항상 0으로 취급)
-    const r = EP.clampPopoverRect(finalLeft, finalTop, pw, ph, 0);
+    const r = EP.clampPopoverRect(finalLeft, finalTop, pw, ph, EP.canvasRotationDeg);
     popoverEl.style.left = r.left + 'px';
     popoverEl.style.top = r.top + 'px';
+    // 팝업 자신도 캔버스 회전 각도에 맞춰 같이 돌려서 읽기 좋은 방향을 유지함(요청: "회전도
+    // 안되있고").
+    EP.applyPopoverRotationStyle(popoverEl);
 
     if (!EP.cornerAnchoredPopovers.includes(popoverEl)) EP.cornerAnchoredPopovers.push(popoverEl);
   };
@@ -516,6 +561,13 @@
     EP.rotatablePopovers.forEach(function(el){
       if (!el) return;
       if (el.classList.contains('hidden')) { el.style.transform = ''; return; }
+      // 모서리 고정형 팝업(T/P/M/J/K/S/Z)은 회전 각도가 바뀌면 "어느 모서리에 붙어야 하는지"
+      // 자체가 바뀌므로(좌상단→우상단→...), 단순 재클램프가 아니라 코너 선택 로직을 통째로
+      // 다시 돌려야 함.
+      if (EP.cornerAnchoredPopovers && EP.cornerAnchoredPopovers.includes(el)) {
+        EP.positionPopoverAtCanvasCorner(el);
+        return;
+      }
       const pw = el.offsetWidth, ph = el.offsetHeight;
       const curLeft = parseFloat(el.style.left) || 0;
       const curTop = parseFloat(el.style.top) || 0;
@@ -528,26 +580,48 @@
 
   function makeDraggablePopover(el){
     let dragging = false, dcx = 0, dcy = 0; // 마우스 시작점 → 박스 "중심"까지의 오프셋(회전은 중심 기준이라 이렇게 재면 회전 상태에서도 어긋나지 않음)
-    el.addEventListener('mousedown', (e) => {
-      if (e.target.closest('select, input, textarea, button, .cmyk-picker, .cmyk-popover')) return;
+    function startDrag(clientX, clientY, targetEl){
+      if (targetEl.closest('select, input, textarea, button, .cmyk-picker, .cmyk-popover')) return false;
       // 우측 하단 모서리(약 16px 이내)는 브라우저 기본 리사이즈 손잡이 영역일 수 있으므로,
       // 여기를 누르면 이동 드래그를 시작하지 않고 그대로 둬서 리사이즈가 우선되게 함
       const rr = el.getBoundingClientRect();
-      if ((rr.right - e.clientX) < 16 && (rr.bottom - e.clientY) < 16) return;
+      if ((rr.right - clientX) < 16 && (rr.bottom - clientY) < 16) return false;
       dragging = true;
-      const r = rr; // 회전이 적용된 실제 화면상 사각형 기준
-      dcx = e.clientX - (r.left + r.width / 2);
-      dcy = e.clientY - (r.top + r.height / 2);
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e) => {
+      dcx = clientX - (rr.left + rr.width / 2);
+      dcy = clientY - (rr.top + rr.height / 2);
+      return true;
+    }
+    function moveDrag(clientX, clientY){
       if (!dragging) return;
       const pw = el.offsetWidth, ph = el.offsetHeight;
-      const c = clampPopoverCenter(e.clientX - dcx, e.clientY - dcy, pw, ph, EP.canvasRotationDeg);
+      const c = clampPopoverCenter(clientX - dcx, clientY - dcy, pw, ph, EP.canvasRotationDeg);
       el.style.left = (c.cx - pw / 2) + 'px';
       el.style.top = (c.cy - ph / 2) + 'px';
+    }
+    el.addEventListener('mousedown', (e) => {
+      if (startDrag(e.clientX, e.clientY, e.target)) e.preventDefault();
     });
+    document.addEventListener('mousemove', (e) => { moveDrag(e.clientX, e.clientY); });
     document.addEventListener('mouseup', () => { dragging = false; });
+
+    // 터치 — 모바일에서는 mousedown/mousemove가 안정적으로 합성(synthesize)되지 않는 경우가
+    // 많아서(특히 계속 이어지는 move 추적), 위 마우스 로직과 완전히 동일한 계산을 터치
+    // 이벤트로 따로 한 번 더 붙여줌(요청: "알파벳 버튼들 클릭하면 나오는 창들 터치로 모두
+    // 창 이동 드래그하기 쉽게"). 이걸로 T/P/M/J/K/S/Z 팝업 전부가 한 번에 같이 고쳐짐
+    // (전부 이 함수 하나를 공용으로 쓰기 때문).
+    el.addEventListener('touchstart', (e) => {
+      if (!e.touches || e.touches.length !== 1) return; // 두 손가락(핀치 등)이면 무시
+      const t = e.touches[0];
+      if (startDrag(t.clientX, t.clientY, e.target)) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchmove', (e) => {
+      if (!dragging || !e.touches || !e.touches.length) return;
+      const t = e.touches[0];
+      moveDrag(t.clientX, t.clientY);
+      e.preventDefault(); // 드래그 중엔 배경(캔버스) 스크롤/줌이 같이 안 움직이게 막음
+    }, { passive: false });
+    document.addEventListener('touchend', () => { dragging = false; });
+    document.addEventListener('touchcancel', () => { dragging = false; });
   }
 
   const fontPopover = document.getElementById('fontPopover');
@@ -602,37 +676,9 @@
   }
 
   function positionFontPopover(target){
-    fontPopover.classList.remove('hidden');
-    const pw = fontPopover.offsetWidth || 210;
-    const ph = fontPopover.offsetHeight || 110;
-
-    const br = target.getBoundingRect(true, true); // 캔버스 논리좌표(줌 반영 전)
-    const canvasRect = canvas.upperCanvasEl.getBoundingClientRect();
-    const scaleX = canvasRect.width / canvas.getWidth();
-    const scaleY = canvasRect.height / canvas.getHeight();
-    const z = canvas.getZoom();
-
-    const objLeft = canvasRect.left + br.left * z * scaleX;
-    const objTop = canvasRect.top + br.top * z * scaleY;
-    const objW = br.width * z * scaleX;
-    const objH = br.height * z * scaleY;
-
-    let left = objLeft + objW / 2 - pw / 2;
-    let top = objTop + objH + 14;
-    if (top + ph > window.innerHeight - 8) top = objTop - ph - 14; // 아래 공간 부족하면 위쪽에 표시
-
-    // P/M/J/Z 등 다른 필터 팝업이 이미 열려있어서 이 자리와 겹치면, 그 옆으로 자동으로 밀어서 배치
-    const avoided = EP.findNonOverlappingPosition(fontPopover, left, top, pw, ph);
-    left = avoided.left; top = avoided.top;
-
-    // 마지막으로 닫혔을 때 있던 자리가 기억돼 있으면 그 자리를 우선함(요청)
-    const remembered = EP.getRememberedPopoverPosition(fontPopover);
-    if (remembered) { left = remembered.left; top = remembered.top; }
-
-    const r2 = clampPopoverRect(left, top, pw, ph, EP.canvasRotationDeg);
-    fontPopover.style.left = r2.left + 'px';
-    fontPopover.style.top = r2.top + 'px';
-    applyPopoverRotationStyle(fontPopover);
+    // 요청: PC처럼 모바일도 캔버스 박스 좌측 상단에 가지런히(겹치지 않게) 배치, 회전 여부와
+    // 무관하게 좌상단이 원칙 — P/M이 PC에서 쓰던 공용 코너 앵커 유틸을 모든 플랫폼에 그대로 씀.
+    EP.positionPopoverAtCanvasCorner(fontPopover);
   }
 
   // 더보기 펼침/접기로 창 높이가 바뀔 때: 텍스트 아래(6시 방향)로 재배치하지 않고,
@@ -1362,19 +1408,31 @@
   // 클릭해줌 — 모달이 화면에 열려있지 않아도 클릭 이벤트는 그대로 실행되므로 모달을 굳이
   // 열었다 닫을 필요 없이 흰 배경 사각형만 조용히 만들어짐.
   const newCanvasBtn = document.getElementById('newCanvasBtn');
+  const NEW_CANVAS_AFTER_RELOAD_KEY = 'ecopro3_new_canvas_after_reload';
   if (newCanvasBtn) {
     newCanvasBtn.addEventListener('click', () => {
-      const bgFillWhiteBtn = document.getElementById('bgFillWhiteBtn');
-      if (bgFillWhiteBtn) bgFillWhiteBtn.click();
-      // 방금 만들어진 흰 배경을 자동으로 잠가서, 다른 오브젝트 작업하다가 실수로 배경이
-      // 움직이거나 선택돼서 지워지는 일이 없게 함(기존 🔒 잠금 버튼과 완전히 같은 동작 재사용).
-      // bgFillWhiteBtn 클릭 직후엔 방금 만든 흰 배경이 항상 활성 오브젝트로 선택돼 있음.
-      const bgRect = canvas.getActiveObject();
-      if (bgRect && bgRect.isCanvasBgFill && EP.lockImage) EP.lockImage(bgRect);
-      if (EP.showBottomHintToast) EP.showBottomHintToast('새창이 생성되었습니다. 배경에 흰색바탕이 깔려있어요.');
-      else alert('새창이 생성되었습니다. 배경에 흰색바탕이 깔려있어요.');
+      // 요청: "새로만들기 누르면 새로고침후 바탕만들기 해줘" — 지금까지 작업 중이던 내용이
+      // 다 사라지는 동작이라, 새로고침 버튼과 똑같이 한 번 확인을 받음. 확인하면 새로고침
+      // 하기 직전에 플래그를 하나 남겨두고, 페이지가 다시 열렸을 때(아래 별도 리스너) 그
+      // 플래그를 보고 자동으로 흰 배경을 만들어줌.
+      if (!confirm('새로고침 후 새 바탕을 만듭니다. 계속할까요?')) return;
+      try { sessionStorage.setItem(NEW_CANVAS_AFTER_RELOAD_KEY, '1'); } catch (err) { /* 저장 안 되면 그냥 진행 */ }
+      location.reload();
     });
   }
+  // 새로고침 직후, 방금 남겨둔 플래그가 있으면 자동으로 흰 배경을 만들어줌(위 클릭 핸들러와 이어짐)
+  try {
+    if (sessionStorage.getItem(NEW_CANVAS_AFTER_RELOAD_KEY)) {
+      sessionStorage.removeItem(NEW_CANVAS_AFTER_RELOAD_KEY);
+      setTimeout(() => {
+        const bgFillWhiteBtn = document.getElementById('bgFillWhiteBtn');
+        if (bgFillWhiteBtn) bgFillWhiteBtn.click();
+        const bgRect = canvas.getActiveObject();
+        if (bgRect && bgRect.isCanvasBgFill && EP.lockImage) EP.lockImage(bgRect);
+        if (EP.showBottomHintToast) EP.showBottomHintToast('새창이 생성되었습니다. 배경에 흰색바탕이 깔려있어요.');
+      }, 300); // 캔버스·기타 초기화가 다 끝난 뒤에 실행되도록 살짝 늦춤
+    }
+  } catch (err) { /* sessionStorage 사용 불가 환경이면 조용히 무시 */ }
   const mobileNewCanvasBtn = document.getElementById('mobileNewCanvasBtn');
   if (mobileNewCanvasBtn) {
     mobileNewCanvasBtn.addEventListener('click', () => {
@@ -1400,8 +1458,16 @@
     '늘 건강하세요.', '고맙습니다.', '늘 응원할게요.', '따뜻한 하루 되세요.'
   ];
   const randomDesignBtn = document.getElementById('randomDesignBtn');
+  let randomDesignClickCount = 0; // 몇 번째 클릭인지 세어서 아래 한 줄 문구를 순서대로 다르게 고름
+  const HINT_MESSAGES = [
+    '아래 주사위를 클릭하면 매번 다른디자인을 불러와요.',
+    '맘에드는 디자인은 꼭 저장 / 부분 잠금후 주사위 클릭해주세요.',
+    '본 기능은 헤드라인 디자인시 편리한 기능 입니다.',
+    '본 기능은 다수의 시안 작업시 편리한 기능 입니다.'
+  ];
   if (randomDesignBtn) {
     randomDesignBtn.addEventListener('click', () => {
+      randomDesignClickCount++;
       // 1) 기존 오브젝트 전부 제거(안내선은 제외) — 누를 때마다 완전히 새로 시작함
       canvas.getObjects().filter((o) => !o.isGuide).forEach((o) => canvas.remove(o));
       canvas.discardActiveObject();
@@ -1412,12 +1478,30 @@
       // 배경도 같이 랜덤 필터를 받을 수 있게 함.
       const bgFillWhiteBtn = document.getElementById('bgFillWhiteBtn');
       if (bgFillWhiteBtn) bgFillWhiteBtn.click();
+      // ⚠️ 배경 사각형은 여기서 회전시키지 않음 — ecopro3bg.js가 만들 때 이미 "지금 이 순간의"
+      // (회전된 상태 포함) 캔버스 크기에 맞춰 각도 0으로 딱 맞게 채워둔 상태라서, 이 위에
+      // 추가로 90도를 더 돌리면 오히려 캔버스보다 옆으로 삐져나가 잘려 보이는 문제가 있었음
+      // (요청: "배경도 잘렸잖아" — 원인 찾아서 뺌).
 
-      // 3) 인사말(1번째 줄, 매번 다른 문구) — 랜덤 필터 대상이 되어야 하므로 먼저 만듦
+      // 캔버스가 90도 회전된 상태일 수 있으므로, 배경 만들기 기능(ecopro3bg.js)이 실제로 쓰는
+      // 것과 동일한 방식(canvas.getWidth()/줌)으로 "지금 이 순간의" 캔버스 크기를 다시 구함
+      // — CANVAS_W/CANVAS_H를 직접 참조하는 대신 이렇게 해서, 회전 직후에도 항상 지금 캔버스
+      // 크기·비율에 정확히 맞춰 배경·글자가 배치되도록 함.
+      const liveZoom = canvas.getZoom() || 1;
+      const liveW = canvas.getWidth() / liveZoom;
+      const liveH = canvas.getHeight() / liveZoom;
+
+      // 3) 인사말(1번째 줄, 매번 다른 문구) — 랜덤 필터 대상이 되어야 하므로 먼저 만듦.
+      // 캔버스가 회전된 상태일 때만 더 크게 키우고, 캔버스 정중앙에 놓음(요청: "회전하고
+      // 나서... 1번째줄은 캔버스 정중앙정렬로"). 회전 안 된 기본 상태는 원래 그대로 유지.
+      const rotAngle = EP.canvasRotationDeg || 0;
+      const isRotated = !!rotAngle;
       const greeting = RANDOM_GREETINGS[Math.floor(Math.random() * RANDOM_GREETINGS.length)];
-      const greetingSize = Math.round(CANVAS_W * 0.06) + 2; // "너무 크지 않게" + 요청대로 2pt 키움
+      const baseGreetingSize = Math.round(liveW * 0.06) + 3; // "너무 크지 않게" + 요청대로 3pt 키움(2pt+1pt 추가)
+      const greetingSize = isRotated ? baseGreetingSize * 2 : baseGreetingSize;
+      const hintSize = Math.max(10, Math.round(liveW * 0.025));
       const greetingText = new fabric.IText(greeting, {
-        left: CANVAS_W / 2, top: CANVAS_H * 0.42,
+        left: liveW / 2, top: isRotated ? liveH / 2 : liveH * 0.42, angle: 0,
         originX: 'center', originY: 'center',
         fontFamily: 'Pretendard', fontSize: greetingSize, fill: '#222222',
         textAlign: 'center', selectable: true, evented: true
@@ -1425,38 +1509,50 @@
       canvas.add(greetingText);
       canvas.requestRenderAll();
 
-      // 4) "🎲 랜덤디자인적용"을 먼저 실행 — 잠금 안 된(=배경+인사말) 오브젝트에 랜덤 필터가
+      // 3-1) 캔버스 회전 각도만큼 인사말을 실제로 돌림 — 중심점은 그대로 유지한 채 각도만
+      // 캔버스 회전 각도(EP.canvasRotationDeg)에 맞춤. 캔버스가 0도(회전 안 한 상태)면
+      // 각도가 0이라 사실상 아무 변화 없음.
+      if (rotAngle) {
+        const center = greetingText.getCenterPoint();
+        greetingText.set('angle', ((greetingText.angle || 0) + rotAngle) % 360);
+        greetingText.setPositionByOrigin(center, 'center', 'center');
+        greetingText.setCoords();
+        canvas.requestRenderAll();
+      }
+
+      // 4) "🎲 랜덤디자인적용"을 실행 — 잠금 안 된(=배경+인사말) 오브젝트에 랜덤 필터가
       // 자동으로 입혀짐(재사용, 새 로직 아님)
       const rollAllBtn = document.getElementById('rollAllBtn');
       if (rollAllBtn) rollAllBtn.click();
 
-      // 5) 안내문구(2~3번째 줄)는 랜덤 필터를 다 적용한 "다음"에 만듦 — 필터를 먼저 돌리고
-      // 나중에 추가해야, 일부 특수효과(원형/곡선 등 한 줄 기준으로 동작하는 효과)가 이
-      // 문구에 적용될 때 줄바꿈을 무시해버려서 1줄이 됐다 2줄이 됐다 들쭉날쭉하던 문제가
-      // 원천적으로 사라짐(요청: "무조건 두줄로 되게 해줘") — 애초에 이 문구엔 필터가 전혀
-      // 안 걸리므로 항상 작성한 그대로 2줄 유지됨. 문구도 PC/모바일에 맞게 다르게 씀 —
-      // 모바일은 버튼이 화면 "아래"(하단바)에 있고, PC는 "위"(상단 툴바)에 있음.
-      const isMobile = !!(EP.isMobileModeActive && EP.isMobileModeActive());
-      const hintFirstLine = isMobile
-        ? '아래 주사위를 클릭하면 다른디자인을 불러옵니다.'
-        : '위 랜덤디자인적용을 클릭하면 다른디자인을 불러옵니다.';
-      const hintSize = Math.max(10, Math.round(CANVAS_W * 0.025));
-      const hintGap = (greetingSize * 1.3 * 3) / 2; // 요청: 기존 간격의 절반으로 축소
-      // IText는 폭 제한이 없어서, 문구가 길면 캔버스 밖으로 삐져나가 캔버스 경계에서 잘려
-      // 보이는 문제가 있었음(그래서 끝의 정중한 어미가 잘려 반말처럼 보였음). Textbox로
-      // 바꾸고 캔버스 폭 안에 들어오도록 width를 제한해서, 길면 자동으로 줄바꿈되도록 함
-      // (요청: "문구가 잘려서 반말하는거처럼 보인다").
-      const hintText = new fabric.Textbox(
-        hintFirstLine + '\n맘에든 디자인은 잠금 / 저장 처리해 주세요.',
-        {
-          left: CANVAS_W / 2, top: CANVAS_H * 0.42 + hintGap,
-          width: CANVAS_W * 0.85,
-          originX: 'center', originY: 'center',
-          fontFamily: 'Pretendard', fontSize: hintSize, fill: '#888888',
-          textAlign: 'center', selectable: true, evented: true
-        }
-      );
-      canvas.add(hintText);
+      // 5) 안내문구(2번째 줄) — 회전된 상태에서는 아예 안 만듦(요청: "두번째줄은 안보이게
+      // 처리"). 겹침 문제를 근본적으로 피하는 가장 확실한 방법. 회전 안 했을 때만 예전
+      // 그대로 만듦.
+      if (!isRotated) {
+        const chosenHint = HINT_MESSAGES[(randomDesignClickCount - 1) % HINT_MESSAGES.length];
+        // 첫 번째 문구만 PC/모바일에 맞게 다르게 씀 — 모바일은 버튼이 화면 "아래"(하단 주사위)에
+        // 있고, PC는 상단 툴바의 "랜덤디자인적용" 버튼이라 "아래"라는 표현이 안 맞아서 이름으로 안내함.
+        const isMobileForHint = !!(EP.isMobileModeActive && EP.isMobileModeActive());
+        const finalHint = (chosenHint === HINT_MESSAGES[0] && !isMobileForHint)
+          ? '랜덤디자인적용을 클릭하면 매번 다른디자인을 불러와요.'
+          : chosenHint;
+        const hintGap = (greetingSize * 1.3 * 3) / 2;
+        // IText는 폭 제한이 없어서, 문구가 길면 캔버스 밖으로 삐져나가 캔버스 경계에서 잘려
+        // 보이는 문제가 있었음(그래서 끝의 정중한 어미가 잘려 반말처럼 보였음). Textbox로
+        // 만들고 캔버스 폭 안에 들어오도록 width를 제한해서, 혹시 화면이 좁아 한 줄에 다 안
+        // 들어가도 자동으로 줄바꿈되도록 안전장치를 둠(평소엔 한 줄로 보임).
+        const hintText = new fabric.Textbox(
+          finalHint,
+          {
+            left: liveW / 2, top: liveH * 0.42 + hintGap, angle: 0,
+            width: liveW * 0.85,
+            originX: 'center', originY: 'center',
+            fontFamily: 'Pretendard', fontSize: hintSize, fill: '#888888',
+            textAlign: 'center', selectable: true, evented: true
+          }
+        );
+        canvas.add(hintText);
+      }
       canvas.requestRenderAll();
 
       pushHistory();
@@ -1568,6 +1664,24 @@
   }
   forwardMobileCustomBtn('mobileCustomAddTextBtn', 'addTextBtn');
   forwardMobileCustomBtn('mobileCustomFixTextShapeBtn', 'fixTextShapeBtn');
+  // 기울기 교정 — PC 쪽 대응 버튼이 없는 모바일 전용 기능이라 forwardMobileCustomBtn 대신
+  // 직접 구현함. 선택한 오브젝트의 각도를 "캔버스 회전 각도"에 맞춤(요청: "기울기를 0도로
+  // 맞춰줘(캔바스 회전각도에 맞춰 0도야)") — 캔버스가 90도 회전된 상태라면 그 90도가 곧
+  // "기울어지지 않은 기준"이므로, 무조건 0이 아니라 EP.canvasRotationDeg를 기준으로 맞춤.
+  const mobileCustomTiltFixBtn = document.getElementById('mobileCustomTiltFixBtn');
+  if (mobileCustomTiltFixBtn) {
+    mobileCustomTiltFixBtn.addEventListener('click', () => {
+      if (EP.exitPanMode) EP.exitPanMode();
+      const target = canvas.getActiveObject();
+      if (!target) return;
+      const center = target.getCenterPoint();
+      target.set('angle', EP.canvasRotationDeg || 0);
+      target.setPositionByOrigin(center, 'center', 'center');
+      target.setCoords();
+      canvas.requestRenderAll();
+      pushHistory();
+    });
+  }
   forwardMobileCustomBtn('mobileCustomShapePickerBtn', 'openShapePickerBtn');
   forwardMobileCustomBtn('mobileCustomPenToolBtn', 'penToolBtn');
   forwardMobileCustomBtn('mobileCustomAddTableBtn', 'addTableBtn');
@@ -3356,9 +3470,35 @@
         addCtxItem('⬆ 레이어 앞으로', () => { canvas.bringToFront(target); bringGuideToFront(); canvas.renderAll(); pushHistory(); });
         addCtxItem('⬇ 레이어 뒤로', () => { canvas.sendToBack(target); canvas.renderAll(); pushHistory(); });
         addCtxItem('↻ 90도 회전', () => { const rotateObjectBtn = document.getElementById('rotateObjectBtn'); if (rotateObjectBtn) rotateObjectBtn.click(); });
+        addCtxItem('🔍 2배 확대', () => {
+          const center = target.getCenterPoint();
+          target.set({ scaleX: target.scaleX * 2, scaleY: target.scaleY * 2 });
+          target.setPositionByOrigin(center, 'center', 'center');
+          target.setCoords();
+          canvas.requestRenderAll();
+          pushHistory();
+        });
         if (isImageObject(target)) {
           addCtxDivider();
           addCtxItem('🖼 이미지 교체', () => startReplaceImage(target));
+        }
+        // 모양·텍스트 오브젝트일 때만 — 회전 아이콘 탭-사이클에 있던 안내선1/2를 여기로
+        // 옮김(요청: "회전버튼 클릭할 때 나오는 안내선1, 안내선2는 도구 하단에 넣고").
+        // 지금 선택된(=이 메뉴가 열린) 오브젝트를 기준으로 십자 안내선을 켜고 끔.
+        if (EP.isTextObject(target) || EP.isShapeObject(target)) {
+          addCtxDivider();
+          addCtxItem('📐 안내선1 (좌측하단)', () => { if (EP.toggleRotateGuide) EP.toggleRotateGuide(target, 1); });
+          addCtxItem('📐 안내선2 (우측상단)', () => { if (EP.toggleRotateGuide) EP.toggleRotateGuide(target, 2); });
+        }
+        // 글자 오브젝트를 클릭해서 이 메뉴를 열었을 때만 — 곧바로 편집 모드로 들어가는
+        // 버튼(요청: "도구의 안내선 아래에 글수정 버튼... 글 오브젝트 클릭후 수정 가능하게").
+        // 텍스트 옆 연필 아이콘과 완전히 같은 동작.
+        if (EP.isTextObject(target)) {
+          addCtxItem('✏️ 글수정', () => {
+            target.enterEditing();
+            target.selectAll();
+            canvas.requestRenderAll();
+          });
         }
       }
     } else if (opts.explicitTarget !== undefined) {
@@ -3479,17 +3619,20 @@
   });
   canvas.on('mouse:up', (opt) => { if (!opt.e || !isTouchEvent(opt.e)) clearCtxLongPress(); });
 
-  // 잠금 해제 등에 꼭 필요해서 다시 복구함(요청) — 다만 파란 이동 손잡이(mobileMoveHandle)를
-  // 누른 경우에는 시작하지 않음. 그래야 손잡이를 꾹 눌러 천천히 옮기는 중에 메뉴가 끼어들지
-  // 않고 "이동만" 가능함(요청: "파란 원만든거 이거만... 이동만 가능하게").
-  function isTouchNearMoveHandle(evt){
+  // 잠금 해제 등에 꼭 필요해서 다시 복구함(요청) — 다만 파란 이동 손잡이(mobileMoveHandle)나
+  // 빨간 회전 손잡이(mtr)를 누른 경우에는 시작하지 않음. 그래야 그 손잡이들을 꾹 눌러 천천히
+  // 옮기는/돌리는 중에 메뉴가 끼어들지 않음(요청: "회전버튼 동그라미 꾸욱 길게누르면
+  // 우클릭 안나오게 해줘").
+  function isTouchNearDragHandle(evt){
     const target = canvas.getActiveObject();
-    if (!target || !target.oCoords || !target.oCoords.mobileMoveHandle) return false;
-    const t = (evt.touches && evt.touches[0]) || evt;
+    if (!target || !target.oCoords) return false;
     const pointer = canvas.getPointer(evt, true);
-    const corner = target.oCoords.mobileMoveHandle;
-    const dx = pointer.x - corner.x, dy = pointer.y - corner.y;
-    return Math.sqrt(dx * dx + dy * dy) < 30;
+    const handles = [target.oCoords.mobileMoveHandle, target.oCoords.mtr];
+    return handles.some((corner) => {
+      if (!corner) return false;
+      const dx = pointer.x - corner.x, dy = pointer.y - corner.y;
+      return Math.sqrt(dx * dx + dy * dy) < 30;
+    });
   }
 
   // 터치 입력은 fabric을 거치지 않고 캔버스 DOM 엘리먼트에 직접 붙인 네이티브
@@ -3500,7 +3643,7 @@
   upperCanvasEl.addEventListener('touchstart', (evt) => {
     if (!evt.touches || evt.touches.length !== 1) { clearCtxLongPress(); return; } // 두 손가락(핀치줌 등)이면 무시
     clearCtxLongPress();
-    if (isTouchNearMoveHandle(evt)) return; // 이동 손잡이 위에서 시작한 터치는 메뉴 타이머를 아예 안 켬
+    if (isTouchNearDragHandle(evt)) return; // 이동/회전 손잡이 위에서 시작한 터치는 메뉴 타이머를 아예 안 켬
     const t = evt.touches[0];
     ctxLongPressStart = { x: t.clientX, y: t.clientY, e: evt, touch: true };
     ctxLongPressTimer = setTimeout(() => {
@@ -5251,6 +5394,7 @@
   // 공통필터(J버튼 팝업) 선택 목록도 T 글꼴창과 똑같이 회전 각도에 맞춰 아래쪽으로 정확히
   // 펼쳐지도록 동일하게 적용함 (요청: "폰트선택시 회전각도에 맞춰 펼치는 기능, 공통필터
   // 선택창에도 적용해줘")
+  EP.makeCompactFontDropdown = makeCompactFontDropdown;
   makeCompactFontDropdown(document.getElementById('qaJFilterSelect'), { showArrows: false });
 
   /* ============================================================

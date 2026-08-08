@@ -106,6 +106,15 @@
         chosen.push(outlineDef);
         usedIds.outline = true;
       }
+    } else if (!usedIds.outline && Math.random() < 0.05) {
+      // 표가 아닌 일반 뽑기에서는, 위 추첨에서 테두리가 안 뽑혔더라도 별도로 5% 확률을
+      // 한 번 더 굴려서 추가함(요청: "J의 테두리만 등장확률 5%확률만 더 키워줘") — 다른
+      // 공통필터의 확률에는 전혀 영향 안 주고, 테두리에게만 순수하게 +5%p를 더해주는 방식.
+      var outlineDef2 = pool.filter(function(f){ return f.id === 'outline'; })[0];
+      if (outlineDef2) {
+        chosen.push(outlineDef2);
+        usedIds.outline = true;
+      }
     }
 
     return chosen;

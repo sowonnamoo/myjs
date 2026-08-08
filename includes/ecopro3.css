@@ -1452,6 +1452,11 @@ input[type=file]{display:none;}
     border-radius:16px;padding:8px;
     box-shadow:0 -10px 34px rgba(0,0,0,.28);
   }
+  /* 스크롤바가 너무 연해서 메뉴가 더 있는지 없는지 안 보이던 문제 — 진하게 키움(요청) */
+  .dropdown-menu::-webkit-scrollbar{ width:10px; }
+  .dropdown-menu::-webkit-scrollbar-track{ background:rgba(0,0,0,.06); border-radius:6px; }
+  .dropdown-menu::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.45); border-radius:6px; }
+  .dropdown-menu{ scrollbar-width:auto; scrollbar-color:rgba(0,0,0,.45) rgba(0,0,0,.06); } /* Firefox */
   .dropdown-menu button,
   .dropdown-menu label.dropdown-item{
     padding:13px 12px;font-size:14.5px; /* 터치하기 편하게 항목을 더 크게 */
@@ -1769,3 +1774,9 @@ input[type=file]{display:none;}
 #mobileMenuExpertGroup label[for="bgFixedImageInput"]{
   display:none !important;
 }
+
+/* ---------- S 팝업(이미지 도구) 스크롤바 눈에 띄게 ---------- */
+#qaSPopover::-webkit-scrollbar{ width:8px; }
+#qaSPopover::-webkit-scrollbar-track{ background:rgba(0,0,0,.06); border-radius:5px; }
+#qaSPopover::-webkit-scrollbar-thumb{ background:#E67E9E; border-radius:5px; }
+#qaSPopover{ scrollbar-width:auto; scrollbar-color:#E67E9E rgba(0,0,0,.06); }

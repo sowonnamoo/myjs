@@ -204,6 +204,20 @@
           mobileFullscreenBtn.classList.toggle('active', !!fsElement());
         });
       });
+
+      // 이미지 등 파일을 고르는 OS 기본 선택창이 뜨면, 대부분의 모바일 브라우저에서 전체화면이
+      // 자동으로 풀려버림(브라우저 자체 동작이라 막을 수 없음) — 그래서 파일 선택창이 닫히고
+      // (change 이벤트) 나면, 열기 전에 전체화면이었을 경우에만 다시 전체화면으로 복귀시켜줌
+      // (요청: "모바일에서 이미지 불러오기시 전체화면 해제되는 문제 해결").
+      var wasFullscreenBeforeFilePick = false;
+      document.querySelectorAll('input[type="file"]').forEach(function(input){
+        input.addEventListener('click', function(){
+          wasFullscreenBeforeFilePick = !!fsElement();
+        });
+        input.addEventListener('change', function(){
+          if (wasFullscreenBeforeFilePick && !fsElement()) fsRequest(document.documentElement);
+        });
+      });
     }
   }
 
@@ -296,9 +310,29 @@
   if (mobileFocusToggleBtn) {
     // 원래는 "화면 정리(미리보기)" 토글이었는데, 요청에 따라 그 기능은 빼고 PC의
     // "🎲 전체 랜덤 적용"(#rollAllBtn) 기능을 그대로 여기로 가져옴(재사용, 새 로직 아님).
-    mobileFocusToggleBtn.addEventListener('click', function(){
+    function runRollAll(){
       var rollAllBtn = document.getElementById('rollAllBtn');
       if (rollAllBtn) rollAllBtn.click();
+    }
+    mobileFocusToggleBtn.addEventListener('click', runRollAll);
+
+    // 꾹 누르고 있으면 4초마다 자동으로 다시 실행됨(요청: "우측 하단의 주사위 꾸욱 누르면
+    // 4초마다 자동 클릭되게"). 짧게 탭한 건 위 click 리스너가 이미 한 번 처리하므로, 여기서는
+    // "누르고 있는 동안" 4초 간격 반복만 담당하고 떼면 멈춤.
+    var holdInterval = null;
+    function startHold(e){
+      if (holdInterval) return;
+      if (e && e.touches && e.touches.length !== 1) return; // 두 손가락(핀치 등)이면 무시
+      holdInterval = setInterval(runRollAll, 2000); // 요청대로 기존(4초)의 2배 빠르게
+    }
+    function stopHold(){
+      clearInterval(holdInterval);
+      holdInterval = null;
+    }
+    mobileFocusToggleBtn.addEventListener('mousedown', startHold);
+    mobileFocusToggleBtn.addEventListener('touchstart', startHold, { passive: true });
+    ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(function(evt){
+      mobileFocusToggleBtn.addEventListener(evt, stopHold);
     });
   }
 
