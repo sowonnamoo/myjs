@@ -265,7 +265,8 @@
       var qaMPopoverEl = document.getElementById('qaMPopover');
 
       var objs = canvas.getObjects().filter(function(o){
-        return o && !o.isGuide && !o.imageLocked && (EP.isTextObject(o) || EP.isShapeObject(o));
+        return o && !o.isGuide && !o.imageLocked && !o.isExcelCellText &&
+          (EP.isTextObject(o) || EP.isShapeObject(o) || o.isLogoGroup);
       });
       if (!objs.length) {
         alert('텍스트나 모양을 입력해 주세요.');
@@ -314,6 +315,7 @@
         setTimeout(function(){
           if (EP.isTextObject(o)) { if (EP.rollDice) EP.rollDice(o); }
           else if (EP.isShapeObject(o)) { if (EP.rollShapeDice) EP.rollShapeDice(o); }
+          else if (o.isLogoGroup) { if (EP.rerollLogoGroup) EP.rerollLogoGroup(o); }
           canvas.requestRenderAll();
           setTimeout(function(){
             canvas.discardActiveObject(); // 적용이 끝나면 선택을 풀고 다음 오브젝트로

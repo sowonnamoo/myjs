@@ -15,11 +15,8 @@
   function isTableRelatedTarget(o){
     if (!o) return false;
     if (o.isTableGroup || o.isTableCell || o.isTableCellText) return true;
-    // 엑셀모드 그룹/셀도 표와 똑같이 P/M 등 필터·주사위 버튼 대상에서 완전히 제외함
-    // (요청: "안내선 우측엔 필터나 주사위나 그런거 일체 없고 눈알아이콘 하나만").
-    if (o.isExcelGroup || o.isExcelCell || o.isExcelCellText) return true;
     if ((o.type === 'activeSelection' || o.type === 'group') && typeof o.getObjects === 'function') {
-      return o.getObjects().some(function(c){ return c && (c.isTableCell || c.isTableCellText || c.isExcelCell || c.isExcelCellText); });
+      return o.getObjects().some(function(c){ return c && (c.isTableCell || c.isTableCellText); });
     }
     return false;
   }

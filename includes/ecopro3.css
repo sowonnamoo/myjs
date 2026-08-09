@@ -1865,3 +1865,66 @@ input[type=file]{display:none;}
   background:#eef6ff;border-radius:6px;
   padding:3px 8px;text-align:center;
 }
+
+/* ---------- 📊 엑셀모드 통합 조절판(슬라이더 2개 + 가/색상/모양/눈아이콘 전부 한 줄) ---------- */
+.excel-mode-panel{
+  position:fixed;
+  z-index:9998;
+  background:#fff;border-radius:10px;
+  padding:12px 14px;
+  box-shadow:0 8px 28px rgba(0,0,0,.22);
+  width:500px;
+  max-width:92vw;
+  cursor:move;
+}
+.excel-mode-panel.hidden{ display:none; }
+.excel-mode-panel-title{
+  font-size:12.5px;font-weight:700;margin-bottom:8px;color:#333;
+}
+.excel-mode-panel-row{
+  display:flex;align-items:center;gap:6px;margin-top:8px;
+  flex-wrap:nowrap;
+}
+.excel-mode-single-row label{
+  font-size:11.5px;color:#666;flex:0 0 auto;white-space:nowrap;
+}
+.excel-mode-single-row input[type=range]{
+  flex:1 1 60px;min-width:40px;width:0;
+}
+.excel-mode-single-row span{
+  font-size:11px;color:#178fff;font-weight:700;flex:0 0 32px;text-align:right;
+}
+.excel-quick-text-btn{
+  flex:0 0 auto;
+  height:30px;
+  padding:0 10px;
+  border:1px solid #ddd;border-radius:6px;
+  background:#fff;
+  font-size:12.5px;font-weight:700;color:#222;
+  white-space:nowrap;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.excel-quick-text-btn:hover{ background:#f4f4f4; }
+.excel-quick-shape-btn{
+  flex:0 0 auto;
+  width:30px;height:30px;
+  border:1px solid #ddd;border-radius:6px;
+  background:#fff;
+  font-size:14px;color:#555;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.excel-quick-shape-btn:hover{ background:#f4f4f4; }
+.excel-quick-eye-btn{
+  flex:0 0 auto;
+  width:30px;height:30px;
+  border:1px solid #ddd;border-radius:6px;
+  background:#fff;
+  font-size:14px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:1;
+}
+.excel-quick-eye-btn:hover{ background:#f4f4f4; }
+.excel-quick-eye-btn.off{ opacity:.4; }

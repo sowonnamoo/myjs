@@ -370,6 +370,11 @@
 
     // 텍스트(IText) 단일 선택에 T 버튼이 보이도록 별도 컨트롤셋 복제(다른 오브젝트엔 영향 없음)
     fabric.IText.prototype.controls = Object.assign({}, fabric.Object.prototype.controls, { tFont: tControl });
+    // Textbox는 IText를 상속하지만 자기 자신의 controls를 별도로 갖고 있어서(프로토타입
+    // 체인으로 안 물려받음), 여기서 따로 붙여줘야 함 — 안 그러면 엑셀모드 "글 작성"으로
+    // 만든 글(fabric.Textbox)엔 T 버튼이 안 뜸(요청: "엑셀로 글작성으로 작성할수 있는 글도
+    // 선택시 T버튼 활성화 될 수 있게").
+    fabric.Textbox.prototype.controls = Object.assign({}, fabric.Object.prototype.controls, { tFont: tControl });
     // 여러 텍스트를 드래그로 묶어 선택했을 때도 T 버튼이 뜨도록 활성선택(그룹)에도 추가
     // (renderTButton 내부에서 전부 텍스트일 때만 실제로 그려짐)
     fabric.ActiveSelection.prototype.controls = Object.assign({}, fabric.ActiveSelection.prototype.controls, { tFont: tControl });
@@ -1222,6 +1227,10 @@
     if (guideRect) canvas.bringToFront(guideRect);
     if (outerGuideRect) canvas.bringToFront(outerGuideRect);
     if (gridGuide) canvas.bringToFront(gridGuide);
+    // 엑셀모드 격자 안내선도 무조건 항상 맨 위에 있어야 함(요청) — 이 함수가 오브젝트
+    // 추가/변경 뒤마다 이미 광범위하게 불리고 있어서, 여기 한 줄만 추가하면 새 오브젝트가
+    // 뭐가 됐든 엑셀 안내선이 절대 가려지지 않음.
+    if (excelGridGuide) canvas.bringToFront(excelGridGuide);
   }
   buildGuides();
 
@@ -1245,6 +1254,195 @@
   });
   // R 단축키 — 위 버튼(10px 격자 안내선 포함)을 그대로 눌러주는 것뿐, 새 로직 아님.
   EP.toggleFineGrid = () => { document.getElementById('guideToggleBtn').click(); };
+
+  /* ============================================================
+     📊 엑셀모드 — 클릭하면 엑셀처럼 회색 격자 안내선을 캔버스에 그려주고, 작은 조절판이
+     같이 떠서 칸의 폭(가로)·높이(세로)를 실시간으로 바꿀 수 있음(요청: "행과 열을
+     실시간으로... 조절 가능하게"). 다른 안내선(재단선 등)과 마찬가지로 isGuide 표시를
+     붙여서 선택·저장·내보내기 대상에서는 자동으로 빠짐. 버튼을 다시 누르면 격자와
+     조절판이 함께 꺼짐(토글).
+  ============================================================ */
+  let excelGridGuide = null;
+  let excelCellW = 99, excelCellH = 18; // 기본값(요청대로 가로 99px, 세로 18px) — 조절판으로 실시간 변경됨
+
+  function buildExcelGridGuide(){
+    let d = '';
+    for (let x = 0; x <= CANVAS_W; x += excelCellW) d += 'M' + x + ',0 L' + x + ',' + CANVAS_H + ' ';
+    for (let y = 0; y <= CANVAS_H; y += excelCellH) d += 'M0,' + y + ' L' + CANVAS_W + ',' + y + ' ';
+    const path = new fabric.Path(d, {
+      left: 0, top: 0,
+      fill: '', stroke: 'rgba(140,140,140,0.55)', strokeWidth: 0.5,
+      selectable: false, evented: false
+    });
+    path.isGuide = true;
+    return path;
+  }
+
+  function redrawExcelGridGuide(){
+    if (!excelGridGuide) return;
+    const wasVisible = excelGridGuide.visible;
+    canvas.remove(excelGridGuide);
+    excelGridGuide = buildExcelGridGuide();
+    excelGridGuide.visible = wasVisible;
+    canvas.add(excelGridGuide);
+    bringGuideToFront();
+    canvas.requestRenderAll();
+  }
+
+  // 조절판 — 딱 한 번만 만들어서 재사용. 요청대로 슬라이더 2개 + "가"·색상·모양·눈아이콘을
+  // 전부 한 줄에 넣고(2줄이면 세로로 너무 높으니 가로로 길게 늘림), 안내선 표시/숨김용
+  // 눈 아이콘도 모양 옆에 추가함.
+  const excelModePanel = document.createElement('div');
+  excelModePanel.id = 'excelModePanel';
+  excelModePanel.className = 'excel-mode-panel hidden';
+  excelModePanel.innerHTML =
+    '<div class="excel-mode-panel-title">📊 엑셀모드 안내선</div>' +
+    '<div class="excel-mode-panel-row excel-mode-single-row">' +
+      '<label>칸 폭</label><input type="range" id="excelCellWInput" min="5" max="200" value="99"><span id="excelCellWVal">99px</span>' +
+      '<label>칸 높이</label><input type="range" id="excelCellHInput" min="5" max="200" value="18"><span id="excelCellHVal">18px</span>' +
+      '<button type="button" class="excel-quick-text-btn" id="excelQuickTextBtn" title="글 작성">글 작성</button>' +
+      '<button type="button" class="excel-quick-text-btn" id="excelQuickStyleBtn" title="색상, 정렬, 굵기">색상·정렬·굵기</button>' +
+      '<button type="button" class="excel-quick-shape-btn" id="excelQuickShapeBtn" title="모양 만들기">◆</button>' +
+      '<button type="button" class="excel-quick-eye-btn" id="excelQuickEyeBtn" title="안내선 켜기/끄기">👁</button>' +
+    '</div>';
+  document.body.appendChild(excelModePanel);
+  // 마우스·터치 드래그로 옮길 수 있게 함(요청: "드래그나 터치로 옮기기 가능하게") — T/P/M
+  // 등 다른 팝업이 쓰는 것과 같은 공용 유틸이라 터치까지 이미 다 지원됨.
+  if (EP.makeDraggablePopover) EP.makeDraggablePopover(excelModePanel);
+
+  const excelCellWInput = excelModePanel.querySelector('#excelCellWInput');
+  const excelCellHInput = excelModePanel.querySelector('#excelCellHInput');
+  const excelCellWVal = excelModePanel.querySelector('#excelCellWVal');
+  const excelCellHVal = excelModePanel.querySelector('#excelCellHVal');
+  excelCellWInput.addEventListener('input', () => {
+    excelCellW = parseInt(excelCellWInput.value, 10) || 99;
+    excelCellWVal.textContent = excelCellW + 'px';
+    redrawExcelGridGuide();
+  });
+  excelCellHInput.addEventListener('input', () => {
+    excelCellH = parseInt(excelCellHInput.value, 10) || 18;
+    excelCellHVal.textContent = excelCellH + 'px';
+    redrawExcelGridGuide();
+  });
+
+  const excelQuickTextBtn = excelModePanel.querySelector('#excelQuickTextBtn');
+  const excelQuickStyleBtn = excelModePanel.querySelector('#excelQuickStyleBtn');
+  const excelQuickShapeBtn = excelModePanel.querySelector('#excelQuickShapeBtn');
+  const excelQuickEyeBtn = excelModePanel.querySelector('#excelQuickEyeBtn');
+
+  // 색상·정렬·굵기 — 텍스트 선택 시 뜨는 T 버튼을 눌렀을 때와 완전히 같은 폰트 설정창을
+  // 그대로 열어줌(요청: "택스트 선택시 나오는 T버튼이 실행되게"). 지금 선택된 오브젝트
+  // 기준으로 열리므로, 먼저 캔버스에서 칸 하나를 선택한 뒤 이 버튼을 누르면 됨.
+  excelQuickStyleBtn.addEventListener('click', () => {
+    const active = canvas.getActiveObject();
+    if (!active) {
+      if (EP.showBottomHintToast) EP.showBottomHintToast('먼저 글씨를 쓸 칸을 선택해주세요.');
+      return;
+    }
+    if (active.isEditing) active.exitEditing();
+    if (!fontPopover.classList.contains('hidden')) { hideFontPopover(); return; }
+    openFontPopover(active);
+  });
+
+  // "글 작성" 클릭 — 지금 켜져있는 엑셀 격자의 모든 칸(행×열)에 "텍스트입력" 텍스트를 하나씩
+  // 채워 넣음. 각 칸의 정중앙에 놓이고, 텍스트 상자 폭은 칸 가로폭의 85%로 맞춤(요청:
+  // "안내선 열과 행 사이 정중앙에 위치... 가로 열 폭보다 85% 작은 비율로... 모두 앉쳐지게").
+  let excelCellTexts = []; // 이전에 "글 작성"으로 채웠던 텍스트들 — 다시 누르면 지우고 새로 채움
+  excelQuickTextBtn.addEventListener('click', () => {
+    if (!excelGridGuide) return; // 엑셀모드가 켜져 있어야 칸 크기를 알 수 있음
+    // 이전에 채워둔 것들은 지우고 새로 채움(계속 누를 때마다 겹쳐 쌓이지 않게)
+    excelCellTexts.forEach((t) => { if (canvas.getObjects().indexOf(t) !== -1) canvas.remove(t); });
+    excelCellTexts = [];
+
+    const cols = Math.max(1, Math.floor(CANVAS_W / excelCellW));
+    const rows = Math.max(1, Math.floor(CANVAS_H / excelCellH));
+    const boxWidth = excelCellW * 0.85; // 요청: 칸 가로폭의 85%
+    // 칸 안에 한 줄로 자연스럽게 들어가도록, 가로/세로 중 더 빡빡한 쪽 기준으로 글자 크기를 정함
+    const fontSize = Math.max(6, Math.min(excelCellH * 0.42, boxWidth * 0.16));
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cx = c * excelCellW + excelCellW / 2;
+        const cy = r * excelCellH + excelCellH / 2;
+        const t = new fabric.Textbox('텍스트입력', {
+          left: cx, top: cy, originX: 'center', originY: 'center',
+          width: boxWidth,
+          fontFamily: 'Pretendard', fontSize: fontSize,
+          fill: 'transparent', // 요청: 처음엔 안 보이는 빈 칸처럼 있다가
+          textAlign: 'center'
+        });
+        // 엑셀모드 "글 작성"으로 만든 글임을 표시 — 랜덤디자인적용(전체 랜덤 적용) 대상에서
+        // 이것만 예외로 제외하기 위함(요청: "이것만해당 랜덤디자인 적용 안되게").
+        t.isExcelCellText = true;
+        // 클릭해서 실제로 글을 쓰기 시작하면(내용이 바뀌면) 그 즉시 검은 글씨로 바뀜
+        // (요청: "여기 수정후 글 작성하면 검은색 글씨로 나오게 해줘")
+        t.on('changed', () => {
+          if (t.fill === 'transparent') t.set('fill', '#000000');
+        });
+        canvas.add(t);
+        excelCellTexts.push(t);
+      }
+    }
+    bringGuideToFront();
+    canvas.requestRenderAll();
+    pushHistory();
+
+    // 투명한 상태라 눈에 안 보이니, 방금 만든 자리를 확인할 수 있게 전체를 잠깐 선택했다가
+    // 자동으로 해제함(요청: "선택 한번 한 뒤 다시 선택 해제되게... 글 작성할 수 있는 곳이
+    // 생겼다는걸 확인 가능하니까").
+    if (excelCellTexts.length) {
+      const flashSelection = new fabric.ActiveSelection(excelCellTexts, { canvas: canvas });
+      canvas.setActiveObject(flashSelection);
+      canvas.requestRenderAll();
+      setTimeout(() => {
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+      }, 600);
+    }
+  });
+  // 모양만들기 아이콘 — PC 편집하기 메뉴의 "◆ 모양 만들기"를 그대로 호출함(재사용, 새 로직 아님)
+  excelQuickShapeBtn.addEventListener('click', () => {
+    const openShapePickerBtn = document.getElementById('openShapePickerBtn');
+    if (openShapePickerBtn) openShapePickerBtn.click();
+  });
+  // 눈 아이콘 — 격자 안내선만 껐다 켰다 함(패널 자체는 그대로 열려있음, 요청: "모양선택
+  // 옆에 눈알 아이콘 넣어서 엑셀 안내선만 껏다 켰다 해주게")
+  excelQuickEyeBtn.addEventListener('click', () => {
+    if (!excelGridGuide) return;
+    excelGridGuide.visible = !excelGridGuide.visible;
+    excelQuickEyeBtn.classList.toggle('off', !excelGridGuide.visible);
+    canvas.requestRenderAll();
+  });
+
+  // 캔버스 회색선 바로 위, 좌측에 붙는 위치(요청: "지금 가 있는 위치에 놔줘" — 예전 퀵
+  // 툴바가 있던 그 자리)
+  function positionExcelModePanel(){
+    excelModePanel.classList.remove('hidden');
+    const canvasRect = canvas.upperCanvasEl.getBoundingClientRect();
+    const panelH = excelModePanel.offsetHeight || 76;
+    excelModePanel.style.left = canvasRect.left + 'px';
+    excelModePanel.style.top = (canvasRect.top - panelH - 4) + 'px';
+  }
+
+  const excelModeBtn = document.getElementById('excelModeBtn');
+  if (excelModeBtn) {
+    excelModeBtn.addEventListener('click', () => {
+      if (excelGridGuide && canvas.getObjects().indexOf(excelGridGuide) !== -1) {
+        // 이미 켜져 있으면 눌렀을 때 격자와 조절판이 함께 꺼짐(토글)
+        canvas.remove(excelGridGuide);
+        excelGridGuide = null;
+        excelModePanel.classList.add('hidden');
+        canvas.requestRenderAll();
+        return;
+      }
+      excelGridGuide = buildExcelGridGuide();
+      canvas.add(excelGridGuide);
+      bringGuideToFront();
+      canvas.requestRenderAll();
+      positionExcelModePanel();
+      excelQuickEyeBtn.classList.remove('off'); // 새로 켤 때마다 항상 "보임" 상태로 시작
+    });
+  }
 
   // 모바일 전용 — 문구 가리기 눈 아이콘 옆의 "▦" 안내선 버튼은 위 guideToggleBtn을 그대로
   // 클릭해주는 것뿐(100% 재사용, 새 로직 없음).
