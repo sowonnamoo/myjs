@@ -182,6 +182,9 @@
         <button type="button" class="dropdown-item" id="addLogoBtn" title="한글 이름을 입력하면 영문 이니셜로 로고를 만들어줘요 (예: 대신 일렉트로닉스 → DI)">🔤 로고 만들기</button>
         <button type="button" class="dropdown-item" id="addMenuBtn" title="메뉴 이름과 가격을 붙여넣으면 정렬된 메뉴판을 만들어줘요">🧾 메뉴판 만들기</button>
         <button type="button" class="dropdown-item" id="addBgFillBtn" title="캔버스 전체를 채우는 배경을 만들어요">🎨 바탕 채우기</button>
+        <div class="dropdown-divider"></div>
+        <button type="button" class="dropdown-item" id="addExcelModeBtn" title="엑셀 스프레드시트처럼 행/열 안내선과 묶인 박스들을 만들어요">📊 엑셀모드</button>
+        <button type="button" class="dropdown-item" id="shortcutGuideBtn" title="키보드 단축키 목록을 보여줘요">⌨ 단축키안내</button>
       </div>
     </div>
 
@@ -2545,6 +2548,62 @@
   </div>
 </div>
 
+<!-- 단축키 안내 모달 -->
+<div class="shortcut-guide-overlay hidden" id="shortcutGuideOverlay">
+  <div class="shortcut-guide-box">
+    <button type="button" class="font-popover-close" id="shortcutGuideCloseBtn" title="닫기">✕</button>
+    <div class="shortcut-guide-title">⌨ 단축키 안내</div>
+    <div class="shortcut-guide-list">
+      <div class="sg-row"><span class="sg-key">T</span><span>텍스트 생성</span></div>
+      <div class="sg-row"><span class="sg-key">M</span><span>모양만들기 단축키</span></div>
+      <div class="sg-row"><span class="sg-key">[</span><span>지우개나 브러시 굵기 작게</span></div>
+      <div class="sg-row"><span class="sg-key">]</span><span>지우개나 브러시 굵기 크게</span></div>
+      <div class="sg-row"><span class="sg-key">R</span><span>누르면 10px 격자 안내선 표시</span></div>
+      <div class="sg-row"><span class="sg-key">Space</span><span>100%로 맞춤(확대/축소 초기화)</span></div>
+      <div class="sg-row"><span class="sg-key">F2</span><span>화면의 작은 인터페이스 창(폰트/필터 설정 등) 전부 닫기</span></div>
+      <div class="sg-row"><span class="sg-key">F3</span><span>랜덤디자인적용</span></div>
+      <div class="sg-row"><span class="sg-key">F4</span><span>90도 회전</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+&lt;</span><span>글자 크기 작게</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+&gt;</span><span>글자 크기 크게</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+C</span><span>텍스트 가운데 정렬</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+R</span><span>텍스트 오른쪽 정렬</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+L</span><span>텍스트 왼쪽 정렬</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+]</span><span>레이어 한 단계 위로</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+[</span><span>레이어 한 단계 아래로</span></div>
+      <div class="sg-row"><span class="sg-key">방향키</span><span>선택한 오브젝트 1px씩 미세 이동</span></div>
+      <div class="sg-row"><span class="sg-key">Shift+방향키</span><span>10px씩 이동</span></div>
+      <div class="sg-row"><span class="sg-key">Delete</span><span>선택한 오브젝트 삭제</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Z</span><span>실행취소</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+Z</span><span>다시실행</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+D</span><span>복제</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+C</span><span>복사</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+S</span><span>저장 (json 프로젝트 저장)</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+X</span><span>잘라내기</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+V</span><span>붙여넣기</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+Shift+V</span><span>제자리(원본 위)에 겹쳐서 붙여넣기</span></div>
+      <div class="sg-row"><span class="sg-key">Alt+드래그</span><span>오브젝트 위: 복제해서 드래그 / 빈 캔버스: 화면 이동(패닝)</span></div>
+      <div class="sg-row"><span class="sg-key">Ctrl+마우스크롤</span><span>10%씩 확대/축소</span></div>
+      <div class="sg-row"><span class="sg-key">F</span><span>전체화면</span></div>
+      <div class="sg-row"><span class="sg-key">Esc</span><span>전체화면 끄기</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 엑셀모드 행/열 개수 입력 모달 -->
+<div class="qa-popover hidden" id="excelModeModal" style="width:220px;">
+  <button type="button" class="font-popover-close" id="excelModeModalCloseBtn" title="닫기">✕</button>
+  <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 8px;">📊 엑셀모드 만들기</div>
+  <div class="row">
+    <label style="font-size:12px;flex:0 0 40px;">행</label>
+    <input type="number" id="excelModeRowsInput" value="6" min="1" max="30" style="width:100%;">
+  </div>
+  <div class="row">
+    <label style="font-size:12px;flex:0 0 40px;">열</label>
+    <input type="number" id="excelModeColsInput" value="5" min="1" max="26" style="width:100%;">
+  </div>
+  <button type="button" class="qa-btn" id="excelModeCreateBtn" style="padding:10px 6px;margin-top:4px;">📊 만들기</button>
+</div>
+
 <!-- 캔버스 전체를 채우는 배경 만들기 모달 — 캔버스 정가운데에 뜸 -->
 <div class="qa-popover hidden" id="bgFillModal" style="width:220px;">
   <button type="button" class="font-popover-close" id="bgFillModalCloseBtn" title="닫기">✕</button>
@@ -2848,6 +2907,7 @@
 <script src="ecopro3text.js" defer></script>
 <script src="ecopro3map.js" defer></script>
 <script src="ecopro3logo.js" defer></script>
+<script src="ecopro3excel.js" defer></script>
 <script src="ecopro3menu.js" defer></script>
 <script src="ecopro3l.js" defer></script>
 </body>

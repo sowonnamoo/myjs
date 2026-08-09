@@ -287,6 +287,8 @@
 
   // "상세조정하기" 접기/펼치기 — P팝업과 동일한 방식. 주사위(M버튼)로 랜덤 모양필터를 적용한
   // 직후에는 ◀1/3▶ 이동과 필터 게이지들을 다 숨기고 이 버튼 하나만 도형 아래에 보이게 함.
+  // ⚠️ 규칙: 이 함수를 true로 호출하는 곳은 아래 토글 버튼 클릭 리스너 단 한 곳이어야 함
+  // (P팝업의 같은 규칙과 동일 — 새 모양필터를 추가하더라도 예외 두지 말 것).
   const qaMDetailToggleBtn = document.getElementById('qaMDetailToggleBtn');
   function setQaMDetailExpanded(expanded){
     qaMPopover.classList.toggle('qa-expanded', expanded);
@@ -295,8 +297,9 @@
   }
   qaMDetailToggleBtn.addEventListener('click', () => {
     setQaMDetailExpanded(!qaMPopover.classList.contains('qa-expanded'));
-    const activeTarget = EP.canvas.getActiveObject();
-    if (activeTarget) positionQaMPopover(activeTarget);
+    // 스택 재계산 없이 지금 있는 그 자리 기준으로만 다시 클램프·회전 재적용(요청: "밑으로
+    // 이동후 펼쳐지는게 문제") — P와 동일한 이유.
+    EP.reclampPopoverInPlace(qaMPopover);
   });
 
   // PC에서는 캔버스 좌측 상단 모서리에 가지런히 배치(회전 고려 없음, T/글씨 팝업과 동일).

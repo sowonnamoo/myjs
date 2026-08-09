@@ -76,7 +76,6 @@
   var logoInputToolbar = document.getElementById('logoInputToolbar');
   var logoInputToolbarHint = document.getElementById('logoInputToolbarHint');
   var logoNameInput = document.getElementById('logoNameInput');
-  var applyLogoBtn = document.getElementById('applyLogoBtn');
   var randomLogoBtn = document.getElementById('randomLogoBtn');
   var cancelLogoBtn = document.getElementById('cancelLogoBtn');
 
@@ -1177,7 +1176,6 @@
 
   // ---------- 입력창 열기/닫기 ----------
   function setApplyEnabled(enabled){
-    applyLogoBtn.disabled = !enabled;
     if (randomLogoBtn) randomLogoBtn.disabled = !enabled;
   }
 
@@ -1215,7 +1213,7 @@
   });
   logoNameInput.addEventListener('input', updatePreview);
   logoNameInput.addEventListener('keydown', function(e){
-    if (e.key === 'Enter' && !applyLogoBtn.disabled) applyLogoBtn.click();
+    if (e.key === 'Enter' && randomLogoBtn && !randomLogoBtn.disabled) randomLogoBtn.click();
   });
 
   // ---------- 캔버스에 로고 오브젝트 추가 ----------
@@ -1448,15 +1446,37 @@
     return group;
   }
 
-  applyLogoBtn.addEventListener('click', function(){
-    var data = buildLogoData(logoNameInput.value);
-    if (!data) { updatePreview(); return; }
-    insertLogoToCanvas(data, null);
-    if (EP.pushHistory) EP.pushHistory();
-    logoInputToolbar.classList.add('hidden');
-  });
+  // 캔버스에 이미 있는 로고 그룹(선택된 것) 하나를 "그 자리에서" 다른 랜덤 조합으로 다시
+  // 굴림 — 위치/크기/각도는 그대로 유지하고 배지·색상 조합만 새로 뽑음. 오브젝트 선택 시
+  // 뜨는 파란 주사위 버튼(요청: "이거 누를시 랜덤로고만들기(연속클릭) 이 필터가 적용되게")이
+  // 이 함수를 직접 호출함 — 로고 만들기 입력창을 열 필요 없이 캔버스에서 바로 재굴림 가능.
+  function rerollLogoGroup(existingGroup){
+    var canvas = EP.canvas;
+    if (!canvas || !existingGroup || !existingGroup.logoName) return;
+    var data = buildLogoData(existingGroup.logoName);
+    if (!data) return;
 
-  // 랜덤 로고 만들기: 누를 때마다 팔레트·모양·광원효과 조합을 새로 굴리고, 바로 전에
+    var center = existingGroup.getCenterPoint();
+    var angle = existingGroup.angle || 0;
+    var scaleX = existingGroup.scaleX || 1;
+    var scaleY = existingGroup.scaleY || 1;
+
+    var style = rollBadgeStyle();
+    var newGroup = insertLogoToCanvas(data, style); // 캔버스 정중앙에 새로 추가됨
+    if (!newGroup) return;
+
+    canvas.remove(existingGroup);
+    newGroup.set({ angle: angle, scaleX: scaleX, scaleY: scaleY });
+    newGroup.setPositionByOrigin(center, 'center', 'center');
+    newGroup.setCoords();
+    canvas.setActiveObject(newGroup);
+    canvas.requestRenderAll();
+    if (EP.pushHistory) EP.pushHistory();
+    if (EP.showBottomHintToast) EP.showBottomHintToast('풀기 선택후 이미지 배치 미세조정이 가능합니다.');
+  }
+  EP.rerollLogoGroup = rerollLogoGroup;
+
+
   // 랜덤으로 만든 로고가 아직 캔버스에 남아있으면 지운 뒤 그 자리에 새 걸 추가함(계속 눌러서
   // 여러 개가 쌓이지 않고, 매번 새로운 조합으로 교체되도록).
   var lastRandomGroup = null;
@@ -1471,6 +1491,8 @@
       var style = rollBadgeStyle();
       lastRandomGroup = insertLogoToCanvas(data, style);
       if (EP.pushHistory) EP.pushHistory();
+      // 로고 생성될 때마다 안내 — PC/모바일 공통(요청)
+      if (EP.showBottomHintToast) EP.showBottomHintToast('풀기 선택후 이미지 배치 미세조정이 가능합니다.');
       // 입력창은 닫지 않음 — 계속 눌러서 다른 조합으로 재굴림할 수 있게 둠 (닫고 싶으면 "✕ 닫기")
     });
   }

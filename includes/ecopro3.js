@@ -1243,6 +1243,8 @@
     gridGuide.visible = guideState === 1;
     updateGuideRectVisibility();
   });
+  // R 단축키 — 위 버튼(10px 격자 안내선 포함)을 그대로 눌러주는 것뿐, 새 로직 아님.
+  EP.toggleFineGrid = () => { document.getElementById('guideToggleBtn').click(); };
 
   // 모바일 전용 — 문구 가리기 눈 아이콘 옆의 "▦" 안내선 버튼은 위 guideToggleBtn을 그대로
   // 클릭해주는 것뿐(100% 재사용, 새 로직 없음).
@@ -3249,6 +3251,8 @@
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
     const active = canvas.getActiveObject();
     if (active && active.isEditing) return;
+    const sgOverlay = document.getElementById('shortcutGuideOverlay');
+    if (sgOverlay && !sgOverlay.classList.contains('hidden') && e.key !== 'Escape') return; // 안내창이 떠있을 땐 단축키들이 뒤에서 같이 실행되지 않게 막음
 
     if (penActive) {
       if (e.key === 'Escape') {
@@ -3263,11 +3267,171 @@
       if (e.key === 'Enter') { e.preventDefault(); finishPenPath(false); return; }
     }
 
-    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoBtn.click(); }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoBtn.click(); }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
+
+    const mod = e.ctrlKey || e.metaKey;
+
+    // ---- Ctrl/Cmd 조합 (Shift 붙는 것들은 순서상 먼저 체크해야 겹치는 plain 버전과 안 헷갈림) ----
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); redoBtn.click(); return; } // 다시실행
+    if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); undoBtn.click(); return; } // 실행취소
+    if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redoBtn.click(); return; } // 다시실행(보조 단축키, 기존 그대로 유지)
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'v') { // 제자리(원본 위)에 겹쳐서 붙여넣기
+      e.preventDefault();
+      if (typeof pasteClipboard === 'function') pasteClipboard({ inPlace: true });
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return; } // 붙여넣기
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'c') { // 텍스트 가운데 정렬
+      e.preventDefault();
+      const alignCenterBtn = document.getElementById('alignCenterBtn');
+      if (alignCenterBtn) alignCenterBtn.click();
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); return; } // 복사
+    if (mod && e.key.toLowerCase() === 'x') { // 잘라내기 = 복사 후 삭제
+      e.preventDefault();
+      copySelected();
+      deleteSelected();
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'd') { // 복제
+      e.preventDefault();
+      const duplicateBtn = document.getElementById('duplicateBtn');
+      if (duplicateBtn) duplicateBtn.click();
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 's') { // 저장 — json 프로젝트 저장(상품담기가 아님)
+      e.preventDefault();
+      const saveProjectBtn = document.getElementById('saveProjectBtn');
+      if (saveProjectBtn) saveProjectBtn.click();
+      return;
+    }
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'r') { // 텍스트 오른쪽 정렬
+      e.preventDefault();
+      const alignRightBtn = document.getElementById('alignRightBtn');
+      if (alignRightBtn) alignRightBtn.click();
+      return;
+    }
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'l') { // 텍스트 왼쪽 정렬
+      e.preventDefault();
+      const alignLeftBtn = document.getElementById('alignLeftBtn');
+      if (alignLeftBtn) alignLeftBtn.click();
+      return;
+    }
+    if (mod && e.shiftKey && (e.code === 'Comma' || e.key === '<' || e.key === ',')) { // 글자 크기 작게 (키보드의 , < 위치)
+      e.preventDefault();
+      withActive(o => {
+        if (!isTextObject(o) || !floatingFontSizeInput) return;
+        const v = Math.max(10, (parseInt(floatingFontSizeInput.value, 10) || Math.round(o.fontSize)) - 2);
+        floatingFontSizeInput.value = v;
+        floatingFontSizeInput.dispatchEvent(new Event('input'));
+        floatingFontSizeInput.dispatchEvent(new Event('change'));
+      });
+      return;
+    }
+    if (mod && e.shiftKey && (e.code === 'Period' || e.key === '>' || e.key === '.')) { // 글자 크기 크게 (키보드의 . > 위치)
+      e.preventDefault();
+      withActive(o => {
+        if (!isTextObject(o) || !floatingFontSizeInput) return;
+        const v = Math.max(10, (parseInt(floatingFontSizeInput.value, 10) || Math.round(o.fontSize)) + 2);
+        floatingFontSizeInput.value = v;
+        floatingFontSizeInput.dispatchEvent(new Event('input'));
+        floatingFontSizeInput.dispatchEvent(new Event('change'));
+      });
+      return;
+    }
+    if (mod && e.key === ']') { // 레이어 한 단계 위로
+      e.preventDefault();
+      const o = canvas.getActiveObject();
+      if (o) { canvas.bringForward(o); bringGuideToFront(); canvas.renderAll(); pushHistory(); }
+      return;
+    }
+    if (mod && e.key === '[') { // 레이어 한 단계 아래로
+      e.preventDefault();
+      const o = canvas.getActiveObject();
+      if (o) { canvas.sendBackwards(o); canvas.renderAll(); pushHistory(); }
+      return;
+    }
+
+    // ---- Ctrl 없는 단일 키 (텍스트 입력 중이 아닐 때만 — 위에서 이미 걸러짐) ----
+    if (!mod && !e.altKey) {
+      if (e.key === 'F2') { // 화면에 떠있는 작은 인터페이스 창(폰트/필터 설정 등) 전부 닫기
+        e.preventDefault();
+        (EP.filterPopovers || []).forEach((el) => { if (el) el.classList.add('hidden'); });
+        return;
+      }
+      if (e.key === 'F3') { // 랜덤디자인적용
+        e.preventDefault();
+        const rollAllBtn = document.getElementById('rollAllBtn');
+        if (rollAllBtn) rollAllBtn.click();
+        return;
+      }
+      if (e.key === 'F4') { // 90도 회전
+        e.preventDefault();
+        const rotateObjectBtn = document.getElementById('rotateObjectBtn');
+        if (rotateObjectBtn) rotateObjectBtn.click();
+        return;
+      }
+      if (e.key === ' ') { // 100%로 맞춤(확대/축소 초기화)
+        e.preventDefault();
+        setZoomLevel(1);
+        return;
+      }
+      if (e.key.toLowerCase() === 't') { // 텍스트 생성
+        e.preventDefault();
+        const addTextBtn = document.getElementById('addTextBtn');
+        if (addTextBtn) addTextBtn.click();
+        return;
+      }
+      if (e.key.toLowerCase() === 'm') { // 모양 만들기
+        e.preventDefault();
+        const openShapePickerBtn = document.getElementById('openShapePickerBtn');
+        if (openShapePickerBtn) openShapePickerBtn.click();
+        return;
+      }
+      if (e.key.toLowerCase() === 'r') { // 10px 격자 안내선 표시
+        e.preventDefault();
+        if (EP.toggleFineGrid) EP.toggleFineGrid();
+        return;
+      }
+      if (e.key.toLowerCase() === 'f') { // 전체화면
+        e.preventDefault();
+        const pcFullscreenBtn = document.getElementById('pcFullscreenBtn');
+        const mobileFullscreenBtn = document.getElementById('mobileFullscreenBtn');
+        if (pcFullscreenBtn && pcFullscreenBtn.offsetParent !== null) pcFullscreenBtn.click();
+        else if (mobileFullscreenBtn) mobileFullscreenBtn.click();
+        return;
+      }
+      if (e.key === '[' || e.key === ']') { // 지우개/브러시 굵기 작게/크게
+        const sizeInput = document.getElementById('eraseBrushSizeInput');
+        if (sizeInput) {
+          e.preventDefault();
+          const step = e.key === '[' ? -4 : 4;
+          const min = parseFloat(sizeInput.min) || 4, max = parseFloat(sizeInput.max) || 150;
+          const v = Math.min(max, Math.max(min, (parseFloat(sizeInput.value) || 30) + step));
+          sizeInput.value = v;
+          sizeInput.dispatchEvent(new Event('input'));
+          sizeInput.dispatchEvent(new Event('change'));
+        }
+        return;
+      }
+      // 방향키: 선택한 오브젝트 1px씩 미세 이동, Shift+방향키: 10px씩 이동
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        const o = canvas.getActiveObject();
+        if (!o || o.isGuide) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        if (e.key === 'ArrowLeft') o.left -= step;
+        else if (e.key === 'ArrowRight') o.left += step;
+        else if (e.key === 'ArrowUp') o.top -= step;
+        else if (e.key === 'ArrowDown') o.top += step;
+        o.setCoords();
+        canvas.requestRenderAll();
+        clearTimeout(EP._arrowNudgeHistoryTimer);
+        EP._arrowNudgeHistoryTimer = setTimeout(() => pushHistory(), 300); // 연타 중엔 매번 기록 안 하고 멈추면 한 번만 기록
+        return;
+      }
+    }
   });
 
   /* ============================================================
@@ -3281,13 +3445,15 @@
     obj.clone((cloned) => { clipboard = cloned; }, getCustomObjectProps().concat(EP.tableCloneProps || []));
   }
 
-  function pasteClipboard(pointer){
+  function pasteClipboard(pointer, opts){
     if (!clipboard || cropState) return;
+    const inPlace = !!(pointer && pointer.inPlace);
+    if (inPlace) pointer = null; // {inPlace:true}가 pointer 자리로 들어온 경우(단축키 호출) 좌표로 오해하지 않게 정리
     clipboard.clone((clonedObj) => {
       canvas.discardActiveObject();
       clonedObj.set({
         left: pointer ? pointer.x : (clonedObj.left || 0),
-        top: pointer ? pointer.y : (clonedObj.top || 0) + 24,
+        top: pointer ? pointer.y : (clonedObj.top || 0) + (inPlace ? 0 : 24), // 제자리 붙여넣기는 오프셋 없이 원본 위에 정확히 겹침
         // 잠긴 오브젝트를 복사한 뒤 붙여넣은 경우에도, 붙여넣기 결과는 항상 바로
         // 선택·이동 가능한 상태로 시작하게 함(복제 버튼과 동일한 이유)
         selectable: true, evented: true, imageLocked: false,
@@ -3591,6 +3757,53 @@
   }
   EP.showBoldAlertModal = showBoldAlertModal;
 
+  // 위 showBoldAlertModal의 "확인" 버튼 하나짜리와 달리, 사용자가 그 자리에서 선택할 수
+  // 있게 "수정하기"/"무시하고 진행하기" 두 버튼을 보여줌 — 어느 쪽을 눌렀는지에 따라
+  // 'fix' 또는 'proceed' 문자열로 resolve됨(요청: "경고창에 수정하기 버튼... 무시하고
+  // 진행하기 두 버튼"). 바깥 클릭은 "수정하기"(더 안전한 쪽)로 취급함.
+  function showWarningChoiceModal(html){
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'bold-alert-overlay';
+      const box = document.createElement('div');
+      box.className = 'bold-alert-box';
+      box.innerHTML =
+        `<div class="bold-alert-msg">${html}</div>` +
+        `<div class="bold-alert-choice-row">` +
+          `<button type="button" class="bold-alert-choice-btn bold-alert-fix">✏ 수정하기</button>` +
+          `<button type="button" class="bold-alert-choice-btn bold-alert-proceed">무시하고 진행하기</button>` +
+        `</div>`;
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      function close(result){ overlay.remove(); resolve(result); }
+      box.querySelector('.bold-alert-fix').addEventListener('click', () => close('fix'));
+      box.querySelector('.bold-alert-proceed').addEventListener('click', () => close('proceed'));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close('fix'); });
+    });
+  }
+  EP.showWarningChoiceModal = showWarningChoiceModal;
+
+  // ⌨ 단축키 안내 — 편집하기 메뉴 버튼을 누르면 모달이 뜨고, ✕나 바깥 클릭으로 닫힘
+  const shortcutGuideBtn = document.getElementById('shortcutGuideBtn');
+  const shortcutGuideOverlay = document.getElementById('shortcutGuideOverlay');
+  const shortcutGuideCloseBtn = document.getElementById('shortcutGuideCloseBtn');
+  if (shortcutGuideBtn && shortcutGuideOverlay && shortcutGuideCloseBtn) {
+    shortcutGuideBtn.addEventListener('click', () => {
+      shortcutGuideOverlay.classList.remove('hidden');
+    });
+    shortcutGuideCloseBtn.addEventListener('click', () => {
+      shortcutGuideOverlay.classList.add('hidden');
+    });
+    shortcutGuideOverlay.addEventListener('click', (e) => {
+      if (e.target === shortcutGuideOverlay) shortcutGuideOverlay.classList.add('hidden');
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !shortcutGuideOverlay.classList.contains('hidden')) {
+        shortcutGuideOverlay.classList.add('hidden');
+      }
+    });
+  }
+
   const mobileCtxMenuBtn = document.getElementById('mobileCtxMenuBtn');
   if (mobileCtxMenuBtn) {
     mobileCtxMenuBtn.addEventListener('click', () => {
@@ -3739,8 +3952,64 @@
   canvasWrap.addEventListener('wheel', (e) => {
     if (!e.ctrlKey) return;
     e.preventDefault();
-    setZoomLevel(zoom + (e.deltaY < 0 ? 0.08 : -0.08));
+    setZoomLevel(zoom + (e.deltaY < 0 ? 0.1 : -0.1));
   }, { passive: false });
+
+  /* ============================================================
+     Alt+드래그 — 오브젝트 위: 복제해서 드래그 / 빈 캔버스: 화면 이동(패닝)
+     오브젝트 쪽은 드래그 도중에 복제하면(비동기라 타이밍이 꼬임) 위험해서, 대신 fabric의
+     원래 드래그는 오브젝트 "원본"을 그대로 옮기게 놔두고, 마우스를 뗀 순간(mouse:up) 그
+     "원래 있던 자리"에 복제본을 하나 새로 만들어 둠 — 결과적으로 옮겨진 것(=사실상 복제된
+     새 위치)과 원래 자리에 남은 복제본, 두 개가 남는 건 똑같은 효과.
+  ============================================================ */
+  let altDragTarget = null, altDragOriginalPos = null;
+  let altPanning = false, altPanLastX = 0, altPanLastY = 0, altPanPrevSelection = true;
+
+  canvas.on('mouse:down', (opt) => {
+    if (!opt.e.altKey) return;
+    if (opt.target && !opt.target.isGuide) {
+      altDragTarget = opt.target;
+      altDragOriginalPos = { left: opt.target.left, top: opt.target.top };
+    } else {
+      altPanning = true;
+      altPanLastX = opt.e.clientX;
+      altPanLastY = opt.e.clientY;
+      altPanPrevSelection = canvas.selection;
+      canvas.selection = false;
+    }
+  });
+  canvas.on('mouse:move', (opt) => {
+    if (!altPanning) return;
+    const e = opt.e;
+    const dx = e.clientX - altPanLastX, dy = e.clientY - altPanLastY;
+    altPanLastX = e.clientX; altPanLastY = e.clientY;
+    const vpt = canvas.viewportTransform;
+    vpt[4] += dx; vpt[5] += dy;
+    canvas.requestRenderAll();
+  });
+  canvas.on('mouse:up', () => {
+    if (altPanning) {
+      altPanning = false;
+      canvas.selection = altPanPrevSelection;
+    }
+    if (altDragTarget && altDragOriginalPos) {
+      const movedFrom = altDragOriginalPos;
+      const target = altDragTarget;
+      // 실제로 위치가 안 바뀌었으면(그냥 Alt 누르고 클릭만 한 경우) 복제 안 함
+      if (movedFrom.left !== target.left || movedFrom.top !== target.top) {
+        target.clone((cloned) => {
+          cloned.set(movedFrom);
+          cloned.setCoords();
+          canvas.add(cloned);
+          if (EP.reindexPastedTable) EP.reindexPastedTable(cloned);
+          bringGuideToFront();
+          canvas.requestRenderAll();
+          pushHistory();
+        }, getCustomObjectProps().concat(EP.tableCloneProps || []));
+      }
+    }
+    altDragTarget = null; altDragOriginalPos = null;
+  });
 
   /* ============================================================
      11. 레이어 순서 / 뒤집기
@@ -3936,6 +4205,20 @@
       });
     }
 
+    // 텍스트가 붉은선(재단선)에 1px 이내로 닿아있거나 넘어가 있는지 확인 — 재단 시 글씨가
+    // 잘릴 위험이 있어서 안내만 해주고(강제로 막지는 않음) 다음 단계로 넘어가게 함.
+    function isTextNearRedLine(){
+      const tol = 1;
+      const gx0 = guideRect.left, gy0 = guideRect.top;
+      const gx1 = guideRect.left + guideRect.width, gy1 = guideRect.top + guideRect.height;
+      return canvas.getObjects().some((o) => {
+        if (o.isGuide || !isTextObject(o)) return false;
+        const r = o.getBoundingRect(true, true);
+        const ox0 = r.left, oy0 = r.top, ox1 = r.left + r.width, oy1 = r.top + r.height;
+        return ox0 <= gx0 + tol || oy0 <= gy0 + tol || ox1 >= gx1 - tol || oy1 >= gy1 - tol;
+      });
+    }
+
     try {
       const sides = isDouble ? ['front', 'back'] : ['front'];
       for (let i = 0; i < count; i++) {
@@ -3944,18 +4227,41 @@
           floatingSaveBtn.textContent = `${label} 확인 중...`;
           await loadDesignForExport(i, side);
 
-          // 2) 회색선(도련)까지 이미지가 채워졌는지 검사
+          // 2) 회색선(도련)까지 이미지가 채워졌는지 검사 — 강제로 막지 않고 주의사항을
+          // 보여주되, "수정하기"를 고르면 원래 보던 화면으로 되돌리고 여기서 멈춰서 계속
+          // 편집할 수 있게 하고, "무시하고 진행하기"를 고르면 그대로 다음 단계로 진행함
+          // (요청: "경고창에 수정하기 버튼... 무시하고 진행하기 두 버튼").
           if (!isFullyBled()) {
-            await showBoldAlertModal(
-              `<b>회색선 너머까지 이미지를 늘려 주세요.</b><br>` +
-              `[이미지 또는 바탕으로 사용한 흰색 배경을 붉은선(재단선) 밖 회색선 너머까지 꽉 채워주세요]<br>` +
-              `바탕생성 방법 : 상단 편집 메뉴클릭 → 바탕채우기`
+            const choice = await showWarningChoiceModal(
+              `<b>사각박스 가장자리 회색선 까지 이미지가 채워지지 않은 주문입니다.</b><br>` +
+              `가급적 배경을 채워주신후 상품담기 해주세요.`
             );
-            await loadDesignForExport(originalIdx, originalSide);
-            guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
-            canvas.renderAll();
-            renderTabs();
-            return;
+            if (choice === 'fix') {
+              await loadDesignForExport(originalIdx, originalSide);
+              guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
+              canvas.renderAll();
+              renderTabs();
+              floatingSaveBtn.disabled = false;
+              floatingSaveBtn.textContent = originalBtnText;
+              return;
+            }
+          }
+
+          // 3) 붉은선에 너무 가까운 글씨가 있는지 검사 — 위와 동일하게 선택할 수 있게 함.
+          if (isTextNearRedLine()) {
+            const choice = await showWarningChoiceModal(
+              `<b>붉은선 가까이 글씨가 있는 주문건 입니다.</b><br>` +
+              `재단시 글씨가 잘릴 수 있사오니 염두후 다음페이지로 이동 바랍니다.`
+            );
+            if (choice === 'fix') {
+              await loadDesignForExport(originalIdx, originalSide);
+              guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
+              canvas.renderAll();
+              renderTabs();
+              floatingSaveBtn.disabled = false;
+              floatingSaveBtn.textContent = originalBtnText;
+              return;
+            }
           }
 
           floatingSaveBtn.textContent = `${label} 준비 중...`;

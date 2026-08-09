@@ -1,0 +1,105 @@
+
+파일저장방식들
+나중에 복구하실 땐 CSS에서 .export-menu-temp-hidden{display:none !important;} 이 규칙 한 줄만 지우면(또는 HTML에서 클래스만 떼면) 바로 원래대로 돌아옵니다.
+
+
+
+
+맞아요, 설명이 길어서 복잡해 보이는데 실제로 사장님이 하실 일은 딱 두 가지뿐이에요.
+
+편집한 결과(JSON)를 아무 데나 인터넷에 올려놓기 — 예: 구글 드라이브 공유링크, 깃허브, 회사 서버 등. 그 파일의 URL 주소만 있으면 됩니다.
+편집기 주소 뒤에 ?project= + 그 URL 붙이기
+내에디터.html?project=https://아무데나.com/mymy.json
+
+이 주소로 들어가면 편집기가 자동으로 그 JSON을 불러온 상태로 열려요. JSON 파일을 바꿔치기하고 싶으면 그냥 그 자리에 새 파일을 올려두거나, 다른 URL로 바꿔서 링크만 새로 쓰면 끝입니다. 에디터 코드는 한 번도 안 건드려도 돼요.
+
+유일하게 신경 쓸 부분은 "JSON을 올려두는 곳이 외부에서 읽기 허용(CORS)돼 있어야 한다"는 것 하나뿐인데 — 어디에 올리실 계획인지 말씀해주시면(구글드라이브? 깃허브? 자체 서버?) 그에 맞게 정확히 어떻게 링크 만들면 되는지 바로 알려드릴게요.
+
+구글드라이브에 올려야겠다.
+
+Google Drive CORS 문제를 해결할 실용적 방법을 모색했다
+Google Drive CORS 문제를 해결할 실용적 방법을 모색했다
+
+좋은 선택이에요 — 근데 미리 하나 짚고 갈게요. 구글드라이브의 "다운로드 링크"(drive.google.com/uc?...)는 브라우저 fetch에서 CORS로 막히는 경우가 많아서, 그대로 쓰면 안 될 확률이 높습니다. 그래서 훨씬 간단하게 되는 방법 하나 추천드릴게요.
+
+추천: 구글 Apps Script로 "중계 주소" 하나 만들기 (한 번만 설정, 이후엔 파일만 교체)
+
+1) 드라이브에 JSON 업로드하고 파일 ID 확인
+업로드 후 파일 우클릭 → 링크 가져오기 → 주소 중간에 있는 긴 문자열이 파일 ID예요.
+https://drive.google.com/file/d/이부분이_파일ID/view
+
+2) script.google.com 에서 새 프로젝트 만들고 이 코드 붙여넣기
+
+js
+function doGet() {
+  var fileId = '여기에_파일ID_붙여넣기';
+  var content = DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
+  return ContentService.createTextOutput(content)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+3) 배포 → 새 배포 → 유형: 웹 앱
+
+실행 계정: 나
+액세스 권한: 모든 사용자
+배포하면 https://script.google.com/macros/s/xxxxxxx/exec 같은 고정 주소가 나옵니다.
+
+4) 이 고정 주소를 편집기 쿼리에 붙이기
+
+편집기.html?project=https://script.google.com/macros/s/xxxxxxx/exec
+
+이 URL은 앞으로 다시는 안 바꿔도 됩니다.
+
+5) JSON을 나중에 바꾸고 싶을 땐?
+드라이브에서 같은 파일을 우클릭 → "새 버전으로 업로드"로 덮어쓰기만 하면 끝. 파일 ID가 그대로 유지되니까 스크립트도, 편집기 링크도 손댈 필요 없어요.
+
+이렇게 하면 사장님이 반복해서 할 일은 딱 "드라이브 파일 덮어쓰기"뿐이에요. 링크는 하나로 고정되고요. 원하시면 지금 파일 ID 알려주시면 완성된 코드 바로 채워드릴게요.
+
+다른 제이슨 파일도 이렇게 붙여넣을수 있냐
+
+동적 파일 ID 매개변수로 유연한 구조 설계했습니다
+동적 파일 ID 매개변수로 유연한 구조 설계했습니다
+
+네, 됩니다. 지금 만든 Apps Script를 살짝만 고치면 파일 ID만 바꿔서 여러 JSON 파일을 다 서빙할 수 있어요. 스크립트를 파일마다 새로 만들 필요 없습니다.
+
+Apps Script 코드를 이렇게 바꾸세요
+js
+function doGet(e) {
+  var fileId = e.parameter.id; // 주소 뒤에 ?id=파일ID 로 넘어온 값을 읽음
+  try {
+    var content = DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
+    return ContentService.createTextOutput(content)
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: '파일을 찾을 수 없습니다: ' + fileId }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+(코드 바꾼 뒤엔 배포 → 배포 관리 → 편집(연필 아이콘) → 새 버전 순서로 다시 배포해야 반영됩니다. 배포 주소는 그대로 유지돼요.)
+
+사용법
+
+배포 주소가 https://script.google.com/macros/s/xxxxx/exec 라면:
+
+편집기.html?project=https://script.google.com/macros/s/xxxxx/exec?id=파일ID_A
+편집기.html?project=https://script.google.com/macros/s/xxxxx/exec?id=파일ID_B
+
+이런 식으로 파일 ID만 바꿔서 원하는 JSON을 그때그때 불러올 수 있어요. 파일마다 스크립트를 새로 만들 필요 없이, 드라이브에 JSON 여러 개 올려두고 그때그때 다른 ID를 붙이면 됩니다.
+
+⚠️ 딱 하나 주의할 점: 나중에 편집기 링크에 다른 옵션(count=, width= 등)까지 같이 붙이게 되면, project 값 안에 있는 ?id=가 헷갈릴 수 있어요. 그럴 땐 project 뒤의 주소 전체를 URL 인코딩해서 넣으면 안전합니다(예: %3F = ?, %3D = =). 지금처럼 project 하나만 쓰는 거면 인코딩 없이 그냥 붙여도 잘 동작해요.
+
+이렇게 구글드라이브 링크를 그냥 붙이면, 브라우저가 보안(CORS) 때문에 그 파일 내용을 못 읽어옵니다.
+
+되는 것 ✅ (아까 만든 Apps Script를 "중간 다리"로 거쳐야 함)
+
+편집기.html?project=https://script.google.com/macros/s/xxxxx/exec?id=파일ID
+
+즉 순서는:
+
+구글드라이브에 JSON 업로드 (파일 ID 확인)
+Apps Script 배포해서 나온 주소를 씀 (드라이브 링크 자체가 아니라!)
+그 Apps Script 주소 뒤에 ?id=파일ID를 붙임
+그 전체를 project= 뒤에 붙임
+
+정리하면: 드라이브 링크가 아니라 "Apps Script 주소 + 파일ID"를 project 뒤에 붙이는 것이에요. 한 번 스크립트 배포만 해두면, 그다음부턴 파일 ID만 바꿔서 계속 재사용할 수 있어요.

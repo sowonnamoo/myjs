@@ -208,12 +208,12 @@
     if (EP.applyFilteredFilterDropdown) EP.applyFilteredFilterDropdown(target); // 팝오버가 이미 열려있었다면(재굴림) 드롭다운도 새 조합으로 갱신
     showCurrentRollFilter();
 
-    // 토트무늬는 예쁘다고 일부러 더 자주 뽑히게 해뒀는데, 뽑히고도 상세조정 패널이 접혀있으면
-    // 바로 안 보여서 아쉬우니 이번 조합에 토트무늬가 있으면 패널을 자동으로 펼쳐서 보여줌
+    // 토트무늬가 뽑혀도 드롭다운만 그쪽으로 맞춰두고, 상세조정 패널 자체는 열지 않음 —
+    // "상세조정하기를 직접 누르지 않는 한 절대 임의로 펼쳐지면 안 된다"는 원칙(요청)이라,
+    // 어떤 필터가 뽑히든 이 규칙에 예외를 두지 않음.
     if (rollState.ids.indexOf('tote') !== -1 && EP.setActiveFilterMenu && EP.qaFilterSelect) {
       EP.qaFilterSelect.value = 'tote';
       EP.setActiveFilterMenu('tote');
-      if (EP.setQaDetailExpanded) EP.setQaDetailExpanded(true);
     }
   }
 
@@ -324,6 +324,24 @@
         }, 90);
       }
       step();
+    });
+
+    // 꾹 누르고 있으면 1초마다 자동으로 다시 실행됨(요청: "상단 랜덤디자인 적용 꾸욱
+    // 클릭하면 1초마다 자동으로 눌러지게"). 버튼 자체가 처리 중엔 disabled 처리되므로,
+    // 그 사이에 겹쳐 눌려도 안전하게 무시됨(비활성 버튼은 click 이벤트가 안 일어남).
+    var rollAllHoldInterval = null;
+    function startRollAllHold(){
+      if (rollAllHoldInterval) return;
+      rollAllHoldInterval = setInterval(function(){ rollAllBtn.click(); }, 1000);
+    }
+    function stopRollAllHold(){
+      clearInterval(rollAllHoldInterval);
+      rollAllHoldInterval = null;
+    }
+    rollAllBtn.addEventListener('mousedown', startRollAllHold);
+    rollAllBtn.addEventListener('touchstart', startRollAllHold, { passive: true });
+    ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(function(evt){
+      rollAllBtn.addEventListener(evt, stopRollAllHold);
     });
   }
 

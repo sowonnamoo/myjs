@@ -15,8 +15,11 @@
   function isTableRelatedTarget(o){
     if (!o) return false;
     if (o.isTableGroup || o.isTableCell || o.isTableCellText) return true;
+    // 엑셀모드 그룹/셀도 표와 똑같이 P/M 등 필터·주사위 버튼 대상에서 완전히 제외함
+    // (요청: "안내선 우측엔 필터나 주사위나 그런거 일체 없고 눈알아이콘 하나만").
+    if (o.isExcelGroup || o.isExcelCell || o.isExcelCellText) return true;
     if ((o.type === 'activeSelection' || o.type === 'group') && typeof o.getObjects === 'function') {
-      return o.getObjects().some(function(c){ return c && (c.isTableCell || c.isTableCellText); });
+      return o.getObjects().some(function(c){ return c && (c.isTableCell || c.isTableCellText || c.isExcelCell || c.isExcelCellText); });
     }
     return false;
   }
@@ -39,6 +42,9 @@
   (function setupFilterControl(){
     function renderPButton(ctx, left, top, styleOverride, fabricObject){
       if (isTableRelatedTarget(fabricObject)) return;
+      // 로고 그룹(폰트+이미지가 묶인 랜덤로고만들기 결과물)에는 이 주황 주사위 대신 파란
+      // 주사위(로고 재굴림 전용)가 뜨므로, 여기서는 안 그림(요청: "주황색 주사위를 빼고").
+      if (fabricObject && fabricObject.isLogoGroup) return;
       if (fabricObject && (fabricObject.type === 'activeSelection' || fabricObject.type === 'group')) {
         const objs = fabricObject.getObjects().filter(o => !o.isGuide);
         if (objs.length < 2) return;
@@ -90,6 +96,7 @@
       mouseUpHandler: function(eventData, transformData){
         const target = transformData && transformData.target;
         if (!target || isTableRelatedTarget(target)) return true;
+        if (target.isLogoGroup) return true; // 로고 그룹은 파란 주사위(아래)가 대신 처리함
         if (target.isEditing) target.exitEditing(); // 모바일에서 편집 상태가 남아있으면 필터가 안 그려지므로 확실히 빠져나옴
         // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 랜덤 필터를 다시 뽑음(토글로 닫히던
         // 예전 동작은 제거) — 팝업이 이미 열려있으면 위치는 그대로 두고(드래그해둔 자리 유지),
@@ -101,9 +108,65 @@
       }
     });
 
+    // ---- 로고 그룹(폰트+이미지가 묶인 랜덤로고만들기 결과물) 전용 파란 주사위 ----
+    // 오브젝트 선택 시 뜨는 주황 주사위(P) 자리를 대신 차지함 — 누르면 "랜덤로고만들기
+    // (연속클릭)"과 완전히 같은 재굴림이 그 자리에서 바로 적용됨(위치/크기는 그대로 유지).
+    function renderLogoRerollButton(ctx, left, top, styleOverride, fabricObject){
+      if (!fabricObject || !fabricObject.isLogoGroup) return;
+      ctx.save();
+      ctx.translate(left, top);
+      ctx.rotate(fabric.util.degreesToRadians(EP.canvasRotationDeg || 0));
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#2f7fc9';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      (function drawDiceIcon(){
+        const s = 8, r = 3;
+        ctx.beginPath();
+        ctx.moveTo(-s + r, -s);
+        ctx.lineTo(s - r, -s);
+        ctx.quadraticCurveTo(s, -s, s, -s + r);
+        ctx.lineTo(s, s - r);
+        ctx.quadraticCurveTo(s, s, s - r, s);
+        ctx.lineTo(-s + r, s);
+        ctx.quadraticCurveTo(-s, s, -s, s - r);
+        ctx.lineTo(-s, -s + r);
+        ctx.quadraticCurveTo(-s, -s, -s + r, -s);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#2f7fc9';
+        const off = 4, pipR = 1.3;
+        [[-off, -off], [off, -off], [0, 0], [-off, off], [off, off]].forEach(([px, py]) => {
+          ctx.beginPath();
+          ctx.arc(px, py, pipR, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      })();
+      ctx.restore();
+    }
+
+    const logoRerollControl = new fabric.Control({
+      x: -0.5, y: -0.5,
+      offsetX: -20, offsetY: -36, // 주황 주사위가 있던 바로 그 자리(좌측) — 로고 그룹엔 주황이 안 뜨므로 자리가 안 겹침
+      sizeX: 28, sizeY: 28,
+      cursorStyle: 'pointer',
+      render: renderLogoRerollButton,
+      mouseUpHandler: function(eventData, transformData){
+        const target = transformData && transformData.target;
+        if (!target || !target.isLogoGroup) return true;
+        if (EP.rerollLogoGroup) EP.rerollLogoGroup(target);
+        return true;
+      }
+    });
+
     fabric.IText.prototype.controls = Object.assign({}, fabric.IText.prototype.controls, { qa: pControl });
     fabric.ActiveSelection.prototype.controls = Object.assign({}, fabric.ActiveSelection.prototype.controls, { qa: pControl });
-    fabric.Group.prototype.controls = Object.assign({}, fabric.Group.prototype.controls, { qa: pControl });
+    fabric.Group.prototype.controls = Object.assign({}, fabric.Group.prototype.controls, { qa: pControl, qaLogoReroll: logoRerollControl });
     // 도형(사각형/원/삼각형/펜도구 패스) 전용 "M" 버튼은 ecopro3m.js에서 이 자리(controls.qa)에
     // 덮어씌워 등록함 — 도형을 선택하면 이제 P 대신 M이 뜨고, 모양 전용 필터 메뉴가 열림.
     // (이 파일에서는 더 이상 도형 프로토타입에 pControl을 붙이지 않음)
@@ -177,6 +240,12 @@
   // ◀1/3▶ 이동과 필터 게이지들을 다 숨기고 이 버튼 하나만 글자 아래에 보이게 함.
   // 조절하고 싶을 때만 눌러서 펼치면 그제서야 게이지들이 나타남.
   const qaDetailToggleBtn = document.getElementById('qaDetailToggleBtn');
+  // ⚠️ 규칙: 이 함수를 true로 호출하는 곳은 아래 토글 버튼 클릭 리스너 단 한 곳이어야 함.
+  // 랜덤 필터가 뽑힐 때 등 다른 어떤 이유로도 자동으로 펼치면 안 됨 — 예전에 "토트무늬가
+  // 뽑히면 예뻐서 자동으로 펼쳐줌" 같은 특례가 있었는데, 사용자가 상세조정하기를 직접
+  // 누르지 않았는데도 창이 임의로 펼쳐지는 문제로 이어져서 없앴음(요청: "상세조정하기
+  // 클릭하지 않은 상태에서 절대로 임의로 펼쳐지지 않게... 앞으로 새로운 필터 적용할 때도").
+  // 새 필터를 추가하더라도 이 규칙에 예외를 두지 말 것.
   function setQaDetailExpanded(expanded){
     qaPopover.classList.toggle('qa-expanded', expanded);
     qaDetailToggleBtn.textContent = expanded ? '접기 ▴' : '상세조정하기 ▾';
@@ -185,12 +254,12 @@
   qaDetailToggleBtn.addEventListener('click', () => {
     setQaDetailExpanded(!qaPopover.classList.contains('qa-expanded'));
     // 펼치거나 접으면 팝업 크기(높이)가 바뀌는데, 회전된 상태에서는 CSS transform이 박스의
-    // "중심"을 기준으로 돌기 때문에 크기가 바뀌면 그 중심점도 같이 움직여서, 위치를 다시
-    // 계산해주지 않으면 엉뚱한 방향(옆/위)으로 삐져나가 보이는 문제가 있었음(요청: "펼치기
-    // 누르니 상세조정하기 창의 옆지점에 펼쳐져 창보다 윗지점부터 펼쳐지고 있어"). 크기가
-    // 바뀐 직후 같은 위치 계산 함수를 다시 돌려서 항상 정확히 재정렬되게 함.
-    const activeTarget = EP.canvas.getActiveObject();
-    if (activeTarget) positionQaPopover(activeTarget);
+    // "중심"을 기준으로 돌기 때문에 크기가 바뀌면 그 중심점도 같이 움직여서, 그대로 두면
+    // 엉뚱한 방향(옆/위)으로 삐져나가 보이는 문제가 있었음. 다만 코너 앵커 스택을 통째로
+    // 다시 계산하는 positionQaPopover를 다시 부르면, 다른 팝업과의 스택 순서가 재조정되면서
+    // "자리를 옮긴 뒤에 펼쳐지는" 것처럼 보이는 문제가 있었음(요청: "밑으로 이동후 펼쳐지는게
+    // 문제") — 그래서 스택 재계산 없이 지금 있는 그 자리 기준으로만 다시 클램프·회전 재적용함.
+    EP.reclampPopoverInPlace(qaPopover);
   });
 
   // T버튼 팝오버와 동일한 방식: 오브젝트 중앙 아래쪽에 표시 (공간 부족하면 위쪽)
