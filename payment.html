@@ -9,7 +9,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -23,16 +22,6 @@
         window.db = getFirestore(app);
         window.addDoc = addDoc;
         window.collection = collection;
-
-        // ---- 익명 로그인 (cards1 기록 시 규칙상 auth가 필요할 수 있어 미리 준비) ----
-        const auth = getAuth(app);
-        let resolveAuthReady;
-        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
-        onAuthStateChanged(auth, (user) => {
-            if (user) resolveAuthReady(user);
-            else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
-        });
-        window.ensureAnonymousLogin = () => authReadyPromise;
     </script>
     <style>
         @keyframes blink-red-black { 0% { color: #1f2937; } 50% { color: #dc2626; } 100% { color: #1f2937; } }
@@ -93,7 +82,6 @@
                 // 이 기록이 실패해도(권한 오류 등) 결제 자체는 이미 성공한 것이므로
                 // 아래 로직은 반드시 실행되어야 합니다. 그래서 별도 try/catch로 분리합니다.
                 try {
-                    await ensureAnonymousLogin();
                     await addDoc(collection(window.db, "cards1"), {
                         paymentId: paymentId,
                         tno: response.pgTxId || response.txId, // 일단 기존 방식 유지
