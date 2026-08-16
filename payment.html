@@ -9,6 +9,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -22,6 +23,16 @@
         window.db = getFirestore(app);
         window.addDoc = addDoc;
         window.collection = collection;
+
+        // ---- 익명 로그인 (cards1 기록 시 규칙상 auth가 필요할 수 있어 미리 준비) ----
+        const auth = getAuth(app);
+        let resolveAuthReady;
+        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+        onAuthStateChanged(auth, (user) => {
+            if (user) resolveAuthReady(user);
+            else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+        });
+        window.ensureAnonymousLogin = () => authReadyPromise;
     </script>
     <style>
         @keyframes blink-red-black { 0% { color: #1f2937; } 50% { color: #dc2626; } 100% { color: #1f2937; } }
@@ -69,20 +80,38 @@
 
                 if (response.code != null) return alert("결제 실패: " + response.message);
 
-                await addDoc(collection(window.db, "cards1"), {
-    paymentId: paymentId,
-    tno: response.pgTxId || response.txId, // 일단 기존 방식 유지
-    amount: totalAmount,
-    phone: phone,
-    status: "결제완료 / 창을 닫아주세요.",
-    createdAt: new Date().toISOString(),
-    fullData: response 
-});
+                // ---- 결제기록(cards1) 저장 ----
+                // 이 기록이 실패해도(권한 오류 등) 결제 자체는 이미 성공한 것이므로
+                // 아래 로직은 반드시 실행되어야 합니다. 그래서 별도 try/catch로 분리합니다.
+                try {
+                    await ensureAnonymousLogin();
+                    await addDoc(collection(window.db, "cards1"), {
+                        paymentId: paymentId,
+                        tno: response.pgTxId || response.txId, // 일단 기존 방식 유지
+                        amount: totalAmount,
+                        phone: phone,
+                        status: "결제완료 / 창을 닫아주세요.",
+                        createdAt: new Date().toISOString(),
+                        fullData: response
+                    });
+                } catch (logError) {
+                    // 결제기록 저장 실패는 결제 성공 여부와 무관하므로, 콘솔에만 남기고 진행합니다.
+                    console.error("cards1 기록 실패(결제 자체는 성공):", logError);
+                }
 
+                // ---- 부모창(주문 상세 페이지)에 결제 성공을 알림 ----
+                // app.js가 이미 이 메시지를 받아서 "지금 보고 있는 그 주문(currentViewId)"만
+                // 정확히 '카드결제'로 바꿔주는 로직을 갖고 있습니다(가격으로 여러 문서를 추측하지 않음).
+                // 이 팝업이 index.html의 window.open()으로 열렸을 때만 window.opener가 존재합니다.
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage(
+                        { type: 'PAYMENT_SUCCESS', price: totalAmount },
+                        'https://sowonnamoo.github.io'
+                    );
+                }
 
-// 이전 페이지(결제 완료 시점)
-const price = urlParams.get('price'); // URL에서 가져온 값을 그대로 사용
-window.location.href = `https://sowonnamoo.github.io/myboard/success4?price=${price}`;
+                // 이전 페이지(결제 완료 시점) - 팝업 창 안에서 안내 화면을 보여주고 스스로 닫힘
+                window.location.href = `https://sowonnamoo.github.io/myboard/success4?price=${price}`;
 
                 
             } catch (error) {
