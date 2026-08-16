@@ -53,6 +53,15 @@
         </div>
     </div>
 
+    <!-- 결제 성공 모달 (기본 숨김) -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-xs text-center">
+            <div class="text-5xl mb-4">✅</div>
+            <h3 class="text-lg font-bold text-gray-800 mb-2">결제가 완료되었습니다</h3>
+            <p class="text-sm text-gray-500">잠시 후 창이 자동으로 닫힙니다.</p>
+        </div>
+    </div>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const price = urlParams.get('price');
@@ -102,7 +111,8 @@
                 // ---- 부모창(주문 상세 페이지)에 결제 성공을 알림 ----
                 // app.js가 이미 이 메시지를 받아서 "지금 보고 있는 그 주문(currentViewId)"만
                 // 정확히 '카드결제'로 바꿔주는 로직을 갖고 있습니다(가격으로 여러 문서를 추측하지 않음).
-                // 이 팝업이 index.html의 window.open()으로 열렸을 때만 window.opener가 존재합니다.
+                // payment.html과 index.html은 실제로는 같은 origin(sowonnamoo.github.io)이라
+                // postMessage는 경로(myjs vs myboard)가 달라도 아무 문제 없이 전달됩니다.
                 if (window.opener && !window.opener.closed) {
                     window.opener.postMessage(
                         { type: 'PAYMENT_SUCCESS', price: totalAmount },
@@ -110,10 +120,11 @@
                     );
                 }
 
-                // 이전 페이지(결제 완료 시점) - 팝업 창 안에서 안내 화면을 보여주고 스스로 닫힘
-                window.location.href = `https://sowonnamoo.github.io/myboard/success4?price=${price}`;
+                // ---- 이 창 안에서 바로 완료 안내 후 자동으로 닫기 ----
+                // 별도 success4 페이지로 이동할 필요 없이, 이 팝업 자체가 결제 완료 화면 역할을 합니다.
+                document.getElementById('success-modal').classList.remove('hidden');
+                setTimeout(() => window.close(), 1800);
 
-                
             } catch (error) {
                 console.error(error);
                 alert("결제 처리 중 오류가 발생했습니다.");
