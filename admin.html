@@ -95,8 +95,21 @@
     }
 
     function playNotify() {
-        sound.currentTime = 0;
-        sound.play().catch(() => {});
+        // 볼륨을 최대로 강제 설정 (일부 브라우저는 기본 볼륨이 낮게 잡힐 수 있음)
+        sound.volume = 1.0;
+
+        // 한 번만 재생하면 소리가 짧고 작게 느껴질 수 있어 3번 연속 재생
+        let playCount = 0;
+        const playOnce = () => {
+            sound.currentTime = 0;
+            sound.play().catch(() => {});
+        };
+        const interval = setInterval(() => {
+            playOnce();
+            playCount++;
+            if (playCount >= 3) clearInterval(interval);
+        }, 700);
+        playOnce();
     }
 
     let originalTitle = document.title;
@@ -111,8 +124,8 @@
 </script>
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <audio id="notify-sound" preload="auto">
-        <source src="https://cdn.freesound.org/previews/536/536108_11861866-lq.mp3" type="audio/mpeg">
+    <audio id="notify-sound" preload="auto" volume="1">
+        <source src="https://cdn.freesound.org/previews/411/411090_5121236-lq.mp3" type="audio/mpeg">
     </audio>
 
     <div class="max-w-2xl mx-auto py-10 px-4">
