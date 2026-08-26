@@ -1370,6 +1370,18 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
     }
 
+    // 지금 선택되어 있는 "일반 옵션"(용지 등) 중에서 이미지가 걸려있는 값의
+    // 이미지 URL을 돌려준다. 후가공을 "선택안함"으로 되돌릴 때 기준 이미지로 씀.
+    function getCurrentNormalImageUrl() {
+        const selects = document.querySelectorAll('#dynamicOptionsContainer select');
+        let found = "";
+        selects.forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.imageUrl) found = opt.dataset.imageUrl;
+        });
+        return found;
+    }
+
     function setupFinishingListener(selectElement) {
         selectElement.addEventListener("change", (e) => {
             const selectedOpt = e.target.options[e.target.selectedIndex];
@@ -1377,6 +1389,10 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             if (selectedOpt && selectedOpt.dataset.imageUrl) {
                 updateMainImage(selectedOpt.dataset.imageUrl);
+            } else if (!selectedOpt || !selectedOpt.value) {
+                // "선택안함"으로 돌아간 경우: 용지 등 일반 옵션에 걸려있는 이미지로 복귀
+                const normalImageUrl = getCurrentNormalImageUrl();
+                if (normalImageUrl) updateMainImage(normalImageUrl);
             }
 
             const hasUrl = selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith("http");
