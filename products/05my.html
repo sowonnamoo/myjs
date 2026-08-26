@@ -220,6 +220,13 @@
         max-width: 100% !important;
     }
 
+    /* 4-2. 상단 탭 메뉴(제품정보/후가공안내/납기안내/재작업/이용후기) 글씨 축소 */
+    div[onclick="setTab(this)"] {
+        font-size: 10px !important;
+        padding: 8px 2px !important;
+        white-space: nowrap !important;
+    }
+
     /* 5. 후가공선택 줄: 모바일에서도 무조건 한 줄 유지 */
     #finishingContainer .option-row {
         flex-wrap: nowrap !important;
@@ -537,7 +544,7 @@
 
         <div id="finishingContainer">
             <div class="option-row" id="finishingRow">
-                <div class="label">후가공선택</div>
+                <div class="label">부자재/후가공</div>
                 <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option>불러오는 중...</option></select>
                 <button type="button" id="addFinishingBtn" class="finishing-btn">추가하기</button>
             </div>
