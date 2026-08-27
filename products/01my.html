@@ -85,6 +85,57 @@
   ]
 }
 </script>
+<script type="application/ld+json" id="faqJsonLd">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "일반명함은 최소 몇 개부터 주문할 수 있나요?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "일반명함은 상품 페이지에 안내된 최소 수량부터 주문 가능하며, 옵션에서 수량을 선택하면 자동으로 가격이 계산됩니다."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "일반명함 제작 기간은 얼마나 걸리나요?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "옵션(재질, 후가공, 수량)에 따라 제작 기간이 달라지며, 상품 페이지의 예상 출고일 안내를 통해 정확한 발송일을 확인하실 수 있습니다."
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json" id="breadcrumbJsonLd">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "홈",
+      "item": "https://sowonnamoo.github.io/myjs/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "명함"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "일반명함",
+      "item": "https://sowonnamoo.github.io/myjs/products/01my"
+    }
+  ]
+}
+</script>
+<meta property="product:price:amount" content="5500">
+<meta property="product:price:currency" content="KRW">
 <meta property="product:price:amount" content="5500">
 <meta property="product:price:currency" content="KRW">
 <!-- ▲▲▲ SEO 설정 끝 ▲▲▲ -->
@@ -528,7 +579,7 @@
             </div>
         </div>
 
-        <div class="option-row" style="flex-direction: column; align-items: flex-start; padding-left: 120px;">
+        <div class="option-row" id="cutWorkSizeBox" style="display:none; flex-direction: column; align-items: flex-start; padding-left: 120px;">
             <!-- 재단사이즈 -->
             <div class="size-inputs">
                 <span style="color:red; width:100px;">재단사이즈</span>
@@ -634,7 +685,26 @@
 
                 
                 
+                
+                
                 <div style="max-width:640px; margin:0 auto 20px;"><img src="https://sowonnamoo1005.cafe24.com/3/general-business-card-detail.jpg" alt="일반명함 제작 예시 - 스노우지(무광코팅)219g 1" loading="lazy" style="display:block; width:100%; height:auto; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.09);"></div>
+                
+                <div style="max-width:640px; margin:0 auto 24px; padding:16px 20px; background:#f4f8fb; border-left:4px solid #2b7bc3; border-radius:8px; text-align:left;"><p style="margin:0 0 6px; font-size:13px; font-weight:700; color:#2b7bc3;">한눈에 보기</p><p style="margin:0; font-size:14px; line-height:1.7; color:#333;">일반명함은 에코그래픽스에서 제작하는 명함 제작 상품으로, 스노우지(무광코팅)219g 재질로 만들어지며 온라인으로 옵션을 선택해 소량부터 주문할 수 있는 인쇄물입니다.</p></div>
+                <p style="text-align:center; line-height:1.85;">
+                    일반명함은 첫인상을 좌우하는 비즈니스 명함입니다. 스노우지(무광코팅)219g 재질로 제작되어 실용성과 완성도를 모두 갖췄으며, 에코그래픽스는 소량 주문부터 대량 제작까지 폭넓게 대응합니다. 온라인에서 옵션을 선택하고 파일을 업로드하면 별도 상담 없이도 손쉽게 일반명함을 주문할 수 있고, 합리적인 가격과 빠른 제작 프로세스로 초보자도 어렵지 않게 진행할 수 있습니다.
+                </p>
+                <ul style="max-width:640px; margin:16px auto 0; line-height:1.8; color:#444;">
+                    <li>스노우지(무광코팅)219g 등 엄선된 소재로 제작하는 일반명함</li>
+                    <li>온라인 견적 후 바로 진행되는 셀프 주문 시스템</li>
+                    <li>소량부터 대량까지 유연하게 대응하는 제작 수량</li>
+                    <li>빠른 제작·발송으로 일정에 맞춰 받아보는 일반명함</li>
+                </ul>
+                
+                <div style="max-width:640px; margin:24px auto 0; text-align:left;"><h3 style="font-size:16px; margin-bottom:10px;">자주 묻는 질문</h3>
+                    <details style="margin-bottom:8px; border:1px solid #eee; border-radius:8px; padding:10px 14px;"><summary style="cursor:pointer; font-weight:600;">일반명함은 최소 몇 개부터 주문할 수 있나요?</summary><p style="margin:8px 0 0; color:#444; line-height:1.6;">일반명함은 상품 페이지에 안내된 최소 수량부터 주문 가능하며, 옵션에서 수량을 선택하면 자동으로 가격이 계산됩니다.</p></details>
+                    <details style="margin-bottom:8px; border:1px solid #eee; border-radius:8px; padding:10px 14px;"><summary style="cursor:pointer; font-weight:600;">일반명함 제작 기간은 얼마나 걸리나요?</summary><p style="margin:8px 0 0; color:#444; line-height:1.6;">옵션(재질, 후가공, 수량)에 따라 제작 기간이 달라지며, 상품 페이지의 예상 출고일 안내를 통해 정확한 발송일을 확인하실 수 있습니다.</p></details>
+                </div>
+            <div style="max-width:640px; margin:0 auto 20px;"><img src="https://sowonnamoo1005.cafe24.com/3/general-business-card-detail.jpg" alt="일반명함 제작 예시 - 스노우지(무광코팅)219g 1" loading="lazy" style="display:block; width:100%; height:auto; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.09);"></div>
                 
                 <div style="max-width:640px; margin:0 auto 24px; padding:16px 20px; background:#f4f8fb; border-left:4px solid #2b7bc3; border-radius:8px; text-align:left;"><p style="margin:0 0 6px; font-size:13px; font-weight:700; color:#2b7bc3;">한눈에 보기</p><p style="margin:0; font-size:14px; line-height:1.7; color:#333;">일반명함은 에코그래픽스에서 제작하는 명함 제작 상품으로, 스노우지(무광코팅)219g 재질로 만들어지며 온라인으로 옵션을 선택해 소량부터 주문할 수 있는 인쇄물입니다.</p></div>
                 <p style="text-align:center; line-height:1.85;">
@@ -1744,6 +1814,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         wIn.disabled = !isCustom;
         hIn.disabled = !isCustom;
         sizeList.disabled = isCustom;
+
+        // [추가] 재단사이즈/작업사이즈 박스는 "희망사이즈 입력(비규격)"일 때만 펼쳐 보여주고,
+        // "규격사이즈" 선택 시에는 다시 접어서(숨겨서) 메뉴를 단순하게 유지함.
+        const cutWorkBox = document.getElementById("cutWorkSizeBox");
+        if (cutWorkBox) cutWorkBox.style.display = isCustom ? "flex" : "none";
 
         let w = parseFloat(wIn.value) || 0;
         let h = parseFloat(hIn.value) || 0;
