@@ -727,7 +727,7 @@
     </div>
 </div>
 
-<div id="ai-recommendation-zone" style="display:block; width: 100%; max-width: 1195px; margin: 40px auto 0; border: 2px dashed #2b7bc3; padding: 20px; border-radius: 10px; text-align: center; box-sizing: border-box; overflow: hidden;">
+<div id="ai-recommendation-zone" style="display:none; width: 100%; max-width: 1195px; margin: 40px auto 0; border: 1px solid #ddd; padding: 20px; border-radius: 10px; text-align: center; box-sizing: border-box; overflow: hidden;">
     <style>
         #ai-recommendation-content, #ai-recommendation-content * { box-sizing: border-box; }
         #ai-recommendation-content { display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; text-align:left; }
@@ -736,14 +736,36 @@
         }
     </style>
     <h3 style="margin-bottom: 6px; color: #333;">이런 상품은 어떠세요?</h3>
-    <p style="margin:0 0 18px; font-size:13px; color:#888;">"명함" 카테고리에서 함께 많이 찾는 상품이에요</p>
-    <div id="ai-recommendation-content">
-            <a href="https://sowonnamoo.github.io/myjs/products/02my" style="display:block; width:100%; text-decoration:none; color:#333;"><img src="https://sowonnamoo1005.cafe24.com/2/special-paper-business-card.jpg" alt="특수지명함" loading="lazy" style="width:100%; aspect-ratio: 1 / 1; object-fit:cover; border-radius:8px; display:block;"><div style="margin-top:8px; font-size:13px; font-weight:600; line-height:1.4;">특수지명함</div></a>
-            <a href="https://sowonnamoo.github.io/myjs/products/03my" style="display:block; width:100%; text-decoration:none; color:#333;"><img src="https://sowonnamoo1005.cafe24.com/2/digital-ap-business-card.jpg" alt="디지털AP명함" loading="lazy" style="width:100%; aspect-ratio: 1 / 1; object-fit:cover; border-radius:8px; display:block;"><div style="margin-top:8px; font-size:13px; font-weight:600; line-height:1.4;">디지털AP명함</div></a>
-            <a href="https://sowonnamoo.github.io/myjs/products/04my" style="display:block; width:100%; text-decoration:none; color:#333;"><img src="https://sowonnamoo1005.cafe24.com/2/digital-indigo-business-card.jpg" alt="디지털인디고명함" loading="lazy" style="width:100%; aspect-ratio: 1 / 1; object-fit:cover; border-radius:8px; display:block;"><div style="margin-top:8px; font-size:13px; font-weight:600; line-height:1.4;">디지털인디고명함</div></a>
-            <a href="https://sowonnamoo.github.io/myjs/products/05my" style="display:block; width:100%; text-decoration:none; color:#333;"><img src="https://sowonnamoo1005.cafe24.com/2/heavyweight-business-card.jpg" alt="고평량명함" loading="lazy" style="width:100%; aspect-ratio: 1 / 1; object-fit:cover; border-radius:8px; display:block;"><div style="margin-top:8px; font-size:13px; font-weight:600; line-height:1.4;">고평량명함</div></a>
-    </div>
+    <p style="margin:0 0 18px; font-size:13px; color:#888;">함께 보면 좋은 상품이에요</p>
+    <div id="ai-recommendation-content"></div>
 </div>
+<script>
+    // [보완 7] 엑셀 "추천상품ID" 칸에 적어둔 상품들 중에서, 페이지를 열 때마다
+    // 무작위로 골라(최대 4개) 이미지와 함께 보여줌.
+    (function () {
+        const RECOMMEND_PRODUCTS = [];
+        if (!RECOMMEND_PRODUCTS.length) return; // 엑셀에 아무것도 안 적혀 있으면 조용히 아무것도 안 함
+
+        function shuffle(arr) {
+            const a = arr.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        const picked = shuffle(RECOMMEND_PRODUCTS).slice(0, 4);
+        const html = picked.map(p => `
+            <a href="${p.url}" style="display:block; width:100%; text-decoration:none; color:#333;">
+                <img src="${p.img}" alt="${p.alt}" loading="lazy" style="width:100%; aspect-ratio: 1 / 1; object-fit:cover; border-radius:8px; display:block;">
+                <div style="margin-top:8px; font-size:13px; font-weight:600; line-height:1.4;">${p.name}</div>
+            </a>
+        `).join("");
+
+        document.getElementById("ai-recommendation-content").innerHTML = html;
+    })();
+</script>
 
 <!-- ============ 이용후기 ============ -->
 <section id="reviewSection" itemscope itemtype="https://schema.org/Product" style="width:100%; display:none; justify-content:center; margin-top:60px;">
