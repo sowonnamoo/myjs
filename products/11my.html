@@ -1332,7 +1332,47 @@ window.enableMobileCustomPicker = function(selectEl) {
             countInput.disabled = false;
             countInput.max = "50";
         }
+        updateCustomSizeAvailability();
         if (typeof updatePrice === "function") updatePrice();
+    }
+
+    // [추가] 현재 선택된 일반 옵션(품목) 중에 "추가마진율%(surcharge)"를 1000으로
+    // 등록해 둔 품목이 있으면, 그 품목은 "희망사이즈 입력(비규격)"을 지원하지 않는다는
+    // 뜻으로 보고 버튼을 비활성화하고 안내 문구를 보여준다. 이미 희망사이즈(비규격)를
+    // 선택해 둔 상태에서 그런 품목으로 바뀌면, 자동으로 규격사이즈로 되돌린다.
+    const CUSTOM_SIZE_UNSUPPORTED_SURCHARGE = 1000;
+    function isCustomSizeUnsupportedBySelection() {
+        let unsupported = false;
+        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt) return;
+            if ((parseFloat(opt.dataset.surcharge) || 0) === CUSTOM_SIZE_UNSUPPORTED_SURCHARGE) {
+                unsupported = true;
+            }
+        });
+        return unsupported;
+    }
+    function updateCustomSizeAvailability() {
+        const btnCustom = document.getElementById("sizeTypeBtnCustom");
+        if (!btnCustom) return;
+        const unsupported = isCustomSizeUnsupportedBySelection();
+
+        if (unsupported) {
+            btnCustom.disabled = true;
+            btnCustom.style.opacity = "0.5";
+            btnCustom.style.cursor = "not-allowed";
+            btnCustom.style.pointerEvents = "none";
+
+            const sizeTypeSel = document.getElementById("sizeType");
+            if (sizeTypeSel && sizeTypeSel.value === "custom" && typeof window.setSizeTypeUI === "function") {
+                window.setSizeTypeUI("standard");
+            }
+        } else {
+            btnCustom.disabled = false;
+            btnCustom.style.opacity = "";
+            btnCustom.style.cursor = "pointer";
+            btnCustom.style.pointerEvents = "";
+        }
     }
 
 
@@ -1842,6 +1882,11 @@ window.enableMobileCustomPicker = function(selectEl) {
     // change 이벤트를 그대로 발생시켜서 위 updateSizeMode 로직을 그대로 재사용함.
     // (가격계산 등 기존 로직은 전혀 안 건드림 — 겉모습만 버튼으로 바꾼 것)
     window.setSizeTypeUI = function (type) {
+        // [추가] 추가마진율% 1000으로 등록된 품목이 선택된 상태에서는
+        // "희망사이즈 입력(비규격)"으로 전환할 수 없도록 막는다.
+        if (type === "custom" && typeof isCustomSizeUnsupportedBySelection === "function" && isCustomSizeUnsupportedBySelection()) {
+            type = "standard";
+        }
         sizeType.value = type;
         sizeType.dispatchEvent(new Event("change"));
         window.syncSizeTypeButtons();
