@@ -138,7 +138,7 @@
     <!-- 5. 규격 사이즈 목록 (options02) -->
     <div class="control-box">
         <h3>⑤ 규격 사이즈 목록 (options02)</h3>
-        <div class="hint">계산기 화면의 "규격사이즈" 드롭다운에 그대로 나오는 목록입니다. 비규격에서 여기 등록된 사이즈와 똑같은 값을 입력하면 규격 가격과 동일하게 계산됩니다.</div>
+        <div class="hint">계산기 화면의 "규격사이즈" 드롭다운에 그대로 나오는 목록입니다. 비규격에서 여기 등록된 사이즈와 똑같은 값을 입력하면 규격 가격과 동일하게 계산됩니다. 가격을 적으면 그 사이즈 선택 시 기존 옵션 가격에 해당 금액이 추가로 더해집니다(선택 사항, 비워두면 추가금액 없음).</div>
         <div id="sizeRowsContainer"></div>
         <button id="addSizeRowBtn" class="secondary" type="button">행 추가</button>
         <button id="saveSizeListBtn">규격 사이즈 목록 저장</button>
@@ -493,12 +493,13 @@
     });
 
     // ---- ⑤ 규격 사이즈 목록 (options02) ----
-    function addSizeRow(width = "", height = "") {
+    function addSizeRow(width = "", height = "", price = "") {
         const row = document.createElement("div");
         row.className = "row-flex";
         row.innerHTML = `
             <input type="number" class="size-width" placeholder="가로 mm (예: 90)" value="${width}">
             <input type="number" class="size-height" placeholder="세로 mm (예: 50)" value="${height}">
+            <input type="number" class="size-price" placeholder="추가 가격(선택, 예: 1000)" value="${price}">
             <button type="button" class="small danger remove-size">삭제</button>
         `;
         row.querySelector(".remove-size").addEventListener("click", () => row.remove());
@@ -510,7 +511,7 @@
         $("sizeRowsContainer").innerHTML = "";
         const o = findSpecial("options02");
         if (o && Array.isArray(o.sizes) && o.sizes.length > 0) {
-            o.sizes.forEach(s => addSizeRow(s.width, s.height));
+            o.sizes.forEach(s => addSizeRow(s.width, s.height, s.price !== undefined ? s.price : ""));
         } else {
             addSizeRow();
         }
@@ -522,8 +523,11 @@
         rows.forEach(r => {
             const width = r.querySelector(".size-width").value;
             const height = r.querySelector(".size-height").value;
+            const price = r.querySelector(".size-price").value;
             if (width !== "" && height !== "") {
-                sizes.push({ width: parseFloat(width), height: parseFloat(height) });
+                const size = { width: parseFloat(width), height: parseFloat(height) };
+                if (price !== "") size.price = parseFloat(price);
+                sizes.push(size);
             }
         });
         let o = findSpecial("options02");
@@ -667,7 +671,7 @@
         card02.className = "group-card";
         if (o02 && Array.isArray(o02.sizes) && o02.sizes.length) {
             card02.innerHTML = `<h4>options02 — 규격 사이즈 목록 <button type="button" class="small edit-sizelist">수정</button></h4>` +
-                o02.sizes.map(s => `<div class="item-row"><div>${s.width} × ${s.height} mm</div></div>`).join("");
+                o02.sizes.map(s => `<div class="item-row"><div>${s.width} × ${s.height} mm</div><div>${s.price !== undefined ? "+" + s.price + "원" : ""}</div></div>`).join("");
         } else {
             card02.innerHTML = `<h4>options02 — 규격 사이즈 목록 <button type="button" class="small edit-sizelist">수정</button></h4><div class="hint">저장된 값 없음</div>`;
         }
