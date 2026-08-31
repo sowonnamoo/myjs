@@ -1607,9 +1607,12 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const el = document.createElement("option");
                 el.value = `${s.width},${s.height}`;
                 const price = parseFloat(s.price);
-                el.textContent = (!isNaN(price) && price !== 0)
-                    ? `${s.width}x${s.height} mm (+${price.toLocaleString()}원)`
-                    : `${s.width}x${s.height} mm`;
+                if (!isNaN(price) && price !== 0) {
+                    const sign = price < 0 ? "-" : "+";
+                    el.textContent = `${s.width}x${s.height} mm (${sign}${Math.abs(price).toLocaleString()}원)`;
+                } else {
+                    el.textContent = `${s.width}x${s.height} mm`;
+                }
                 sizeList.appendChild(el);
             });
         } else {
@@ -1704,7 +1707,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             const standardSizePrice = getStandardSizePrice(w, h);
             if (standardSizePrice) {
                 sum += standardSizePrice * qtyFactor;
-                summary.push(`규격사이즈 추가금액 +${standardSizePrice.toLocaleString()}원`);
+                const sign = standardSizePrice < 0 ? "-" : "+";
+                summary.push(`규격사이즈 추가금액 ${sign}${Math.abs(standardSizePrice).toLocaleString()}원`);
             }
         }
 
