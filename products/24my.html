@@ -1219,6 +1219,21 @@ window.enableMobileCustomPicker = function(selectEl) {
         return match && !isNaN(parseFloat(match.price)) ? parseFloat(match.price) : 0;
     }
 
+    // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)의 "마진" 배수를 찾아 반환합니다.
+    // 엑셀/관리자 화면의 "규격사이즈목록"에서 가격 옆 마진칸에 1.1처럼 적어두면, 그 사이즈를
+    // 선택했을 때 지금까지 계산된 가격에 그 배수를 곱합니다(1.1 = 10% 인상, 0.9 = 10% 인하).
+    // 값이 없거나 1이면(=변화 없음) undefined를 반환합니다.
+    function getStandardSizeMargin(w, h) {
+        const g = standardSizeConfig();
+        if (!g || !Array.isArray(g.sizes)) return undefined;
+        const match = g.sizes.find(s => {
+            const sw = parseFloat(s.width), sh = parseFloat(s.height);
+            return (sw === w && sh === h) || (sw === h && sh === w);
+        });
+        const margin = match ? parseFloat(match.margin) : NaN;
+        return (!isNaN(margin) && margin !== 1) ? margin : undefined;
+    }
+
     // [추가] "완성파일 접수 (jpg, png)" 옵션만 모바일 화면에서 "폰사진, 폰이미지 접수"로
     // 표시 글자를 바꿔준다. "완성파일 접수 (ai, pdf)"처럼 같은 "완성파일 접수"로 시작하는
     // 다른 옵션까지 같이 바뀌면 모바일에서 똑같은 이름이 두 개로 보이는 문제가 있었으므로,
@@ -1607,9 +1622,12 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const el = document.createElement("option");
                 el.value = `${s.width},${s.height}`;
                 const price = parseFloat(s.price);
-                el.textContent = (!isNaN(price) && price !== 0)
-                    ? `${s.width}x${s.height} mm (+${price.toLocaleString()}원)`
-                    : `${s.width}x${s.height} mm`;
+                if (!isNaN(price) && price !== 0) {
+                    const sign = price < 0 ? "-" : "+";
+                    el.textContent = `${s.width}x${s.height} mm (${sign}${Math.abs(price).toLocaleString()}원)`;
+                } else {
+                    el.textContent = `${s.width}x${s.height} mm`;
+                }
                 sizeList.appendChild(el);
             });
         } else {
@@ -1704,7 +1722,16 @@ window.enableMobileCustomPicker = function(selectEl) {
             const standardSizePrice = getStandardSizePrice(w, h);
             if (standardSizePrice) {
                 sum += standardSizePrice * qtyFactor;
-                summary.push(`규격사이즈 추가금액 +${standardSizePrice.toLocaleString()}원`);
+                const sign = standardSizePrice < 0 ? "-" : "+";
+                summary.push(`규격사이즈 추가금액 ${sign}${Math.abs(standardSizePrice).toLocaleString()}원`);
+            }
+            // [추가] 이 사이즈에 등록해둔 "마진" 배수가 있으면 지금까지 계산된 가격에 곱해서
+            // 퍼센테이지로 가격을 올리거나 내립니다 (예: 1.1 입력 -> 10% 인상, 0.9 입력 -> 10% 인하).
+            const standardSizeMargin = getStandardSizeMargin(w, h);
+            if (standardSizeMargin !== undefined) {
+                sum *= standardSizeMargin;
+                const pct = Math.round((standardSizeMargin - 1) * 100);
+                summary.push(`규격사이즈 마진 x${standardSizeMargin} (${pct > 0 ? "+" : ""}${pct}%)`);
             }
         }
 
