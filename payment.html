@@ -52,14 +52,45 @@
         </div>
     </div>
 
+    <!-- [추가] 장시간 미결제 안내 모달 (기본 숨김) -->
+    <div id="timeout-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-xs text-center">
+            <div class="text-5xl mb-4">⏰</div>
+            <h3 class="text-lg font-bold text-gray-800 mb-4">장시간 미결제로 종료되었습니다.</h3>
+            <button id="timeout-confirm-btn" class="w-full py-3 bg-gray-700 text-white font-bold rounded hover:bg-gray-600 transition">확인</button>
+        </div>
+    </div>
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const price = urlParams.get('price');
         const totalAmount = Number(price) || 0;
         document.getElementById("display-price").innerText = totalAmount.toLocaleString() + "원";
 
+        // [추가] 결제창을 20분 넘게 열어두고 결제를 안 하면, 화면 가운데에 경고창을 띄우고
+        // 결제 버튼을 완전히 막습니다. "확인"을 누르면 창이 닫힙니다.
+        // (창이 닫히면 부모 페이지의 기존 감지 로직이 "결제 취소"로 처리하고,
+        //  주문 자체는 이미 '대기' 상태로 저장되어 있으므로 나중에 다시 결제하면 됩니다.)
+        let paymentTimedOut = false;
+        const PAYMENT_TIMEOUT_MS = 20 * 60 * 1000; // 20분
+        const paymentTimeoutTimer = setTimeout(() => {
+            paymentTimedOut = true;
+            const cardBtn = document.getElementById('pay-card-btn');
+            const transferBtn = document.getElementById('pay-transfer-btn');
+            cardBtn.disabled = true;
+            transferBtn.disabled = true;
+            cardBtn.classList.add('opacity-50');
+            transferBtn.classList.add('opacity-50');
+            document.getElementById('timeout-modal').classList.remove('hidden');
+        }, PAYMENT_TIMEOUT_MS);
+
+        document.getElementById('timeout-confirm-btn').addEventListener('click', () => {
+            window.close();
+        });
+
         // method: 'CARD' 또는 'TRANSFER'(계좌이체)
         window.requestPayment = async function(method) {
+            if (paymentTimedOut) return; // 시간 초과 후에는 절대 결제 진행 안 함
             if (totalAmount <= 0) return alert("결제 금액 오류");
 
             const cardBtn = document.getElementById('pay-card-btn');
@@ -92,6 +123,8 @@
                 });
 
                 if (response.code != null) return alert("결제 실패: " + response.message);
+
+                clearTimeout(paymentTimeoutTimer); // 결제 성공했으니 타임아웃 타이머는 더 이상 필요 없음
 
                 // ---- 결제기록(cards1) 저장 ----
                 // 이 기록이 실패해도(권한 오류 등) 결제 자체는 이미 성공한 것이므로
