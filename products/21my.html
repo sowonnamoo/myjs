@@ -1622,11 +1622,12 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const el = document.createElement("option");
                 el.value = `${s.width},${s.height}`;
                 const price = parseFloat(s.price);
+                const label = (s.name && String(s.name).trim()) ? String(s.name).trim() : `${s.width}x${s.height} mm`;
                 if (!isNaN(price) && price !== 0) {
                     const sign = price < 0 ? "-" : "+";
-                    el.textContent = `${s.width}x${s.height} mm (${sign}${Math.abs(price).toLocaleString()}원)`;
+                    el.textContent = `${label} (${sign}${Math.abs(price).toLocaleString()}원)`;
                 } else {
-                    el.textContent = `${s.width}x${s.height} mm`;
+                    el.textContent = label;
                 }
                 sizeList.appendChild(el);
             });
