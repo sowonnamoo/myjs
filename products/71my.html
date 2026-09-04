@@ -549,7 +549,7 @@
 
         <div id="finishingContainer">
             <div class="option-row" id="finishingRow">
-                <div class="label">부자재/후가공</div>
+                <div class="label">옵션</div>
                 <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option>불러오는 중...</option></select>
                 <button type="button" id="addFinishingBtn" class="finishing-btn">추가하기</button>
             </div>
@@ -900,6 +900,7 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     overlayBtn.addEventListener('click', () => {
         if (!isMobileViewport()) return;
+        if (selectEl.disabled) return;
         openCustomSelectModal(selectEl);
     });
 };
@@ -1524,6 +1525,43 @@ window.enableMobileCustomPicker = function(selectEl) {
     //     (구간 안에서는 매수가 몇 장이든 같은 구간 가격으로 계산됩니다. 실제 매수만 무게 계산 등에 그대로 쓰입니다)
     //   - 등록된 가장 큰 구간보다 많이 입력하면 -> 마지막 두 구간의 증가율(기울기)로 선형 연장해서 배수를 계산합니다.
     //     (구간을 촘촘히 등록해둘수록 이 케이스는 거의 발생하지 않습니다)
+    // [추가] 규격사이즈의 옵션이름에 "2000장", "3000장"처럼 "숫자+장"이 적혀 있으면
+    // 그 숫자를 고정 수량으로 인식합니다. (예: "A4 2000장" -> 2000)
+    function parseFixedQtyFromSizeName(name) {
+        if (!name) return null;
+        const m = String(name).match(/([\d,]+)\s*장/);
+        if (!m) return null;
+        const num = parseInt(m[1].replace(/,/g, ""), 10);
+        return (!isNaN(num) && num > 0) ? num : null;
+    }
+
+    // [추가] fixedQty가 있으면: 수량/건수 자리의 드롭다운(최소구간매수/수량 직접입력)을
+    // 없애고 "2000장"처럼 고정된 숫자만 보이게 하며, 매수 입력창도 그 값으로 잠급니다.
+    // fixedQty가 없으면(일반 규격사이즈/비규격사이즈로 돌아오면): 원래의 드롭다운
+    // (최소구간매수 / 수량 직접입력)을 다시 살려줍니다.
+    function applyQtyLockFromSize(fixedQty) {
+        const modeSelect = document.getElementById("qtyModeSelect");
+        const qtyInput = document.getElementById("qtySelect");
+        if (!modeSelect || !qtyInput) return;
+
+        if (fixedQty) {
+            modeSelect.innerHTML = "";
+            const fixedOpt = document.createElement("option");
+            fixedOpt.value = "fixed";
+            fixedOpt.textContent = `${fixedQty.toLocaleString()}장`;
+            modeSelect.appendChild(fixedOpt);
+            modeSelect.value = "fixed";
+            modeSelect.disabled = true;
+
+            qtyInput.value = fixedQty;
+            qtyInput.disabled = true;
+        } else if (modeSelect.disabled) {
+            // 고정수량 모드였다가 일반 사이즈로 돌아온 경우에만 드롭다운을 복원합니다.
+            modeSelect.disabled = false;
+            initQtyInputDefault();
+        }
+    }
+
     function getQtySortedTiers() {
         const q = qtyConfig();
         const quantities = (q && Array.isArray(q.quantities)) ? q.quantities : [];
@@ -1624,6 +1662,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const price = parseFloat(s.price);
                 const hasName = !!(s.name && String(s.name).trim());
                 const label = hasName ? String(s.name).trim() : `${s.width}x${s.height} mm`;
+                el.dataset.name = hasName ? String(s.name).trim() : "";
                 if (!hasName && !isNaN(price) && price !== 0) {
                     const sign = price < 0 ? "-" : "+";
                     el.textContent = `${label} (${sign}${Math.abs(price).toLocaleString()}원)`;
@@ -1875,6 +1914,15 @@ window.enableMobileCustomPicker = function(selectEl) {
 
         workW.value = w + 4;
         workH.value = h + 4;
+
+        // [추가] 규격사이즈 옵션이름에 "2000장"처럼 적혀 있으면 수량/건수를 고정합니다.
+        let fixedQty = null;
+        if (!isCustom) {
+            const selOpt = sizeList.selectedOptions && sizeList.selectedOptions[0];
+            fixedQty = selOpt ? parseFixedQtyFromSizeName(selOpt.dataset.name) : null;
+        }
+        applyQtyLockFromSize(fixedQty);
+
         updatePrice();
     }
 
