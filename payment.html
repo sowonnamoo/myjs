@@ -37,9 +37,19 @@
         </div>
         <button id="pay-card-btn" onclick="requestPayment('CARD')" class="w-full py-3 bg-blue-900 text-white font-bold rounded hover:bg-blue-800 transition">신용카드</button>
         <button id="pay-transfer-btn" onclick="requestPayment('TRANSFER')" class="w-full py-3 mt-2 bg-emerald-700 text-white font-bold rounded hover:bg-emerald-600 transition">계좌이체</button>
+        <button id="close-page-btn" class="w-full py-2 mt-3 bg-transparent text-gray-400 text-sm underline hover:text-gray-600 transition">닫기</button>
         <div class="p-3 rounded text-left text-xs text-gray-600 mt-4">
             <div class="flex items-center gap-2 mb-1 font-bold blink-text"><span>카드사 선택 후 결제창이 뜨지 않을 때</span></div>
             <p>인터넷 창 우측 상단 <strong>팝업 아이콘</strong>을 클릭하여 <strong>"항상 허용"</strong>으로 변경해주세요.</p>
+        </div>
+    </div>
+
+    <!-- [추가] 결제 전 닫기 시도 시 뜨는 커스텀 경고 모달 (기본 숨김) -->
+    <div id="close-confirm-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-xs text-center">
+            <div class="text-5xl mb-4">⚠️</div>
+            <h3 class="text-base font-bold text-gray-800 mb-6">본 결제창을 닫으면 접수내용이 삭제되며 재작성 하셔야 됩니다.</h3>
+            <button id="close-confirm-btn" class="w-full py-3 bg-gray-700 text-white font-bold rounded hover:bg-gray-600 transition">확인</button>
         </div>
     </div>
 
@@ -71,6 +81,33 @@
         // 결제 버튼을 완전히 막습니다. "확인"을 누르면 창이 닫힙니다.
         // (창이 닫히면 부모 페이지의 기존 감지 로직이 "결제 취소"로 처리하고,
         //  주문 자체는 이미 '대기' 상태로 저장되어 있으므로 나중에 다시 결제하면 됩니다.)
+        // [추가] 결제가 아직 완료되지 않은 상태에서 창을 닫으려 할 때 확인을 받기 위한 플래그
+        let paymentCompleted = false;
+
+        // [추가] 브라우저 자체 닫기(X버튼, 새로고침 등) 시도 시 안내
+        // 주의: 최신 브라우저 보안 정책상 이 alert 창의 문구는 브라우저가 정한
+        // 고정 문구로만 표시되고, 아래 커스텀 문구는 적용되지 않습니다.
+        // (모든 웹사이트 공통 제약이며 우회 불가) 대신 페이지 내 "닫기" 버튼을
+        // 이용하면 원하시는 문구 그대로 확인창이 뜹니다.
+        window.addEventListener('beforeunload', function (e) {
+            if (!paymentCompleted) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        // [추가] 페이지 내 "닫기" 버튼 클릭 시 커스텀 확인 모달 표시
+        document.getElementById('close-page-btn').addEventListener('click', () => {
+            document.getElementById('close-confirm-modal').classList.remove('hidden');
+        });
+
+        // [추가] 커스텀 확인 모달에서 "확인" 클릭 시에만 실제로 창을 닫음
+        document.getElementById('close-confirm-btn').addEventListener('click', () => {
+            paymentCompleted = true; // beforeunload 중복 경고 방지
+            window.close();
+        });
+
         let paymentTimedOut = false;
         const PAYMENT_TIMEOUT_MS = 20 * 60 * 1000; // 20분
         const paymentTimeoutTimer = setTimeout(() => {
@@ -85,6 +122,7 @@
         }, PAYMENT_TIMEOUT_MS);
 
         document.getElementById('timeout-confirm-btn').addEventListener('click', () => {
+            paymentCompleted = true; // 이미 안내했으므로 beforeunload 중복 경고 방지
             window.close();
         });
 
@@ -125,6 +163,7 @@
                 if (response.code != null) return alert("결제 실패: " + response.message);
 
                 clearTimeout(paymentTimeoutTimer); // 결제 성공했으니 타임아웃 타이머는 더 이상 필요 없음
+                paymentCompleted = true; // 결제 완료 후 자동으로 닫힐 때 beforeunload 경고 방지
 
                 // ---- 결제기록(cards1) 저장 ----
                 // 이 기록이 실패해도(권한 오류 등) 결제 자체는 이미 성공한 것이므로
