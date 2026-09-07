@@ -854,7 +854,7 @@ function openCustomSelectModal(selectEl) {
                 }
                 const sizeConflict = window.checkFinishingSizeConflict && window.checkFinishingSizeConflict(opt);
                 if (sizeConflict) {
-                    alert(`${sizeConflict.name}은(는) 한 변 길이가 ${sizeConflict.minSide}mm 이상부터 가능합니다.`);
+                    alert(`${sizeConflict.minSide}mm 이상으로 선택해 주세요.`);
                     return;
                 }
                 alert("지금은 선택할 수 없는 옵션입니다.");
@@ -1097,7 +1097,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
         const sizeViolationReorder = findFinishingSizeRestrictionViolation();
         if (sizeViolationReorder) {
-            alert(`${sizeViolationReorder.name}은(는) 한 변 길이가 ${sizeViolationReorder.minSide}mm 이상부터 가능합니다.`);
+            alert(`${sizeViolationReorder.minSide}mm 이상으로 선택해 주세요.`);
             return;
         }
 
@@ -1616,7 +1616,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 그 기준에 못 미치면 선택을 취소하고 안내 메시지를 띄운다.
             const sizeConflict = checkFinishingSizeConflict(selectedOpt);
             if (sizeConflict) {
-                alert(`${sizeConflict.name}은(는) 한 변 길이가 ${sizeConflict.minSide}mm 이상부터 가능합니다.`);
+                alert(`${sizeConflict.minSide}mm 이상으로 선택해 주세요.`);
                 e.target.value = e.target.dataset.prevFinishingValue || "";
                 refreshFinishingExclusiveOptions();
                 return;
@@ -2602,7 +2602,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
         const sizeViolation = findFinishingSizeRestrictionViolation();
         if (sizeViolation) {
-            alert(`${sizeViolation.name}은(는) 한 변 길이가 ${sizeViolation.minSide}mm 이상부터 가능합니다.`);
+            alert(`${sizeViolation.minSide}mm 이상으로 선택해 주세요.`);
             return;
         }
 
