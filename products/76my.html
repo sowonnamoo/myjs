@@ -843,7 +843,19 @@ function openCustomSelectModal(selectEl) {
             item.style.opacity = '0.4';
             item.style.cursor = 'not-allowed';
             item.addEventListener('click', () => {
-                alert("재단과 접지는 중복선택할 수 없습니다.");
+                // [추가] 재단/접지 중복선택 방지, 미싱 등 최소사이즈 제한 등
+                // 실제로 막힌 이유에 맞는 안내 문구를 보여준다.
+                const exclusiveConflict = window.findFinishingExclusiveConflict && window.findFinishingExclusiveConflict(opt.value, selectEl);
+                if (exclusiveConflict) {
+                    alert("재단과 접지는 중복선택할 수 없습니다.");
+                    return;
+                }
+                const sizeConflict = window.checkFinishingSizeConflict && window.checkFinishingSizeConflict(opt);
+                if (sizeConflict) {
+                    alert(`${sizeConflict.name}은(는) 한 변 길이가 ${sizeConflict.minSide}mm 이상부터 가능합니다.`);
+                    return;
+                }
+                alert("지금은 선택할 수 없는 옵션입니다.");
             });
         } else {
             item.addEventListener('click', () => {
@@ -1080,6 +1092,12 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert("재단과 접지는 중복선택할 수 없습니다.");
             return;
         }
+        // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
+        const sizeViolationReorder = findFinishingSizeRestrictionViolation();
+        if (sizeViolationReorder) {
+            alert(`${sizeViolationReorder.name}은(는) 한 변 길이가 ${sizeViolationReorder.minSide}mm 이상부터 가능합니다.`);
+            return;
+        }
 
         // [추가] 필수옵션으로 설정된 후가공 그룹은 재구입 흐름에서도 동일하게 검증함
         const fGroupReorder = finishingGroup();
@@ -1225,11 +1243,13 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         return null;
     }
+    window.findFinishingExclusiveConflict = findFinishingExclusiveConflict;
 
     // 지금 이미 선택돼 있는 값과 충돌하는 옵션은, 다른 후가공 select들에서 아예
     // 선택하지 못하도록(회색 처리/비활성화) 미리 막아둔다. 선택할 때마다, 줄을
-    // 추가/삭제할 때마다 다시 호출해서 최신 상태로 맞춘다.
+    // 추가/삭제할 때마다, 사이즈가 바뀔 때마다 다시 호출해서 최신 상태로 맞춘다.
     function refreshFinishingExclusiveOptions() {
+        const shortSide = getCurrentShortSideMM();
         const selects = document.querySelectorAll(".finishing-select");
         selects.forEach(sel => {
             Array.from(sel.options).forEach(opt => {
@@ -1237,11 +1257,38 @@ window.enableMobileCustomPicker = function(selectEl) {
                     opt.disabled = false;
                     return;
                 }
-                opt.disabled = !!findFinishingExclusiveConflict(opt.value, sel);
+                const exclusiveConflict = !!findFinishingExclusiveConflict(opt.value, sel);
+                const minSide = parseFloat(opt.dataset.minSideMm);
+                const sizeConflict = !isNaN(minSide) && minSide > 0 && shortSide !== null && shortSide < minSide;
+                opt.disabled = exclusiveConflict || sizeConflict;
             });
         });
     }
     window.refreshFinishingExclusiveOptions = refreshFinishingExclusiveOptions;
+
+    // 지금 선택된(=적용 중인) 재단사이즈의 가로/세로 중 짧은 변(mm)을 돌려준다.
+    // 사이즈 정보가 아직 없으면(0이거나 비어있으면) null.
+    function getCurrentShortSideMM() {
+        const w = parseFloat(document.getElementById("widthInput")?.value);
+        const h = parseFloat(document.getElementById("heightInput")?.value);
+        if (!w || !h || isNaN(w) || isNaN(h)) return null;
+        return Math.min(w, h);
+    }
+
+    // 특정 후가공 <option>이 최소사이즈(한 변) 제한 때문에 지금 선택할 수 없는
+    // 상태인지 확인한다. 선택 불가면 { name, minSide }를, 가능하면 null을 돌려준다.
+    function checkFinishingSizeConflict(optionEl) {
+        if (!optionEl) return null;
+        const minSide = parseFloat(optionEl.dataset.minSideMm);
+        if (isNaN(minSide) || minSide <= 0) return null;
+        const shortSide = getCurrentShortSideMM();
+        if (shortSide === null) return null; // 사이즈 정보가 아직 없으면 막지 않음
+        if (shortSide < minSide) {
+            return { name: optionEl.dataset.originalName || optionEl.value, minSide };
+        }
+        return null;
+    }
+    window.checkFinishingSizeConflict = checkFinishingSizeConflict;
 
     // 지금 선택된 후가공 값들 중에 "재단"과 "접지"처럼 서로 중복 선택할 수 없는 조합이
     // 있으면 true. 주문/장바구니 담기 직전 최종 확인용 (실시간 체크와 별개의 안전장치).
@@ -1250,6 +1297,19 @@ window.enableMobileCustomPicker = function(selectEl) {
             .map(sel => sel.value)
             .filter(Boolean);
         return FINISHING_MUTUALLY_EXCLUSIVE_GROUPS.some(group => group.every(v => values.includes(v)));
+    }
+
+    // 지금 선택된 후가공 값들 중에 최소사이즈(한 변) 제한을 못 지키는 값이 있으면
+    // { name, minSide }를 돌려준다. 없으면 null. (주문/장바구니 담기 직전 최종 확인용)
+    function findFinishingSizeRestrictionViolation() {
+        let violation = null;
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (violation) return;
+            const opt = sel.options[sel.selectedIndex];
+            const conflict = checkFinishingSizeConflict(opt);
+            if (conflict) violation = conflict;
+        });
+        return violation;
     }
     function qtyConfig() {
         return findGroupById("options00");
@@ -1348,6 +1408,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         el.dataset.newWindowHeight = v.newWindowHeight ?? "";
         if (Array.isArray(v.subOptions) && v.subOptions.length) {
             el.dataset.subOptions = JSON.stringify(v.subOptions);
+        }
+        // [추가] 이 품목을 선택하려면 재단사이즈의 짧은 변이 최소 이만큼(mm)은
+        // 되어야 한다는 제한 (예: 미싱=100). 관리자 엑셀의 "최소사이즈mm(한변)" 값.
+        if (v.minSideMM !== undefined && v.minSideMM !== null && v.minSideMM !== "") {
+            el.dataset.minSideMm = v.minSideMM;
         }
         return el;
     }
@@ -1533,6 +1598,8 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     function setupFinishingListener(selectElement) {
         selectElement.addEventListener("change", (e) => {
+            const selectedOpt = e.target.options[e.target.selectedIndex];
+
             // [추가] "재단"/"접지"처럼 서로 중복 선택할 수 없는 후가공 옵션인지 확인.
             // 이미 다른 줄에서 상대 값이 선택돼 있으면, 이번 선택은 취소하고 이전 값으로 되돌린다.
             const conflictValue = findFinishingExclusiveConflict(e.target.value, e.target);
@@ -1542,10 +1609,20 @@ window.enableMobileCustomPicker = function(selectEl) {
                 refreshFinishingExclusiveOptions();
                 return;
             }
+
+            // [추가] "미싱"처럼 최소사이즈(한 변) 제한이 걸린 옵션인데, 지금 사이즈가
+            // 그 기준에 못 미치면 선택을 취소하고 안내 메시지를 띄운다.
+            const sizeConflict = checkFinishingSizeConflict(selectedOpt);
+            if (sizeConflict) {
+                alert(`${sizeConflict.name}은(는) 한 변 길이가 ${sizeConflict.minSide}mm 이상부터 가능합니다.`);
+                e.target.value = e.target.dataset.prevFinishingValue || "";
+                refreshFinishingExclusiveOptions();
+                return;
+            }
+
             e.target.dataset.prevFinishingValue = e.target.value;
             refreshFinishingExclusiveOptions();
 
-            const selectedOpt = e.target.options[e.target.selectedIndex];
             buildSubOptionSelect(selectElement);
 
             if (selectedOpt && selectedOpt.dataset.imageUrl) {
@@ -2002,6 +2079,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         applyQtyLockFromSize(fixedQty);
 
+        // [추가] 사이즈가 바뀌면, "미싱"처럼 최소사이즈(한 변) 제한이 걸린 후가공
+        // 옵션도 선택 가능 여부를 다시 판단해서 반영한다.
+        if (typeof refreshFinishingExclusiveOptions === "function") refreshFinishingExclusiveOptions();
+
         updatePrice();
     }
 
@@ -2013,6 +2094,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         workW.value = parseFloat(wIn.value) + 4;
         workH.value = parseFloat(hIn.value) + 4;
+        // [추가] 비규격사이즈를 직접 입력한 뒤에도, 미싱 등 최소사이즈 제한이 걸린
+        // 후가공 옵션의 선택 가능 여부를 최신 사이즈 기준으로 다시 반영한다.
+        refreshFinishingExclusiveOptions();
         updatePrice();
     }
 
@@ -2511,6 +2595,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
         if (hasFinishingMutualExclusionConflict()) {
             alert("재단과 접지는 중복선택할 수 없습니다.");
+            return;
+        }
+        // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
+        const sizeViolation = findFinishingSizeRestrictionViolation();
+        if (sizeViolation) {
+            alert(`${sizeViolation.name}은(는) 한 변 길이가 ${sizeViolation.minSide}mm 이상부터 가능합니다.`);
             return;
         }
 
