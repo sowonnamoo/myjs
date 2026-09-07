@@ -111,6 +111,8 @@
         <label class="checkline"><input type="checkbox" id="hasSubOptions"> 서브옵션 있음 (예: 금박 색상)</label>
         <div id="subOptionsContainer"></div>
         <button id="addSubOptionRowBtn" class="secondary" type="button">서브옵션 행 추가</button>
+        <input type="number" id="itemMinSideInput" placeholder="최소사이즈mm(한변) — 예: 미싱은 100 (선택)">
+        <div class="hint">이 품목을 선택하려면 재단사이즈의 가로/세로 중 짧은 변이 이 값(mm) 이상이어야 합니다. 예: 후가공 "미싱" 품목에 100을 적으면, 짧은 변이 100mm보다 작은 사이즈에서는 계산기에서 "미싱은 한 변 길이가 100mm 이상부터 가능합니다"라는 안내와 함께 선택할 수 없습니다. 비워두면 사이즈 제한이 없습니다.</div>
         <button id="itemSaveBtn">품목 저장</button>
     </div>
 
@@ -363,7 +365,7 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput"]
             .forEach(id => $(id).value = "");
         $("itemOpenNewWindowInput").checked = false;
         $("hasSubOptions").checked = false;
@@ -415,6 +417,7 @@
             const subs = collectSubOptionRows();
             if (subs.length > 0) item.subOptions = subs;
         }
+        const minSideMM = $("itemMinSideInput").value; if (minSideMM !== "") item.minSideMM = parseFloat(minSideMM);
 
         const idx = g.values.findIndex(v => v.name === name);
         const isReplace = idx !== -1;
@@ -579,6 +582,7 @@
         $("itemOpenNewWindowInput").checked = !!item.openInNewWindow;
         $("itemNewWindowWidthInput").value = item.newWindowWidth ?? "";
         $("itemNewWindowHeightInput").value = item.newWindowHeight ?? "";
+        $("itemMinSideInput").value = item.minSideMM ?? "";
 
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
@@ -628,6 +632,7 @@
                 if (v.nextPageUrl) meta.push(`다음URL ✓`);
                 if (v.priorityNextPageUrl) meta.push(`최우선URL ✓`);
                 if (v.openInNewWindow) meta.push(`새창${(v.newWindowWidth||v.newWindowHeight) ? ` ${v.newWindowWidth||900}x${v.newWindowHeight||1000}` : ''} ✓`);
+                if (v.minSideMM !== undefined) meta.push(`한변 ${v.minSideMM}mm↑`);
                 const subHtml = v.subOptions && v.subOptions.length
                     ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";
