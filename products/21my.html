@@ -838,11 +838,22 @@ function openCustomSelectModal(selectEl) {
         const item = document.createElement('div');
         item.className = 'custom-select-item' + (idx === pendingIndex ? ' selected' : '');
         item.textContent = opt.textContent;
-        item.addEventListener('click', () => {
-            list.querySelectorAll('.custom-select-item').forEach(i => i.classList.remove('selected'));
-            item.classList.add('selected');
-            pendingIndex = idx; // 아직 실제 select에는 반영하지 않음 (미리보기만)
-        });
+        // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 옵션은 모바일 커스텀
+        // 목록에서도 똑같이 회색 처리하고, 탭하면 안내 문구만 띄우고 선택은 막는다.
+        if (opt.disabled) {
+            item.classList.add('disabled');
+            item.style.opacity = '0.4';
+            item.style.cursor = 'not-allowed';
+            item.addEventListener('click', () => {
+                alert("재단과 접지는 중복선택할 수 없습니다.");
+            });
+        } else {
+            item.addEventListener('click', () => {
+                list.querySelectorAll('.custom-select-item').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                pendingIndex = idx; // 아직 실제 select에는 반영하지 않음 (미리보기만)
+            });
+        }
         list.appendChild(item);
     });
 
@@ -1066,6 +1077,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
             return;
         }
+        // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
+        if (hasFinishingMutualExclusionConflict()) {
+            alert("재단과 접지는 중복선택할 수 없습니다.");
+            return;
+        }
 
         // [추가] 필수옵션으로 설정된 후가공 그룹은 재구입 흐름에서도 동일하게 검증함
         const fGroupReorder = finishingGroup();
@@ -1186,6 +1202,56 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
     function finishingGroup() {
         return valueGroups().find(isFinishingGroup) || null;
+    }
+
+    // [추가] 후가공 옵션 중 "재단"과 "접지"는 서로 동시에 선택할 수 없음(중복선택 방지)
+    const FINISHING_MUTUALLY_EXCLUSIVE_GROUPS = [["재단", "접지"]];
+
+    // value와 함께 선택할 수 없는 상대 값들을 돌려준다 (없으면 빈 배열)
+    function findExclusivePartnerValues(value) {
+        for (const group of FINISHING_MUTUALLY_EXCLUSIVE_GROUPS) {
+            if (group.includes(value)) return group.filter(v => v !== value);
+        }
+        return [];
+    }
+
+    // 다른 후가공 select(excludeSelect 자기 자신 제외)들 중에, value와 동시에 선택할 수 없는
+    // 값이 이미 선택돼 있으면 그 값을 돌려준다. 없으면 null.
+    function findFinishingExclusiveConflict(value, excludeSelect) {
+        const partners = findExclusivePartnerValues(value);
+        if (!partners.length) return null;
+        const selects = document.querySelectorAll(".finishing-select");
+        for (const sel of selects) {
+            if (sel === excludeSelect) continue;
+            if (partners.includes(sel.value)) return sel.value;
+        }
+        return null;
+    }
+
+    // 지금 이미 선택돼 있는 값과 충돌하는 옵션은, 다른 후가공 select들에서 아예
+    // 선택하지 못하도록(회색 처리/비활성화) 미리 막아둔다. 선택할 때마다, 줄을
+    // 추가/삭제할 때마다 다시 호출해서 최신 상태로 맞춘다.
+    function refreshFinishingExclusiveOptions() {
+        const selects = document.querySelectorAll(".finishing-select");
+        selects.forEach(sel => {
+            Array.from(sel.options).forEach(opt => {
+                if (!opt.value || opt.value === sel.value) {
+                    opt.disabled = false;
+                    return;
+                }
+                opt.disabled = !!findFinishingExclusiveConflict(opt.value, sel);
+            });
+        });
+    }
+    window.refreshFinishingExclusiveOptions = refreshFinishingExclusiveOptions;
+
+    // 지금 선택된 후가공 값들 중에 "재단"과 "접지"처럼 서로 중복 선택할 수 없는 조합이
+    // 있으면 true. 주문/장바구니 담기 직전 최종 확인용 (실시간 체크와 별개의 안전장치).
+    function hasFinishingMutualExclusionConflict() {
+        const values = Array.from(document.querySelectorAll(".finishing-select"))
+            .map(sel => sel.value)
+            .filter(Boolean);
+        return FINISHING_MUTUALLY_EXCLUSIVE_GROUPS.some(group => group.every(v => values.includes(v)));
     }
     function qtyConfig() {
         return findGroupById("options00");
@@ -1469,6 +1535,18 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     function setupFinishingListener(selectElement) {
         selectElement.addEventListener("change", (e) => {
+            // [추가] "재단"/"접지"처럼 서로 중복 선택할 수 없는 후가공 옵션인지 확인.
+            // 이미 다른 줄에서 상대 값이 선택돼 있으면, 이번 선택은 취소하고 이전 값으로 되돌린다.
+            const conflictValue = findFinishingExclusiveConflict(e.target.value, e.target);
+            if (conflictValue) {
+                alert("재단과 접지는 중복선택할 수 없습니다.");
+                e.target.value = e.target.dataset.prevFinishingValue || "";
+                refreshFinishingExclusiveOptions();
+                return;
+            }
+            e.target.dataset.prevFinishingValue = e.target.value;
+            refreshFinishingExclusiveOptions();
+
             const selectedOpt = e.target.options[e.target.selectedIndex];
             buildSubOptionSelect(selectElement);
 
@@ -1496,13 +1574,16 @@ window.enableMobileCustomPicker = function(selectEl) {
         newRow.innerHTML = `
             <div class="label">후가공 추가</div>
             <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option value="">선택안함</option></select>
-            <button type="button" class="finishing-btn" onclick="this.parentElement.remove(); window.updatePrice();">삭제</button>
+            <button type="button" class="finishing-btn" onclick="this.parentElement.remove(); window.refreshFinishingExclusiveOptions && window.refreshFinishingExclusiveOptions(); window.updatePrice();">삭제</button>
         `;
         container.appendChild(newRow);
 
         const newSelect = newRow.querySelector(".finishing-select");
         loadFinishingOptions(newSelect);
         setupFinishingListener(newSelect);
+        // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 옵션은, 새로 추가된 줄에서도
+        // 이미 다른 줄에서 선택된 상대 값이 있으면 바로 선택 못하게(회색 처리) 반영한다.
+        refreshFinishingExclusiveOptions();
         // [추가] 재구입 흐름이면, "추가하기"로 새로 늘어난 후가공 줄도 예전에
         // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
         lockSelectToPurchasedOptions(newSelect);
@@ -2083,6 +2164,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 재구입 흐름이면, 지금까지 만들어진 모든 옵션(일반 옵션 + 후가공)
             // 중에서 예전에 실제로 구입했던 값이 아닌 옵션은 아예 선택하지 못하게 막는다.
             restrictReorderOptionsToPurchased();
+            // [추가] 재구입 흐름으로 예전 후가공 값이 자동 선택된 경우에도, 재단/접지처럼
+            // 서로 중복 선택할 수 없는 옵션 상태를 최신으로 맞춰둔다.
+            refreshFinishingExclusiveOptions();
 
             // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
             // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
@@ -2424,6 +2508,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
         if (hasDuplicateFinishingCheck) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
+            return;
+        }
+        // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
+        if (hasFinishingMutualExclusionConflict()) {
+            alert("재단과 접지는 중복선택할 수 없습니다.");
             return;
         }
 
