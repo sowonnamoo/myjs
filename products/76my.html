@@ -105,11 +105,6 @@
     .options-section { flex: 1; display: flex; flex-direction: column; gap: 6px; }
     .option-row { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 4px 0; }
     .label { width: 120px; font-weight: bold; font-size: 14px; }
-    /* [추가] 다중선택(체크박스) 일반 옵션 그룹 */
-    .multi-check-row { align-items: flex-start; }
-    .multi-check-list { flex: 1; display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 4px 0; }
-    .multi-check-item { display: flex; align-items: center; gap: 4px; font-size: 14px; cursor: pointer; }
-    .multi-check-item input { margin: 0; }
     select, input { padding: 4px; border: 1px solid #ccc; font-size: 14px; }
     .size-inputs { display: flex; gap: 5px; align-items: center; font-size: 14px; }
     .btn-group { display: flex; gap: 5px; }
@@ -1136,11 +1131,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         let combinedGroupText = "";
         document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
-            if (opt && opt.value) combinedGroupText += (combinedGroupText ? " " : "") + opt.value;
-        });
-        // [추가] 다중선택(체크박스) 일반 옵션 그룹의 체크된 항목들도 함께 이어붙임
-        document.querySelectorAll(".multi-check-input:checked").forEach(input => {
-            combinedGroupText += (combinedGroupText ? " " : "") + input.value;
+            if (!opt || !opt.value) return;
+            const subSelect = getFinishingSubSelect(sel);
+            const label = (subSelect && subSelect.value) ? `${opt.value}(${subSelect.value})` : opt.value;
+            combinedGroupText += (combinedGroupText ? " " : "") + label;
         });
 
         // 후가공 목록 (색상 등 서브옵션 포함)
@@ -1423,42 +1417,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.minSideMM !== undefined && v.minSideMM !== null && v.minSideMM !== "") {
             el.dataset.minSideMm = v.minSideMM;
         }
-        // [추가] 가격 계산 방식: "add"(기본, 추가금액을 더함) 또는 "multiply"(지금까지
-        // 계산된 가격에 이 값을 그대로 곱함. 예: 1.5 → 현재가액 × 1.5)
-        el.dataset.priceType = (v.priceType === "multiply") ? "multiply" : "add";
         return el;
-    }
-
-    // [추가] 다중선택(체크박스) 일반 옵션 그룹의 체크박스 하나를 만든다. buildOptionEl과
-    // 동일한 데이터셋(price/margin/priceType/minSideMm 등)을 갖되, <option>이 아니라
-    // <input type="checkbox">로 만들어서 여러 개를 동시에 켤 수 있게 한다.
-    function buildMultiCheckEl(groupId, v) {
-        const label = document.createElement("label");
-        label.className = "multi-check-item";
-        const input = document.createElement("input");
-        input.type = "checkbox";
-        input.className = "multi-check-input";
-        input.dataset.groupId = groupId;
-        input.value = v.name;
-        input.dataset.price = v.price ?? 0;
-        input.dataset.margin = v.margin ?? 0;
-        input.dataset.surcharge = v.surcharge ?? 0;
-        input.dataset.weight = v.weight ?? 0;
-        input.dataset.delivery = v.delivery ?? 0;
-        input.dataset.priceType = (v.priceType === "multiply") ? "multiply" : "add";
-        if (v.minSideMM !== undefined && v.minSideMM !== null && v.minSideMM !== "") {
-            input.dataset.minSideMm = v.minSideMM;
-        }
-        const priceNum = parseFloat(v.price) || 0;
-        let priceLabel = "";
-        if (input.dataset.priceType === "multiply") {
-            if (priceNum) priceLabel = ` (×${priceNum})`;
-        } else if (priceNum) {
-            priceLabel = ` (+${priceNum.toLocaleString()}원)`;
-        }
-        label.appendChild(input);
-        label.appendChild(document.createTextNode(v.name + priceLabel));
-        return label;
     }
 
     // ---- ① 일반 옵션 그룹(용지 등) 렌더링 ----
@@ -1467,24 +1426,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         container.innerHTML = "";
         normalGroups().forEach(g => {
             const row = document.createElement("div");
-            if (g.multiSelect) {
-                // [추가] 다중선택(체크박스) 그룹: 드롭다운 대신 항목을 전부 체크박스로
-                // 나열해서, 여러 개를 동시에 선택("추가선택")할 수 있게 한다.
-                row.className = "option-row multi-check-row";
-                row.innerHTML = `<div class="label">${g.title || g.id}</div><div class="multi-check-list" data-group-id="${g.id}"></div>`;
-                const list = row.querySelector(".multi-check-list");
-                (g.values || []).forEach(v => list.appendChild(buildMultiCheckEl(g.id, v)));
-                list.querySelectorAll(".multi-check-input").forEach(input => {
-                    input.addEventListener("change", () => {
-                        updateCountLockByEditOption();
-                    });
-                });
-            } else {
-                row.className = "option-row";
-                row.innerHTML = `<div class="label">${g.title || g.id}</div><select class="group-select" style="flex:1" data-group-id="${g.id}"></select>`;
-                const select = row.querySelector("select");
-                (g.values || []).forEach(v => select.appendChild(buildOptionEl(v)));
-            }
+            row.className = "option-row";
+            row.innerHTML = `<div class="label">${g.title || g.id}</div><select class="group-select" style="flex:1" data-group-id="${g.id}"></select>`;
+            const select = row.querySelector("select");
+            (g.values || []).forEach(v => select.appendChild(buildOptionEl(v)));
             container.appendChild(row);
         });
 
@@ -1499,8 +1444,13 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (selectedOpt && selectedOpt.dataset.url && selectedOpt.dataset.url.startsWith("http")) {
                     openOnce(selectedOpt.dataset.url);
                 }
+                // [추가] 이 품목에 서브옵션(예: 2등분:3500; 3등분:7000; ...)이 등록돼 있으면
+                // 후가공과 똑같은 방식으로 오른쪽에 서브옵션 select를 만들어 붙인다.
+                buildSubOptionSelect(e.target);
                 updateCountLockByEditOption();
             });
+            // 페이지가 처음 열렸을 때 기본으로 선택돼 있는 품목에도 서브옵션이 있으면 바로 보여준다.
+            buildSubOptionSelect(sel);
         });
 
         // 방금 렌더링된 기본 선택값 기준으로도 한 번 판단해둠
@@ -1527,9 +1477,6 @@ window.enableMobileCustomPicker = function(selectEl) {
                 hasPreDesignSelected = true;
             }
         });
-        document.querySelectorAll(".multi-check-input:checked").forEach(input => {
-            if ((input.value || '').includes('선시안')) hasPreDesignSelected = true;
-        });
         if (hasPreDesignSelected) {
             countInput.value = "1";
             countInput.max = "1";
@@ -1553,11 +1500,6 @@ window.enableMobileCustomPicker = function(selectEl) {
             const opt = sel.options[sel.selectedIndex];
             if (!opt) return;
             if ((parseFloat(opt.dataset.surcharge) || 0) === CUSTOM_SIZE_UNSUPPORTED_SURCHARGE) {
-                unsupported = true;
-            }
-        });
-        document.querySelectorAll('.multi-check-input:checked').forEach(input => {
-            if ((parseFloat(input.dataset.surcharge) || 0) === CUSTOM_SIZE_UNSUPPORTED_SURCHARGE) {
                 unsupported = true;
             }
         });
@@ -1931,10 +1873,6 @@ window.enableMobileCustomPicker = function(selectEl) {
         let totalWeight = 0;
         let totalDeliveryDays = 0;
         const summary = [];
-        // [추가] priceType이 "multiply"인 품목(예: 옵션1의 배수형 품목)은 바로 더하지 않고
-        // 여기 모아뒀다가, 일반 옵션 그룹(단일선택 + 체크박스 다중선택) 계산이 모두 끝난
-        // 뒤에 지금까지 합산된 금액에 순서대로 곱합니다.
-        const multiplyFactors = [];
 
         // [추가] 편집옵션(일반 옵션 그룹) 중 "수정의뢰"가 선택된 select와, "양면"이
         // 선택된 select를 미리 찾아둔다. "수정의뢰"가 선택되어 있고, 그와는 "다른"
@@ -1971,45 +1909,28 @@ window.enableMobileCustomPicker = function(selectEl) {
             const hasDoubleSidedElsewhere = doubleSidedSelects.some(s => s !== sel);
             const applyDoublePricingHere = isEditRequestHere && hasDoubleSidedElsewhere;
 
+            // [추가] 이 품목에 서브옵션(예: 2등분:3500; 3등분:7000; ...)이 등록돼 있고
+            // 오른쪽 서브옵션 select에서 하나가 골라져 있으면, 그 추가금액도 함께 더한다.
+            const subSelect = getFinishingSubSelect(sel);
+            let itemLabel = opt.textContent;
+            let subExtra = 0;
+            if (subSelect && subSelect.value) {
+                const subOpt = subSelect.options[subSelect.selectedIndex];
+                subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                itemLabel = `${opt.textContent}(${subOpt.value})`;
+            }
+
             if (useStandardPricing) {
-                if (opt.dataset.priceType === "multiply") {
-                    if (price) multiplyFactors.push(price);
-                } else {
-                    let itemPrice = price * (1 + margin / 100) * qtyFactor;
-                    if (applyDoublePricingHere) itemPrice *= 2;
-                    sum += itemPrice;
-                }
+                let itemPrice = price * (1 + margin / 100) * qtyFactor;
+                if (applyDoublePricingHere) itemPrice *= 2;
+                itemPrice += subExtra;
+                sum += itemPrice;
             }
 
             totalWeight += weight;
             if (!isNaN(delivery)) totalDeliveryDays += delivery;
-            if (opt.value) summary.push(opt.textContent + (applyDoublePricingHere ? ' (양면 할증 2배)' : ''));
+            if (opt.value) summary.push(itemLabel + (applyDoublePricingHere ? ' (양면 할증 2배)' : ''));
         });
-
-        // [추가] 다중선택(체크박스) 일반 옵션 그룹: 체크된 항목을 모두 반영합니다.
-        // priceType이 "add"면 위 일반 옵션과 동일하게 더하고, "multiply"면 배수로 모아둡니다.
-        document.querySelectorAll(".multi-check-input:checked").forEach(input => {
-            const price = parseFloat(input.dataset.price) || 0;
-            const margin = parseFloat(input.dataset.margin) || 0;
-            const weight = parseFloat(input.dataset.weight) || 0;
-            const delivery = parseFloat(input.dataset.delivery) || 0;
-
-            if (useStandardPricing) {
-                if (input.dataset.priceType === "multiply") {
-                    if (price) multiplyFactors.push(price);
-                } else {
-                    sum += price * (1 + margin / 100) * qtyFactor;
-                }
-            }
-            totalWeight += weight;
-            if (!isNaN(delivery)) totalDeliveryDays += delivery;
-            summary.push(input.value);
-        });
-
-        // [추가] 위에서 모아둔 배수(multiply)형 품목들을, 지금까지 계산된 금액에 순서대로 곱합니다.
-        if (useStandardPricing) {
-            multiplyFactors.forEach(f => { sum *= f; });
-        }
 
         // 규격 사이즈 목록(options02)에 사이즈별로 등록해둔 추가 가격이 있으면 더합니다.
         // (엑셀 "규격사이즈목록" 시트나 관리자 화면 ⑤번에서 사이즈 옆에 가격을 적어둔 경우에만 적용되며,
@@ -2744,8 +2665,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             const opt = sel.options[sel.selectedIndex];
             const groupId = sel.dataset.groupId;
             if (opt && groupId) {
-                groupSelections[groupId] = opt.value;
-                combinedGroupText += (combinedGroupText ? " " : "") + opt.value;
+                const subSelect = getFinishingSubSelect(sel);
+                const label = (subSelect && subSelect.value) ? `${opt.value}(${subSelect.value})` : opt.value;
+                groupSelections[groupId] = label;
+                combinedGroupText += (combinedGroupText ? " " : "") + label;
             }
             if (!nextPageUrl && opt && opt.dataset.nextPageUrl && opt.dataset.nextPageUrl.startsWith("http")) {
                 nextPageUrl = opt.dataset.nextPageUrl;
@@ -2760,21 +2683,6 @@ window.enableMobileCustomPicker = function(selectEl) {
                 priorityNextPageNewWindowH = opt.dataset.newWindowHeight || "";
             }
         });
-
-        // [추가] 다중선택(체크박스) 일반 옵션 그룹: 체크된 항목들을 그룹id별로 콤마로 이어 담고,
-        // 상품명 조합 텍스트에도 함께 반영합니다.
-        {
-            const multiGroupNames = {};
-            document.querySelectorAll(".multi-check-input:checked").forEach(input => {
-                const groupId = input.dataset.groupId;
-                if (!groupId) return;
-                (multiGroupNames[groupId] = multiGroupNames[groupId] || []).push(input.value);
-                combinedGroupText += (combinedGroupText ? " " : "") + input.value;
-            });
-            Object.keys(multiGroupNames).forEach(groupId => {
-                groupSelections[groupId] = multiGroupNames[groupId].join(", ");
-            });
-        }
 
         // 후가공 목록 추출 (색상 등 서브옵션이 선택되어 있으면 "이름(서브옵션)" 형태로 함께 담음)
         const finishings = [];
