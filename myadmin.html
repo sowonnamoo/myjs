@@ -76,6 +76,7 @@
         <input type="text" id="groupIdInput" placeholder="그룹 ID (자동 생성)" disabled>
         <input type="text" id="groupTitleInput" placeholder="그룹 제목 (예: 일반명함 / 후가공)">
         <label class="checkline"><input type="checkbox" id="groupRequiredInput"> 필수옵션 (체크하면, 이 그룹에서 아무것도 선택 안 한 채로는 "셀프편집 &amp; 주문하기"를 누를 수 없습니다)</label>
+        <label class="checkline"><input type="checkbox" id="groupMultiSelectInput"> 다중선택(체크박스) — 체크하면 드롭다운 대신 이 그룹의 모든 품목이 체크박스로 나열되어 여러 개를 동시에 고를 수 있습니다.</label>
         <button id="groupSaveBtn">그룹 저장</button>
         <button id="groupDeleteBtn" class="danger">이 그룹 삭제</button>
     </div>
@@ -111,6 +112,9 @@
         <label class="checkline"><input type="checkbox" id="hasSubOptions"> 서브옵션 있음 (예: 금박 색상)</label>
         <div id="subOptionsContainer"></div>
         <button id="addSubOptionRowBtn" class="secondary" type="button">서브옵션 행 추가</button>
+        <div class="hint">가격 계산 방식: "추가금액"은 지금까지 계산된 가격에 이 가격을 더합니다(기본). "배수"는 더하지 않고, 지금까지 계산된 가격에 그대로 곱합니다(예: 1.5 입력 → 현재가액×1.5).</div>
+        <label class="checkline"><input type="radio" name="itemPriceType" id="itemPriceTypeAdd" value="add" checked> 추가금액</label>
+        <label class="checkline"><input type="radio" name="itemPriceType" id="itemPriceTypeMultiply" value="multiply"> 배수(곱하기)</label>
         <input type="number" id="itemMinSideInput" placeholder="최소사이즈mm(한변) — 예: 미싱은 100 (선택)">
         <div class="hint">이 품목을 선택하려면 재단사이즈의 가로/세로 중 짧은 변이 이 값(mm) 이상이어야 합니다. 예: 후가공 "미싱" 품목에 100을 적으면, 짧은 변이 100mm보다 작은 사이즈에서는 계산기에서 "미싱은 한 변 길이가 100mm 이상부터 가능합니다"라는 안내와 함께 선택할 수 없습니다. 비워두면 사이즈 제한이 없습니다.</div>
         <button id="itemSaveBtn">품목 저장</button>
@@ -283,12 +287,14 @@
             $("groupIdInput").value = nextGroupId();
             $("groupTitleInput").value = "";
             $("groupRequiredInput").checked = false;
+            $("groupMultiSelectInput").checked = false;
         } else {
             const g = findGroupById(val);
             $("groupIdInput").disabled = true;
             $("groupIdInput").value = val;
             $("groupTitleInput").value = g ? (g.title || "") : "";
             $("groupRequiredInput").checked = !!(g && g.required);
+            $("groupMultiSelectInput").checked = !!(g && g.multiSelect);
         }
     }
     $("groupSelect").addEventListener("change", onGroupSelectChange);
@@ -312,15 +318,17 @@
         const id = (selected === "__new__" || !selected) ? $("groupIdInput").value.trim() : selected;
         const title = $("groupTitleInput").value.trim();
         const required = $("groupRequiredInput").checked;
+        const multiSelect = $("groupMultiSelectInput").checked;
         if (!id) { alert("그룹 ID를 입력하세요."); return; }
 
         let g = findGroupById(id);
         if (!g) {
-            g = { id, title, required, values: [] };
+            g = { id, title, required, multiSelect, values: [] };
             productData.options.push(g);
         } else {
             g.title = title;
             g.required = required;
+            g.multiSelect = multiSelect;
         }
         await saveProduct(`${id} 그룹이 저장되었습니다.`);
     });
@@ -370,6 +378,7 @@
         $("itemOpenNewWindowInput").checked = false;
         $("hasSubOptions").checked = false;
         $("subOptionsContainer").innerHTML = "";
+        $("itemPriceTypeAdd").checked = true;
     }
 
     // 가로/세로를 입력하면 규격 사이즈 목록(options02)에 자동으로 추가합니다. (이미 있으면 중복 추가 안 함)
@@ -418,6 +427,7 @@
             if (subs.length > 0) item.subOptions = subs;
         }
         const minSideMM = $("itemMinSideInput").value; if (minSideMM !== "") item.minSideMM = parseFloat(minSideMM);
+        if ($("itemPriceTypeMultiply").checked) item.priceType = "multiply";
 
         const idx = g.values.findIndex(v => v.name === name);
         const isReplace = idx !== -1;
@@ -583,6 +593,7 @@
         $("itemNewWindowWidthInput").value = item.newWindowWidth ?? "";
         $("itemNewWindowHeightInput").value = item.newWindowHeight ?? "";
         $("itemMinSideInput").value = item.minSideMM ?? "";
+        if (item.priceType === "multiply") { $("itemPriceTypeMultiply").checked = true; } else { $("itemPriceTypeAdd").checked = true; }
 
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
@@ -633,6 +644,7 @@
                 if (v.priorityNextPageUrl) meta.push(`최우선URL ✓`);
                 if (v.openInNewWindow) meta.push(`새창${(v.newWindowWidth||v.newWindowHeight) ? ` ${v.newWindowWidth||900}x${v.newWindowHeight||1000}` : ''} ✓`);
                 if (v.minSideMM !== undefined) meta.push(`한변 ${v.minSideMM}mm↑`);
+                if (v.priceType === "multiply") meta.push(`배수(곱하기)`);
                 const subHtml = v.subOptions && v.subOptions.length
                     ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";
@@ -645,7 +657,7 @@
                         </div>`;
             }).join("") || "<div class='hint'>등록된 품목 없음</div>";
 
-            card.innerHTML = `<h4>${g.id} — ${g.title || "제목없음"} ${g.required ? '<span style="background:#c0392b; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px;">필수옵션</span>' : ''} <button type="button" class="small edit-group" data-group="${g.id}">그룹 수정</button></h4>${itemsHtml}`;
+            card.innerHTML = `<h4>${g.id} — ${g.title || "제목없음"} ${g.required ? '<span style="background:#c0392b; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px;">필수옵션</span>' : ''} ${g.multiSelect ? '<span style="background:#2980b9; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px;">다중선택</span>' : ''} <button type="button" class="small edit-group" data-group="${g.id}">그룹 수정</button></h4>${itemsHtml}`;
             box.appendChild(card);
         });
 
