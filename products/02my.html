@@ -1986,7 +1986,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         // - 그룹에서 선택한 품목마다 다른 surcharge(비규격 추가마진율)를 반영해서,
         //   같은 사이즈라도 "명함"과 "명함 양면"처럼 품목이 다르면 가격도 달라지게 합니다.
         const c = customConfig();
-        if (isCustom && !matchesStandard && c) {
+        // [추가] 이 사이즈 계산이 "진짜 비규격(희망사이즈)"에 해당하는지 표시해둠 — 아래
+        // 최종 가격 표시 직전에 최소가격 적용 여부를 판단할 때 재사용합니다.
+        const isGenuineCustomSize = !!(isCustom && !matchesStandard && c);
+        if (isGenuineCustomSize) {
             const clampedW = Math.min(Math.max(w, c.widthMin), c.widthMax);
             const clampedH = Math.min(Math.max(h, c.heightMin), c.heightMax);
             const refArea = (c.widthMin || 1) * (c.heightMin || 1);
@@ -2036,7 +2039,13 @@ window.enableMobileCustomPicker = function(selectEl) {
 
         // 100원 단위로 반올림하면 소수점 끝자리가 50 이상일 때 위로 올라가서
         // 실제 계산값보다 최대 100원 더 비싸게 보일 수 있어 내림으로 처리합니다.
-        const finalPrice = Math.floor((sum * count) / 100) * 100;
+        let finalPrice = Math.floor((sum * count) / 100) * 100;
+        // [추가] 희망사이즈(진짜 비규격)일 때, 비규격설정에 "최소가격"이 등록돼 있으면
+        // 계산된 금액이 그보다 낮을 경우 최소가격으로 올려 보여줍니다.
+        // (최소가격 이상으로 계산된 금액은 그대로 보여줍니다)
+        if (isGenuineCustomSize && c.minPrice !== undefined && finalPrice < c.minPrice) {
+            finalPrice = c.minPrice;
+        }
         document.getElementById("priceDisplay").textContent = finalPrice.toLocaleString() + "원";
 
         updateDeliveryDisplayFromDays(totalDeliveryDays);
