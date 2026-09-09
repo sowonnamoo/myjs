@@ -1362,6 +1362,19 @@ window.enableMobileCustomPicker = function(selectEl) {
         return (!isNaN(margin) && margin !== 1) ? margin : undefined;
     }
 
+    // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "매수배수제외" 표시가
+    // 되어 있는지 확인합니다. 엑셀/관리자 화면에서 이 사이즈 행에 표시해두면, 이 사이즈를
+    // 쓸 때는 매수별배수(options00)를 곱하지 않고 등록된 가격을 그대로 씁니다.
+    function getStandardSizeSkipQtyMulti(w, h) {
+        const g = standardSizeConfig();
+        if (!g || !Array.isArray(g.sizes)) return false;
+        const match = g.sizes.find(s => {
+            const sw = parseFloat(s.width), sh = parseFloat(s.height);
+            return (sw === w && sh === h) || (sw === h && sh === w);
+        });
+        return !!(match && match.skipQtyMulti);
+    }
+
     // [추가] "완성파일 접수 (jpg, png)" 옵션만 모바일 화면에서 "폰사진, 폰이미지 접수"로
     // 표시 글자를 바꿔준다. "완성파일 접수 (ai, pdf)"처럼 같은 "완성파일 접수"로 시작하는
     // 다른 옵션까지 같이 바뀌면 모바일에서 똑같은 이름이 두 개로 보이는 문제가 있었으므로,
@@ -1869,6 +1882,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         const matchesStandard = isCustom && isMatchingStandardSize(w, h);
         const useStandardPricing = !isCustom || matchesStandard;
 
+        // [추가] 규격사이즈목록(options02)에서 이 사이즈에 "매수배수제외"를 표시해뒀으면,
+        // 이 사이즈를 쓰는 계산(일반 옵션 그룹 + 규격사이즈 추가금액)에는 매수별배수(options00)를
+        // 곱하지 않습니다(=1로 취급). 후가공은 원래대로 매수별배수가 그대로 적용됩니다.
+        const skipQtyMultiplierForThisSize = useStandardPricing && getStandardSizeSkipQtyMulti(w, h);
+        const effectiveQtyFactor = skipQtyMultiplierForThisSize ? 1 : qtyFactor;
+
         let sum = 0;
         let totalWeight = 0;
         let totalDeliveryDays = 0;
@@ -1916,12 +1935,12 @@ window.enableMobileCustomPicker = function(selectEl) {
             let subExtra = 0;
             if (subSelect && subSelect.value) {
                 const subOpt = subSelect.options[subSelect.selectedIndex];
-                subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * effectiveQtyFactor;
                 itemLabel = `${opt.textContent}(${subOpt.value})`;
             }
 
             if (useStandardPricing) {
-                let itemPrice = price * (1 + margin / 100) * qtyFactor;
+                let itemPrice = price * (1 + margin / 100) * effectiveQtyFactor;
                 if (applyDoublePricingHere) itemPrice *= 2;
                 itemPrice += subExtra;
                 sum += itemPrice;
@@ -1938,7 +1957,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (useStandardPricing) {
             const standardSizePrice = getStandardSizePrice(w, h);
             if (standardSizePrice) {
-                sum += standardSizePrice * qtyFactor;
+                sum += standardSizePrice * effectiveQtyFactor;
                 const sign = standardSizePrice < 0 ? "-" : "+";
                 summary.push(`규격사이즈 추가금액 ${sign}${Math.abs(standardSizePrice).toLocaleString()}원`);
             }
