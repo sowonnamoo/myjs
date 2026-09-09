@@ -500,7 +500,7 @@
     });
 
     // ---- ⑤ 규격 사이즈 목록 (options02) ----
-    function addSizeRow(width = "", height = "", price = "", margin = "", name = "") {
+    function addSizeRow(width = "", height = "", price = "", margin = "", name = "", skipQtyMulti = false) {
         const row = document.createElement("div");
         row.className = "row-flex";
         row.innerHTML = `
@@ -509,6 +509,7 @@
             <input type="number" class="size-price" placeholder="추가 가격(선택, 예: 1000)" value="${price}">
             <input type="number" step="0.01" class="size-margin" placeholder="마진(선택, 예: 1.1=10%↑, 0.9=10%↓)" value="${margin}">
             <input type="text" class="size-name" placeholder="옵션이름(선택, 예: 엽서 사이즈)" value="${name}">
+            <label class="checkline" style="white-space:nowrap;"><input type="checkbox" class="size-skip-qty-multi" ${skipQtyMulti ? "checked" : ""}> 매수배수제외</label>
             <button type="button" class="small danger remove-size">삭제</button>
         `;
         row.querySelector(".remove-size").addEventListener("click", () => row.remove());
@@ -520,7 +521,7 @@
         $("sizeRowsContainer").innerHTML = "";
         const o = findSpecial("options02");
         if (o && Array.isArray(o.sizes) && o.sizes.length > 0) {
-            o.sizes.forEach(s => addSizeRow(s.width, s.height, s.price !== undefined ? s.price : "", s.margin !== undefined ? s.margin : "", s.name !== undefined ? s.name : ""));
+            o.sizes.forEach(s => addSizeRow(s.width, s.height, s.price !== undefined ? s.price : "", s.margin !== undefined ? s.margin : "", s.name !== undefined ? s.name : "", !!s.skipQtyMulti));
         } else {
             addSizeRow();
         }
@@ -535,11 +536,13 @@
             const price = r.querySelector(".size-price").value;
             const margin = r.querySelector(".size-margin").value;
             const name = r.querySelector(".size-name").value.trim();
+            const skipQtyMulti = r.querySelector(".size-skip-qty-multi").checked;
             if (width !== "" && height !== "") {
                 const size = { width: parseFloat(width), height: parseFloat(height) };
                 if (price !== "") size.price = parseFloat(price);
                 if (margin !== "") size.margin = parseFloat(margin);
                 if (name !== "") size.name = name;
+                if (skipQtyMulti) size.skipQtyMulti = true;
                 sizes.push(size);
             }
         });
@@ -691,7 +694,8 @@
                     const priceText = s.price !== undefined ? `${s.price < 0 ? "-" : "+"}${Math.abs(s.price)}원` : "";
                     const marginText = (s.margin !== undefined && s.margin !== 1) ? ` / 마진 x${s.margin}` : "";
                     const nameText = s.name ? ` / 이름: ${s.name}` : "";
-                    return `<div class="item-row"><div>${s.width} × ${s.height} mm</div><div>${priceText}${marginText}${nameText}</div></div>`;
+                    const skipText = s.skipQtyMulti ? ` / <span style="color:#c0392b;">매수배수제외</span>` : "";
+                    return `<div class="item-row"><div>${s.width} × ${s.height} mm</div><div>${priceText}${marginText}${nameText}${skipText}</div></div>`;
                 }).join("");
         } else {
             card02.innerHTML = `<h4>options02 — 규격 사이즈 목록 <button type="button" class="small edit-sizelist">수정</button></h4><div class="hint">저장된 값 없음</div>`;
