@@ -92,7 +92,7 @@
             <p><b>그룹</b> 시트: 상품ID / 그룹ID(비워두면 자동 부여) / 그룹제목</p>
             <p><b>품목</b> 시트: 상품ID / 그룹ID(또는 그룹제목) / 품목명 / 가로mm / 세로mm / 가격 / 종이무게 / 배송일 / 마진율% / 추가마진율% / 클릭URL / 이미지URL / 다음페이지이동URL / 최우선다음페이지이동URL / 서브옵션(<code>이름:추가금액</code>을 세미콜론으로 연결, 예: <code>유광골드:2000; 무광레드:1500</code>) / <b>최소사이즈mm(한변)</b>(선택 사항. 예: 후가공 그룹의 "미싱" 품목에 <code>100</code>을 적으면, 01my 계산기에서 재단사이즈의 가로/세로 중 짧은 변이 100mm보다 작을 때는 "미싱"을 선택할 수 없고 "미싱은 한 변 길이가 100mm 이상부터 가능합니다" 같은 안내가 뜹니다. 비워두면 사이즈 제한 없이 항상 선택 가능합니다)</p>
             <p><b>매수별배수</b> 시트: 상품ID / 매수 / 배수</p>
-            <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대) / 값</p>
+            <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대·<b>최소가격</b>) / 값 — <b>최소가격</b>은 선택 사항으로, 적어두면 희망사이즈(비규격) 입력 시 계산된 금액이 이 값보다 낮을 때는 이 값으로, 이 값 이상이면 계산된 금액 그대로 보여줍니다(예: 30000을 적으면 30,000원 미만으로 계산돼도 30,000원으로 표시). 비워두면 지금처럼 계산된 값을 그대로 보여줍니다.</p>
             <p><b>규격사이즈목록</b> 시트: 상품ID / 가로mm / 세로mm / 가격 / 마진 / 옵션이름 (계산기 화면의 "규격사이즈" 드롭다운에 나오는 목록입니다. 사이즈 하나당 한 행씩 적으세요. <b>가격</b>은 선택 사항이며, 값을 적으면 해당 규격사이즈를 선택했을 때 그 금액이 기존 옵션 가격에 추가로 더해집니다. <b>마진</b>도 선택 사항이며, 1.1처럼 적으면 그 사이즈 선택 시 계산된 가격에 곱해져서 10% 인상되고, 0.9처럼 적으면 10% 인하됩니다. <b>옵션이름</b>(F열)도 선택 사항이며, 값을 적으면 드롭다운에 "가로x세로 mm" 대신 여기 적은 이름이 표시됩니다(예: "엽서 사이즈"). 비워두면 기존처럼 "가로x세로 mm"로 표시됩니다)</p>
             <p><b>삭제</b> 시트: 상품ID 한 칸만 있습니다. 여기 적힌 상품ID는 Firestore 문서 자체가 통째로 삭제됩니다.</p>
             <p>상품ID나 품목명이 비어있는 행은 자동으로 무시됩니다. 새 상품ID를 적으면 새 문서가 만들어지고, 기존 상품ID를 적으면 그 문서 전체가 엑셀 내용으로 덮어써집니다.</p>
@@ -245,6 +245,7 @@
                 customRows.push([id, "가로최대", orEmpty(o01.widthMax)]);
                 customRows.push([id, "세로최소", orEmpty(o01.heightMin)]);
                 customRows.push([id, "세로최대", orEmpty(o01.heightMax)]);
+                if (o01.minPrice !== undefined) customRows.push([id, "최소가격", orEmpty(o01.minPrice)]);
             }
 
             const o02 = findSpecial(data, "options02");
@@ -378,8 +379,13 @@
         const basePrice = toNum(customMap["베이스가격"]), multiplier = toNum(customMap["배수"]);
         const widthMin = toNum(customMap["가로최소"]), widthMax = toNum(customMap["가로최대"]);
         const heightMin = toNum(customMap["세로최소"]), heightMax = toNum(customMap["세로최대"]);
+        // [추가] 최소가격(선택 사항): 적어두면, 계산된 비규격 가격이 이보다 낮을 때
+        // 이 값으로 대신 보여줍니다. 안 적으면 기존처럼 계산된 값 그대로 보여줍니다.
+        const customMinPrice = toNum(customMap["최소가격"]);
         if ([basePrice, multiplier, widthMin, widthMax, heightMin, heightMax].every(v => v !== undefined)) {
-            options.push({ id: "options01", title: "비규격 설정", basePrice, multiplier, widthMin, widthMax, heightMin, heightMax });
+            const o01 = { id: "options01", title: "비규격 설정", basePrice, multiplier, widthMin, widthMax, heightMin, heightMax };
+            if (customMinPrice !== undefined) o01.minPrice = customMinPrice;
+            options.push(o01);
         }
 
         // ---- 규격 사이즈 목록 (options02) ----

@@ -134,6 +134,7 @@
         <input type="number" id="widthMaxInput" placeholder="가로 최대길이 (mm)">
         <input type="number" id="heightMinInput" placeholder="세로 최소길이 (mm)">
         <input type="number" id="heightMaxInput" placeholder="세로 최대길이 (mm)">
+        <input type="number" id="customMinPriceInput" placeholder="최소가격 (선택, 예: 30000 — 계산된 금액이 이보다 낮으면 이 값으로 표시)">
         <button id="saveCustomBtn">비규격 설정 저장</button>
     </div>
 
@@ -477,6 +478,7 @@
         $("widthMaxInput").value = o && o.widthMax !== undefined ? o.widthMax : "";
         $("heightMinInput").value = o && o.heightMin !== undefined ? o.heightMin : "";
         $("heightMaxInput").value = o && o.heightMax !== undefined ? o.heightMax : "";
+        $("customMinPriceInput").value = o && o.minPrice !== undefined ? o.minPrice : "";
     }
 
     $("saveCustomBtn").addEventListener("click", async () => {
@@ -486,12 +488,14 @@
         const widthMax = parseFloat($("widthMaxInput").value);
         const heightMin = parseFloat($("heightMinInput").value);
         const heightMax = parseFloat($("heightMaxInput").value);
+        const minPriceRaw = $("customMinPriceInput").value;
         if ([basePrice, multiplier, widthMin, widthMax, heightMin, heightMax].some(isNaN)) {
             alert("모든 값을 입력하세요."); return;
         }
         let o = findSpecial("options01");
         if (!o) { o = { id: "options01", title: "비규격 설정" }; productData.options.push(o); }
         Object.assign(o, { basePrice, multiplier, widthMin, widthMax, heightMin, heightMax });
+        if (minPriceRaw !== "") { o.minPrice = parseFloat(minPriceRaw); } else { delete o.minPrice; }
         await saveProduct("비규격 설정이 저장되었습니다.");
     });
 
@@ -670,7 +674,8 @@
                 <div class="item-row"><div>베이스가격</div><div>${o01.basePrice}</div></div>
                 <div class="item-row"><div>배수</div><div>${o01.multiplier}</div></div>
                 <div class="item-row"><div>가로 범위</div><div>${o01.widthMin} ~ ${o01.widthMax}</div></div>
-                <div class="item-row"><div>세로 범위</div><div>${o01.heightMin} ~ ${o01.heightMax}</div></div>`;
+                <div class="item-row"><div>세로 범위</div><div>${o01.heightMin} ~ ${o01.heightMax}</div></div>
+                ${o01.minPrice !== undefined ? `<div class="item-row"><div>최소가격</div><div>${o01.minPrice}</div></div>` : ""}`;
         } else {
             card01.innerHTML = `<h4>options01 — 비규격 설정 <button type="button" class="small edit-custom">수정</button></h4><div class="hint">저장된 값 없음</div>`;
         }
