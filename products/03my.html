@@ -1586,8 +1586,14 @@ window.enableMobileCustomPicker = function(selectEl) {
         subOptions.forEach(so => {
             const el = document.createElement("option");
             el.value = so.color;
-            el.textContent = so.priceExtra ? `${so.color} (+${so.priceExtra.toLocaleString()}원)` : so.color;
+            const isMultiply = so.priceType === "multiply";
+            el.dataset.priceType = isMultiply ? "multiply" : "add";
             el.dataset.priceExtra = so.priceExtra || 0;
+            if (isMultiply) {
+                el.textContent = so.priceExtra ? `${so.color} (×${so.priceExtra})` : so.color;
+            } else {
+                el.textContent = so.priceExtra ? `${so.color} (+${so.priceExtra.toLocaleString()}원)` : so.color;
+            }
             subSelect.appendChild(el);
         });
         subSelect.addEventListener("change", updatePrice);
@@ -1956,13 +1962,19 @@ window.enableMobileCustomPicker = function(selectEl) {
             const applyDoublePricingHere = isEditRequestHere && hasDoubleSidedElsewhere;
 
             // [추가] 이 품목에 서브옵션(예: 2등분:3500; 3등분:7000; ...)이 등록돼 있고
-            // 오른쪽 서브옵션 select에서 하나가 골라져 있으면, 그 추가금액도 함께 더한다.
+            // 오른쪽 서브옵션 select에서 하나가 골라져 있으면, 그 값을 반영한다.
+            // (값이 "추가금액"이면 더하고, "배수"면 이 품목 가격에 곱한다)
             const subSelect = getFinishingSubSelect(sel);
             let itemLabel = opt.textContent;
             let subExtra = 0;
+            let subMultiplier = 1;
             if (subSelect && subSelect.value) {
                 const subOpt = subSelect.options[subSelect.selectedIndex];
-                subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * effectiveQtyFactor;
+                if (subOpt.dataset.priceType === "multiply") {
+                    subMultiplier = parseFloat(subOpt.dataset.priceExtra) || 1;
+                } else {
+                    subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * effectiveQtyFactor;
+                }
                 itemLabel = `${opt.textContent}(${subOpt.value})`;
             }
 
@@ -1970,6 +1982,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 let itemPrice = price * (1 + margin / 100) * effectiveQtyFactor;
                 if (applyDoublePricingHere) itemPrice *= 2;
                 itemPrice += subExtra;
+                itemPrice *= subMultiplier;
                 sum += itemPrice;
             }
 
@@ -2016,7 +2029,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             let label = opt.value;
             if (subSelect && subSelect.value) {
                 const subOpt = subSelect.options[subSelect.selectedIndex];
-                itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                if (subOpt.dataset.priceType === "multiply") {
+                    itemPrice *= parseFloat(subOpt.dataset.priceExtra) || 1;
+                } else {
+                    itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                }
                 label = `${opt.value}(${subOpt.value})`;
             }
 
