@@ -1589,11 +1589,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const isMultiply = so.priceType === "multiply";
             el.dataset.priceType = isMultiply ? "multiply" : "add";
             el.dataset.priceExtra = so.priceExtra || 0;
-            if (isMultiply) {
-                el.textContent = so.priceExtra ? `${so.color} (×${so.priceExtra})` : so.color;
-            } else {
-                el.textContent = so.priceExtra ? `${so.color} (+${so.priceExtra.toLocaleString()}원)` : so.color;
-            }
+            el.textContent = so.color;
             subSelect.appendChild(el);
         });
         subSelect.addEventListener("change", updatePrice);
