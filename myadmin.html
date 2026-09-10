@@ -335,12 +335,15 @@
     });
 
     // ---- ② 서브옵션 행 ----
-    function addSubOptionRow(color = "", priceExtra = "") {
+    function addSubOptionRow(color = "", priceExtra = "", priceType = "add") {
         const row = document.createElement("div");
         row.className = "subopt-row";
+        const uid = "sot" + Math.random().toString(36).slice(2, 8);
         row.innerHTML = `
-            <input type="text" class="subopt-color" placeholder="서브옵션명 (예: 유광골드)" value="${color}">
-            <input type="number" class="subopt-price" placeholder="추가금액 (예: 2000)" value="${priceExtra}">
+            <input type="text" class="subopt-color" placeholder="서브옵션명 (예: 유광골드 또는 2등분)" value="${color}">
+            <input type="number" step="any" class="subopt-price" placeholder="값 (예: 2000 또는 배수면 1.5)" value="${priceExtra}">
+            <label class="checkline" style="white-space:nowrap;"><input type="radio" name="${uid}" class="subopt-type-add" ${priceType !== "multiply" ? "checked" : ""}> 추가금액</label>
+            <label class="checkline" style="white-space:nowrap;"><input type="radio" name="${uid}" class="subopt-type-multiply" ${priceType === "multiply" ? "checked" : ""}> 배수</label>
             <button type="button" class="small danger remove-subopt">삭제</button>
         `;
         row.querySelector(".remove-subopt").addEventListener("click", () => row.remove());
@@ -354,8 +357,11 @@
         rows.forEach(r => {
             const color = r.querySelector(".subopt-color").value.trim();
             const priceExtraRaw = r.querySelector(".subopt-price").value;
+            const isMultiply = r.querySelector(".subopt-type-multiply").checked;
             if (color) {
-                result.push({ color, priceExtra: priceExtraRaw !== "" ? parseFloat(priceExtraRaw) : 0 });
+                const entry = { color, priceExtra: priceExtraRaw !== "" ? parseFloat(priceExtraRaw) : 0 };
+                if (isMultiply) entry.priceType = "multiply";
+                result.push(entry);
             }
         });
         return result;
@@ -594,7 +600,7 @@
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
             $("hasSubOptions").checked = true;
-            item.subOptions.forEach(so => addSubOptionRow(so.color, so.priceExtra));
+            item.subOptions.forEach(so => addSubOptionRow(so.color, so.priceExtra, so.priceType));
         } else {
             $("hasSubOptions").checked = false;
         }
@@ -641,7 +647,7 @@
                 if (v.openInNewWindow) meta.push(`새창${(v.newWindowWidth||v.newWindowHeight) ? ` ${v.newWindowWidth||900}x${v.newWindowHeight||1000}` : ''} ✓`);
                 if (v.minSideMM !== undefined) meta.push(`한변 ${v.minSideMM}mm↑`);
                 const subHtml = v.subOptions && v.subOptions.length
-                    ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
+                    ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => s.priceType === "multiply" ? `${s.color}(×${s.priceExtra})` : `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";
                 return `<div class="item-row">
                             <div><b>${v.name}</b><div class="item-meta">${meta.map(m=>`<span>${m}</span>`).join("")}</div>${subHtml}</div>
