@@ -1842,6 +1842,14 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const hasName = !!(s.name && String(s.name).trim());
                 const label = hasName ? String(s.name).trim() : `${s.width}x${s.height} mm`;
                 el.dataset.name = hasName ? String(s.name).trim() : "";
+                // [수정] 가로/세로가 같은 규격(예: A4 2000장 / A4 4000장)이 여러 줄 등록된 경우,
+                // 가로·세로만으로는 어떤 줄을 골랐는지 구분할 수 없어 항상 첫 줄 가격이 쓰이는
+                // 문제가 있었습니다. 그래서 가격/마진/매수배수제외 값을 이 옵션 자신에게도
+                // 직접 저장해두고, 계산할 때는 (규격사이즈를 고른 경우) 가로/세로로 다시 찾지
+                // 않고 지금 선택된 이 옵션의 값을 그대로 씁니다.
+                el.dataset.price = s.price !== undefined ? s.price : "";
+                el.dataset.margin = s.margin !== undefined ? s.margin : "";
+                el.dataset.skipQtyMulti = s.skipQtyMulti ? "1" : "";
                 if (!hasName && !isNaN(price) && price !== 0) {
                     const sign = price < 0 ? "-" : "+";
                     el.textContent = `${label} (${sign}${Math.abs(price).toLocaleString()}원)`;
@@ -1884,10 +1892,27 @@ window.enableMobileCustomPicker = function(selectEl) {
         const matchesStandard = isCustom && isMatchingStandardSize(w, h);
         const useStandardPricing = !isCustom || matchesStandard;
 
+        // [수정] 가로/세로가 같은 규격사이즈가 여러 줄(예: A4 2000장 / A4 4000장) 등록된 경우
+        // 가로·세로만으로는 어떤 줄인지 구분이 안 되므로, "규격사이즈"를 드롭다운으로 직접
+        // 고른 경우에는 가로/세로로 다시 찾지 않고 지금 선택된 그 옵션 자신의 값을 그대로
+        // 씁니다. (희망사이즈를 직접 입력해서 우연히 등록된 사이즈와 같아진 경우에는 선택된
+        // 옵션이 없으므로, 기존처럼 가로/세로로 찾습니다)
+        const selectedSizeOpt = (!isCustom && useStandardPricing)
+            ? document.getElementById("sizeList").selectedOptions[0]
+            : null;
+        const standardSizeFromSelection = (selectedSizeOpt && selectedSizeOpt.value)
+            ? {
+                price: selectedSizeOpt.dataset.price !== "" ? parseFloat(selectedSizeOpt.dataset.price) : undefined,
+                margin: selectedSizeOpt.dataset.margin !== "" ? parseFloat(selectedSizeOpt.dataset.margin) : undefined,
+                skipQtyMulti: selectedSizeOpt.dataset.skipQtyMulti === "1"
+            }
+            : null;
+
         // [추가] 규격사이즈목록(options02)에서 이 사이즈에 "매수배수제외"를 표시해뒀으면,
         // 이 사이즈를 쓰는 계산(일반 옵션 그룹 + 규격사이즈 추가금액)에는 매수별배수(options00)를
         // 곱하지 않습니다(=1로 취급). 후가공은 원래대로 매수별배수가 그대로 적용됩니다.
-        const skipQtyMultiplierForThisSize = useStandardPricing && getStandardSizeSkipQtyMulti(w, h);
+        const skipQtyMultiplierForThisSize = useStandardPricing &&
+            (standardSizeFromSelection ? standardSizeFromSelection.skipQtyMulti : getStandardSizeSkipQtyMulti(w, h));
         const effectiveQtyFactor = skipQtyMultiplierForThisSize ? 1 : qtyFactor;
 
         let sum = 0;
@@ -1957,7 +1982,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         // (엑셀 "규격사이즈목록" 시트나 관리자 화면 ⑤번에서 사이즈 옆에 가격을 적어둔 경우에만 적용되며,
         //  비워두면 기존과 동일하게 추가금액 없이 계산됩니다)
         if (useStandardPricing) {
-            const standardSizePrice = getStandardSizePrice(w, h);
+            const standardSizePrice = standardSizeFromSelection
+                ? (standardSizeFromSelection.price || 0)
+                : getStandardSizePrice(w, h);
             if (standardSizePrice) {
                 sum += standardSizePrice * effectiveQtyFactor;
                 const sign = standardSizePrice < 0 ? "-" : "+";
@@ -1965,7 +1992,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
             // [추가] 이 사이즈에 등록해둔 "마진" 배수가 있으면 지금까지 계산된 가격에 곱해서
             // 퍼센테이지로 가격을 올리거나 내립니다 (예: 1.1 입력 -> 10% 인상, 0.9 입력 -> 10% 인하).
-            const standardSizeMargin = getStandardSizeMargin(w, h);
+            const standardSizeMargin = standardSizeFromSelection
+                ? ((standardSizeFromSelection.margin !== undefined && !isNaN(standardSizeFromSelection.margin) && standardSizeFromSelection.margin !== 1) ? standardSizeFromSelection.margin : undefined)
+                : getStandardSizeMargin(w, h);
             if (standardSizeMargin !== undefined) {
                 sum *= standardSizeMargin;
                 const pct = Math.round((standardSizeMargin - 1) * 100);
