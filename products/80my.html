@@ -849,7 +849,7 @@ function openCustomSelectModal(selectEl) {
                 // 실제로 막힌 이유에 맞는 안내 문구를 보여준다.
                 const exclusiveConflict = window.findFinishingExclusiveConflict && window.findFinishingExclusiveConflict(opt.value, selectEl);
                 if (exclusiveConflict) {
-                    alert("재단과 접지는 중복선택할 수 없습니다.");
+                    alert(`"${opt.value}"과(와) "${exclusiveConflict}"은(는) 함께 선택할 수 없습니다.`);
                     return;
                 }
                 const sizeConflict = window.checkFinishingSizeConflict && window.checkFinishingSizeConflict(opt);
@@ -1091,13 +1091,20 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
         if (hasFinishingMutualExclusionConflict()) {
-            alert("재단과 접지는 중복선택할 수 없습니다.");
+            alert("재단, 비규격재단, 접지는 서로 중복 선택할 수 없습니다.");
             return;
         }
         // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
         const sizeViolationReorder = findFinishingSizeRestrictionViolation();
         if (sizeViolationReorder) {
             alert(`${sizeViolationReorder.name}은(는) ${sizeViolationReorder.minSide}mm 이상으로 선택해 주세요.`);
+            return;
+        }
+
+        // [추가] "비규격재단" 선택 시 입력한 가로/세로(mm)가 유효한지 최종 확인
+        const customCutReorder = validateCustomCutSizeForSubmit();
+        if (!customCutReorder.ok) {
+            alert(customCutReorder.message);
             return;
         }
 
@@ -1145,7 +1152,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (sel.value) {
                 const subSelect = getFinishingSubSelect(sel);
                 const subValue = subSelect ? subSelect.value : "";
-                finishings.push(subValue ? `${sel.value}(${subValue})` : sel.value);
+                finishings.push(buildFinishingLabel(sel, subValue, customCutReorder.width, customCutReorder.height));
             }
         });
 
@@ -1166,6 +1173,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             price: priceNumber,
             weight: weightValue ? `${weightValue}kg` : '',
             finishings: finishings.join(', '),
+            customCutWidth: customCutReorder.width || '', // [추가] 비규격재단 선택 시 입력한 가로(mm)
+            customCutHeight: customCutReorder.height || '', // [추가] 비규격재단 선택 시 입력한 세로(mm)
             ink: sideForItem, // 단면/양면 등 인쇄면 (다음 재구입 비교용)
             compositeImage: reorderImage, // R2 원본이 살아있으면 그걸, 없으면 카페24 경로를 사용
             compositeImageFallback: reorderImageFallback, // R2가 나중에 지워지면 대신 보여줄 카페24 경로
@@ -1226,7 +1235,11 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
     // [추가] 후가공 옵션 중 "재단"과 "접지"는 서로 동시에 선택할 수 없음(중복선택 방지)
-    const FINISHING_MUTUALLY_EXCLUSIVE_GROUPS = [["재단", "접지"]];
+    // [추가] "재단"과 "비규격재단"도 같은 성격의 옵션(사이즈를 잘라내는 후가공)이라 동시 선택 불가로 추가함
+    const FINISHING_MUTUALLY_EXCLUSIVE_GROUPS = [["재단", "접지"], ["재단", "비규격재단"]];
+
+    // [추가] "비규격재단" 품목명을 이 상수로 통일해서 관리 (엑셀/관리자 품목명과 정확히 일치해야 함)
+    const CUSTOM_CUT_FINISHING_NAME = "비규격재단";
 
     // value와 함께 선택할 수 없는 상대 값들을 돌려준다 (없으면 빈 배열)
     function findExclusivePartnerValues(value) {
@@ -1294,6 +1307,117 @@ window.enableMobileCustomPicker = function(selectEl) {
         return null;
     }
     window.checkFinishingSizeConflict = checkFinishingSizeConflict;
+
+    // [추가] "비규격재단" 후가공 select 밑에 작게 가로/세로(mm) 입력창을 만들어 붙인다.
+    // 이미 만들어져 있으면(같은 select에 두 번 붙지 않도록) 기존 것을 그대로 재사용한다.
+    function ensureCustomCutSizeBox(selectElement) {
+        if (selectElement._customCutBox) return selectElement._customCutBox;
+
+        const row = selectElement.closest(".option-row");
+        const box = document.createElement("div");
+        box.className = "custom-cut-size-box";
+        box.style.cssText = "display:none; width:100%; margin:5px 0 0 120px; align-items:center; gap:6px;";
+        box.innerHTML = `
+            <input type="number" class="customCutWidthInput" placeholder="가로mm" min="1" style="width:70px; padding:4px; text-align:center;">
+            <span style="font-size:13px;">x</span>
+            <input type="number" class="customCutHeightInput" placeholder="세로mm" min="1" style="width:70px; padding:4px; text-align:center;">
+            <span style="font-size:12px; color:#888;">mm (현재 선택 사이즈 이하로 입력)</span>
+        `;
+        if (row && row.parentElement) {
+            row.insertAdjacentElement("afterend", box);
+        }
+        selectElement._customCutBox = box;
+
+        const wBox = box.querySelector(".customCutWidthInput");
+        const hBox = box.querySelector(".customCutHeightInput");
+
+        // [추가] 입력한 가로/세로가 지금 적용 중인 사이즈(규격이든 희망사이즈든 widthInput/heightInput
+        // 값)를 넘지 못하게 막는다. 넘으면 그 최대값으로 되돌리고 안내한다.
+        const clampToCurrentSize = (inputEl, boundId, label) => {
+            const bound = parseFloat(document.getElementById(boundId)?.value) || 0;
+            const val = parseFloat(inputEl.value);
+            if (!isNaN(val) && bound > 0 && val > bound) {
+                alert(`${label}는 현재 선택된 사이즈(${bound}mm)를 넘을 수 없습니다.`);
+                inputEl.value = bound;
+            }
+            updatePrice();
+        };
+        wBox.addEventListener("change", () => clampToCurrentSize(wBox, "widthInput", "가로"));
+        hBox.addEventListener("change", () => clampToCurrentSize(hBox, "heightInput", "세로"));
+
+        return box;
+    }
+    window.ensureCustomCutSizeBox = ensureCustomCutSizeBox;
+
+    // [추가] 선택된 값이 "비규격재단"이면 입력창을 보여주고, 아니면 숨기고 값을 비운다.
+    function toggleCustomCutSizeBox(selectElement) {
+        const box = ensureCustomCutSizeBox(selectElement);
+        const isCustomCut = selectElement.value === CUSTOM_CUT_FINISHING_NAME;
+        box.style.display = isCustomCut ? "flex" : "none";
+        if (!isCustomCut) {
+            box.querySelector(".customCutWidthInput").value = "";
+            box.querySelector(".customCutHeightInput").value = "";
+        }
+    }
+    window.toggleCustomCutSizeBox = toggleCustomCutSizeBox;
+
+    // [추가] 지금 화면에서 "비규격재단"이 선택된 select를 찾아 돌려준다. 없으면 null.
+    function getSelectedCustomCutFinishingSelect() {
+        return Array.from(document.querySelectorAll(".finishing-select"))
+            .find(sel => sel.value === CUSTOM_CUT_FINISHING_NAME) || null;
+    }
+
+    // [추가] 사이즈(규격/희망사이즈)가 바뀌어서 widthInput/heightInput 값이 달라지면,
+    // 이미 "비규격재단"에 입력해둔 가로/세로도 새 상한값을 넘지 않도록 다시 맞춘다.
+    function refreshCustomCutSizeBounds() {
+        const maxW = parseFloat(document.getElementById("widthInput")?.value) || 0;
+        const maxH = parseFloat(document.getElementById("heightInput")?.value) || 0;
+        document.querySelectorAll(".finishing-select").forEach(sel => {
+            if (sel.value !== CUSTOM_CUT_FINISHING_NAME || !sel._customCutBox) return;
+            const wBox = sel._customCutBox.querySelector(".customCutWidthInput");
+            const hBox = sel._customCutBox.querySelector(".customCutHeightInput");
+            const w = parseFloat(wBox.value);
+            const h = parseFloat(hBox.value);
+            if (!isNaN(w) && maxW > 0 && w > maxW) wBox.value = maxW;
+            if (!isNaN(h) && maxH > 0 && h > maxH) hBox.value = maxH;
+        });
+    }
+    window.refreshCustomCutSizeBounds = refreshCustomCutSizeBounds;
+
+    // [추가] "비규격재단"이 선택되어 있으면 입력한 가로/세로(mm)를 검증해서 돌려준다.
+    // - 선택 안 했으면: { ok:true, width:"", height:"" }
+    // - 선택했는데 값이 비었거나 현재 사이즈를 초과하면: { ok:false, message: "..." }
+    // - 정상이면: { ok:true, width, height }
+    function validateCustomCutSizeForSubmit() {
+        const sel = getSelectedCustomCutFinishingSelect();
+        if (!sel) return { ok: true, width: "", height: "" };
+
+        const box = sel._customCutBox;
+        const w = box ? parseFloat(box.querySelector(".customCutWidthInput").value) : NaN;
+        const h = box ? parseFloat(box.querySelector(".customCutHeightInput").value) : NaN;
+        const maxW = parseFloat(document.getElementById("widthInput")?.value) || 0;
+        const maxH = parseFloat(document.getElementById("heightInput")?.value) || 0;
+
+        if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+            return { ok: false, message: "비규격재단 사이즈(가로x세로mm)를 입력해 주세요." };
+        }
+        if ((maxW > 0 && w > maxW) || (maxH > 0 && h > maxH)) {
+            return { ok: false, message: `비규격재단 사이즈는 현재 선택된 사이즈(${maxW}x${maxH}mm)를 넘을 수 없습니다.` };
+        }
+        return { ok: true, width: w, height: h };
+    }
+    window.validateCustomCutSizeForSubmit = validateCustomCutSizeForSubmit;
+
+    // [추가] finishings 배열에 넣을 라벨을 만든다. "비규격재단"이면 입력한 사이즈를 괄호로 붙여서
+    // "비규격재단(120x80mm)" 형태로 만들고, 그 외에는 원래 값을 그대로 쓴다.
+    function buildFinishingLabel(sel, subValue, customCutWidth, customCutHeight) {
+        let base = sel.value;
+        if (sel.value === CUSTOM_CUT_FINISHING_NAME && customCutWidth && customCutHeight) {
+            base = `${CUSTOM_CUT_FINISHING_NAME}(${customCutWidth}x${customCutHeight}mm)`;
+        }
+        return subValue ? `${base}(${subValue})` : base;
+    }
+    window.buildFinishingLabel = buildFinishingLabel;
 
     // 지금 선택된 후가공 값들 중에 "재단"과 "접지"처럼 서로 중복 선택할 수 없는 조합이
     // 있으면 true. 주문/장바구니 담기 직전 최종 확인용 (실시간 체크와 별개의 안전장치).
@@ -1375,6 +1499,29 @@ window.enableMobileCustomPicker = function(selectEl) {
             return (sw === w && sh === h) || (sw === h && sh === w);
         });
         return !!(match && match.skipQtyMulti);
+    }
+
+    // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "개별매수배수"(장수 단위)가
+    // 적혀 있으면 그 값을 반환합니다. 예: 50을 적으면 50장 단위로 가격이 계단식으로 오릅니다.
+    // (1~50장=1배, 51~100장=2배, ... 10배(=500장)까지). 값이 없으면 undefined.
+    function getStandardSizeIndividualQtyUnit(w, h) {
+        const g = standardSizeConfig();
+        if (!g || !Array.isArray(g.sizes)) return undefined;
+        const match = g.sizes.find(s => {
+            const sw = parseFloat(s.width), sh = parseFloat(s.height);
+            return (sw === w && sh === h) || (sw === h && sh === w);
+        });
+        const unit = match ? parseFloat(match.individualQtyUnit) : NaN;
+        return (!isNaN(unit) && unit > 0) ? unit : undefined;
+    }
+
+    // [추가] "개별매수배수" 단위(unit)를 기준으로 입력 매수(enteredQty)에 맞는 배수를 계산합니다.
+    // unit장 단위로 최대 10배수(=unit×10장)까지 계단식으로 오르며, 그 이상은 마지막(10배) 그대로 적용합니다.
+    // 예: unit=50 → 1~50장:1배, 51~100장:2배, 101~150장:3배 ... 451~500장:10배, 500장 초과:10배 유지.
+    function getIndividualQtyPricing(enteredQty, unit) {
+        const maxSteps = 10;
+        const step = Math.min(maxSteps, Math.max(1, Math.ceil(enteredQty / unit)));
+        return { multi: step, maxQty: unit * maxSteps };
     }
 
     // [추가] "완성파일 접수 (jpg, png)" 옵션만 모바일 화면에서 "폰사진, 폰이미지 접수"로
@@ -1629,11 +1776,14 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 이미 다른 줄에서 상대 값이 선택돼 있으면, 이번 선택은 취소하고 이전 값으로 되돌린다.
             const conflictValue = findFinishingExclusiveConflict(e.target.value, e.target);
             if (conflictValue) {
-                alert("재단과 접지는 중복선택할 수 없습니다.");
+                alert(`"${e.target.value}"과(와) "${conflictValue}"은(는) 함께 선택할 수 없습니다.`);
                 e.target.value = e.target.dataset.prevFinishingValue || "";
                 refreshFinishingExclusiveOptions();
                 return;
             }
+
+            // [추가] "비규격재단"을 선택/해제할 때마다 가로/세로(mm) 입력창을 보이거나 숨긴다.
+            toggleCustomCutSizeBox(e.target);
 
             // [추가] "미싱"처럼 최소사이즈(한 변) 제한이 걸린 옵션인데, 지금 사이즈가
             // 그 기준에 못 미치면 선택을 취소하고 안내 메시지를 띄운다.
@@ -1852,6 +2002,10 @@ window.enableMobileCustomPicker = function(selectEl) {
                 el.dataset.price = s.price !== undefined ? s.price : "";
                 el.dataset.margin = s.margin !== undefined ? s.margin : "";
                 el.dataset.skipQtyMulti = s.skipQtyMulti ? "1" : "";
+                // [추가] "개별매수배수"(H열)가 등록돼 있으면 이 옵션에도 저장해서, 규격사이즈를
+                // 드롭다운으로 직접 고른 경우 가로/세로로 다시 찾지 않고 이 값을 그대로 씀.
+                const individualQtyUnit = parseFloat(s.individualQtyUnit);
+                el.dataset.individualQtyUnit = (!isNaN(individualQtyUnit) && individualQtyUnit > 0) ? individualQtyUnit : "";
                 if (!hasName && !isNaN(price) && price !== 0) {
                     const sign = price < 0 ? "-" : "+";
                     el.textContent = `${label} (${sign}${Math.abs(price).toLocaleString()}원)`;
@@ -1906,16 +2060,26 @@ window.enableMobileCustomPicker = function(selectEl) {
             ? {
                 price: selectedSizeOpt.dataset.price !== "" ? parseFloat(selectedSizeOpt.dataset.price) : undefined,
                 margin: selectedSizeOpt.dataset.margin !== "" ? parseFloat(selectedSizeOpt.dataset.margin) : undefined,
-                skipQtyMulti: selectedSizeOpt.dataset.skipQtyMulti === "1"
+                skipQtyMulti: selectedSizeOpt.dataset.skipQtyMulti === "1",
+                individualQtyUnit: selectedSizeOpt.dataset.individualQtyUnit !== "" ? parseFloat(selectedSizeOpt.dataset.individualQtyUnit) : undefined
             }
             : null;
+
+        // [추가] 이 사이즈에 "개별매수배수"(H열)가 등록돼 있으면, 매수별배수(options00)나
+        // 매수배수제외(G열) 대신 이 사이즈만의 계단식 배수(unit장 단위로 최대 10배)를 씁니다.
+        const individualQtyUnitForThisSize = useStandardPricing &&
+            (standardSizeFromSelection ? standardSizeFromSelection.individualQtyUnit : getStandardSizeIndividualQtyUnit(w, h));
 
         // [추가] 규격사이즈목록(options02)에서 이 사이즈에 "매수배수제외"를 표시해뒀으면,
         // 이 사이즈를 쓰는 계산(일반 옵션 그룹 + 규격사이즈 추가금액)에는 매수별배수(options00)를
         // 곱하지 않습니다(=1로 취급). 후가공은 원래대로 매수별배수가 그대로 적용됩니다.
         const skipQtyMultiplierForThisSize = useStandardPricing &&
             (standardSizeFromSelection ? standardSizeFromSelection.skipQtyMulti : getStandardSizeSkipQtyMulti(w, h));
-        const effectiveQtyFactor = skipQtyMultiplierForThisSize ? 1 : qtyFactor;
+        // [추가] "개별매수배수"가 있으면 이게 우선이고(자체 계단식 배수), 없으면 기존처럼
+        // 매수배수제외(skip=1배) 또는 매수별배수(options00, qtyFactor) 순서로 적용합니다.
+        const effectiveQtyFactor = individualQtyUnitForThisSize
+            ? getIndividualQtyPricing(enteredQty, individualQtyUnitForThisSize).multi
+            : (skipQtyMultiplierForThisSize ? 1 : qtyFactor);
 
         let sum = 0;
         let totalWeight = 0;
@@ -2174,6 +2338,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 사이즈가 바뀌면, "미싱"처럼 최소사이즈(한 변) 제한이 걸린 후가공
         // 옵션도 선택 가능 여부를 다시 판단해서 반영한다.
         if (typeof refreshFinishingExclusiveOptions === "function") refreshFinishingExclusiveOptions();
+        // [추가] 사이즈가 바뀌면 "비규격재단"에 입력해둔 가로/세로도 새 상한값에 맞춘다.
+        if (typeof refreshCustomCutSizeBounds === "function") refreshCustomCutSizeBounds();
 
         updatePrice();
     }
@@ -2189,6 +2355,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 비규격사이즈를 직접 입력한 뒤에도, 미싱 등 최소사이즈 제한이 걸린
         // 후가공 옵션의 선택 가능 여부를 최신 사이즈 기준으로 다시 반영한다.
         refreshFinishingExclusiveOptions();
+        // [추가] "비규격재단"에 입력해둔 가로/세로도 새 상한값(희망사이즈)에 맞춘다.
+        if (typeof refreshCustomCutSizeBounds === "function") refreshCustomCutSizeBounds();
         updatePrice();
     }
 
@@ -2241,6 +2409,25 @@ window.enableMobileCustomPicker = function(selectEl) {
     function validateQtyMax() {
         const qtyInput = document.getElementById("qtySelect");
         if (qtyInput.disabled) return; // "최소구간매수" 모드에서는 사용자가 값을 직접 바꿀 수 없으므로 검사 불필요
+
+        // [추가] 지금 선택된 사이즈에 "개별매수배수"(H열)가 등록돼 있으면, 최대 매수는
+        // 그 단위×10(예: 50 → 500매)이 되고, 그 이상 넘으면 500매로 되돌립니다.
+        const sizeList = document.getElementById("sizeList");
+        const selOpt = sizeList ? sizeList.selectedOptions[0] : null;
+        const individualUnit = selOpt && selOpt.dataset.individualQtyUnit !== ""
+            ? parseFloat(selOpt.dataset.individualQtyUnit)
+            : undefined;
+        if (individualUnit) {
+            const maxQty = individualUnit * 10;
+            const enteredQty = parseInt(qtyInput.value) || 0;
+            if (enteredQty > maxQty) {
+                alert(`이 사이즈는 한 번에 주문 가능한 최대 매수가 ${maxQty.toLocaleString()}매입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
+                qtyInput.value = maxQty;
+                updatePrice();
+            }
+            return;
+        }
+
         const tiers = getQtySortedTiers();
         if (!tiers.length) return;
         const maxQty = tiers[tiers.length - 1].qty;
@@ -2341,6 +2528,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 재구입 흐름으로 예전 후가공 값이 자동 선택된 경우에도, 재단/접지처럼
             // 서로 중복 선택할 수 없는 옵션 상태를 최신으로 맞춰둔다.
             refreshFinishingExclusiveOptions();
+            // [추가] 재구입 흐름으로 "비규격재단"이 자동 선택된 경우에도 입력창을 보여준다.
+            // (change 이벤트 없이 값만 채워졌을 수 있어 각 select마다 직접 토글해준다)
+            document.querySelectorAll(".finishing-select").forEach(sel => toggleCustomCutSizeBox(sel));
 
             // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
             // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
@@ -2686,13 +2876,20 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
         if (hasFinishingMutualExclusionConflict()) {
-            alert("재단과 접지는 중복선택할 수 없습니다.");
+            alert("재단, 비규격재단, 접지는 서로 중복 선택할 수 없습니다.");
             return;
         }
         // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
         const sizeViolation = findFinishingSizeRestrictionViolation();
         if (sizeViolation) {
             alert(`${sizeViolation.name}은(는) ${sizeViolation.minSide}mm 이상으로 선택해 주세요.`);
+            return;
+        }
+
+        // [추가] "비규격재단" 선택 시 입력한 가로/세로(mm)가 유효한지 최종 확인
+        const customCutResult = validateCustomCutSizeForSubmit();
+        if (!customCutResult.ok) {
+            alert(customCutResult.message);
             return;
         }
 
@@ -2762,7 +2959,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (sel.value) {
                 const subSelect = getFinishingSubSelect(sel);
                 const subValue = subSelect ? subSelect.value : "";
-                finishings.push(subValue ? `${sel.value}(${subValue})` : sel.value);
+                finishings.push(buildFinishingLabel(sel, subValue, customCutResult.width, customCutResult.height));
             }
             const fOpt = sel.options[sel.selectedIndex];
             if (!nextPageUrl && fOpt && fOpt.dataset.nextPageUrl && fOpt.dataset.nextPageUrl.startsWith("http")) {
@@ -2807,7 +3004,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             height: height,
             price: price,
             weight: weightValue,
-            finishings: finishings.join(",")
+            finishings: finishings.join(","),
+            // [추가] "비규격재단" 선택 시 입력한 가로/세로(mm). 선택하지 않았으면 빈 문자열.
+            customCutWidth: customCutResult.width || "",
+            customCutHeight: customCutResult.height || ""
         }).toString();
 
         // 선택된 옵션에 "다음페이지 이동 URL"이 입력되어 있을 때만, 선택한 모든 옵션 쿼리를 붙여
