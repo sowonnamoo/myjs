@@ -1319,7 +1319,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             <input type="number" class="customCutWidthInput" placeholder="가로mm" min="1" style="width:70px; padding:4px; text-align:center;">
             <span style="font-size:13px;">x</span>
             <input type="number" class="customCutHeightInput" placeholder="세로mm" min="1" style="width:70px; padding:4px; text-align:center;">
-            <span style="font-size:12px; color:#888;">mm (현재 선택 사이즈 이하로 입력)</span>
+            <span style="font-size:12px; color:#888;">mm (원하시는 사이즈 입력)</span>
         `;
         if (row && row.parentElement) {
             row.insertAdjacentElement("afterend", box);
@@ -2004,9 +2004,16 @@ window.enableMobileCustomPicker = function(selectEl) {
                 // 드롭다운으로 직접 고른 경우 가로/세로로 다시 찾지 않고 이 값을 그대로 씀.
                 const individualQtyUnit = parseFloat(s.individualQtyUnit);
                 el.dataset.individualQtyUnit = (!isNaN(individualQtyUnit) && individualQtyUnit > 0) ? individualQtyUnit : "";
-                if (!hasName && !isNaN(price) && price !== 0) {
-                    const sign = price < 0 ? "-" : "+";
-                    el.textContent = `${label} (${sign}${Math.abs(price).toLocaleString()}원)`;
+                if (hasName) {
+                    // [추가] 옵션이름(예: "2절(B2)100장")을 적어둔 경우에도, 실제 가로x세로 mm를
+                    // 대괄호로 뒤에 함께 보여줍니다. 예: "2절(B2)100장 [520x740mm]"
+                    const sizeSuffix = ` [${s.width}x${s.height}mm]`;
+                    if (!isNaN(price) && price !== 0) {
+                        const sign = price < 0 ? "-" : "+";
+                        el.textContent = `${label}${sizeSuffix} (${sign}${Math.abs(price).toLocaleString()}원)`;
+                    } else {
+                        el.textContent = `${label}${sizeSuffix}`;
+                    }
                 } else {
                     el.textContent = label;
                 }
