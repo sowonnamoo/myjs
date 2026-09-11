@@ -528,13 +528,16 @@
 
         <div class="option-row" id="cutWorkSizeBox" style="display:none; flex-direction: column; align-items: flex-start; padding-left: 120px;">
             <!-- 재단사이즈 -->
-            <div class="size-inputs">
+            <div class="size-inputs" id="cutSizeInputsRow">
                 <span style="color:red; width:100px;">재단사이즈</span>
                 <input type="number" id="widthInput" value="60" style="width: 60px;" disabled>
                 <span>x</span>
                 <input type="number" id="heightInput" value="50" style="width: 60px;" disabled>
                 <span>mm</span>
             </div>
+            <!-- [추가] "비규격재단" 후가공이 있는 상품에서 "희망사이즈 입력"을 눌렀을 때,
+                 위 가로/세로mm 직접입력 대신 이 안내 문구를 보여줍니다. -->
+            <div id="customCutRedirectMsg" style="display:none; color:#e74c3c; font-size:13px; font-weight:bold; padding:6px 0;">옵션의 비규격재단에서 사이즈를 입력해주세요.</div>
             <!-- 작업사이즈 (재단 + 4mm) -->
             <div class="size-inputs" style="margin-top:5px;">
                 <span style="width:100px;">작업사이즈</span>
@@ -1664,10 +1667,6 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 선택해 둔 상태에서 그런 품목으로 바뀌면, 자동으로 규격사이즈로 되돌린다.
     const CUSTOM_SIZE_UNSUPPORTED_SURCHARGE = 1000;
     function isCustomSizeUnsupportedBySelection() {
-        // [추가] "비규격재단" 후가공이 등록된 상품이면, 선택 내용과 무관하게 항상
-        // 희망사이즈(비규격) 입력을 막습니다.
-        if (productHasCustomCutFinishingOption()) return true;
-
         let unsupported = false;
         document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
@@ -2317,11 +2316,24 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     function updateSizeMode() {
         const isCustom = sizeType.value === "custom";
-        wIn.disabled = !isCustom;
-        hIn.disabled = !isCustom;
-        sizeList.disabled = isCustom;
 
-        // [추가] 재단사이즈/작업사이즈 박스는 "희망사이즈 입력(비규격)"일 때만 펼쳐 보여주고,
+        // [추가] 이 상품 후가공에 "비규격재단"이 등록돼 있으면, "희망사이즈 입력" 버튼은 그대로
+        // 눌리게 두되(막지 않음), 실제 가로/세로 직접입력은 막고 규격사이즈 목록에서 고른 값을
+        // 그대로 쓰게 합니다. 자유로운 사이즈는 후가공의 "비규격재단"에서 입력해야 합니다.
+        // (수량/건수 입력은 이 잠금과 무관하게 항상 그대로 사용 가능합니다)
+        const lockFreeSizeForCustomCut = isCustom && productHasCustomCutFinishingOption();
+
+        wIn.disabled = !isCustom || lockFreeSizeForCustomCut;
+        hIn.disabled = !isCustom || lockFreeSizeForCustomCut;
+        sizeList.disabled = isCustom && !lockFreeSizeForCustomCut;
+
+        // [추가] 재단사이즈 직접입력 줄 대신 안내 문구를 보여줄지 토글
+        const cutSizeInputsRow = document.getElementById("cutSizeInputsRow");
+        const redirectMsg = document.getElementById("customCutRedirectMsg");
+        if (cutSizeInputsRow) cutSizeInputsRow.style.display = lockFreeSizeForCustomCut ? "none" : "flex";
+        if (redirectMsg) redirectMsg.style.display = lockFreeSizeForCustomCut ? "block" : "none";
+
+        // [추가] 재단사이즈 박스는 "희망사이즈 입력(비규격)"일 때만 펼쳐 보여주고,
         // "규격사이즈" 선택 시에는 다시 접어서(숨겨서) 메뉴를 단순하게 유지함.
         const cutWorkBox = document.getElementById("cutWorkSizeBox");
         if (cutWorkBox) cutWorkBox.style.display = isCustom ? "flex" : "none";
@@ -2329,7 +2341,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         let w = parseFloat(wIn.value) || 0;
         let h = parseFloat(hIn.value) || 0;
 
-        if (!isCustom) {
+        // [수정] 진짜 비규격(자유입력)이 아닌 경우 - 즉 "규격사이즈" 모드이거나, 위에서 막아둔
+        // "비규격재단 있는 상품의 희망사이즈 모드" - 에는 규격사이즈 목록에서 고른 값을 그대로 씁니다.
+        if (!isCustom || lockFreeSizeForCustomCut) {
             const [svW, svH] = (sizeList.value || "0,0").split(",");
             w = parseFloat(svW) || 0;
             h = parseFloat(svH) || 0;
@@ -2342,7 +2356,7 @@ window.enableMobileCustomPicker = function(selectEl) {
 
         // [추가] 규격사이즈 옵션이름에 "2000장"처럼 적혀 있으면 수량/건수를 고정합니다.
         let fixedQty = null;
-        if (!isCustom) {
+        if (!isCustom || lockFreeSizeForCustomCut) {
             const selOpt = sizeList.selectedOptions && sizeList.selectedOptions[0];
             fixedQty = selOpt ? parseFixedQtyFromSizeName(selOpt.dataset.name) : null;
         }
