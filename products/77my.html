@@ -1649,12 +1649,25 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (typeof updatePrice === "function") updatePrice();
     }
 
+    // [추가] 이 상품 후가공 목록에 "비규격재단"이 등록되어 있는지 확인합니다.
+    // 등록되어 있으면, 자유로운 사이즈는 "비규격재단"에서 입력하도록 유도하고
+    // 희망사이즈(비규격) 입력 자체는 막습니다(자유수량 입력은 그대로 가능).
+    function productHasCustomCutFinishingOption() {
+        const g = finishingGroup();
+        if (!g || !Array.isArray(g.values)) return false;
+        return g.values.some(v => v && v.name === CUSTOM_CUT_FINISHING_NAME);
+    }
+
     // [추가] 현재 선택된 일반 옵션(품목) 중에 "추가마진율%(surcharge)"를 1000으로
     // 등록해 둔 품목이 있으면, 그 품목은 "희망사이즈 입력(비규격)"을 지원하지 않는다는
     // 뜻으로 보고 버튼을 비활성화하고 안내 문구를 보여준다. 이미 희망사이즈(비규격)를
     // 선택해 둔 상태에서 그런 품목으로 바뀌면, 자동으로 규격사이즈로 되돌린다.
     const CUSTOM_SIZE_UNSUPPORTED_SURCHARGE = 1000;
     function isCustomSizeUnsupportedBySelection() {
+        // [추가] "비규격재단" 후가공이 등록된 상품이면, 선택 내용과 무관하게 항상
+        // 희망사이즈(비규격) 입력을 막습니다.
+        if (productHasCustomCutFinishingOption()) return true;
+
         let unsupported = false;
         document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
@@ -2005,15 +2018,10 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const individualQtyUnit = parseFloat(s.individualQtyUnit);
                 el.dataset.individualQtyUnit = (!isNaN(individualQtyUnit) && individualQtyUnit > 0) ? individualQtyUnit : "";
                 if (hasName) {
-                    // [추가] 옵션이름(예: "2절(B2)100장")을 적어둔 경우에도, 실제 가로x세로 mm를
+                    // [수정] 옵션이름(예: "2절(B2)100장")을 적어둔 경우, 실제 가로x세로 mm를
                     // 대괄호로 뒤에 함께 보여줍니다. 예: "2절(B2)100장 [520x740mm]"
-                    const sizeSuffix = ` [${s.width}x${s.height}mm]`;
-                    if (!isNaN(price) && price !== 0) {
-                        const sign = price < 0 ? "-" : "+";
-                        el.textContent = `${label}${sizeSuffix} (${sign}${Math.abs(price).toLocaleString()}원)`;
-                    } else {
-                        el.textContent = `${label}${sizeSuffix}`;
-                    }
+                    // (가격은 지저분해 보인다는 요청으로 더 이상 표시하지 않습니다)
+                    el.textContent = `${label} [${s.width}x${s.height}mm]`;
                 } else {
                     el.textContent = label;
                 }
