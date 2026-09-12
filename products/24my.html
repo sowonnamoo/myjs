@@ -2357,8 +2357,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         workH.value = h + 4;
 
         // [추가] 규격사이즈 옵션이름에 "2000장"처럼 적혀 있으면 수량/건수를 고정합니다.
+        // [수정] 단, "비규격재단"이 있어서 잠긴 희망사이즈 모드에서는 고정수량을 적용하지 않고
+        // 수량/건수 드롭다운(최소구간매수 / 수량 직접입력)을 그대로 자유롭게 쓸 수 있게 둡니다.
         let fixedQty = null;
-        if (!isCustom || lockFreeSizeForCustomCut) {
+        if (!isCustom) {
             const selOpt = sizeList.selectedOptions && sizeList.selectedOptions[0];
             fixedQty = selOpt ? parseFixedQtyFromSizeName(selOpt.dataset.name) : null;
         }
