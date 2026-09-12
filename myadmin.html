@@ -115,6 +115,8 @@
         <div class="hint">이 품목을 선택하려면 재단사이즈의 가로/세로 중 짧은 변이 이 값(mm) 이상이어야 합니다. 예: 후가공 "미싱" 품목에 100을 적으면, 짧은 변이 100mm보다 작은 사이즈에서는 계산기에서 "미싱은 한 변 길이가 100mm 이상부터 가능합니다"라는 안내와 함께 선택할 수 없습니다. 비워두면 사이즈 제한이 없습니다.</div>
         <input type="number" id="itemMinWeightInput" placeholder="최소평량g — 예: 코팅은 150 (선택)">
         <div class="hint">이 품목을 선택하려면, 다른 옵션(용지 등)의 서브옵션에서 고른 평량(무게)이 이 값(g) 이상이어야 합니다. 예: "코팅" 품목에 150을 적으면, 다른 옵션의 서브옵션을 "70g:x1; 150g:x1.5"처럼 "숫자+g" 이름으로 만들어둔 경우 150g 이상을 고른 손님만 "코팅"을 선택할 수 있고, 그 미만이면 회색으로 비활성화됩니다. 이미 골라둔 상태에서 평량을 낮추면 자동으로 선택이 풀리고 안내가 뜹니다. 비워두면 평량과 상관없이 항상 선택 가능합니다.</div>
+        <input type="number" step="0.01" id="itemTotalMultiplierInput" placeholder="총액배수 — 예: 코팅은 1.2 (선택)">
+        <div class="hint">이 품목을 선택하면, 이 품목 자체 가격이 아니라 <b>그 시점까지 계산된 전체 합계 금액</b>에 이 배수를 곱합니다. 예: "코팅"에 1.2를 적으면, 용지값·후가공값 등 다 더한 총액이 20% 할증됩니다. 여러 품목에 동시에 걸려 있으면 서로 곱해집니다. 비워두면 기존과 동일하게 아무 영향이 없습니다.</div>
         <div class="hint"><b>참고:</b> 후가공 품목명을 정확히 "비규격재단"이라고 입력하면(다른 필드 설정 없이), 계산기 화면에서 이 옵션 선택 시 가로/세로(mm) 입력창이 자동으로 뜨고, 입력값은 이미 선택된 사이즈를 넘지 못하도록 제한되며, "재단"과는 동시 선택이 막힙니다. 손님이 입력한 사이즈는 다음페이지로 자동 전달됩니다.</div>
         <button id="itemSaveBtn">품목 저장</button>
     </div>
@@ -375,7 +377,7 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput","itemMinWeightInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput","itemMinWeightInput","itemTotalMultiplierInput"]
             .forEach(id => $(id).value = "");
         $("itemOpenNewWindowInput").checked = false;
         $("hasSubOptions").checked = false;
@@ -429,6 +431,7 @@
         }
         const minSideMM = $("itemMinSideInput").value; if (minSideMM !== "") item.minSideMM = parseFloat(minSideMM);
         const minWeightG = $("itemMinWeightInput").value; if (minWeightG !== "") item.minWeightG = parseFloat(minWeightG);
+        const totalMultiplier = $("itemTotalMultiplierInput").value; if (totalMultiplier !== "") item.totalMultiplier = parseFloat(totalMultiplier);
 
         const idx = g.values.findIndex(v => v.name === name);
         const isReplace = idx !== -1;
@@ -604,6 +607,7 @@
         $("itemNewWindowHeightInput").value = item.newWindowHeight ?? "";
         $("itemMinSideInput").value = item.minSideMM ?? "";
         $("itemMinWeightInput").value = item.minWeightG ?? "";
+        $("itemTotalMultiplierInput").value = item.totalMultiplier ?? "";
 
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
@@ -655,6 +659,7 @@
                 if (v.openInNewWindow) meta.push(`새창${(v.newWindowWidth||v.newWindowHeight) ? ` ${v.newWindowWidth||900}x${v.newWindowHeight||1000}` : ''} ✓`);
                 if (v.minSideMM !== undefined) meta.push(`한변 ${v.minSideMM}mm↑`);
                 if (v.minWeightG !== undefined) meta.push(`평량 ${v.minWeightG}g↑`);
+                if (v.totalMultiplier !== undefined) meta.push(`총액×${v.totalMultiplier}`);
                 const subHtml = v.subOptions && v.subOptions.length
                     ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => s.priceType === "multiply" ? `${s.color}(×${s.priceExtra})` : `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";
