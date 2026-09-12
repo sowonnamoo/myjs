@@ -1330,9 +1330,11 @@ window.enableMobileCustomPicker = function(selectEl) {
     // [추가] "코팅"처럼 최소평량g이 등록된 품목은, 다른 옵션에서 고른 평량(예: 150g 이상 용지)이
     // 그 값보다 낮으면 선택할 수 없게 막습니다. 지금 선택돼 있던 값이 막히게 되면
     // 자동으로 "선택안함"(또는 그 그룹의 첫 값)으로 되돌리고 안내합니다.
+    // [수정] "코팅"이 일반 옵션 그룹뿐 아니라 후가공(옵션) 그룹에도 들어갈 수 있으므로,
+    // 두 곳(#dynamicOptionsContainer, .finishing-select) 모두 검사 대상에 포함합니다.
     function refreshWeightGatedOptions() {
         const currentWeightG = getCurrentSelectedWeightG();
-        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+        document.querySelectorAll('#dynamicOptionsContainer select, .finishing-select').forEach(sel => {
             let needsReset = false;
             let resetMessage = "";
             Array.from(sel.options).forEach(opt => {
@@ -1350,6 +1352,10 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const fallback = Array.from(sel.options).find(o => !o.disabled);
                 sel.value = fallback ? fallback.value : "";
                 buildSubOptionSelect(sel);
+                // [추가] 후가공 select였다면, 재단/접지 같은 상호배타 상태와 이전 선택값
+                // 기록도 함께 최신화한다.
+                sel.dataset.prevFinishingValue = sel.value;
+                if (typeof refreshFinishingExclusiveOptions === "function") refreshFinishingExclusiveOptions();
             }
         });
     }
@@ -1873,6 +1879,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             refreshFinishingExclusiveOptions();
 
             buildSubOptionSelect(selectElement);
+            // [추가] 후가공 품목이 바뀌면(코팅처럼 최소평량g 제한이 걸린 품목 포함)
+            // 다른 옵션의 평량 선택 기준으로 선택 가능 여부를 다시 반영한다.
+            if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
 
             if (selectedOpt && selectedOpt.dataset.imageUrl) {
                 updateMainImage(selectedOpt.dataset.imageUrl);
@@ -1911,6 +1920,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 재구입 흐름이면, "추가하기"로 새로 늘어난 후가공 줄도 예전에
         // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
         lockSelectToPurchasedOptions(newSelect);
+        // [추가] 새로 추가된 줄에도 "코팅" 같은 최소평량g 제한을 바로 반영한다.
+        if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
         window.enableMobileCustomPicker(newSelect);
     });
 
@@ -2606,6 +2617,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             loadSizeList();
             loadFinishingOptions(document.querySelector(".finishing-select"));
             setupFinishingListener(document.querySelector(".finishing-select"));
+            // [추가] 페이지가 처음 열렸을 때, 후가공에 있는 "코팅" 같은 최소평량g
+            // 제한 품목도 기본 선택된 평량 기준으로 선택 가능 여부를 맞춰둔다.
+            if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
 
             // [추가] 재구입 흐름이면 예전 사이즈를 자동으로 선택
             if (isReorderFlow && reorderWidth > 0 && reorderHeight > 0) {
@@ -2624,6 +2638,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 재구입 흐름으로 "비규격재단"이 자동 선택된 경우에도 입력창을 보여준다.
             // (change 이벤트 없이 값만 채워졌을 수 있어 각 select마다 직접 토글해준다)
             document.querySelectorAll(".finishing-select").forEach(sel => toggleCustomCutSizeBox(sel));
+            // [추가] 재구입 흐름으로 옵션들이 자동 선택된 뒤에도, "코팅" 같은 최소평량g
+            // 제한 품목의 선택 가능 여부를 최신 평량 기준으로 다시 맞춰둔다.
+            if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
 
             // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
             // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
