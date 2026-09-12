@@ -1636,6 +1636,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.minWeightG !== undefined && v.minWeightG !== null && v.minWeightG !== "") {
             el.dataset.minWeightG = v.minWeightG;
         }
+        // [추가] 이 품목을 선택하면, 그 품목 자체 가격이 아니라 "지금까지 계산된 전체 금액"에
+        // 이 배수를 곱합니다. 예: 코팅에 1.2를 적으면, 다른 옵션들 다 합친 금액이 1.2배가 됩니다.
+        // 비워두면(대부분의 기존 품목) 1배로 취급되어 기존 계산 결과와 완전히 동일합니다.
+        if (v.totalMultiplier !== undefined && v.totalMultiplier !== null && v.totalMultiplier !== "") {
+            el.dataset.totalMultiplier = v.totalMultiplier;
+        }
         return el;
     }
 
@@ -2167,6 +2173,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             : (skipQtyMultiplierForThisSize ? 1 : qtyFactor);
 
         let sum = 0;
+        // [추가] 후가공(옵션2/3 등) 품목들 자체 가격의 합계. "총액배수"(코팅 등)는 이 금액에는
+        // 곱해지지 않고, 아래에서 배수 적용 후 그대로 다시 더해집니다. 즉 "코팅"이 다른
+        // 후가공(재단/미싱 등)의 단가를 같이 부풀리지 않도록 분리해서 계산합니다.
+        let finishingSum = 0;
         let totalWeight = 0;
         let totalDeliveryDays = 0;
         const summary = [];
@@ -2282,7 +2292,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 label = `${opt.value}(${subOpt.value})`;
             }
 
-            sum += itemPrice;
+            // [수정] 후가공 자체 가격은 sum이 아니라 finishingSum에 따로 쌓습니다.
+            // "총액배수"(코팅 등)가 다른 후가공 단가까지 부풀리지 않게 하기 위함입니다.
+            finishingSum += itemPrice;
             if (!isNaN(delivery)) totalDeliveryDays += delivery;
             summary.push(label);
         });
@@ -2346,6 +2358,19 @@ window.enableMobileCustomPicker = function(selectEl) {
         summary.push(`${enteredQty}매`);
         summary.push(`${count}건`);
         summaryEl.textContent = summary.filter(Boolean).join(" + ");
+
+        // [추가] "코팅"처럼 그 품목 자체 가격이 아니라 "지금까지 계산된 전체 금액"에
+        // 곱해지는 배수(예: 1.2배)가 등록돼 있으면, 선택된 모든 그런 품목의 배수를
+        // 곱해서 sum(전체 합계)에 반영합니다. 등록해둔 품목이 하나도 없으면(기존 상품들)
+        // 배수가 항상 1이라 결과가 예전과 완전히 동일합니다.
+        let totalPriceMultiplier = 1;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt || !opt.value) return;
+            const m = parseFloat(opt.dataset.totalMultiplier);
+            if (!isNaN(m) && m > 0) totalPriceMultiplier *= m;
+        });
+        sum = sum * totalPriceMultiplier + finishingSum;
 
         // 100원 단위로 반올림하면 소수점 끝자리가 50 이상일 때 위로 올라가서
         // 실제 계산값보다 최대 100원 더 비싸게 보일 수 있어 내림으로 처리합니다.
