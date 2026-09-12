@@ -1311,6 +1311,50 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
     window.checkFinishingSizeConflict = checkFinishingSizeConflict;
 
+    // [추가] 지금 화면에서 고른 서브옵션(예: "70g", "150g")들 중 "숫자+g" 형태로 된 값이
+    // 있으면 그 중 가장 큰 값을 "현재 선택된 평량(g)"으로 봅니다. 하나도 없으면 null.
+    // (일반 옵션 그룹과 후가공 그룹의 서브옵션을 모두 확인합니다)
+    function getCurrentSelectedWeightG() {
+        let maxWeight = null;
+        document.querySelectorAll('#dynamicOptionsContainer select, .finishing-select').forEach(sel => {
+            const subSelect = getFinishingSubSelect(sel);
+            if (!subSelect || !subSelect.value) return;
+            const m = /^(\d+(?:\.\d+)?)\s*g$/i.exec(subSelect.value.trim());
+            if (!m) return;
+            const g = parseFloat(m[1]);
+            if (!isNaN(g) && (maxWeight === null || g > maxWeight)) maxWeight = g;
+        });
+        return maxWeight;
+    }
+
+    // [추가] "코팅"처럼 최소평량g이 등록된 품목은, 다른 옵션에서 고른 평량(예: 150g 이상 용지)이
+    // 그 값보다 낮으면 선택할 수 없게 막습니다. 지금 선택돼 있던 값이 막히게 되면
+    // 자동으로 "선택안함"(또는 그 그룹의 첫 값)으로 되돌리고 안내합니다.
+    function refreshWeightGatedOptions() {
+        const currentWeightG = getCurrentSelectedWeightG();
+        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+            let needsReset = false;
+            let resetMessage = "";
+            Array.from(sel.options).forEach(opt => {
+                const minWeightG = parseFloat(opt.dataset.minWeightG);
+                if (isNaN(minWeightG) || minWeightG <= 0) return;
+                const blocked = currentWeightG === null || currentWeightG < minWeightG;
+                opt.disabled = blocked;
+                if (blocked && sel.value === opt.value) {
+                    needsReset = true;
+                    resetMessage = `"${opt.dataset.originalName || opt.value}"은(는) 평량 ${minWeightG}g 이상 선택 시에만 고를 수 있습니다.`;
+                }
+            });
+            if (needsReset) {
+                alert(resetMessage);
+                const fallback = Array.from(sel.options).find(o => !o.disabled);
+                sel.value = fallback ? fallback.value : "";
+                buildSubOptionSelect(sel);
+            }
+        });
+    }
+    window.refreshWeightGatedOptions = refreshWeightGatedOptions;
+
     // [추가] "비규격재단" 후가공 select 밑에 작게 가로/세로(mm) 입력창을 만들어 붙인다.
     // 이미 만들어져 있으면(같은 select에 두 번 붙지 않도록) 기존 것을 그대로 재사용한다.
     function ensureCustomCutSizeBox(selectElement) {
@@ -1582,6 +1626,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.minSideMM !== undefined && v.minSideMM !== null && v.minSideMM !== "") {
             el.dataset.minSideMm = v.minSideMM;
         }
+        // [추가] 이 품목을 선택하려면, 다른 옵션에서 고른 종이 평량(무게, g)이 최소
+        // 이 값 이상이어야 한다는 제한 (예: 코팅=150 → 150g 이상 용지에서만 선택 가능).
+        // 관리자 엑셀의 "최소평량g" 값. 평량은 다른 옵션의 서브옵션(예: "70g","150g")에서 가져옵니다.
+        if (v.minWeightG !== undefined && v.minWeightG !== null && v.minWeightG !== "") {
+            el.dataset.minWeightG = v.minWeightG;
+        }
         return el;
     }
 
@@ -1612,11 +1662,18 @@ window.enableMobileCustomPicker = function(selectEl) {
                 // [추가] 이 품목에 서브옵션(예: 2등분:3500; 3등분:7000; ...)이 등록돼 있으면
                 // 후가공과 똑같은 방식으로 오른쪽에 서브옵션 select를 만들어 붙인다.
                 buildSubOptionSelect(e.target);
+                // [추가] 품목이 바뀌면(평량 서브옵션이 있는 품목으로/에서 바뀌는 경우 포함)
+                // "코팅"처럼 최소평량g 제한이 걸린 다른 품목의 선택 가능 여부를 다시 반영한다.
+                if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
                 updateCountLockByEditOption();
             });
             // 페이지가 처음 열렸을 때 기본으로 선택돼 있는 품목에도 서브옵션이 있으면 바로 보여준다.
             buildSubOptionSelect(sel);
         });
+
+        // [추가] 페이지가 처음 열렸을 때도, 기본 선택된 평량 기준으로 "코팅" 같은
+        // 최소평량g 제한 품목의 선택 가능 여부를 한 번 맞춰둔다.
+        if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
 
         // 방금 렌더링된 기본 선택값 기준으로도 한 번 판단해둠
         updateCountLockByEditOption();
@@ -1751,7 +1808,12 @@ window.enableMobileCustomPicker = function(selectEl) {
             el.textContent = so.color;
             subSelect.appendChild(el);
         });
-        subSelect.addEventListener("change", updatePrice);
+        subSelect.addEventListener("change", () => {
+            // [추가] 서브옵션(예: 평량 "70g"/"150g")이 바뀌면, 그 평량에 따라
+            // 선택 가능 여부가 갈리는 다른 품목(예: "코팅")도 다시 확인한다.
+            if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+            updatePrice();
+        });
         anchor.insertAdjacentElement("afterend", subSelect); // wrap 바로 뒤, row의 직계 자식으로 삽입
         // [추가] 재구입 흐름이면, 방금 새로 만들어진 서브옵션(색상 등)도 예전에
         // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
