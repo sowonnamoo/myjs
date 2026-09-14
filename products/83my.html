@@ -1772,6 +1772,17 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
 
+    // [추가] 이 상품 데이터에 "후가공" 그룹(예: options2 / 후가공) 자체가 없으면
+    // 후가공 선택 UI(줄 전체)를 화면에서 숨긴다. 코드/로직은 그대로 두고 화면에만
+    // 안 보이게 하는 것이며, select들은 계속 "선택안함"(value="") 상태로 남기 때문에
+    // 견적서나 다음 페이지로 넘어갈 때는 자동으로 "후가공 선택없음"으로 처리된다.
+    function updateFinishingVisibility() {
+        const container = document.getElementById("finishingContainer");
+        if (!container) return;
+        const hasFinishing = !!finishingGroup();
+        container.style.display = hasFinishing ? "" : "none";
+    }
+
     // ---- ② 후가공(다중 선택) 렌더링 ----
     function loadFinishingOptions(selectElement) {
         selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
@@ -2640,6 +2651,8 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             applyCustomConfigToInputs();
             loadSizeList();
+            // [추가] 후가공 그룹이 없는 상품이면 후가공 선택 줄 자체를 숨긴다.
+            updateFinishingVisibility();
             loadFinishingOptions(document.querySelector(".finishing-select"));
             setupFinishingListener(document.querySelector(".finishing-select"));
             // [추가] 페이지가 처음 열렸을 때, 후가공에 있는 "코팅" 같은 최소평량g
