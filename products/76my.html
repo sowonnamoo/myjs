@@ -2244,13 +2244,6 @@ window.enableMobileCustomPicker = function(selectEl) {
             const weight = parseFloat(opt.dataset.weight) || 0;
             const delivery = parseFloat(opt.dataset.delivery) || 0;
 
-            // [추가] 가격(E열)을 비워두고 "사이즈마진"만 등록해둔 품목이 선택되어 있으면,
-            // 그 마진을 규격사이즈 가격 계산 단계에서 적용하도록 모아둔다.
-            if (opt.value && opt.dataset.priceSet !== "1" && opt.dataset.sizeMarginType) {
-                const smValue = parseFloat(opt.dataset.sizeMarginValue);
-                if (!isNaN(smValue)) sizeMarginSteps.push({ type: opt.dataset.sizeMarginType, value: smValue });
-            }
-
             // 이 select가 "수정의뢰"가 선택된 select이고, 다른(=이 select가 아닌)
             // select에서 "양면"이 선택되어 있으면 2배 할증 적용
             const isEditRequestHere = editRequestSelects.includes(sel);
@@ -2272,6 +2265,21 @@ window.enableMobileCustomPicker = function(selectEl) {
                     subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * effectiveQtyFactor;
                 }
                 itemLabel = `${opt.textContent}(${subOpt.value})`;
+            }
+
+            // [추가] 가격(E열)을 비워둔 품목이면(=이 품목 자체 가격은 0으로 계산되어
+            // 아래 itemPrice가 어차피 0이 됨), 이 품목의 "사이즈마진"과 —혹시 함께 고른
+            // 배수형 서브옵션(평량 x1.2 등)이 있다면 그 배수까지— 규격사이즈 가격 쪽에
+            // 대신 적용하도록 모아둔다. 그렇지 않으면 배수형 서브옵션이 빈(0) 가격에
+            // 곱해져서 그냥 사라져버리는 문제가 있었다.
+            if (opt.value && opt.dataset.priceSet !== "1") {
+                if (opt.dataset.sizeMarginType) {
+                    const smValue = parseFloat(opt.dataset.sizeMarginValue);
+                    if (!isNaN(smValue)) sizeMarginSteps.push({ type: opt.dataset.sizeMarginType, value: smValue });
+                }
+                if (subMultiplier !== 1) {
+                    sizeMarginSteps.push({ type: "multiply", value: subMultiplier });
+                }
             }
 
             if (useStandardPricing) {
