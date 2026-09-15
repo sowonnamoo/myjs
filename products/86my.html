@@ -1647,11 +1647,16 @@ window.enableMobileCustomPicker = function(selectEl) {
         return el;
     }
 
-    // ---- ① 일반 옵션 그룹(용지 등) 렌더링 ----
+    // ---- ① 일반 옵션 그룹(용지, 편집 등) 렌더링 ----
+    // [추가] 엑셀의 options2/options3 같은 그룹 탭에 이 상품(86my)의 품목이
+    // 하나도 적혀있지 않으면(=values가 비어있음), 관리자에는 그룹 자체가 남아있더라도
+    // 화면에는 그 옵션 줄을 아예 안 보이게 숨긴다. 그룹/데이터를 지우는 게 아니라
+    // 화면 렌더링만 건너뛰는 것이므로, 나중에 해당 그룹에 품목이 다시 채워지면
+    // 별도 설정 없이 자동으로 다시 보인다.
     function renderOptionGroups() {
         const container = document.getElementById("dynamicOptionsContainer");
         container.innerHTML = "";
-        normalGroups().forEach(g => {
+        normalGroups().filter(g => Array.isArray(g.values) && g.values.length > 0).forEach(g => {
             const row = document.createElement("div");
             row.className = "option-row";
             row.innerHTML = `<div class="label">${g.title || g.id}</div><select class="group-select" style="flex:1" data-group-id="${g.id}"></select>`;
@@ -1772,14 +1777,16 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
 
-    // [추가] 이 상품 데이터에 "후가공" 그룹(예: options2 / 후가공) 자체가 없으면
+    // [추가] 이 상품 데이터에 "후가공" 그룹(예: options2 / 후가공) 자체가 없거나,
+    // 그룹은 있어도 이 상품(86my)의 품목이 하나도 적혀있지 않아 values가 비어있으면
     // 후가공 선택 UI(줄 전체)를 화면에서 숨긴다. 코드/로직은 그대로 두고 화면에만
     // 안 보이게 하는 것이며, select들은 계속 "선택안함"(value="") 상태로 남기 때문에
     // 견적서나 다음 페이지로 넘어갈 때는 자동으로 "후가공 선택없음"으로 처리된다.
     function updateFinishingVisibility() {
         const container = document.getElementById("finishingContainer");
         if (!container) return;
-        const hasFinishing = !!finishingGroup();
+        const g = finishingGroup();
+        const hasFinishing = !!g && Array.isArray(g.values) && g.values.length > 0;
         container.style.display = hasFinishing ? "" : "none";
     }
 
