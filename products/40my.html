@@ -1644,6 +1644,17 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.totalMultiplier !== undefined && v.totalMultiplier !== null && v.totalMultiplier !== "") {
             el.dataset.totalMultiplier = v.totalMultiplier;
         }
+        // [추가] 가격(E열)이 실제로 비어있는지 여부를 따로 표시해둔다. dataset.price는
+        // 위에서 v.price ?? 0 으로 항상 채워지기 때문에, 진짜 0원인지 아예 안 적었는지
+        // 구분이 안 되므로 별도 플래그가 필요하다("사이즈마진"이 이 경우에만 동작해야 함).
+        el.dataset.priceSet = (v.price !== undefined && v.price !== null && v.price !== "") ? "1" : "";
+        // [추가] "사이즈마진" — 이 품목의 가격을 비워둔 경우에만, 규격사이즈목록에 등록된
+        // 사이즈별 가격에 이 품목을 고를 때만 추가로 적용할 배수(multiply)나 추가금액(add).
+        // 관리자 엑셀 "품목" 시트의 "사이즈마진" 칸 값(예: x1.2, 500).
+        if (v.sizeMargin && v.sizeMargin.type && v.sizeMargin.value !== undefined && v.sizeMargin.value !== null) {
+            el.dataset.sizeMarginType = v.sizeMargin.type;
+            el.dataset.sizeMarginValue = v.sizeMargin.value;
+        }
         return el;
     }
 
@@ -2218,6 +2229,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
         });
 
+        // [추가] "사이즈마진"이 걸린 품목(=가격을 비워두고 사이즈마진만 등록해둔 품목)을
+        // 선택했을 때 적용할 배수/추가금액을 순서대로 모아둔다. 아래 규격사이즈 가격 계산
+        // 단계에서 한꺼번에 적용한다.
+        const sizeMarginSteps = [];
+
         // 일반 옵션 그룹
         // - 규격사이즈(또는 규격과 같은 사이즈의 비규격): 선택한 품목의 price(원가) × (1+margin) × 매수배수 를 더합니다.
         // - 진짜 비규격사이즈: 품목 가격은 쓰지 않고, 아래 "options01 기준 추가 비용"만으로 계산합니다.
@@ -2229,6 +2245,13 @@ window.enableMobileCustomPicker = function(selectEl) {
             const margin = parseFloat(opt.dataset.margin) || 0;
             const weight = parseFloat(opt.dataset.weight) || 0;
             const delivery = parseFloat(opt.dataset.delivery) || 0;
+
+            // [추가] 가격(E열)을 비워두고 "사이즈마진"만 등록해둔 품목이 선택되어 있으면,
+            // 그 마진을 규격사이즈 가격 계산 단계에서 적용하도록 모아둔다.
+            if (opt.value && opt.dataset.priceSet !== "1" && opt.dataset.sizeMarginType) {
+                const smValue = parseFloat(opt.dataset.sizeMarginValue);
+                if (!isNaN(smValue)) sizeMarginSteps.push({ type: opt.dataset.sizeMarginType, value: smValue });
+            }
 
             // 이 select가 "수정의뢰"가 선택된 select이고, 다른(=이 select가 아닌)
             // select에서 "양면"이 선택되어 있으면 2배 할증 적용
@@ -2270,9 +2293,18 @@ window.enableMobileCustomPicker = function(selectEl) {
         // (엑셀 "규격사이즈목록" 시트나 관리자 화면 ⑤번에서 사이즈 옆에 가격을 적어둔 경우에만 적용되며,
         //  비워두면 기존과 동일하게 추가금액 없이 계산됩니다)
         if (useStandardPricing) {
-            const standardSizePrice = standardSizeFromSelection
+            let standardSizePrice = standardSizeFromSelection
                 ? (standardSizeFromSelection.price || 0)
                 : getStandardSizePrice(w, h);
+            // [추가] 가격을 비워두고 "사이즈마진"을 등록해둔 품목을 선택한 경우, 규격사이즈목록의
+            // 가격에 그 마진을 순서대로 적용한다. 배수(multiply)는 곱하고, 추가금액(add)은 더한다.
+            sizeMarginSteps.forEach(step => {
+                if (step.type === "multiply") {
+                    standardSizePrice *= step.value;
+                } else {
+                    standardSizePrice += step.value;
+                }
+            });
             if (standardSizePrice) {
                 sum += standardSizePrice * effectiveQtyFactor;
                 const sign = standardSizePrice < 0 ? "-" : "+";
@@ -2494,7 +2526,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     function validateSize(input, min, max, defaultVal) {
         const val = parseFloat(input.value);
         if (isNaN(val) || val < min || val > max) {
-            alert(`설정할 수 없는 사이즈입니다. \n가로: ${wIn.min}mm, 세로: ${hIn.min}mm부터 입력 가능합니다.`);
+            alert(`설정할 수 없는 사이즈입니다. \n가로: ${wIn.min}mm~${wIn.max}mm, 세로: ${hIn.min}mm~${hIn.max}mm 범위로 입력 가능합니다.`);
             input.value = defaultVal;
         }
         workW.value = parseFloat(wIn.value) + 4;
