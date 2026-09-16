@@ -1709,6 +1709,14 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.qtyMultiplierStep !== undefined && v.qtyMultiplierStep !== null && v.qtyMultiplierStep !== "") {
             el.dataset.qtyMultiplierStep = v.qtyMultiplierStep;
         }
+        // [추가] "예외수량"/"예외가격" — 주문 수량이 예외수량보다 적으면, 평소 가격 계산을
+        // 건너뛰고 예외가격을 그대로 쓴다. 관리자 엑셀의 "예외수량"/"예외가격" 값.
+        if (v.exceptionQty !== undefined && v.exceptionQty !== null && v.exceptionQty !== "") {
+            el.dataset.exceptionQty = v.exceptionQty;
+        }
+        if (v.exceptionPrice !== undefined && v.exceptionPrice !== null && v.exceptionPrice !== "") {
+            el.dataset.exceptionPrice = v.exceptionPrice;
+        }
         return el;
     }
 
@@ -2349,14 +2357,24 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
 
             if (useStandardPricing) {
-                let itemPrice = price * (1 + margin / 100) * effectiveQtyFactor;
-                if (applyDoublePricingHere) itemPrice *= 2;
-                itemPrice += subExtra;
-                itemPrice *= subMultiplier;
-                // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
-                // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
-                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
-                if (qtyMult !== 1) itemPrice *= qtyMult;
+                // [추가] "예외수량"보다 주문 수량이 적으면 평소 계산을 건너뛰고 "예외가격"을
+                // 그대로 씁니다(후가공 품목과 동일한 규칙).
+                const exceptionQty = parseFloat(opt.dataset.exceptionQty);
+                const exceptionPrice = parseFloat(opt.dataset.exceptionPrice);
+                const useException = !isNaN(exceptionQty) && exceptionQty > 0 && !isNaN(exceptionPrice) && enteredQty < exceptionQty;
+                let itemPrice;
+                if (useException) {
+                    itemPrice = exceptionPrice;
+                } else {
+                    itemPrice = price * (1 + margin / 100) * effectiveQtyFactor;
+                    if (applyDoublePricingHere) itemPrice *= 2;
+                    itemPrice += subExtra;
+                    itemPrice *= subMultiplier;
+                    // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
+                    // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
+                    const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                    if (qtyMult !== 1) itemPrice *= qtyMult;
+                }
                 sum += itemPrice;
             }
 
@@ -2406,24 +2424,40 @@ window.enableMobileCustomPicker = function(selectEl) {
             const margin = parseFloat(opt.dataset.margin) || 0;
             const delivery = parseFloat(opt.dataset.delivery) || 0;
 
-            let itemPrice = price * (1 + margin / 100) * qtyFactor;
+            let itemPrice;
+            // [추가] "예외수량"보다 주문 수량(enteredQty)이 적으면, 평소 계산(가격×마진×수량배수
+            // +서브옵션+감가배수)을 모두 건너뛰고 "예외가격"을 그대로 씁니다. 예: 예외수량 4,
+            // 예외가격 4000이면 4장 미만은 무조건 4,000원, 4장부터는 평소대로(가격×감가배수 등) 계산합니다.
+            const exceptionQty = parseFloat(opt.dataset.exceptionQty);
+            const exceptionPrice = parseFloat(opt.dataset.exceptionPrice);
+            const useException = !isNaN(exceptionQty) && exceptionQty > 0 && !isNaN(exceptionPrice) && enteredQty < exceptionQty;
+            if (useException) {
+                itemPrice = exceptionPrice;
+            } else {
+                itemPrice = price * (1 + margin / 100) * qtyFactor;
+            }
 
             const subSelect = getFinishingSubSelect(sel);
             let label = opt.value;
             if (subSelect && subSelect.value) {
                 const subOpt = subSelect.options[subSelect.selectedIndex];
-                if (subOpt.dataset.priceType === "multiply") {
-                    itemPrice *= parseFloat(subOpt.dataset.priceExtra) || 1;
-                } else {
-                    itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                if (!useException) {
+                    if (subOpt.dataset.priceType === "multiply") {
+                        itemPrice *= parseFloat(subOpt.dataset.priceExtra) || 1;
+                    } else {
+                        itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                    }
                 }
                 label = `${opt.value}(${subOpt.value})`;
             }
 
             // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
             // 가격(서브옵션 추가금액 포함해서 계산된 itemPrice 전체)에 배수를 곱한다.
-            const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
-            if (qtyMult !== 1) itemPrice *= qtyMult;
+            // (단, 예외가격이 적용된 경우에는 감가배수를 적용하지 않고 예외가격을 그대로 씁니다)
+            if (!useException) {
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                if (qtyMult !== 1) itemPrice *= qtyMult;
+            }
 
             // [수정] 후가공 자체 가격은 sum이 아니라 finishingSum에 따로 쌓습니다.
             // "총액배수"(코팅 등)가 다른 후가공 단가까지 부풀리지 않게 하기 위함입니다.
