@@ -1653,6 +1653,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             el.dataset.sizeMarginType = v.sizeMargin.type;
             el.dataset.sizeMarginValue = v.sizeMargin.value;
         }
+        // [추가] "감가배수" — 주문 수량(매수)이 이 값의 배수에 도달할 때마다 이 품목의
+        // 가격(서브옵션 추가금액 포함)에 곱해줄 배수를 계산하기 위한 기준값(예: 500).
+        if (v.qtyMultiplierStep !== undefined && v.qtyMultiplierStep !== null && v.qtyMultiplierStep !== "") {
+            el.dataset.qtyMultiplierStep = v.qtyMultiplierStep;
+        }
         return el;
     }
 
@@ -2021,6 +2026,16 @@ window.enableMobileCustomPicker = function(selectEl) {
             .sort((a, b) => a.qty - b.qty);
     }
 
+    // [추가] "감가배수" — 이 품목의 가격(또는 서브옵션 추가금액)에 주문 수량(매수)에 따라
+    // 곱해줄 배수를 계산한다. step(엑셀 U/V열 "감가배수" 값)으로 나눈 몫만큼 배수가 오르되,
+    // 최소 1배(수량이 step 미만이면 가격 변동 없음). 예) step=500이면 500장=1배, 1000장=2배,
+    // 1500장=3배, 2000장=4배.
+    function qtyTierMultiplier(step, qty) {
+        const s = parseFloat(step);
+        if (!s || s <= 0) return 1;
+        return Math.max(1, Math.floor((parseInt(qty) || 0) / s));
+    }
+
     function getQtyPricing(enteredQty) {
         const tiers = getQtySortedTiers();
         if (!tiers.length) return { multi: 1, tierQty: enteredQty };
@@ -2287,6 +2302,10 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (applyDoublePricingHere) itemPrice *= 2;
                 itemPrice += subExtra;
                 itemPrice *= subMultiplier;
+                // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
+                // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                if (qtyMult !== 1) itemPrice *= qtyMult;
                 sum += itemPrice;
             }
 
@@ -2349,6 +2368,11 @@ window.enableMobileCustomPicker = function(selectEl) {
                 }
                 label = `${opt.value}(${subOpt.value})`;
             }
+
+            // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
+            // 가격(서브옵션 추가금액 포함해서 계산된 itemPrice 전체)에 배수를 곱한다.
+            const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+            if (qtyMult !== 1) itemPrice *= qtyMult;
 
             // [수정] 후가공 자체 가격은 sum이 아니라 finishingSum에 따로 쌓습니다.
             // "총액배수"(코팅 등)가 다른 후가공 단가까지 부풀리지 않게 하기 위함입니다.
