@@ -119,6 +119,8 @@
         <div class="hint">이 품목을 선택하면, 이 품목 자체 가격이 아니라 <b>그 시점까지 계산된 전체 합계 금액</b>에 이 배수를 곱합니다. 예: "코팅"에 1.2를 적으면, 용지값·후가공값 등 다 더한 총액이 20% 할증됩니다. 여러 품목에 동시에 걸려 있으면 서로 곱해집니다. 비워두면 기존과 동일하게 아무 영향이 없습니다.</div>
         <input type="text" id="itemSizeMarginInput" placeholder="사이즈마진 — 예: 2 또는 +500 (선택, 가격을 비워둔 품목만)">
         <div class="hint">이 품목의 <b>가격(위 ②번 가격칸)을 비워둔 경우에만</b> 적용됩니다. 규격사이즈목록(⑤)에 사이즈별로 등록해둔 가격에, 이 품목을 골랐을 때만 추가로 마진을 얹고 싶을 때 씁니다. 그냥 숫자만 적으면 배수로 적용되어(예: <code>2</code> → 규격사이즈 가격 × 2), 값 앞에 <code>+</code>를 붙이면(예: <code>+500</code>) 규격사이즈 가격에 그 금액을 더합니다. 가격을 직접 입력해둔 품목에서는 이 값이 무시되고 기존처럼 품목 가격이 그대로 쓰입니다.</div>
+        <input type="number" step="1" id="itemQtyMultiplierStepInput" placeholder="감가배수 — 예: 500 (선택)">
+        <div class="hint">주로 후가공 품목에서 씁니다. 예: 이 품목(또는 서브옵션 추가금액)이 <code>미싱1줄(가로):40000</code>처럼 등록돼 있고 여기에 <code>500</code>을 적으면, 주문 수량이 500장 미만이면 가격 그대로, 1000장이면 2배(80,000원), 1500장이면 3배(120,000원), 2000장이면 4배 — "수량 ÷ 감가배수"의 몫만큼 이 품목 가격이 올라갑니다. 이 품목만 수량에 따라 오르고 다른 옵션 가격에는 영향이 없습니다. 비워두면 기존과 동일하게 수량과 상관없이 항상 그대로입니다.</div>
         <div class="hint"><b>참고:</b> 후가공 품목명을 정확히 "비규격재단"이라고 입력하면(다른 필드 설정 없이), 계산기 화면에서 이 옵션 선택 시 가로/세로(mm) 입력창이 자동으로 뜨고, 입력값은 이미 선택된 사이즈를 넘지 못하도록 제한되며, "재단"과는 동시 선택이 막힙니다. 손님이 입력한 사이즈는 다음페이지로 자동 전달됩니다.</div>
         <button id="itemSaveBtn">품목 저장</button>
     </div>
@@ -397,7 +399,7 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput","itemMinWeightInput","itemTotalMultiplierInput","itemSizeMarginInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput","itemMinWeightInput","itemTotalMultiplierInput","itemSizeMarginInput","itemQtyMultiplierStepInput"]
             .forEach(id => $(id).value = "");
         $("itemOpenNewWindowInput").checked = false;
         $("hasSubOptions").checked = false;
@@ -456,8 +458,9 @@
         if (sizeMarginRaw) {
             const sm = parseSizeMarginText(sizeMarginRaw);
             if (sm) item.sizeMargin = sm;
-            else { alert("사이즈마진 형식이 올바르지 않습니다. 예: x1.2 또는 500"); return; }
+            else { alert("사이즈마진 형식이 올바르지 않습니다. 예: 2 또는 +500"); return; }
         }
+        const qtyMultiplierStep = $("itemQtyMultiplierStepInput").value; if (qtyMultiplierStep !== "") item.qtyMultiplierStep = parseFloat(qtyMultiplierStep);
 
         const idx = g.values.findIndex(v => v.name === name);
         const isReplace = idx !== -1;
@@ -635,6 +638,7 @@
         $("itemMinWeightInput").value = item.minWeightG ?? "";
         $("itemTotalMultiplierInput").value = item.totalMultiplier ?? "";
         $("itemSizeMarginInput").value = sizeMarginToText(item.sizeMargin);
+        $("itemQtyMultiplierStepInput").value = item.qtyMultiplierStep ?? "";
 
         $("subOptionsContainer").innerHTML = "";
         if (Array.isArray(item.subOptions) && item.subOptions.length) {
@@ -688,6 +692,7 @@
                 if (v.minWeightG !== undefined) meta.push(`평량 ${v.minWeightG}g↑`);
                 if (v.totalMultiplier !== undefined) meta.push(`총액×${v.totalMultiplier}`);
                 if (v.sizeMargin) meta.push(`사이즈마진 ${v.sizeMargin.type === "multiply" ? "×" + v.sizeMargin.value : "+" + v.sizeMargin.value}`);
+                if (v.qtyMultiplierStep) meta.push(`감가배수 ${v.qtyMultiplierStep}장마다`);
                 const subHtml = v.subOptions && v.subOptions.length
                     ? `<div class="subopt-list">서브옵션: ${v.subOptions.map(s => s.priceType === "multiply" ? `${s.color}(×${s.priceExtra})` : `${s.color}(+${s.priceExtra})`).join(", ")}</div>`
                     : "";
