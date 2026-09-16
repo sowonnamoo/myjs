@@ -1337,12 +1337,25 @@ window.enableMobileCustomPicker = function(selectEl) {
             let resetMessage = "";
             Array.from(sel.options).forEach(opt => {
                 const minWeightG = parseFloat(opt.dataset.minWeightG);
-                if (isNaN(minWeightG) || minWeightG <= 0) return;
-                const blocked = currentWeightG === null || currentWeightG < minWeightG;
+                const maxWeightG = parseFloat(opt.dataset.maxWeightG);
+                const hasMin = !isNaN(minWeightG) && minWeightG > 0;
+                const hasMax = !isNaN(maxWeightG) && maxWeightG > 0;
+                if (!hasMin && !hasMax) return;
+                let blocked = false;
+                let msg = "";
+                if (hasMin && (currentWeightG === null || currentWeightG < minWeightG)) {
+                    blocked = true;
+                    msg = `"${opt.dataset.originalName || opt.value}"은(는) 평량 ${minWeightG}g 이상 선택 시에만 고를 수 있습니다.`;
+                }
+                // [추가] 최대평량g — 위 최소평량g과 반대로, 고른 평량이 이 값보다 크면 막는다.
+                if (!blocked && hasMax && (currentWeightG === null || currentWeightG > maxWeightG)) {
+                    blocked = true;
+                    msg = `"${opt.dataset.originalName || opt.value}"은(는) 평량 ${maxWeightG}g 이하 선택 시에만 고를 수 있습니다.`;
+                }
                 opt.disabled = blocked;
                 if (blocked && sel.value === opt.value) {
                     needsReset = true;
-                    resetMessage = `"${opt.dataset.originalName || opt.value}"은(는) 평량 ${minWeightG}g 이상 선택 시에만 고를 수 있습니다.`;
+                    resetMessage = msg;
                 }
             });
             if (needsReset) {
@@ -1635,6 +1648,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 관리자 엑셀의 "최소평량g" 값. 평량은 다른 옵션의 서브옵션(예: "70g","150g")에서 가져옵니다.
         if (v.minWeightG !== undefined && v.minWeightG !== null && v.minWeightG !== "") {
             el.dataset.minWeightG = v.minWeightG;
+        }
+        // [추가] 이 품목을 선택하려면, 다른 옵션에서 고른 종이 평량(무게, g)이 이 값
+        // 이하여야 한다는 제한 (예: 150을 적으면 150g 이하 용지에서만 선택 가능). 최소평량g과
+        // 반대 기능. 관리자 엑셀의 "최대평량g" 값.
+        if (v.maxWeightG !== undefined && v.maxWeightG !== null && v.maxWeightG !== "") {
+            el.dataset.maxWeightG = v.maxWeightG;
         }
         // [추가] 이 품목을 선택하면, 그 품목 자체 가격이 아니라 "지금까지 계산된 전체 금액"에
         // 이 배수를 곱합니다. 예: 코팅에 1.2를 적으면, 다른 옵션들 다 합친 금액이 1.2배가 됩니다.
