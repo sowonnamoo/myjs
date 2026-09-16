@@ -119,6 +119,9 @@
         <div class="hint"><b>최소평량g과 반대 기능</b>입니다. 이 품목을 선택하려면 다른 옵션에서 고른 평량이 이 값(g) 이하여야 합니다. 예: 150을 적으면, 평량 150g을 넘는 값을 고른 상태에서는 이 품목이 회색으로 비활성화됩니다. 최소평량g과 같이 적어두면 "이상~이하" 범위 제한으로도 쓸 수 있습니다. 비워두면 제한이 없습니다.</div>
         <input type="number" id="itemMaxSideInput" placeholder="최대사이즈mm(한변) — 예: 100 (선택, 최소사이즈mm(한변)의 반대)">
         <div class="hint"><b>최소사이즈mm(한변)과 반대 기능</b>입니다. 이 품목을 선택하려면 재단사이즈의 가로/세로 중 긴 변이 이 값(mm) 이하여야 합니다. 예: 100을 적으면, 긴 변이 100mm를 넘는 사이즈에서는 이 품목을 선택할 수 없습니다. 최소사이즈mm(한변)과 같이 적어두면 "이상~이하" 범위 제한으로도 쓸 수 있습니다. 비워두면 사이즈 제한이 없습니다.</div>
+        <input type="number" id="itemExceptionQtyInput" placeholder="예외수량 — 예: 4 (선택, 예외가격과 같이 적어야 동작)">
+        <input type="number" id="itemExceptionPriceInput" placeholder="예외가격 — 예: 4000 (선택, 예외수량과 같이 적어야 동작)">
+        <div class="hint"><b>예외수량 + 예외가격은 같이 적어야 동작합니다.</b> 예: 가격(위 ②번) 25000원, 감가배수 100인 품목에 예외수량 4, 예외가격 4000을 적으면, 주문 수량이 4 미만이면 마진율·서브옵션·감가배수 계산을 전부 건너뛰고 무조건 4,000원이 적용되고, 4장부터는 평소대로(가격×마진×감가배수 등) 계산되어 25,000원이 적용됩니다. 소량 주문에만 별도의 고정가를 매기고 싶을 때 씁니다. 비워두면 기존과 동일하게 항상 평소 계산대로 적용됩니다.</div>
         <input type="number" step="0.01" id="itemTotalMultiplierInput" placeholder="총액배수 — 예: 코팅은 1.2 (선택)">
         <div class="hint">이 품목을 선택하면, 이 품목 자체 가격이 아니라 <b>그 시점까지 계산된 전체 합계 금액</b>에 이 배수를 곱합니다. 예: "코팅"에 1.2를 적으면, 용지값·후가공값 등 다 더한 총액이 20% 할증됩니다. 여러 품목에 동시에 걸려 있으면 서로 곱해집니다. 비워두면 기존과 동일하게 아무 영향이 없습니다.</div>
         <input type="text" id="itemSizeMarginInput" placeholder="사이즈마진 — 예: 2 또는 +500 (선택, 가격을 비워둔 품목만)">
@@ -403,7 +406,7 @@
     });
 
     function clearItemForm() {
-        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput","itemMaxSideInput","itemMinWeightInput","itemMaxWeightInput","itemTotalMultiplierInput","itemSizeMarginInput","itemQtyMultiplierStepInput"]
+        ["itemNameInput","itemWidthInput","itemHeightInput","itemPriceInput","itemWeightInput","itemDeliveryInput","itemMarginInput","itemSurchargeInput","itemUrlInput","itemImageUrlInput","itemNextPageUrlInput","itemPriorityNextPageUrlInput","itemNewWindowWidthInput","itemNewWindowHeightInput","itemMinSideInput","itemMaxSideInput","itemMinWeightInput","itemMaxWeightInput","itemTotalMultiplierInput","itemSizeMarginInput","itemQtyMultiplierStepInput","itemExceptionQtyInput","itemExceptionPriceInput"]
             .forEach(id => $(id).value = "");
         $("itemOpenNewWindowInput").checked = false;
         $("hasSubOptions").checked = false;
@@ -457,6 +460,8 @@
         }
         const minSideMM = $("itemMinSideInput").value; if (minSideMM !== "") item.minSideMM = parseFloat(minSideMM);
         const maxSideMM = $("itemMaxSideInput").value; if (maxSideMM !== "") item.maxSideMM = parseFloat(maxSideMM);
+        const exceptionQty = $("itemExceptionQtyInput").value; if (exceptionQty !== "") item.exceptionQty = parseFloat(exceptionQty);
+        const exceptionPrice = $("itemExceptionPriceInput").value; if (exceptionPrice !== "") item.exceptionPrice = parseFloat(exceptionPrice);
         const minWeightG = $("itemMinWeightInput").value; if (minWeightG !== "") item.minWeightG = parseFloat(minWeightG);
         const maxWeightG = $("itemMaxWeightInput").value; if (maxWeightG !== "") item.maxWeightG = parseFloat(maxWeightG);
         const totalMultiplier = $("itemTotalMultiplierInput").value; if (totalMultiplier !== "") item.totalMultiplier = parseFloat(totalMultiplier);
@@ -642,6 +647,8 @@
         $("itemNewWindowHeightInput").value = item.newWindowHeight ?? "";
         $("itemMinSideInput").value = item.minSideMM ?? "";
         $("itemMaxSideInput").value = item.maxSideMM ?? "";
+        $("itemExceptionQtyInput").value = item.exceptionQty ?? "";
+        $("itemExceptionPriceInput").value = item.exceptionPrice ?? "";
         $("itemMinWeightInput").value = item.minWeightG ?? "";
         $("itemMaxWeightInput").value = item.maxWeightG ?? "";
         $("itemTotalMultiplierInput").value = item.totalMultiplier ?? "";
@@ -698,6 +705,7 @@
                 if (v.openInNewWindow) meta.push(`새창${(v.newWindowWidth||v.newWindowHeight) ? ` ${v.newWindowWidth||900}x${v.newWindowHeight||1000}` : ''} ✓`);
                 if (v.minSideMM !== undefined) meta.push(`한변 ${v.minSideMM}mm↑`);
                 if (v.maxSideMM !== undefined) meta.push(`한변 ${v.maxSideMM}mm↓`);
+                if (v.exceptionQty !== undefined && v.exceptionPrice !== undefined) meta.push(`예외 ${v.exceptionQty}미만→${v.exceptionPrice}원`);
                 if (v.minWeightG !== undefined) meta.push(`평량 ${v.minWeightG}g↑`);
                 if (v.maxWeightG !== undefined) meta.push(`평량 ${v.maxWeightG}g↓`);
                 if (v.totalMultiplier !== undefined) meta.push(`총액×${v.totalMultiplier}`);
