@@ -855,7 +855,7 @@ function openCustomSelectModal(selectEl) {
                 }
                 const sizeConflict = window.checkFinishingSizeConflict && window.checkFinishingSizeConflict(opt);
                 if (sizeConflict) {
-                    alert(`${sizeConflict.name}은(는) ${sizeConflict.minSide}mm 이상으로 선택해 주세요.`);
+                    alert(sizeConflict.message);
                     return;
                 }
                 alert("지금은 선택할 수 없는 옵션입니다.");
@@ -1098,7 +1098,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
         const sizeViolationReorder = findFinishingSizeRestrictionViolation();
         if (sizeViolationReorder) {
-            alert(`${sizeViolationReorder.name}은(는) ${sizeViolationReorder.minSide}mm 이상으로 선택해 주세요.`);
+            alert(sizeViolationReorder.message);
             return;
         }
 
@@ -1269,6 +1269,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 추가/삭제할 때마다, 사이즈가 바뀔 때마다 다시 호출해서 최신 상태로 맞춘다.
     function refreshFinishingExclusiveOptions() {
         const shortSide = getCurrentShortSideMM();
+        const longSide = getCurrentLongSideMM();
         const selects = document.querySelectorAll(".finishing-select");
         selects.forEach(sel => {
             Array.from(sel.options).forEach(opt => {
@@ -1278,8 +1279,11 @@ window.enableMobileCustomPicker = function(selectEl) {
                 }
                 const exclusiveConflict = !!findFinishingExclusiveConflict(opt.value, sel);
                 const minSide = parseFloat(opt.dataset.minSideMm);
-                const sizeConflict = !isNaN(minSide) && minSide > 0 && shortSide !== null && shortSide < minSide;
-                opt.disabled = exclusiveConflict || sizeConflict;
+                const maxSide = parseFloat(opt.dataset.maxSideMm);
+                const minSizeConflict = !isNaN(minSide) && minSide > 0 && shortSide !== null && shortSide < minSide;
+                // [추가] 최소사이즈mm(한변)의 반대 기능. 긴 변이 최대사이즈를 넘으면 선택 불가.
+                const maxSizeConflict = !isNaN(maxSide) && maxSide > 0 && longSide !== null && longSide > maxSide;
+                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict;
             });
         });
     }
@@ -1294,16 +1298,37 @@ window.enableMobileCustomPicker = function(selectEl) {
         return Math.min(w, h);
     }
 
-    // 특정 후가공 <option>이 최소사이즈(한 변) 제한 때문에 지금 선택할 수 없는
-    // 상태인지 확인한다. 선택 불가면 { name, minSide }를, 가능하면 null을 돌려준다.
+    // [추가] 위와 반대로, 가로/세로 중 긴 변(mm)을 돌려준다. "최대사이즈mm(한변)" 제한을
+    // 확인할 때 쓴다 — 긴 변이 이 값보다 크면 양쪽 다 그 안에 들어오지 않는다는 뜻이므로.
+    function getCurrentLongSideMM() {
+        const w = parseFloat(document.getElementById("widthInput")?.value);
+        const h = parseFloat(document.getElementById("heightInput")?.value);
+        if (!w || !h || isNaN(w) || isNaN(h)) return null;
+        return Math.max(w, h);
+    }
+
+    // 특정 후가공 <option>이 최소/최대사이즈(한 변) 제한 때문에 지금 선택할 수 없는
+    // 상태인지 확인한다. 선택 불가면 { name, minSide 또는 maxSide, message }를, 가능하면 null을 돌려준다.
     function checkFinishingSizeConflict(optionEl) {
         if (!optionEl) return null;
         const minSide = parseFloat(optionEl.dataset.minSideMm);
-        if (isNaN(minSide) || minSide <= 0) return null;
-        const shortSide = getCurrentShortSideMM();
-        if (shortSide === null) return null; // 사이즈 정보가 아직 없으면 막지 않음
-        if (shortSide < minSide) {
-            return { name: optionEl.dataset.originalName || optionEl.value, minSide };
+        const maxSide = parseFloat(optionEl.dataset.maxSideMm);
+        const hasMin = !isNaN(minSide) && minSide > 0;
+        const hasMax = !isNaN(maxSide) && maxSide > 0;
+        if (!hasMin && !hasMax) return null;
+        const name = optionEl.dataset.originalName || optionEl.value;
+        if (hasMin) {
+            const shortSide = getCurrentShortSideMM();
+            if (shortSide !== null && shortSide < minSide) {
+                return { name, minSide, message: `${name}은(는) ${minSide}mm 이상으로 선택해 주세요.` };
+            }
+        }
+        // [추가] 최소사이즈mm(한변)의 반대 기능. 긴 변이 최대사이즈보다 크면 선택할 수 없다.
+        if (hasMax) {
+            const longSide = getCurrentLongSideMM();
+            if (longSide !== null && longSide > maxSide) {
+                return { name, maxSide, message: `${name}은(는) ${maxSide}mm 이하로 선택해 주세요.` };
+            }
         }
         return null;
     }
@@ -1643,6 +1668,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.minSideMM !== undefined && v.minSideMM !== null && v.minSideMM !== "") {
             el.dataset.minSideMm = v.minSideMM;
         }
+        // [추가] 최소사이즈mm(한변)의 반대 기능. 재단사이즈의 가로/세로 중 긴 변이 이 값(mm)을
+        // 넘으면 이 품목을 선택할 수 없다는 제한. 관리자 엑셀의 "최대사이즈mm(한변)" 값.
+        if (v.maxSideMM !== undefined && v.maxSideMM !== null && v.maxSideMM !== "") {
+            el.dataset.maxSideMm = v.maxSideMM;
+        }
         // [추가] 이 품목을 선택하려면, 다른 옵션에서 고른 종이 평량(무게, g)이 최소
         // 이 값 이상이어야 한다는 제한 (예: 코팅=150 → 150g 이상 용지에서만 선택 가능).
         // 관리자 엑셀의 "최소평량g" 값. 평량은 다른 옵션의 서브옵션(예: "70g","150g")에서 가져옵니다.
@@ -1926,7 +1956,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 그 기준에 못 미치면 선택을 취소하고 안내 메시지를 띄운다.
             const sizeConflict = checkFinishingSizeConflict(selectedOpt);
             if (sizeConflict) {
-                alert(`${sizeConflict.name}은(는) ${sizeConflict.minSide}mm 이상으로 선택해 주세요.`);
+                alert(sizeConflict.message);
                 e.target.value = e.target.dataset.prevFinishingValue || "";
                 refreshFinishingExclusiveOptions();
                 return;
@@ -3118,7 +3148,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
         const sizeViolation = findFinishingSizeRestrictionViolation();
         if (sizeViolation) {
-            alert(`${sizeViolation.name}은(는) ${sizeViolation.minSide}mm 이상으로 선택해 주세요.`);
+            alert(sizeViolation.message);
             return;
         }
 
