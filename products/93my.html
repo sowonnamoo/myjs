@@ -1613,26 +1613,40 @@ window.enableMobileCustomPicker = function(selectEl) {
         return { multi: step, maxQty: unit * maxSteps };
     }
 
-    // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "점진매수배수"(장수 단위)가
-    // 적혀 있으면 그 값을 반환합니다. 개별매수배수와 달리 계단식이 아니라, 입력 매수를 이
-    // 값으로 나눈 비율만큼 가격이 매끄럽게 늘어납니다(예: 50을 적으면 60장 주문 시 60/50=1.2배).
-    // 값이 없으면 undefined.
-    function getStandardSizeProgressiveQtyUnit(w, h) {
+    // [수정] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "점진매수배수"(수량:배수
+    // 쌍의 목록, 예: 50:1;60:1.1;70:1.2;80:1.3;100:1.45)가 적혀 있으면 그 표를 배열로
+    // 반환합니다. 개별매수배수(50장 단위 계단식, 정수배만)와 달리, 구간마다 1.45처럼 딱
+    // 떨어지지 않는 배수도 자유롭게 지정할 수 있습니다. 값이 없으면 undefined.
+    function getStandardSizeProgressiveQtyTiers(w, h) {
         const g = standardSizeConfig();
         if (!g || !Array.isArray(g.sizes)) return undefined;
         const match = g.sizes.find(s => {
             const sw = parseFloat(s.width), sh = parseFloat(s.height);
             return (sw === w && sh === h) || (sw === h && sh === w);
         });
-        const unit = match ? parseFloat(match.progressiveQtyUnit) : NaN;
-        return (!isNaN(unit) && unit > 0) ? unit : undefined;
+        return (match && Array.isArray(match.progressiveQtyTiers) && match.progressiveQtyTiers.length)
+            ? match.progressiveQtyTiers
+            : undefined;
     }
 
-    // [추가] "점진매수배수" 단위(unit)를 기준으로 입력 매수(enteredQty)에 맞는 배수를 계산합니다.
-    // 개별매수배수처럼 계단식으로 끊어 올리지 않고, 그냥 "입력 매수 ÷ unit"을 그대로 배수로
-    // 씁니다. 예: unit=50, 60장 주문 → 60/50=1.2배, 80장 주문 → 80/50=1.6배.
-    function getProgressiveQtyPricing(enteredQty, unit) {
-        return { multi: enteredQty / unit };
+    // [수정] "점진매수배수" 표(tiers, [{qty, multi}, ...] 정렬돼 있음)를 기준으로 입력
+    // 매수(enteredQty)에 맞는 배수를 찾습니다. 매수별배수(options00)의 getQtyPricing과 같은
+    // 규칙: 입력 매수 이하인 첫 구간의 배수를 그대로 쓰고, 등록된 가장 큰 구간보다 많이
+    // 입력하면 마지막 두 구간의 증가율로 선형 연장합니다.
+    function getProgressiveQtyPricing(enteredQty, tiers) {
+        if (!tiers || !tiers.length) return { multi: 1 };
+        const matched = tiers.find(t => enteredQty <= t.qty);
+        if (matched) return matched;
+        const last = tiers[tiers.length - 1];
+        if (tiers.length >= 2) {
+            const prev = tiers[tiers.length - 2];
+            const qtyDiff = last.qty - prev.qty;
+            const multiDiff = last.multi - prev.multi;
+            const rate = qtyDiff > 0 ? multiDiff / qtyDiff : 0;
+            const extraQty = enteredQty - last.qty;
+            return { multi: last.multi + rate * extraQty };
+        }
+        return { multi: last.multi };
     }
 
     // [추가] "완성파일 접수 (jpg, png)" 옵션만 모바일 화면에서 "폰사진, 폰이미지 접수"로
@@ -2218,10 +2232,12 @@ window.enableMobileCustomPicker = function(selectEl) {
                 // 드롭다운으로 직접 고른 경우 가로/세로로 다시 찾지 않고 이 값을 그대로 씀.
                 const individualQtyUnit = parseFloat(s.individualQtyUnit);
                 el.dataset.individualQtyUnit = (!isNaN(individualQtyUnit) && individualQtyUnit > 0) ? individualQtyUnit : "";
-                // [추가] "점진매수배수"(I열)가 등록돼 있으면 이 옵션에도 저장해서, 규격사이즈를
-                // 드롭다운으로 직접 고른 경우 가로/세로로 다시 찾지 않고 이 값을 그대로 씀.
-                const progressiveQtyUnit = parseFloat(s.progressiveQtyUnit);
-                el.dataset.progressiveQtyUnit = (!isNaN(progressiveQtyUnit) && progressiveQtyUnit > 0) ? progressiveQtyUnit : "";
+                // [수정] "점진매수배수"(I열, 수량:배수 표)가 등록돼 있으면 이 옵션에도 JSON
+                // 문자열로 저장해서, 규격사이즈를 드롭다운으로 직접 고른 경우 가로/세로로
+                // 다시 찾지 않고 이 값을 그대로 씀.
+                el.dataset.progressiveQtyTiers = (Array.isArray(s.progressiveQtyTiers) && s.progressiveQtyTiers.length)
+                    ? JSON.stringify(s.progressiveQtyTiers)
+                    : "";
                 if (hasName) {
                     // [수정] 옵션이름(예: "2절(B2)100장")을 적어둔 경우, 실제 가로x세로 mm를
                     // 대괄호로 뒤에 함께 보여줍니다. 예: "2절(B2)100장 [520x740mm]"
@@ -2280,7 +2296,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 margin: selectedSizeOpt.dataset.margin !== "" ? parseFloat(selectedSizeOpt.dataset.margin) : undefined,
                 skipQtyMulti: selectedSizeOpt.dataset.skipQtyMulti === "1",
                 individualQtyUnit: selectedSizeOpt.dataset.individualQtyUnit !== "" ? parseFloat(selectedSizeOpt.dataset.individualQtyUnit) : undefined,
-                progressiveQtyUnit: selectedSizeOpt.dataset.progressiveQtyUnit !== "" ? parseFloat(selectedSizeOpt.dataset.progressiveQtyUnit) : undefined
+                progressiveQtyTiers: selectedSizeOpt.dataset.progressiveQtyTiers !== "" ? (() => { try { return JSON.parse(selectedSizeOpt.dataset.progressiveQtyTiers); } catch (e) { return undefined; } })() : undefined
             }
             : null;
 
@@ -2289,22 +2305,22 @@ window.enableMobileCustomPicker = function(selectEl) {
         const individualQtyUnitForThisSize = useStandardPricing &&
             (standardSizeFromSelection ? standardSizeFromSelection.individualQtyUnit : getStandardSizeIndividualQtyUnit(w, h));
 
-        // [추가] "점진매수배수"(I열) — 개별매수배수와 달리 계단식이 아니라, 입력 매수를 이
-        // 값으로 나눈 비율만큼 가격이 매끄럽게 늘어납니다. 개별매수배수가 함께 적혀 있으면
-        // 개별매수배수가 우선합니다(두 값이 동시에 쓰일 일은 거의 없지만, 우선순위를 명확히 해둠).
-        const progressiveQtyUnitForThisSize = useStandardPricing && !individualQtyUnitForThisSize &&
-            (standardSizeFromSelection ? standardSizeFromSelection.progressiveQtyUnit : getStandardSizeProgressiveQtyUnit(w, h));
+        // [수정] "점진매수배수"(I열, 수량:배수 표) — 개별매수배수(50장 단위 정수배만)와 달리,
+        // 구간마다 1.45처럼 자유로운 배수를 지정할 수 있는 표입니다. 개별매수배수가 함께
+        // 적혀 있으면 개별매수배수가 우선합니다.
+        const progressiveQtyTiersForThisSize = useStandardPricing && !individualQtyUnitForThisSize &&
+            (standardSizeFromSelection ? standardSizeFromSelection.progressiveQtyTiers : getStandardSizeProgressiveQtyTiers(w, h));
 
         // [추가] 규격사이즈목록(options02)에서 이 사이즈에 "매수배수제외"를 표시해뒀으면,
         // 이 사이즈를 쓰는 계산(일반 옵션 그룹 + 규격사이즈 추가금액)에는 매수별배수(options00)를
         // 곱하지 않습니다(=1로 취급). 후가공은 원래대로 매수별배수가 그대로 적용됩니다.
         const skipQtyMultiplierForThisSize = useStandardPricing &&
             (standardSizeFromSelection ? standardSizeFromSelection.skipQtyMulti : getStandardSizeSkipQtyMulti(w, h));
-        // [수정] 우선순위: 개별매수배수(계단식) > 점진매수배수(비례식) > 매수배수제외(1배) > 매수별배수(options00).
+        // [수정] 우선순위: 개별매수배수(계단식) > 점진매수배수(수량:배수 표) > 매수배수제외(1배) > 매수별배수(options00).
         const effectiveQtyFactor = individualQtyUnitForThisSize
             ? getIndividualQtyPricing(enteredQty, individualQtyUnitForThisSize).multi
-            : progressiveQtyUnitForThisSize
-                ? getProgressiveQtyPricing(enteredQty, progressiveQtyUnitForThisSize).multi
+            : progressiveQtyTiersForThisSize
+                ? getProgressiveQtyPricing(enteredQty, progressiveQtyTiersForThisSize).multi
                 : (skipQtyMultiplierForThisSize ? 1 : qtyFactor);
 
         let sum = 0;
