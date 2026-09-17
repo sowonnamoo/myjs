@@ -157,7 +157,7 @@
     <!-- 5. 규격 사이즈 목록 (options02) -->
     <div class="control-box">
         <h3>⑤ 규격 사이즈 목록 (options02)</h3>
-        <div class="hint">계산기 화면의 "규격사이즈" 드롭다운에 그대로 나오는 목록입니다. 비규격에서 여기 등록된 사이즈와 똑같은 값을 입력하면 규격 가격과 동일하게 계산됩니다. 가격을 적으면 그 사이즈 선택 시 기존 옵션 가격에 해당 금액이 추가로 더해집니다(선택 사항, 비워두면 추가금액 없음). 마진을 적으면 그 사이즈 선택 시 계산된 가격에 배수를 곱해 퍼센테이지로 올리거나 내릴 수 있습니다(예: 1.1 = 10% 인상, 0.9 = 10% 인하, 선택 사항, 비워두면 적용 안 함). 옵션이름을 적으면 드롭다운에 "가로x세로 mm" 대신 적은 이름이 표시됩니다(선택 사항, 비워두면 기존처럼 mm로 표시). <b>개별매수배수</b>를 적으면(예: 50) 이 사이즈만 매수별배수(options00)나 매수배수제외 대신 그 단위(장수)로 계단식 가격이 적용됩니다 — 1~50장은 1배, 51~100장은 2배, 이렇게 최대 10배(=500장)까지 자동 계산되고, 그 이상은 500장으로 제한되어 건수를 늘려 구입해야 합니다(선택 사항, 비워두면 기존 매수별배수/매수배수제외를 그대로 따름). <b>점진매수배수</b>는 개별매수배수와 같은 자리지만, 개별매수배수처럼 "50장 단위로 딱딱 끊어서 정수배(1배,2배,3배...)로만" 오르는 게 아니라, <b>수량:배수 쌍을 세미콜론으로 나열해서 구간마다 원하는 배수를 자유롭게(1.45처럼 딱 안 떨어지는 값도) 지정</b>할 수 있습니다. 예: <code>50:1;60:1.1;70:1.2;80:1.3;100:1.45</code> → 1~50장은 1배, 51~60장은 1.1배, 61~70장은 1.2배, 71~80장은 1.3배, 81~100장은 1.45배. 등록해둔 가장 큰 구간(100장)을 넘게 주문하면 마지막 두 구간의 증가율로 자동 연장해서 계산합니다(매수별배수 시트와 같은 방식). 개별매수배수와 동시에 적으면 개별매수배수가 우선합니다(선택 사항, 비워두면 기존 매수별배수/매수배수제외를 그대로 따름).</div>
+        <div class="hint">계산기 화면의 "규격사이즈" 드롭다운에 그대로 나오는 목록입니다. 비규격에서 여기 등록된 사이즈와 똑같은 값을 입력하면 규격 가격과 동일하게 계산됩니다. 가격을 적으면 그 사이즈 선택 시 기존 옵션 가격에 해당 금액이 추가로 더해집니다(선택 사항, 비워두면 추가금액 없음). 마진을 적으면 그 사이즈 선택 시 계산된 가격에 배수를 곱해 퍼센테이지로 올리거나 내릴 수 있습니다(예: 1.1 = 10% 인상, 0.9 = 10% 인하, 선택 사항, 비워두면 적용 안 함). 옵션이름을 적으면 드롭다운에 "가로x세로 mm" 대신 적은 이름이 표시됩니다(선택 사항, 비워두면 기존처럼 mm로 표시). <b>개별매수배수</b>를 적으면(예: 50) 이 사이즈만 매수별배수(options00)나 매수배수제외 대신 그 단위(장수)로 계단식 가격이 적용됩니다 — 1~50장은 1배, 51~100장은 2배, 이렇게 최대 10배(=500장)까지 자동 계산되고, 그 이상은 500장으로 제한되어 건수를 늘려 구입해야 합니다(선택 사항, 비워두면 기존 매수별배수/매수배수제외를 그대로 따름). <b>초기수량/점진매수/점진매수배수</b> 세 칸은 개별매수배수와 같은 자리를 쓰는 또 다른 계단식 배수 방식입니다. 개별매수배수처럼 "장수 단위로 딱딱 끊어서 정수배(1배,2배,3배...)로만" 오르는 게 아니라, <b>초기수량까지는 1배이고, 그 이후로는 점진매수 장수 단위마다 점진매수배수만큼씩 자유롭게(1.03처럼 딱 안 떨어지는 값도) 계속 배수가 늘어납니다.</b> 예: 초기수량 <code>50</code>, 점진매수 <code>10</code>, 점진매수배수 <code>0.03</code> → 1~50장은 1배, 51~60장은 1.03배, 61~70장은 1.06배, 71~80장은 1.09배 ... 이렇게 구간 수 제한 없이 같은 규칙으로 계속 이어집니다. 개별매수배수와 동시에 적으면 개별매수배수가 우선합니다(전부 선택 사항, 점진매수/점진매수배수 중 하나라도 비우면 기존 매수별배수/매수배수제외를 그대로 따름).</div>
         <div id="sizeRowsContainer"></div>
         <button id="addSizeRowBtn" class="secondary" type="button">행 추가</button>
         <button id="saveSizeListBtn">규격 사이즈 목록 저장</button>
@@ -272,20 +272,16 @@
         if (!sm) return "";
         return sm.type === "add" ? `+${sm.value}` : `${sm.value}`;
     }
-    // [수정] "점진매수배수" 입력칸(50:1;60:1.1;70:1.2 같은 텍스트)을 [{qty,multi},...] 배열로
-    // 바꾸고, 반대로 저장된 배열을 다시 입력칸에 보여줄 텍스트로 바꾸는 헬퍼.
-    function parseProgressiveQtyText(raw) {
-        const t = String(raw || "").trim();
-        if (!t) return undefined;
-        const tiers = t.split(";").map(s => s.trim()).filter(Boolean).map(pair => {
-            const [q, m] = pair.split(":").map(x => (x || "").trim());
-            return { qty: parseFloat(q), multi: parseFloat(m) };
-        }).filter(x => !isNaN(x.qty) && x.qty > 0 && !isNaN(x.multi)).sort((a, b) => a.qty - b.qty);
-        return tiers.length ? tiers : undefined;
-    }
-    function progressiveQtyTiersToText(tiers) {
-        if (!Array.isArray(tiers) || !tiers.length) return "";
-        return tiers.map(t => `${t.qty}:${t.multi}`).join(";");
+    // [수정] "초기수량"/"점진매수"/"점진매수배수" 세 입력칸을 { initialQty, stepQty,
+    // stepMultiplier } 규칙 객체로 바꾼다. 초기수량까지는 1배, 그 이후로는 점진매수
+    // 장수 단위로 점진매수배수만큼씩 계속 배수가 늘어난다(구간 수 제한 없음).
+    function buildProgressiveQtyRule(initialQtyRaw, stepQtyRaw, stepMultiplierRaw) {
+        const stepQty = parseFloat(stepQtyRaw);
+        const stepMultiplier = parseFloat(stepMultiplierRaw);
+        if (isNaN(stepQty) || stepQty <= 0 || isNaN(stepMultiplier)) return undefined;
+        const initialQtyParsed = parseFloat(initialQtyRaw);
+        const initialQty = (!isNaN(initialQtyParsed) && initialQtyParsed >= 0) ? initialQtyParsed : 0;
+        return { initialQty, stepQty, stepMultiplier };
     }
     function findSpecial(id) {
         return productData.options.find(o => o.id === id);
@@ -568,7 +564,7 @@
     });
 
     // ---- ⑤ 규격 사이즈 목록 (options02) ----
-    function addSizeRow(width = "", height = "", price = "", margin = "", name = "", skipQtyMulti = false, individualQtyUnit = "", progressiveQtyText = "") {
+    function addSizeRow(width = "", height = "", price = "", margin = "", name = "", skipQtyMulti = false, individualQtyUnit = "", progressiveInitialQty = "", progressiveStepQty = "", progressiveStepMultiplier = "") {
         const row = document.createElement("div");
         row.className = "row-flex";
         row.innerHTML = `
@@ -579,7 +575,9 @@
             <input type="text" class="size-name" placeholder="옵션이름(선택, 예: 엽서 사이즈)" value="${name}">
             <label class="checkline" style="white-space:nowrap;"><input type="checkbox" class="size-skip-qty-multi" ${skipQtyMulti ? "checked" : ""}> 매수배수제외</label>
             <input type="number" class="size-individual-qty-unit" placeholder="개별매수배수(선택, 예: 50)" value="${individualQtyUnit}" style="width:170px;">
-            <input type="text" class="size-progressive-qty" placeholder="점진매수배수(선택, 예: 50:1;60:1.1;70:1.2)" value="${progressiveQtyText}" style="width:260px;">
+            <input type="number" class="size-progressive-initial-qty" placeholder="초기수량(선택, 예: 50)" value="${progressiveInitialQty}" style="width:130px;">
+            <input type="number" class="size-progressive-step-qty" placeholder="점진매수(선택, 예: 10)" value="${progressiveStepQty}" style="width:130px;">
+            <input type="number" step="0.01" class="size-progressive-step-multiplier" placeholder="점진매수배수(선택, 예: 0.03)" value="${progressiveStepMultiplier}" style="width:150px;">
             <button type="button" class="small danger remove-size">삭제</button>
         `;
         row.querySelector(".remove-size").addEventListener("click", () => row.remove());
@@ -591,7 +589,13 @@
         $("sizeRowsContainer").innerHTML = "";
         const o = findSpecial("options02");
         if (o && Array.isArray(o.sizes) && o.sizes.length > 0) {
-            o.sizes.forEach(s => addSizeRow(s.width, s.height, s.price !== undefined ? s.price : "", s.margin !== undefined ? s.margin : "", s.name !== undefined ? s.name : "", !!s.skipQtyMulti, s.individualQtyUnit !== undefined ? s.individualQtyUnit : "", progressiveQtyTiersToText(s.progressiveQtyTiers)));
+            o.sizes.forEach(s => {
+                const r = s.progressiveQtyRule;
+                addSizeRow(s.width, s.height, s.price !== undefined ? s.price : "", s.margin !== undefined ? s.margin : "", s.name !== undefined ? s.name : "", !!s.skipQtyMulti, s.individualQtyUnit !== undefined ? s.individualQtyUnit : "",
+                    (r && r.stepQty) ? (r.initialQty !== undefined ? r.initialQty : 0) : "",
+                    (r && r.stepQty) ? r.stepQty : "",
+                    (r && r.stepQty) ? r.stepMultiplier : "");
+            });
         } else {
             addSizeRow();
         }
@@ -608,7 +612,9 @@
             const name = r.querySelector(".size-name").value.trim();
             const skipQtyMulti = r.querySelector(".size-skip-qty-multi").checked;
             const individualQtyUnit = r.querySelector(".size-individual-qty-unit").value;
-            const progressiveQtyRaw = r.querySelector(".size-progressive-qty").value;
+            const progressiveInitialQty = r.querySelector(".size-progressive-initial-qty").value;
+            const progressiveStepQty = r.querySelector(".size-progressive-step-qty").value;
+            const progressiveStepMultiplier = r.querySelector(".size-progressive-step-multiplier").value;
             if (width !== "" && height !== "") {
                 const size = { width: parseFloat(width), height: parseFloat(height) };
                 if (price !== "") size.price = parseFloat(price);
@@ -616,8 +622,8 @@
                 if (name !== "") size.name = name;
                 if (skipQtyMulti) size.skipQtyMulti = true;
                 if (individualQtyUnit !== "" && parseFloat(individualQtyUnit) > 0) size.individualQtyUnit = parseFloat(individualQtyUnit);
-                const progressiveQtyTiers = parseProgressiveQtyText(progressiveQtyRaw);
-                if (progressiveQtyTiers) size.progressiveQtyTiers = progressiveQtyTiers;
+                const progressiveQtyRule = buildProgressiveQtyRule(progressiveInitialQty, progressiveStepQty, progressiveStepMultiplier);
+                if (progressiveQtyRule) size.progressiveQtyRule = progressiveQtyRule;
                 sizes.push(size);
             }
         });
@@ -786,7 +792,8 @@
                     const nameText = s.name ? ` / 이름: ${s.name}` : "";
                     const skipText = s.skipQtyMulti ? ` / <span style="color:#c0392b;">매수배수제외</span>` : "";
                     const individualQtyText = (s.individualQtyUnit !== undefined && s.individualQtyUnit > 0) ? ` / <span style="color:#2a6df5;">개별매수배수 ${s.individualQtyUnit}장 단위</span>` : "";
-                    const progressiveQtyText = (Array.isArray(s.progressiveQtyTiers) && s.progressiveQtyTiers.length) ? ` / <span style="color:#2a6df5;">점진매수배수 ${progressiveQtyTiersToText(s.progressiveQtyTiers)}</span>` : "";
+                    const pRule = s.progressiveQtyRule;
+                    const progressiveQtyText = (pRule && pRule.stepQty) ? ` / <span style="color:#2a6df5;">점진매수배수 ${pRule.initialQty || 0}장까지 1배, 이후 ${pRule.stepQty}장마다 +${pRule.stepMultiplier}배</span>` : "";
                     return `<div class="item-row"><div>${s.width} × ${s.height} mm</div><div>${priceText}${marginText}${nameText}${skipText}${individualQtyText}${progressiveQtyText}</div></div>`;
                 }).join("");
         } else {
