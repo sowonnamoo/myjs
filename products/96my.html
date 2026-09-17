@@ -2369,10 +2369,16 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [수정] "초기수량/점진매수/점진매수배수"(및 개별매수배수)는 원래 규격사이즈
             // 자체와 연동된 배수라서, 그 사이즈의 기본 품목(options1)에만 적용하고
             // options2/options3 같은 다른 옵션 그룹에는 전혀 영향을 주지 않도록 분리합니다.
-            // options2 등은 지금까지처럼 매수별배수(options00, qtyFactor)만 그대로 쓰고,
-            // 감가배수(qtyMult)도 이 qtyFactor 위에만 곱해져서 두 배수가 서로 간섭하지 않습니다.
+            // options2 등은 지금까지처럼 매수별배수(options00, qtyFactor)를 쓰되, "감가배수"가
+            // 등록된 품목은 아래에서 itemQtyFactor 대신 1을 쓰도록 따로 처리합니다(이중 적용 방지).
             const isBaseItemGroup = sel.dataset.groupId === "options1";
             const itemQtyFactor = isBaseItemGroup ? effectiveQtyFactor : qtyFactor;
+            // [수정] "감가배수"가 등록된 품목은 그 자체가 이미 수량에 따른 자기만의 배수
+            // 규칙을 갖고 있으므로, 위 itemQtyFactor(매수별배수 등)를 곱하지 않습니다.
+            // 안 그러면 상품 전체 수량 배수와 감가배수가 이중으로 곱해져서 가격이 의도한
+            // 것보다 훨씬 크게 튀는 문제가 있었습니다(후가공 품목과 동일한 이유).
+            const hasQtyTierStep = opt.dataset.qtyMultiplierStep !== undefined && opt.dataset.qtyMultiplierStep !== "";
+            const effectiveItemQtyFactor = hasQtyTierStep ? 1 : itemQtyFactor;
 
             // 이 select가 "수정의뢰"가 선택된 select이고, 다른(=이 select가 아닌)
             // select에서 "양면"이 선택되어 있으면 2배 할증 적용
@@ -2392,7 +2398,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (subOpt.dataset.priceType === "multiply") {
                     subMultiplier = parseFloat(subOpt.dataset.priceExtra) || 1;
                 } else {
-                    subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * itemQtyFactor;
+                    subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * effectiveItemQtyFactor;
                 }
                 itemLabel = `${opt.textContent}(${subOpt.value})`;
             }
@@ -2422,7 +2428,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (useException) {
                     itemPrice = exceptionPrice;
                 } else {
-                    itemPrice = price * (1 + margin / 100) * itemQtyFactor;
+                    itemPrice = price * (1 + margin / 100) * effectiveItemQtyFactor;
                     if (applyDoublePricingHere) itemPrice *= 2;
                     itemPrice += subExtra;
                     itemPrice *= subMultiplier;
@@ -2480,6 +2486,15 @@ window.enableMobileCustomPicker = function(selectEl) {
             const margin = parseFloat(opt.dataset.margin) || 0;
             const delivery = parseFloat(opt.dataset.delivery) || 0;
 
+            // [수정] "감가배수"가 등록된 품목은 그 자체가 이미 수량에 따른 자기만의 배수
+            // 규칙을 갖고 있으므로, 상품 전체의 매수별배수(options00, qtyFactor)는 곱하지
+            // 않습니다. 안 그러면 상품 전체 수량 배수와 감가배수가 이중으로 곱해져서
+            // 가격이 의도한 것보다 훨씬 크게 튀는 문제가 있었습니다(예: 매수별배수가 큰
+            // 상품에서 감가배수 품목을 고르면 25,000원이 아니라 수십만원으로 계산되는 문제).
+            // 감가배수가 없는 다른 후가공 품목은 기존처럼 qtyFactor가 그대로 적용됩니다.
+            const hasQtyTierStep = opt.dataset.qtyMultiplierStep !== undefined && opt.dataset.qtyMultiplierStep !== "";
+            const finishingQtyFactor = hasQtyTierStep ? 1 : qtyFactor;
+
             let itemPrice;
             // [추가] "예외수량"보다 주문 수량(enteredQty)이 적으면, 평소 계산(가격×마진×수량배수
             // +서브옵션+감가배수)을 모두 건너뛰고 "예외가격"을 그대로 씁니다. 예: 예외수량 4,
@@ -2490,7 +2505,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (useException) {
                 itemPrice = exceptionPrice;
             } else {
-                itemPrice = price * (1 + margin / 100) * qtyFactor;
+                itemPrice = price * (1 + margin / 100) * finishingQtyFactor;
             }
 
             const subSelect = getFinishingSubSelect(sel);
@@ -2501,7 +2516,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                     if (subOpt.dataset.priceType === "multiply") {
                         itemPrice *= parseFloat(subOpt.dataset.priceExtra) || 1;
                     } else {
-                        itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * qtyFactor;
+                        itemPrice += (parseFloat(subOpt.dataset.priceExtra) || 0) * finishingQtyFactor;
                     }
                 }
                 label = `${opt.value}(${subOpt.value})`;
