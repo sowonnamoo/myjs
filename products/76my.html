@@ -1632,14 +1632,19 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     // [수정] "초기수량/점진매수/점진매수배수" 규칙을 기준으로 입력 매수(enteredQty)에
     // 맞는 배수를 계산합니다. 초기수량까지는 1배이고, 그 이후로는 점진매수 장수 단위마다
-    // 점진매수배수만큼씩 계속 배수가 늘어납니다(구간 수 제한 없음). 예: 초기수량 50,
-    // 점진매수 10, 점진매수배수 0.03 → 51~60장은 1.03배, 61~70장은 1.06배 ...
+    // 점진매수배수만큼씩 배수가 늘어납니다. [수정] 개별매수배수와 마찬가지로 최대 10구간
+    // (=steps 10)까지만 오르고 그 이상은 10구간째 배수로 고정됩니다. 이 상한이 없으면
+    // 점진매수(구간 크기)를 실제 주문 수량에 비해 작게 적어둔 경우, 수량이 커질수록
+    // 배수가 한도 없이 계속 불어나 옵션 가격이 비정상적으로 치솟는 문제가 있었습니다.
+    // 예: 초기수량 50, 점진매수 10, 점진매수배수 0.03 → 51~60장 1.03배 ... 최대
+    // 141장 이상은(10구간째) 1.30배로 고정, 그 이상은 더 오르지 않습니다.
+    const PROGRESSIVE_QTY_MAX_STEPS = 10;
     function getProgressiveQtyPricing(enteredQty, rule) {
         if (!rule || !rule.stepQty) return { multi: 1 };
         const initialQty = rule.initialQty || 0;
         if (enteredQty <= initialQty) return { multi: 1 };
-        const steps = Math.ceil((enteredQty - initialQty) / rule.stepQty);
-        return { multi: 1 + steps * rule.stepMultiplier };
+        const steps = Math.min(PROGRESSIVE_QTY_MAX_STEPS, Math.ceil((enteredQty - initialQty) / rule.stepQty));
+        return { multi: 1 + steps * rule.stepMultiplier, maxQty: initialQty + rule.stepQty * PROGRESSIVE_QTY_MAX_STEPS };
     }
 
     // [추가] "완성파일 접수 (jpg, png)" 옵션만 모바일 화면에서 "폰사진, 폰이미지 접수"로
@@ -2359,6 +2364,14 @@ window.enableMobileCustomPicker = function(selectEl) {
             const weight = parseFloat(opt.dataset.weight) || 0;
             const delivery = parseFloat(opt.dataset.delivery) || 0;
 
+            // [수정] "초기수량/점진매수/점진매수배수"(및 개별매수배수)는 원래 규격사이즈
+            // 자체와 연동된 배수라서, 그 사이즈의 기본 품목(options1)에만 적용하고
+            // options2/options3 같은 다른 옵션 그룹에는 전혀 영향을 주지 않도록 분리합니다.
+            // options2 등은 지금까지처럼 매수별배수(options00, qtyFactor)만 그대로 쓰고,
+            // 감가배수(qtyMult)도 이 qtyFactor 위에만 곱해져서 두 배수가 서로 간섭하지 않습니다.
+            const isBaseItemGroup = sel.dataset.groupId === "options1";
+            const itemQtyFactor = isBaseItemGroup ? effectiveQtyFactor : qtyFactor;
+
             // 이 select가 "수정의뢰"가 선택된 select이고, 다른(=이 select가 아닌)
             // select에서 "양면"이 선택되어 있으면 2배 할증 적용
             const isEditRequestHere = editRequestSelects.includes(sel);
@@ -2377,7 +2390,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (subOpt.dataset.priceType === "multiply") {
                     subMultiplier = parseFloat(subOpt.dataset.priceExtra) || 1;
                 } else {
-                    subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * effectiveQtyFactor;
+                    subExtra = (parseFloat(subOpt.dataset.priceExtra) || 0) * itemQtyFactor;
                 }
                 itemLabel = `${opt.textContent}(${subOpt.value})`;
             }
@@ -2407,7 +2420,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (useException) {
                     itemPrice = exceptionPrice;
                 } else {
-                    itemPrice = price * (1 + margin / 100) * effectiveQtyFactor;
+                    itemPrice = price * (1 + margin / 100) * itemQtyFactor;
                     if (applyDoublePricingHere) itemPrice *= 2;
                     itemPrice += subExtra;
                     itemPrice *= subMultiplier;
