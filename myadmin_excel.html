@@ -92,11 +92,12 @@
             <p><b>그룹</b> 시트: 상품ID / 그룹ID(비워두면 자동 부여) / 그룹제목 — 그룹제목만 관리하는 용도입니다. 아래처럼 시트를 나눠 적으면 이 시트에 안 적어도 자동으로 그룹이 만들어지니, 제목을 따로 붙이고 싶을 때만 채우면 됩니다.</p>
             <p><b>품목</b> 시트: 상품ID / 품목명 / 가로mm / 세로mm / 가격 / 종이무게 / 배송일 / 마진율% / 추가마진율% / 클릭URL / 이미지URL / 다음페이지이동URL / 최우선다음페이지이동URL / ... (아래 서브옵션 등 계속) — 이 <b>품목</b> 시트는 기본 그룹(<b>options1</b>)의 품목들만 적는 시트입니다.
             <br><b>그 외 그룹(options2, options3 ...)은 "품목" 시트에 섞지 말고, 그 그룹ID 이름 그대로 새 시트 탭을 만들어서 적으세요.</b> 예를 들어 엑셀 하단에 <code>options2</code>, <code>options3</code>라는 이름의 시트 탭을 새로 만들고, 그 안에 상품ID / 품목명 / 가로mm ... 를 똑같은 순서로 적으면(그룹ID 칸은 필요 없음, 시트 이름 자체가 그룹ID가 됩니다) 자동으로 그 그룹의 품목으로 인식됩니다. 그룹이 몇 개든(options4, options5 ...) 같은 방식으로 시트만 새로 추가하면 됩니다.
-            <br>모든 그룹 시트(품목/options2/options3 ...)는 공통으로 다음 칸들을 씁니다: 가로mm / 세로mm / 가격 / 종이무게 / 배송일 / 마진율% / 추가마진율% / 클릭URL / 이미지URL / 다음페이지이동URL / 최우선다음페이지이동URL / <b>서브옵션</b>(<code>이름:값</code>을 세미콜론으로 연결. 값이 숫자면 <b>추가금액</b>으로 처리되어 그 품목 가격에 더해집니다. 예: <code>유광골드:2000; 무광레드:1500</code>. 값 앞에 <code>x</code>를 붙이면 <b>배수</b>로 처리되어 그 품목 가격에 곱해집니다. 예: <code>2등분:3500; 3등분:x1.5</code> → "2등분"은 +3,500원, "3등분"은 품목가격×1.5. 종이 평량(무게)별로 가격을 다르게 받고 싶으면 이름을 <code>70g</code>, <code>80g</code>처럼 "숫자+g" 형태로 적어서 배수를 걸어두세요. 예: <code>70g:x1; 80g:x1.2; 100g:x1.3; 120g:x1.4; 150g:x1.5; 180g:x1.6; 220g:x1.7; 260g:x1.8</code> → 그 품목(용지)을 고르면 오른쪽에 평량 선택 드롭다운이 뜨고, 고른 평량에 따라 가격이 배수로 계산됩니다. 이렇게 "숫자+g" 이름으로 만들어둔 평량은 아래 <b>최소평량g</b>과 연동됩니다) / <b>최소사이즈mm(한변)</b>(선택 사항. 예: 후가공 그룹의 "미싱" 품목에 <code>100</code>을 적으면, 01my 계산기에서 재단사이즈의 가로/세로 중 짧은 변이 100mm보다 작을 때는 "미싱"을 선택할 수 없고 "미싱은 한 변 길이가 100mm 이상부터 가능합니다" 같은 안내가 뜹니다. 비워두면 사이즈 제한 없이 항상 선택 가능합니다) / <b>최소평량g</b>(선택 사항. 예: 다른 그룹의 "코팅" 품목에 <code>150</code>을 적으면, 손님이 다른 옵션(용지 등)에서 "70g:x1; 150g:x1.5"처럼 평량 서브옵션 중 150g 이상을 고른 경우에만 "코팅"을 선택할 수 있고, 그 미만이면 회색으로 비활성화됩니다. 이미 "코팅"이 선택된 상태에서 평량을 낮은 값으로 바꾸면 자동으로 선택이 풀리고 안내가 뜹니다. 비워두면 평량과 상관없이 항상 선택 가능합니다) / <b>총액배수</b>(선택 사항. 예: "코팅" 품목에 <code>1.2</code>를 적으면, 코팅 자체 가격이 아니라 <b>그 시점까지 계산된 전체 합계 금액</b>에 1.2를 곱합니다(=20% 할증). 용지값, 후가공값 등 다른 옵션들 다 더한 금액 전체가 커지는 방식이라 "코팅 선택 시 총액 20% 할증"처럼 쓸 때 적합합니다. 여러 품목에 총액배수를 동시에 걸어두면 서로 곱해집니다(예: 1.2 × 1.1 = 1.32배). 비워두면 1배로 취급되어 기존 계산 결과에 전혀 영향이 없습니다) / <b>특수 품목명 "비규격재단"</b>(선택 사항. 후가공 그룹의 품목명을 정확히 <code>비규격재단</code>이라고 적으면, 01my 계산기에서 이 옵션을 선택했을 때 그 아래에 작은 "가로mm x 세로mm" 입력창이 자동으로 나타납니다. 손님이 입력한 사이즈는 이미 선택한 사이즈(규격사이즈든 희망사이즈든)를 넘을 수 없도록 자동 제한되며, "재단" 품목과는 동시에 선택할 수 없습니다. 손님이 입력한 값은 다음 페이지로 <code>customCutWidth</code>, <code>customCutHeight</code> 파라미터와 후가공 목록에 "비규격재단(120x80mm)" 형태로 함께 전달됩니다. 이 품목 자체의 <b>가격/종이무게/마진율</b> 등은 일반 후가공 품목과 똑같이 작동하니, 필요하면 여기에 기본 가공비를 적어두세요) / <b>사이즈마진</b>(선택 사항. 이 품목의 <b>가격(E열)을 비워둔 경우에만</b> 쓰입니다. 규격사이즈목록 시트에 사이즈별로 등록해둔 가격에, 이 품목을 골랐을 때만 추가로 마진을 얹고 싶을 때 씁니다. 그냥 숫자만 적으면 배수로 적용되어(예: <code>2</code> → 규격사이즈 가격 × 2), 값 앞에 <code>+</code>를 붙이면(예: <code>+500</code>) 규격사이즈 가격에 그 금액을 더합니다. 가격(E열)을 적어둔 품목에서는 이 값이 무시되고 기존처럼 품목 가격이 그대로 쓰입니다. 비워두면 기존과 동일하게 아무 영향이 없습니다) / <b>감가배수</b>(선택 사항. 주로 후가공 그룹에서 씁니다. 예: "미싱" 품목에 서브옵션으로 <code>미싱1줄(가로):40000; 미싱1줄(세로):40000</code>처럼 등록해두고 감가배수에 <code>500</code>을 적으면, 주문 수량이 500장 미만이면 가격 그대로, 1000장이면 2배(80,000원), 1500장이면 3배(120,000원), 2000장이면 4배 식으로 "수량 ÷ 감가배수"의 몫만큼 이 품목(서브옵션 추가금액 포함)의 가격이 올라갑니다. 이 품목만 수량에 따라 오르고, 다른 옵션 가격에는 영향을 주지 않습니다. 비워두면 기존과 동일하게 수량과 상관없이 항상 그대로입니다) / <b>최대평량g</b>(선택 사항. <b>최소평량g과 반대 기능</b>입니다. 예: 어떤 품목에 <code>150</code>을 적으면, 손님이 다른 옵션에서 고른 평량이 150g 이하일 때만 이 품목을 선택할 수 있고, 150g을 넘으면 회색으로 비활성화됩니다. 최소평량g과 동시에 적어두면 "이상~이하" 범위로도 쓸 수 있습니다. 비워두면 평량과 상관없이 항상 선택 가능합니다) / <b>최대사이즈mm(한변)</b>(선택 사항. <b>최소사이즈mm(한변)과 반대 기능</b>입니다. 예: 어떤 품목에 <code>100</code>을 적으면, 재단사이즈의 가로/세로 중 긴 변이 100mm를 넘으면 이 품목을 선택할 수 없습니다. 최소사이즈mm(한변)과 같이 적어두면 "이상~이하" 범위 제한으로도 쓸 수 있습니다. 비워두면 사이즈 제한이 없습니다) / <b>예외수량</b> + <b>예외가격</b>(둘 다 선택 사항이며 <b>같이 적어야</b> 동작합니다. 예: 가격(E열) 25000원, 감가배수 100인 품목에 예외수량 <code>4</code>, 예외가격 <code>4000</code>을 적으면, 주문 수량이 4 미만이면 마진율·서브옵션·감가배수 계산을 전부 건너뛰고 무조건 4,000원이 적용되고, 4장부터는 평소대로(가격×마진×감가배수 등) 계산되어 25,000원이 적용됩니다. 소량 주문일 때만 별도의 고정가를 매기고 싶을 때 씁니다. 비워두면 기존과 동일하게 항상 평소 계산대로 적용됩니다)</p>
+            <br>모든 그룹 시트(품목/options2/options3 ...)는 공통으로 다음 칸들을 씁니다: 가로mm / 세로mm / 가격 / 종이무게 / 배송일 / 마진율% / 추가마진율% / 클릭URL / 이미지URL / 다음페이지이동URL / 최우선다음페이지이동URL / <b>서브옵션</b>(<code>이름:값</code>을 세미콜론으로 연결. 값이 숫자면 <b>추가금액</b>으로 처리되어 그 품목 가격에 더해집니다. 예: <code>유광골드:2000; 무광레드:1500</code>. 값 앞에 <code>x</code>를 붙이면 <b>배수</b>로 처리되어 그 품목 가격에 곱해집니다. 예: <code>2등분:3500; 3등분:x1.5</code> → "2등분"은 +3,500원, "3등분"은 품목가격×1.5. 종이 평량(무게)별로 가격을 다르게 받고 싶으면 이름을 <code>70g</code>, <code>80g</code>처럼 "숫자+g" 형태로 적어서 배수를 걸어두세요. 예: <code>70g:x1; 80g:x1.2; 100g:x1.3; 120g:x1.4; 150g:x1.5; 180g:x1.6; 220g:x1.7; 260g:x1.8</code> → 그 품목(용지)을 고르면 오른쪽에 평량 선택 드롭다운이 뜨고, 고른 평량에 따라 가격이 배수로 계산됩니다. 이렇게 "숫자+g" 이름으로 만들어둔 평량은 아래 <b>최소평량g</b>과 연동됩니다) / <b>최소사이즈mm(한변)</b>(선택 사항. 예: 후가공 그룹의 "미싱" 품목에 <code>100</code>을 적으면, 01my 계산기에서 재단사이즈의 가로/세로 중 짧은 변이 100mm보다 작을 때는 "미싱"을 선택할 수 없고 "미싱은 한 변 길이가 100mm 이상부터 가능합니다" 같은 안내가 뜹니다. 비워두면 사이즈 제한 없이 항상 선택 가능합니다) / <b>최소평량g</b>(선택 사항. 예: 다른 그룹의 "코팅" 품목에 <code>150</code>을 적으면, 손님이 다른 옵션(용지 등)에서 "70g:x1; 150g:x1.5"처럼 평량 서브옵션 중 150g 이상을 고른 경우에만 "코팅"을 선택할 수 있고, 그 미만이면 회색으로 비활성화됩니다. 이미 "코팅"이 선택된 상태에서 평량을 낮은 값으로 바꾸면 자동으로 선택이 풀리고 안내가 뜹니다. 비워두면 평량과 상관없이 항상 선택 가능합니다) / <b>총액배수</b>(선택 사항. 예: "코팅" 품목에 <code>1.2</code>를 적으면, 코팅 자체 가격이 아니라 <b>그 시점까지 계산된 전체 합계 금액</b>에 1.2를 곱합니다(=20% 할증). 용지값, 후가공값 등 다른 옵션들 다 더한 금액 전체가 커지는 방식이라 "코팅 선택 시 총액 20% 할증"처럼 쓸 때 적합합니다. 여러 품목에 총액배수를 동시에 걸어두면 서로 곱해집니다(예: 1.2 × 1.1 = 1.32배). 비워두면 1배로 취급되어 기존 계산 결과에 전혀 영향이 없습니다) / <b>특수 품목명 "비규격재단"</b>(선택 사항. 후가공 그룹의 품목명을 정확히 <code>비규격재단</code>이라고 적으면, 01my 계산기에서 이 옵션을 선택했을 때 그 아래에 작은 "가로mm x 세로mm" 입력창이 자동으로 나타납니다. 손님이 입력한 사이즈는 이미 선택한 사이즈(규격사이즈든 희망사이즈든)를 넘을 수 없도록 자동 제한되며, "재단" 품목과는 동시에 선택할 수 없습니다. 손님이 입력한 값은 다음 페이지로 <code>customCutWidth</code>, <code>customCutHeight</code> 파라미터와 후가공 목록에 "비규격재단(120x80mm)" 형태로 함께 전달됩니다. 이 품목 자체의 <b>가격/종이무게/마진율</b> 등은 일반 후가공 품목과 똑같이 작동하니, 필요하면 여기에 기본 가공비를 적어두세요) / <b>사이즈마진</b>(선택 사항. 이 품목의 <b>가격(E열)을 비워둔 경우에만</b> 쓰입니다. 규격사이즈목록 시트에 사이즈별로 등록해둔 가격에, 이 품목을 골랐을 때만 추가로 마진을 얹고 싶을 때 씁니다. 그냥 숫자만 적으면 배수로 적용되어(예: <code>2</code> → 규격사이즈 가격 × 2), 값 앞에 <code>+</code>를 붙이면(예: <code>+500</code>) 규격사이즈 가격에 그 금액을 더합니다. 가격(E열)을 적어둔 품목에서는 이 값이 무시되고 기존처럼 품목 가격이 그대로 쓰입니다. 비워두면 기존과 동일하게 아무 영향이 없습니다) / <b>감가배수</b>(선택 사항. 주로 후가공 그룹에서 씁니다. 예: "미싱" 품목에 서브옵션으로 <code>미싱1줄(가로):40000; 미싱1줄(세로):40000</code>처럼 등록해두고 감가배수에 <code>500</code>을 적으면, 주문 수량이 500장 미만이면 가격 그대로, 1000장이면 2배(80,000원), 1500장이면 3배(120,000원), 2000장이면 4배 식으로 "수량 ÷ 감가배수"의 몫만큼 이 품목(서브옵션 추가금액 포함)의 가격이 올라갑니다. 이 품목만 수량에 따라 오르고, 다른 옵션 가격에는 영향을 주지 않습니다. 비워두면 기존과 동일하게 수량과 상관없이 항상 그대로입니다) / <b>최대평량g</b>(선택 사항. <b>최소평량g과 반대 기능</b>입니다. 예: 어떤 품목에 <code>150</code>을 적으면, 손님이 다른 옵션에서 고른 평량이 150g 이하일 때만 이 품목을 선택할 수 있고, 150g을 넘으면 회색으로 비활성화됩니다. 최소평량g과 동시에 적어두면 "이상~이하" 범위로도 쓸 수 있습니다. 비워두면 평량과 상관없이 항상 선택 가능합니다) / <b>최대사이즈mm(한변)</b>(선택 사항. <b>최소사이즈mm(한변)과 반대 기능</b>입니다. 예: 어떤 품목에 <code>100</code>을 적으면, 재단사이즈의 가로/세로 중 긴 변이 100mm를 넘으면 이 품목을 선택할 수 없습니다. 최소사이즈mm(한변)과 같이 적어두면 "이상~이하" 범위 제한으로도 쓸 수 있습니다. 비워두면 사이즈 제한이 없습니다) / <b>예외수량</b> + <b>예외가격</b>(둘 다 선택 사항이며 <b>같이 적어야</b> 동작합니다. 예: 가격(E열) 25000원, 감가배수 100인 품목에 예외수량 <code>4</code>, 예외가격 <code>4000</code>을 적으면, 주문 수량이 4 미만이면 마진율·서브옵션·감가배수 계산을 전부 건너뛰고 무조건 4,000원이 적용되고, 4장부터는 평소대로(가격×마진×감가배수 등) 계산되어 25,000원이 적용됩니다. 소량 주문일 때만 별도의 고정가를 매기고 싶을 때 씁니다. 비워두면 기존과 동일하게 항상 평소 계산대로 적용됩니다) / <b>옵션고정</b>(선택 사항. 주로 후가공 그룹에서 씁니다. <code>Y</code>로 적으면, 01my 계산기에서 이 품목이 항상 강제로 선택되어 있고 "선택안함"이 아예 사라져서 손님이 선택을 해제할 수 없습니다. 비워두면 기존처럼 손님이 자유롭게 선택/해제할 수 있습니다)</p>
             <p><b>매수별배수</b> 시트: 상품ID / 매수 / 배수</p>
             <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대·<b>최소가격</b>) / 값 — <b>최소가격</b>은 선택 사항으로, 적어두면 희망사이즈(비규격) 입력 시 계산된 금액이 이 값보다 낮을 때는 이 값으로, 이 값 이상이면 계산된 금액 그대로 보여줍니다(예: 30000을 적으면 30,000원 미만으로 계산돼도 30,000원으로 표시). 비워두면 지금처럼 계산된 값을 그대로 보여줍니다.</p>
             <p><b>규격사이즈목록</b> 시트: 상품ID / 가로mm / 세로mm / 가격 / 마진 / 옵션이름 / <b>매수배수제외</b> (계산기 화면의 "규격사이즈" 드롭다운에 나오는 목록입니다. 사이즈 하나당 한 행씩 적으세요. <b>가격</b>은 선택 사항이며, 값을 적으면 해당 규격사이즈를 선택했을 때 그 금액이 기존 옵션 가격에 추가로 더해집니다. <b>마진</b>도 선택 사항이며, 1.1처럼 적으면 그 사이즈 선택 시 계산된 가격에 곱해져서 10% 인상되고, 0.9처럼 적으면 10% 인하됩니다. <b>옵션이름</b>(F열)도 선택 사항이며, 값을 적으면 드롭다운에 "가로x세로 mm" 대신 여기 적은 이름이 표시됩니다(예: "엽서 사이즈"). 비워두면 기존처럼 "가로x세로 mm"로 표시됩니다. <b>매수배수제외</b>(G열)도 선택 사항이며, <code>Y</code>를 적으면 이 사이즈를 선택했을 때는 매수별배수(options00)가 적용되지 않고 등록해둔 가격을 그대로 씁니다(단, 후가공은 그대로 매수별배수가 적용됩니다). 비워두면 기존처럼 매수별배수가 적용됩니다) / <b>개별매수배수</b>(H열, 선택 사항. 이 사이즈만의 "장수 단위" 계단식 배수를 씁니다. 예를 들어 <code>50</code>을 적으면 1~50장은 등록해둔 가격 그대로(1배), 51~100장은 2배, 101~150장은 3배 ... 이렇게 50장씩 늘어날 때마다 1배씩 올라가서 최대 10배(=500장)까지 자동으로 계산됩니다. 500장을 넘게 입력하면 "한 번에 주문 가능한 최대 매수는 500매입니다"라는 안내와 함께 500장으로 되돌아가며, 그 이상은 건수를 늘려서 구입해야 합니다. 이 값을 적어두면 매수배수제외(G열)나 매수별배수(options00)보다 이 계단식 배수가 우선 적용됩니다. 비워두면 기존처럼 매수별배수(options00) 또는 매수배수제외(G열) 설정을 따릅니다) / <b>초기수량</b>(I열) / <b>점진매수</b>(J열) / <b>점진매수배수</b>(K열) — 이 세 칸이 한 세트로, 개별매수배수와 같은 자리를 쓰는 또 다른 계단식 배수 방식입니다(전부 선택 사항). <b>초기수량</b>에는 "여기까지는 등록해둔 가격 그대로(1배)"가 적용되는 기준 장수를, <b>점진매수</b>에는 몇 장 늘어날 때마다 배수를 올릴지(구간 단위), <b>점진매수배수</b>에는 그 구간마다 얼마씩 배수를 더할지를 적습니다. 예: 초기수량 <code>50</code>, 점진매수 <code>10</code>, 점진매수배수 <code>0.03</code>을 적으면 → 1~50장은 등록해둔 가격 그대로(1배), 51~60장은 1.03배, 61~70장은 1.06배, 71~80장은 1.09배 … 이렇게 10장 늘어날 때마다 0.03배씩 계속 올라가며, 구간 수에 제한이 없어 얼마든지 큰 수량까지 같은 규칙으로 자동 계산됩니다(개별매수배수처럼 딱 떨어지는 정수배가 아니라, 1.03·1.06처럼 자유로운 배수를 쓸 수 있는 점이 다릅니다). 세 칸 중 하나라도 비어 있거나 점진매수가 0 이하이면 이 기능은 적용되지 않습니다. 개별매수배수와 이 세 칸을 같은 사이즈에 동시에 적어두면 개별매수배수가 우선 적용됩니다. 비워두면 기존처럼 매수별배수(options00) 또는 매수배수제외(G열) 설정을 따릅니다)</p>
             <p><b>삭제</b> 시트: 상품ID 한 칸만 있습니다. 여기 적힌 상품ID는 Firestore 문서 자체가 통째로 삭제됩니다.</p>
+            <p><b>최저가격고정</b> 시트: 01my~284my 전체가 미리 채워져 내려받아집니다. B열에 <b>Y</b>를 적으면, 그 상품은 01my.html에서 희망사이즈(비규격)를 입력할 때 기본 품목(options1)에 등록된 가로mm/세로mm보다 작게 입력해도 가격이 그 사이즈 밑으로 내려가지 않고 고정됩니다(가로·세로 중 하나라도 더 크게 입력하면 해당 없음). 이 시트에만 있고 다른 시트(그룹/품목 등)에 전혀 데이터가 없는 상품ID는 안전을 위해 무시됩니다 — 그룹/품목 데이터가 함께 있는 상품만 반영됩니다.</p>
             <p>상품ID나 품목명이 비어있는 행은 자동으로 무시됩니다. 새 상품ID를 적으면 새 문서가 만들어지고, 기존 상품ID를 적으면 그 문서 전체가 엑셀 내용으로 덮어써집니다.</p>
         </div>
     </div>
@@ -225,12 +226,17 @@
         const groupRows = [["상품ID", "그룹ID", "그룹제목"]];
         // "품목" 시트는 기본 그룹(options1)만 담고, 그 밖의 그룹(options2, options3 ...)은
         // 그룹ID 이름을 딴 별도 시트로 나눠 내려받습니다. 그래서 그 탭 안에서는 그룹ID 칸이 필요 없습니다.
-        const itemHeaderNoGroup = ["상품ID", "품목명", "가로mm", "세로mm", "가격", "종이무게", "배송일", "마진율%", "추가마진율%", "클릭URL", "이미지URL", "다음페이지이동URL", "최우선다음페이지이동URL", "새창으로열기", "새창가로px", "새창세로px", "서브옵션", "최소사이즈mm(한변)", "최소평량g", "총액배수", "사이즈마진", "감가배수", "최대평량g", "최대사이즈mm(한변)", "예외수량", "예외가격"];
+        const itemHeaderNoGroup = ["상품ID", "품목명", "가로mm", "세로mm", "가격", "종이무게", "배송일", "마진율%", "추가마진율%", "클릭URL", "이미지URL", "다음페이지이동URL", "최우선다음페이지이동URL", "새창으로열기", "새창가로px", "새창세로px", "서브옵션", "최소사이즈mm(한변)", "최소평량g", "총액배수", "사이즈마진", "감가배수", "최대평량g", "최대사이즈mm(한변)", "예외수량", "예외가격", "옵션고정"];
         const itemRows = [itemHeaderNoGroup]; // "품목" 시트 = options1 전용
         const groupSheetItemRows = {}; // { "options2": [[...],[...]], "options3": [...] }
         const qtyRows = [["상품ID", "매수", "배수"]];
         const customRows = [["상품ID", "항목", "값"]];
         const sizeRows = [["상품ID", "가로mm", "세로mm", "가격", "마진", "옵션이름", "매수배수제외", "개별매수배수", "초기수량", "점진매수", "점진매수배수"]];
+        // [추가] "최저가격고정" — 이 상품에 Y로 표시해두면, 01my.html에서 희망사이즈(비규격)를
+        // 기본 품목(options1)에 등록된 가로mm/세로mm보다 작게 입력해도 가격이 그 밑으로
+        // 내려가지 않고 고정됩니다. 01my~284my를 미리 다 채워두고 필요한 것만 Y로 바꾸면 됩니다.
+        const minPriceFixedRows = [["상품ID", "최저가격고정"]];
+        const minPriceFixedIdsSeen = new Set();
 
         // [추가] { type: "multiply"|"add", value } 형태로 저장된 사이즈마진을, 엑셀 셀에
         // 그대로 다시 적어넣을 수 있는 텍스트로 바꾼다(예: 2, +500). 그냥 숫자만=배수,
@@ -254,7 +260,8 @@
                 orEmpty(v.url), orEmpty(v.imageUrl), orEmpty(v.nextPageUrl), orEmpty(v.priorityNextPageUrl),
                 v.openInNewWindow ? "Y" : "", orEmpty(v.newWindowWidth), orEmpty(v.newWindowHeight), subText,
                 orEmpty(v.minSideMM), orEmpty(v.minWeightG), orEmpty(v.totalMultiplier), sizeMarginToText(v.sizeMargin),
-                orEmpty(v.qtyMultiplierStep), orEmpty(v.maxWeightG), orEmpty(v.maxSideMM), orEmpty(v.exceptionQty), orEmpty(v.exceptionPrice)
+                orEmpty(v.qtyMultiplierStep), orEmpty(v.maxWeightG), orEmpty(v.maxSideMM), orEmpty(v.exceptionQty), orEmpty(v.exceptionPrice),
+                v.optionLocked ? "Y" : ""
             ];
         }
 
@@ -296,7 +303,19 @@
             if (o02 && Array.isArray(o02.sizes)) {
                 o02.sizes.forEach(s => sizeRows.push([id, orEmpty(s.width), orEmpty(s.height), orEmpty(s.price), orEmpty(s.margin), orEmpty(s.name), s.skipQtyMulti ? "Y" : "", orEmpty(s.individualQtyUnit), ...progressiveQtyRuleToCells(s.progressiveQtyRule)]));
             }
+
+            minPriceFixedRows.push([id, data.minPriceFixedBySize ? "Y" : ""]);
+            minPriceFixedIdsSeen.add(id);
         });
+
+        // [추가] 01my ~ 284my까지 아직 안 채워진 ID는 빈 줄로 미리 만들어둡니다(Firestore에
+        // 실제로 없는 번호는 업로드해도 그냥 무시되니 걱정 없이 Y만 필요한 곳에 적으면 됩니다).
+        for (let n = 1; n <= 284; n++) {
+            const id = `${String(n).padStart(2, "0")}my`;
+            if (!minPriceFixedIdsSeen.has(id)) minPriceFixedRows.push([id, ""]);
+        }
+        minPriceFixedRows.sort((a, b) => naturalIdCompare(a[0], b[0]));
+        minPriceFixedRows.unshift(minPriceFixedRows.splice(minPriceFixedRows.findIndex(r => r[0] === "상품ID"), 1)[0]);
 
         if (groupRows.length === 1) groupRows.push(["", "", ""]);
         if (itemRows.length === 1) itemRows.push(itemHeaderNoGroup.map(() => ""));
@@ -317,6 +336,7 @@
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(customRows), "비규격설정");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sizeRows), "규격사이즈목록");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["상품ID"], [""]]), "삭제");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(minPriceFixedRows), "최저가격고정");
 
         XLSX.writeFile(wb, `전체상품_옵션.xlsx`);
         statusBar.textContent = `전체 ${allProducts.length}개 상품을 엑셀로 내려받았습니다. 수정 후 ②에서 다시 업로드하세요.`;
@@ -336,7 +356,7 @@
     // "품목" 시트 등 정해진 이름의 시트를 뺀 나머지는 전부 "그룹별 품목 탭"으로 취급합니다.
     // 예: "options2", "options3" 라는 이름의 시트를 만들면, 그 안의 행들은 자동으로
     // 그룹ID가 "options2"/"options3"인 품목으로 처리됩니다(그 시트 안에는 그룹ID 칸을 안 적어도 됩니다).
-    const RESERVED_SHEET_NAMES = ["그룹", "품목", "매수별배수", "비규격설정", "규격사이즈목록", "삭제"];
+    const RESERVED_SHEET_NAMES = ["그룹", "품목", "매수별배수", "비규격설정", "규격사이즈목록", "삭제", "최저가격고정"];
 
     // 시트 이름이 "options10" 처럼 숫자가 클수록 뒤로, "options2" < "options3" 처럼 자연스럽게 정렬
     function naturalSheetCompare(a, b) {
@@ -515,6 +535,10 @@
             // 함께 곱해집니다. 비워두면 기존과 동일하게 수량과 상관없이 항상 1배입니다.
             const qtyMultiplierStep = toNum(r["감가배수"]);
             if (qtyMultiplierStep !== undefined && qtyMultiplierStep > 0) item.qtyMultiplierStep = qtyMultiplierStep;
+            // [추가] "옵션고정" — Y로 표시하면 01my.html에서 이 품목이 항상 강제로 선택되어
+            // 있고, "선택안함"으로도 되돌릴 수 없게 됩니다(후가공 그룹에서 씁니다).
+            const optionLockedRaw = String(r["옵션고정"] || "").trim();
+            if (/^(y|yes|true|1|o|ㅇ)$/i.test(optionLockedRaw)) item.optionLocked = true;
             g.values.push(item);
         });
         options.push(...groups);
@@ -594,6 +618,7 @@
         const customRowsAll = rowsOf(wb, "비규격설정");
         const sizeRowsAll = rowsOf(wb, "규격사이즈목록");
         const deleteRowsAll = rowsOf(wb, "삭제");
+        const minPriceFixedRowsAll = rowsOf(wb, "최저가격고정");
 
         const deleteIds = [...new Set(
             deleteRowsAll.map(r => String(r["상품ID"] || "").trim()).filter(Boolean)
@@ -604,6 +629,17 @@
         const byProductQty = groupByProductId(qtyRowsAll);
         const byProductCustom = groupByProductId(customRowsAll);
         const byProductSize = groupByProductId(sizeRowsAll);
+
+        // [추가] "최저가격고정" 시트: 상품ID별로 Y 여부만 담은 맵. 이 시트에만 있고 다른
+        // 시트에는 전혀 없는 상품ID는(=이번 업로드에 그 상품의 다른 데이터가 전혀 없으면)
+        // 잘못 건드려 기존 옵션을 지워버릴 위험이 있어 건너뜁니다 — 그룹/품목 등 다른 시트에
+        // 이미 포함된 상품에 대해서만 값을 반영합니다.
+        const minPriceFixedMap = {};
+        minPriceFixedRowsAll.forEach(r => {
+            const pid = String(r["상품ID"] || "").trim();
+            if (!pid) return;
+            minPriceFixedMap[pid] = /^(y|yes|true|1|o|ㅇ)$/i.test(String(r["최저가격고정"] || "").trim());
+        });
 
         const allIds = new Set([
             ...Object.keys(byProductGroup), ...Object.keys(byProductItem),
@@ -619,6 +655,9 @@
                 byProductGroup[pid] || [], byProductItem[pid] || [], byProductQty[pid] || [],
                 byProductCustom[pid] || [], byProductSize[pid] || []
             );
+            if (Object.prototype.hasOwnProperty.call(minPriceFixedMap, pid)) {
+                products[pid].minPriceFixedBySize = minPriceFixedMap[pid];
+            }
         });
 
         return { products, deleteIds };
@@ -643,13 +682,13 @@
             html += `<div class="product-card"><h4>${pid} <span class="badge ${isNew ? 'new' : 'update'}">${isNew ? '신규 생성' : '기존 수정'}</span></h4>
                 <div style="font-size:13px; color:#555;">그룹 ${groups.length}개 · 품목 ${itemCount}개</div>`;
             groups.forEach(g => {
-                html += `<table class="mini"><tr><th colspan="12">${g.id} — ${g.title || "제목없음"}</th></tr>
-                    <tr><th>품목명</th><th>가격</th><th>사이즈</th><th>URL/이미지/이동URL</th><th>최소사이즈(한변)</th><th>최대사이즈(한변)</th><th>최소평량</th><th>최대평량</th><th>총액배수</th><th>사이즈마진</th><th>감가배수</th><th>예외수량/가격</th></tr>`;
+                html += `<table class="mini"><tr><th colspan="13">${g.id} — ${g.title || "제목없음"}</th></tr>
+                    <tr><th>품목명</th><th>가격</th><th>사이즈</th><th>URL/이미지/이동URL</th><th>최소사이즈(한변)</th><th>최대사이즈(한변)</th><th>최소평량</th><th>최대평량</th><th>총액배수</th><th>사이즈마진</th><th>감가배수</th><th>예외수량/가격</th><th>옵션고정</th></tr>`;
                 (g.values || []).forEach(v => {
                     const flags = [v.url && "URL", v.imageUrl && "이미지", v.nextPageUrl && "다음URL", v.priorityNextPageUrl && "최우선URL", v.openInNewWindow && "새창"].filter(Boolean).join(", ");
                     const sizeMarginText = v.sizeMargin ? (v.sizeMargin.type === "multiply" ? "×" + v.sizeMargin.value : "+" + v.sizeMargin.value) : "-";
                     const exceptionText = (v.exceptionQty !== undefined && v.exceptionPrice !== undefined) ? `${v.exceptionQty}미만→${v.exceptionPrice}원` : "-";
-                    html += `<tr><td>${v.name}</td><td>${orEmpty(v.price)}</td><td>${v.width !== undefined ? v.width + "×" + v.height : ""}</td><td>${flags}</td><td>${v.minSideMM !== undefined ? v.minSideMM + "mm↑" : "-"}</td><td>${v.maxSideMM !== undefined ? v.maxSideMM + "mm↓" : "-"}</td><td>${v.minWeightG !== undefined ? v.minWeightG + "g↑" : "-"}</td><td>${v.maxWeightG !== undefined ? v.maxWeightG + "g↓" : "-"}</td><td>${v.totalMultiplier !== undefined ? "×" + v.totalMultiplier : "-"}</td><td>${sizeMarginText}</td><td>${v.qtyMultiplierStep !== undefined ? v.qtyMultiplierStep + "장마다" : "-"}</td><td>${exceptionText}</td></tr>`;
+                    html += `<tr><td>${v.name}</td><td>${orEmpty(v.price)}</td><td>${v.width !== undefined ? v.width + "×" + v.height : ""}</td><td>${flags}</td><td>${v.minSideMM !== undefined ? v.minSideMM + "mm↑" : "-"}</td><td>${v.maxSideMM !== undefined ? v.maxSideMM + "mm↓" : "-"}</td><td>${v.minWeightG !== undefined ? v.minWeightG + "g↑" : "-"}</td><td>${v.maxWeightG !== undefined ? v.maxWeightG + "g↓" : "-"}</td><td>${v.totalMultiplier !== undefined ? "×" + v.totalMultiplier : "-"}</td><td>${sizeMarginText}</td><td>${v.qtyMultiplierStep !== undefined ? v.qtyMultiplierStep + "장마다" : "-"}</td><td>${exceptionText}</td><td>${v.optionLocked ? "Y" : "-"}</td></tr>`;
                 });
                 html += `</table>`;
             });
