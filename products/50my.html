@@ -1689,6 +1689,14 @@ window.enableMobileCustomPicker = function(selectEl) {
         el.dataset.surcharge = v.surcharge ?? 0;
         el.dataset.weight = v.weight ?? 0;
         el.dataset.delivery = v.delivery ?? 0;
+        // [추가] 이 품목에 등록된 가로mm/세로mm(주로 "일반명함 90×50"처럼 그 품목의
+        // 기준 사이즈를 적어두는 칸). "최저가격고정"이 켜진 상품에서, 희망사이즈를 이
+        // 기준 사이즈보다 작게 입력해도 가격이 이 사이즈 밑으로는 안 내려가게 하는 데 쓴다.
+        if (v.width !== undefined && v.width !== null && v.width !== "" &&
+            v.height !== undefined && v.height !== null && v.height !== "") {
+            el.dataset.itemWidth = v.width;
+            el.dataset.itemHeight = v.height;
+        }
         el.dataset.url = v.url ?? "";
         el.dataset.imageUrl = v.imageUrl ?? "";
         el.dataset.nextPageUrl = v.nextPageUrl ?? "";
@@ -1898,11 +1906,17 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
 
     // ---- ② 후가공(다중 선택) 렌더링 ----
-    function loadFinishingOptions(selectElement) {
-        selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
+    // [수정] isPrimary가 true인 첫 번째(=페이지에 원래 있던) 후가공 select에만 "옵션고정"을
+    // 적용합니다. "추가하기"로 늘어난 추가 select에도 강제로 똑같이 기본선택해버리면 같은
+    // 품목이 중복 선택된 것으로 처리되어 "중복 선택할 수 없습니다" 오류가 즉시 뜨기 때문에,
+    // 추가 select는 항상 "선택안함"이 있는 기존 방식 그대로 둡니다.
+    function loadFinishingOptions(selectElement, isPrimary = true) {
         const g = finishingGroup();
+        const lockedValue = isPrimary && g && Array.isArray(g.values) ? g.values.find(v => v.optionLocked) : null;
+        selectElement.innerHTML = lockedValue ? "" : '<option value="" data-price="0">선택안함</option>';
         if (!g) return;
         (g.values || []).forEach(v => selectElement.appendChild(buildOptionEl(v)));
+        if (lockedValue) selectElement.value = lockedValue.name;
     }
 
     function buildSubOptionSelect(finishingSelect) {
@@ -2043,7 +2057,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         container.appendChild(newRow);
 
         const newSelect = newRow.querySelector(".finishing-select");
-        loadFinishingOptions(newSelect);
+        loadFinishingOptions(newSelect, false);
         setupFinishingListener(newSelect);
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 옵션은, 새로 추가된 줄에서도
         // 이미 다른 줄에서 선택된 상대 값이 있으면 바로 선택 못하게(회색 처리) 반영한다.
@@ -2358,6 +2372,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         // - 규격사이즈(또는 규격과 같은 사이즈의 비규격): 선택한 품목의 price(원가) × (1+margin) × 매수배수 를 더합니다.
         // - 진짜 비규격사이즈: 품목 가격은 쓰지 않고, 아래 "options01 기준 추가 비용"만으로 계산합니다.
         //   (무게·배송일은 규격/비규격 상관없이 선택한 옵션 값을 그대로 반영합니다)
+        // [추가] "최저가격고정" 상품에서, 희망사이즈가 기본 품목(options1)의 등록된
+        // 가로mm/세로mm보다 작을 때 가격을 그 사이즈에서 고정하기 위해, 선택된 기본
+        // 품목의 등록 사이즈를 여기 저장해둔다.
+        let baseItemMinSize = null;
         document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
             const opt = sel.options[sel.selectedIndex];
             if (!opt) return;
@@ -2372,6 +2390,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             // options2 등은 지금까지처럼 매수별배수(options00, qtyFactor)를 쓰되, "감가배수"가
             // 등록된 품목은 아래에서 itemQtyFactor 대신 1을 쓰도록 따로 처리합니다(이중 적용 방지).
             const isBaseItemGroup = sel.dataset.groupId === "options1";
+            if (isBaseItemGroup && opt.value && opt.dataset.itemWidth && opt.dataset.itemHeight) {
+                baseItemMinSize = { width: parseFloat(opt.dataset.itemWidth), height: parseFloat(opt.dataset.itemHeight) };
+            }
             const itemQtyFactor = isBaseItemGroup ? effectiveQtyFactor : qtyFactor;
             // [수정] "감가배수"가 등록된 품목은 그 자체가 이미 수량에 따른 자기만의 배수
             // 규칙을 갖고 있으므로, 위 itemQtyFactor(매수별배수 등)를 곱하지 않습니다.
@@ -2550,8 +2571,23 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 최종 가격 표시 직전에 최소가격 적용 여부를 판단할 때 재사용합니다.
         const isGenuineCustomSize = !!(isCustom && !matchesStandard && c);
         if (isGenuineCustomSize) {
-            const clampedW = Math.min(Math.max(w, c.widthMin), c.widthMax);
-            const clampedH = Math.min(Math.max(h, c.heightMin), c.heightMax);
+            // [추가] "최저가격고정" 상품이고, 지금 고른 기본 품목(options1)에 등록된
+            // 가로mm/세로mm보다 희망사이즈가 작으면(방향 상관없이 둘 다 작거나 같으면),
+            // 그 등록 사이즈를 그대로 써서 가격이 더 내려가지 않게 고정합니다. 더 크게
+            // 입력한 경우(가로/세로 중 하나라도 등록 사이즈를 넘으면)는 해당 없이 입력한
+            // 사이즈 그대로 계산합니다.
+            let priceW = w, priceH = h;
+            if (productData.minPriceFixedBySize && baseItemMinSize) {
+                const enteredMax = Math.max(w, h), enteredMin = Math.min(w, h);
+                const itemMax = Math.max(baseItemMinSize.width, baseItemMinSize.height);
+                const itemMin = Math.min(baseItemMinSize.width, baseItemMinSize.height);
+                if (enteredMax <= itemMax && enteredMin <= itemMin) {
+                    priceW = baseItemMinSize.width;
+                    priceH = baseItemMinSize.height;
+                }
+            }
+            const clampedW = Math.min(Math.max(priceW, c.widthMin), c.widthMax);
+            const clampedH = Math.min(Math.max(priceH, c.heightMin), c.heightMax);
             const refArea = (c.widthMin || 1) * (c.heightMin || 1);
             const areaRatio = refArea > 0 ? (clampedW * clampedH) / refArea : 1;
             const growth = Math.max(0, areaRatio - 1) * (c.multiplier || 1);
