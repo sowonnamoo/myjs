@@ -152,7 +152,6 @@
         <input type="number" id="heightMinInput" placeholder="세로 최소길이 (mm)">
         <input type="number" id="heightMaxInput" placeholder="세로 최대길이 (mm)">
         <input type="number" id="customMinPriceInput" placeholder="최소가격 (선택, 예: 30000 — 계산된 금액이 이보다 낮으면 이 값으로 표시)">
-        <label class="checkline"><input type="checkbox" id="minPriceFixedBySizeInput"> 최저가격고정 — 규격사이즈목록에 등록된 사이즈들을 각각 실제로 골랐을 때의 가격(마진 포함)을 계산해서 그중 가장 낮은 금액을 "최저가격"으로 삼고, 희망사이즈가 그 사이즈보다 작거나 같으면 가격이 그 밑으로 안 내려가게 고정</label>
         <button id="saveCustomBtn">비규격 설정 저장</button>
     </div>
 
@@ -547,7 +546,6 @@
         $("heightMinInput").value = o && o.heightMin !== undefined ? o.heightMin : "";
         $("heightMaxInput").value = o && o.heightMax !== undefined ? o.heightMax : "";
         $("customMinPriceInput").value = o && o.minPrice !== undefined ? o.minPrice : "";
-        $("minPriceFixedBySizeInput").checked = !!productData.minPriceFixedBySize;
     }
 
     $("saveCustomBtn").addEventListener("click", async () => {
@@ -565,14 +563,6 @@
         if (!o) { o = { id: "options01", title: "비규격 설정" }; productData.options.push(o); }
         Object.assign(o, { basePrice, multiplier, widthMin, widthMax, heightMin, heightMax });
         if (minPriceRaw !== "") { o.minPrice = parseFloat(minPriceRaw); } else { delete o.minPrice; }
-        // [추가] "최저가격고정" — 희망사이즈가 기본 품목(options1)에 등록된 가로mm/세로mm보다
-        // 작아도 가격이 그 밑으로 내려가지 않게 고정하는 상품 단위 설정. options01 그룹이
-        // 아니라 상품 문서 최상위에 저장합니다(엑셀의 "최저가격고정" 시트와 같은 값).
-        if ($("minPriceFixedBySizeInput").checked) {
-            productData.minPriceFixedBySize = true;
-        } else {
-            delete productData.minPriceFixedBySize;
-        }
         await saveProduct("비규격 설정이 저장되었습니다.");
     });
 

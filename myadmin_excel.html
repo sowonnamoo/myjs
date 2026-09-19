@@ -97,7 +97,6 @@
             <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대·<b>최소가격</b>) / 값 — <b>최소가격</b>은 선택 사항으로, 적어두면 희망사이즈(비규격) 입력 시 계산된 금액이 이 값보다 낮을 때는 이 값으로, 이 값 이상이면 계산된 금액 그대로 보여줍니다(예: 30000을 적으면 30,000원 미만으로 계산돼도 30,000원으로 표시). 비워두면 지금처럼 계산된 값을 그대로 보여줍니다.</p>
             <p><b>규격사이즈목록</b> 시트: 상품ID / 가로mm / 세로mm / 가격 / 마진 / 옵션이름 / <b>매수배수제외</b> (계산기 화면의 "규격사이즈" 드롭다운에 나오는 목록입니다. 사이즈 하나당 한 행씩 적으세요. <b>가격</b>은 선택 사항이며, 값을 적으면 해당 규격사이즈를 선택했을 때 그 금액이 기존 옵션 가격에 추가로 더해집니다. <b>마진</b>도 선택 사항이며, 1.1처럼 적으면 그 사이즈 선택 시 계산된 가격에 곱해져서 10% 인상되고, 0.9처럼 적으면 10% 인하됩니다. <b>옵션이름</b>(F열)도 선택 사항이며, 값을 적으면 드롭다운에 "가로x세로 mm" 대신 여기 적은 이름이 표시됩니다(예: "엽서 사이즈"). 비워두면 기존처럼 "가로x세로 mm"로 표시됩니다. <b>매수배수제외</b>(G열)도 선택 사항이며, <code>Y</code>를 적으면 이 사이즈를 선택했을 때는 매수별배수(options00)가 적용되지 않고 등록해둔 가격을 그대로 씁니다(단, 후가공은 그대로 매수별배수가 적용됩니다). 비워두면 기존처럼 매수별배수가 적용됩니다) / <b>개별매수배수</b>(H열, 선택 사항. 이 사이즈만의 "장수 단위" 계단식 배수를 씁니다. 예를 들어 <code>50</code>을 적으면 1~50장은 등록해둔 가격 그대로(1배), 51~100장은 2배, 101~150장은 3배 ... 이렇게 50장씩 늘어날 때마다 1배씩 올라가서 최대 10배(=500장)까지 자동으로 계산됩니다. 500장을 넘게 입력하면 "한 번에 주문 가능한 최대 매수는 500매입니다"라는 안내와 함께 500장으로 되돌아가며, 그 이상은 건수를 늘려서 구입해야 합니다. 이 값을 적어두면 매수배수제외(G열)나 매수별배수(options00)보다 이 계단식 배수가 우선 적용됩니다. 비워두면 기존처럼 매수별배수(options00) 또는 매수배수제외(G열) 설정을 따릅니다) / <b>초기수량</b>(I열) / <b>점진매수</b>(J열) / <b>점진매수배수</b>(K열) — 이 세 칸이 한 세트로, 개별매수배수와 같은 자리를 쓰는 또 다른 계단식 배수 방식입니다(전부 선택 사항). <b>초기수량</b>에는 "여기까지는 등록해둔 가격 그대로(1배)"가 적용되는 기준 장수를, <b>점진매수</b>에는 몇 장 늘어날 때마다 배수를 올릴지(구간 단위), <b>점진매수배수</b>에는 그 구간마다 얼마씩 배수를 더할지를 적습니다. 예: 초기수량 <code>50</code>, 점진매수 <code>10</code>, 점진매수배수 <code>0.03</code>을 적으면 → 1~50장은 등록해둔 가격 그대로(1배), 51~60장은 1.03배, 61~70장은 1.06배, 71~80장은 1.09배 … 이렇게 10장 늘어날 때마다 0.03배씩 계속 올라가며, 구간 수에 제한이 없어 얼마든지 큰 수량까지 같은 규칙으로 자동 계산됩니다(개별매수배수처럼 딱 떨어지는 정수배가 아니라, 1.03·1.06처럼 자유로운 배수를 쓸 수 있는 점이 다릅니다). 세 칸 중 하나라도 비어 있거나 점진매수가 0 이하이면 이 기능은 적용되지 않습니다. 개별매수배수와 이 세 칸을 같은 사이즈에 동시에 적어두면 개별매수배수가 우선 적용됩니다. 비워두면 기존처럼 매수별배수(options00) 또는 매수배수제외(G열) 설정을 따릅니다)</p>
             <p><b>삭제</b> 시트: 상품ID 한 칸만 있습니다. 여기 적힌 상품ID는 Firestore 문서 자체가 통째로 삭제됩니다.</p>
-            <p><b>최저가격고정</b> 시트: 01my~284my 전체가 미리 채워져 내려받아집니다. B열에 <b>Y</b>를 적으면, 그 상품은 01my.html에서 희망사이즈(비규격)를 입력할 때 가격이 특정 금액 밑으로 내려가지 않도록 고정됩니다. 기준이 되는 "최저가격"은 <b>규격사이즈목록</b> 시트에 등록해둔 사이즈들을 실제로 하나씩 골랐다면 각각 얼마였을지(품목가격 + 그 사이즈의 추가금액·마진까지 전부 반영해서) 계산해보고, 그중 <b>가장 낮은 금액</b>으로 자동으로 정해집니다. 희망사이즈로 입력한 가로·세로가 그 최저가격을 만든 규격사이즈보다 작거나 같으면(방향이 뒤바뀐 것도 인정) 가격이 그 최저가격 그대로 나오고, 하나라도 더 크게 입력하면 평소처럼 비규격설정 시트의 계산식대로 나옵니다. 그래서 <b>기본 품목(options1)</b>이나 <b>규격사이즈목록</b>의 가격/마진을 바꾸면 최저가격도 자동으로 같이 바뀝니다 — 별도로 값을 다시 적어둘 필요가 없습니다. (규격사이즈목록이 아예 등록 안 된 상품은 비교할 기준이 없어 이 기능이 적용되지 않습니다.) 이 시트에만 있고 다른 시트(그룹/품목 등)에 전혀 데이터가 없는 상품ID는 안전을 위해 무시됩니다 — 그룹/품목 데이터가 함께 있는 상품만 반영됩니다.</p>
             <p>상품ID나 품목명이 비어있는 행은 자동으로 무시됩니다. 새 상품ID를 적으면 새 문서가 만들어지고, 기존 상품ID를 적으면 그 문서 전체가 엑셀 내용으로 덮어써집니다.</p>
         </div>
     </div>
@@ -232,11 +231,6 @@
         const qtyRows = [["상품ID", "매수", "배수"]];
         const customRows = [["상품ID", "항목", "값"]];
         const sizeRows = [["상품ID", "가로mm", "세로mm", "가격", "마진", "옵션이름", "매수배수제외", "개별매수배수", "초기수량", "점진매수", "점진매수배수"]];
-        // [추가] "최저가격고정" — 이 상품에 Y로 표시해두면, 01my.html에서 희망사이즈(비규격)를
-        // 기본 품목(options1)에 등록된 가로mm/세로mm보다 작게 입력해도 가격이 그 밑으로
-        // 내려가지 않고 고정됩니다. 01my~284my를 미리 다 채워두고 필요한 것만 Y로 바꾸면 됩니다.
-        const minPriceFixedRows = [["상품ID", "최저가격고정"]];
-        const minPriceFixedIdsSeen = new Set();
 
         // [추가] { type: "multiply"|"add", value } 형태로 저장된 사이즈마진을, 엑셀 셀에
         // 그대로 다시 적어넣을 수 있는 텍스트로 바꾼다(예: 2, +500). 그냥 숫자만=배수,
@@ -303,19 +297,7 @@
             if (o02 && Array.isArray(o02.sizes)) {
                 o02.sizes.forEach(s => sizeRows.push([id, orEmpty(s.width), orEmpty(s.height), orEmpty(s.price), orEmpty(s.margin), orEmpty(s.name), s.skipQtyMulti ? "Y" : "", orEmpty(s.individualQtyUnit), ...progressiveQtyRuleToCells(s.progressiveQtyRule)]));
             }
-
-            minPriceFixedRows.push([id, data.minPriceFixedBySize ? "Y" : ""]);
-            minPriceFixedIdsSeen.add(id);
         });
-
-        // [추가] 01my ~ 284my까지 아직 안 채워진 ID는 빈 줄로 미리 만들어둡니다(Firestore에
-        // 실제로 없는 번호는 업로드해도 그냥 무시되니 걱정 없이 Y만 필요한 곳에 적으면 됩니다).
-        for (let n = 1; n <= 284; n++) {
-            const id = `${String(n).padStart(2, "0")}my`;
-            if (!minPriceFixedIdsSeen.has(id)) minPriceFixedRows.push([id, ""]);
-        }
-        minPriceFixedRows.sort((a, b) => naturalIdCompare(a[0], b[0]));
-        minPriceFixedRows.unshift(minPriceFixedRows.splice(minPriceFixedRows.findIndex(r => r[0] === "상품ID"), 1)[0]);
 
         if (groupRows.length === 1) groupRows.push(["", "", ""]);
         if (itemRows.length === 1) itemRows.push(itemHeaderNoGroup.map(() => ""));
@@ -336,7 +318,6 @@
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(customRows), "비규격설정");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sizeRows), "규격사이즈목록");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["상품ID"], [""]]), "삭제");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(minPriceFixedRows), "최저가격고정");
 
         XLSX.writeFile(wb, `전체상품_옵션.xlsx`);
         statusBar.textContent = `전체 ${allProducts.length}개 상품을 엑셀로 내려받았습니다. 수정 후 ②에서 다시 업로드하세요.`;
@@ -356,7 +337,7 @@
     // "품목" 시트 등 정해진 이름의 시트를 뺀 나머지는 전부 "그룹별 품목 탭"으로 취급합니다.
     // 예: "options2", "options3" 라는 이름의 시트를 만들면, 그 안의 행들은 자동으로
     // 그룹ID가 "options2"/"options3"인 품목으로 처리됩니다(그 시트 안에는 그룹ID 칸을 안 적어도 됩니다).
-    const RESERVED_SHEET_NAMES = ["그룹", "품목", "매수별배수", "비규격설정", "규격사이즈목록", "삭제", "최저가격고정"];
+    const RESERVED_SHEET_NAMES = ["그룹", "품목", "매수별배수", "비규격설정", "규격사이즈목록", "삭제"];
 
     // 시트 이름이 "options10" 처럼 숫자가 클수록 뒤로, "options2" < "options3" 처럼 자연스럽게 정렬
     function naturalSheetCompare(a, b) {
@@ -618,7 +599,6 @@
         const customRowsAll = rowsOf(wb, "비규격설정");
         const sizeRowsAll = rowsOf(wb, "규격사이즈목록");
         const deleteRowsAll = rowsOf(wb, "삭제");
-        const minPriceFixedRowsAll = rowsOf(wb, "최저가격고정");
 
         const deleteIds = [...new Set(
             deleteRowsAll.map(r => String(r["상품ID"] || "").trim()).filter(Boolean)
@@ -629,17 +609,6 @@
         const byProductQty = groupByProductId(qtyRowsAll);
         const byProductCustom = groupByProductId(customRowsAll);
         const byProductSize = groupByProductId(sizeRowsAll);
-
-        // [추가] "최저가격고정" 시트: 상품ID별로 Y 여부만 담은 맵. 이 시트에만 있고 다른
-        // 시트에는 전혀 없는 상품ID는(=이번 업로드에 그 상품의 다른 데이터가 전혀 없으면)
-        // 잘못 건드려 기존 옵션을 지워버릴 위험이 있어 건너뜁니다 — 그룹/품목 등 다른 시트에
-        // 이미 포함된 상품에 대해서만 값을 반영합니다.
-        const minPriceFixedMap = {};
-        minPriceFixedRowsAll.forEach(r => {
-            const pid = String(r["상품ID"] || "").trim();
-            if (!pid) return;
-            minPriceFixedMap[pid] = /^(y|yes|true|1|o|ㅇ)$/i.test(String(r["최저가격고정"] || "").trim());
-        });
 
         const allIds = new Set([
             ...Object.keys(byProductGroup), ...Object.keys(byProductItem),
@@ -655,9 +624,6 @@
                 byProductGroup[pid] || [], byProductItem[pid] || [], byProductQty[pid] || [],
                 byProductCustom[pid] || [], byProductSize[pid] || []
             );
-            if (Object.prototype.hasOwnProperty.call(minPriceFixedMap, pid)) {
-                products[pid].minPriceFixedBySize = minPriceFixedMap[pid];
-            }
         });
 
         return { products, deleteIds };
