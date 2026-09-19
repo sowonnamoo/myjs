@@ -2495,6 +2495,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (opt.value) summary.push(itemLabel + (applyDoublePricingHere ? ' (양면 할증 2배)' : ''));
         });
 
+        // [추가] "최저가격고정" 계산에 쓸 기준값. 지금까지 더해진 금액(품목가격 등, 아직 규격사이즈
+        // 추가금액/마진은 반영 전)을 미리 저장해둡니다 — 아래에서 "이 사이즈를 규격사이즈로 골랐다면
+        // 얼마였을지"를 사이즈별로 다시 계산할 때, 이 값에서부터 시작해야 정확히 비교할 수 있습니다.
+        const preStandardSizeSum = sum;
+
         // 규격 사이즈 목록(options02)에 사이즈별로 등록해둔 추가 가격이 있으면 더합니다.
         // (엑셀 "규격사이즈목록" 시트나 관리자 화면 ⑤번에서 사이즈 옆에 가격을 적어둔 경우에만 적용되며,
         //  비워두면 기존과 동일하게 추가금액 없이 계산됩니다)
@@ -2630,6 +2635,45 @@ window.enableMobileCustomPicker = function(selectEl) {
             customBase *= (1 + surchargeSum / 100);
 
             sum += customBase;
+
+            // [추가] "최저가격고정": 규격사이즈목록에 등록해둔 사이즈들을 실제로 하나씩 골랐다면
+            // 각각 얼마였을지(품목가격 + 그 사이즈의 추가금액/마진 반영) 계산해서, 그중 가장 낮은
+            // 금액을 "최저가격"으로 삼습니다. 지금 입력한 희망사이즈가 그 최저가격을 만든 규격사이즈
+            // 보다 작거나 같으면(가로/세로 방향이 뒤바뀐 것도 인정) 계산된 가격이 그 최저가격 밑으로
+            // 내려가지 않도록 고정합니다(마진까지 반영된 가격 기준). 더 크게 입력했다면 해당 없이
+            // 원래 계산된 금액 그대로 둡니다.
+            if (productData.minPriceFixedBySize) {
+                const sizeGroup = standardSizeConfig();
+                const candidates = (sizeGroup && Array.isArray(sizeGroup.sizes)) ? sizeGroup.sizes : [];
+                let lowestTotal = null, lowestSize = null;
+                candidates.forEach(s => {
+                    const sw = parseFloat(s.width), sh = parseFloat(s.height);
+                    if (isNaN(sw) || isNaN(sh) || sw <= 0 || sh <= 0) return;
+                    // preStandardSizeSum(품목가격 등)에서 시작해서, 이 사이즈를 실제로 골랐을 때와
+                    // 똑같은 방식(규격사이즈 추가금액 → 사이즈마진 순서 → 규격사이즈 마진)으로 계산합니다.
+                    let candTotal = preStandardSizeSum;
+                    let sp = getStandardSizePrice(sw, sh);
+                    sizeMarginSteps.forEach(step => {
+                        if (step.type === "multiply") sp *= step.value;
+                        else sp += step.value;
+                    });
+                    if (sp) candTotal += sp * effectiveQtyFactor;
+                    const sMargin = getStandardSizeMargin(sw, sh);
+                    if (sMargin !== undefined) candTotal *= sMargin;
+                    if (lowestTotal === null || candTotal < lowestTotal) {
+                        lowestTotal = candTotal;
+                        lowestSize = { width: sw, height: sh };
+                    }
+                });
+                if (lowestSize) {
+                    const enteredMax = Math.max(w, h), enteredMin = Math.min(w, h);
+                    const sizeMax = Math.max(lowestSize.width, lowestSize.height);
+                    const sizeMin = Math.min(lowestSize.width, lowestSize.height);
+                    if (enteredMax <= sizeMax && enteredMin <= sizeMin && sum < lowestTotal) {
+                        sum = lowestTotal;
+                    }
+                }
+            }
         }
 
         // 후가공 중복 선택 방지
