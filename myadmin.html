@@ -152,7 +152,7 @@
         <input type="number" id="heightMinInput" placeholder="세로 최소길이 (mm)">
         <input type="number" id="heightMaxInput" placeholder="세로 최대길이 (mm)">
         <input type="number" id="customMinPriceInput" placeholder="최소가격 (선택, 예: 30000 — 계산된 금액이 이보다 낮으면 이 값으로 표시)">
-        <label class="checkline"><input type="checkbox" id="minPriceFixedBySizeInput"> 최저가격고정 — 희망사이즈가 기본 품목(options1)의 등록 가로mm/세로mm보다 작아도 가격이 그 밑으로 안 내려가게 고정 (기본 품목에 가로mm/세로mm이 없으면 규격사이즈목록 중 가장 작은 사이즈를 대신 기준으로 씀)</label>
+        <label class="checkline"><input type="checkbox" id="minPriceFixedBySizeInput"> 최저가격고정 — 규격사이즈목록에 등록된 사이즈들을 각각 실제로 골랐을 때의 가격(마진 포함)을 계산해서 그중 가장 낮은 금액을 "최저가격"으로 삼고, 희망사이즈가 그 사이즈보다 작거나 같으면 가격이 그 밑으로 안 내려가게 고정</label>
         <button id="saveCustomBtn">비규격 설정 저장</button>
     </div>
 
