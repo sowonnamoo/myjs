@@ -2247,7 +2247,8 @@ window.enableMobileCustomPicker = function(selectEl) {
         const sizeList = document.getElementById("sizeList");
         sizeList.innerHTML = "";
         const g = standardSizeConfig();
-        if (g && Array.isArray(g.sizes) && g.sizes.length > 0) {
+        const hasStandardSizes = !!(g && Array.isArray(g.sizes) && g.sizes.length > 0);
+        if (hasStandardSizes) {
             g.sizes.forEach(s => {
                 const el = document.createElement("option");
                 el.value = `${s.width},${s.height}`;
@@ -2288,6 +2289,20 @@ window.enableMobileCustomPicker = function(selectEl) {
             el.value = "";
             el.textContent = "등록된 규격사이즈 없음";
             sizeList.appendChild(el);
+        }
+
+        // [추가] 규격사이즈목록(options02)에 등록된 사이즈가 하나도 없으면(=엑셀 "규격사이즈목록"
+        // 시트를 안 채우고 "품목" 시트에만 가로/세로를 적어둔 경우 등), "규격사이즈/희망사이즈"
+        // 토글 버튼과 빈 "등록된 규격사이즈 없음" 드롭다운을 화면에서 아예 숨기고 자동으로
+        // "희망사이즈 입력(비규격)" 모드로 전환합니다. 나중에 규격사이즈목록에 사이즈를 채우면
+        // 별도 설정 없이 다시 토글 버튼과 드롭다운이 보입니다.
+        const sizeToggleRow = document.getElementById("sizeTypeBtnStandard")
+            ? document.getElementById("sizeTypeBtnStandard").parentElement
+            : null;
+        if (sizeToggleRow) sizeToggleRow.style.display = hasStandardSizes ? "flex" : "none";
+        sizeList.style.display = hasStandardSizes ? "" : "none";
+        if (!hasStandardSizes && typeof window.setSizeTypeUI === "function") {
+            window.setSizeTypeUI("custom");
         }
     }
 
@@ -2453,25 +2468,24 @@ window.enableMobileCustomPicker = function(selectEl) {
                 }
             }
 
-            if (useStandardPricing) {
-                // [추가] "예외수량"보다 주문 수량이 적으면 평소 계산을 건너뛰고 "예외가격"을
-                // 그대로 씁니다(후가공 품목과 동일한 규칙).
-                const exceptionQty = parseFloat(opt.dataset.exceptionQty);
-                const exceptionPrice = parseFloat(opt.dataset.exceptionPrice);
-                const useException = !isNaN(exceptionQty) && exceptionQty > 0 && !isNaN(exceptionPrice) && enteredQty < exceptionQty;
-                let itemPrice;
-                if (useException) {
-                    itemPrice = exceptionPrice;
-                } else {
-                    itemPrice = price * (1 + margin / 100) * effectiveItemQtyFactor;
-                    if (applyDoublePricingHere) itemPrice *= 2;
-                    itemPrice += subExtra;
-                    itemPrice *= subMultiplier;
-                    // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
-                    // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
-                    const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
-                    if (qtyMult !== 1) itemPrice *= qtyMult;
-                }
+            // [수정] "예외수량"보다 주문 수량이 적으면 평소 계산을 건너뛰고 "예외가격"을
+            // 그대로 씁니다(후가공 품목과 동일한 규칙). 규격사이즈목록(options02)에 사이즈가
+            // 하나도 등록돼 있지 않아 useStandardPricing이 꺼져 있는 상품이라도, 예외가격만큼은
+            // 항상 그대로 적용되어야 하므로 useStandardPricing 판단보다 먼저(그리고 상관없이) 체크합니다.
+            const exceptionQty = parseFloat(opt.dataset.exceptionQty);
+            const exceptionPrice = parseFloat(opt.dataset.exceptionPrice);
+            const useException = !isNaN(exceptionQty) && exceptionQty > 0 && !isNaN(exceptionPrice) && enteredQty < exceptionQty;
+            if (useException) {
+                sum += exceptionPrice;
+            } else if (useStandardPricing) {
+                let itemPrice = price * (1 + margin / 100) * effectiveItemQtyFactor;
+                if (applyDoublePricingHere) itemPrice *= 2;
+                itemPrice += subExtra;
+                itemPrice *= subMultiplier;
+                // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
+                // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                if (qtyMult !== 1) itemPrice *= qtyMult;
                 sum += itemPrice;
             }
 
