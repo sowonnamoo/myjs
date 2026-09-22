@@ -497,7 +497,7 @@
                    <!-- 최소매수 옵션 / 수량 직접입력 옵션이 JS로 채워집니다 -->
                </select>
                <input type="number" id="qtySelect" placeholder="구입희망 매수 입력" min="1" step="1" oninput="updatePrice()" onchange="updatePrice()" disabled style="flex:1; min-width:0; padding:4px; text-align:center;">
-               <span style="font-size: 14px;">매</span>
+               <span style="font-size: 14px;" id="qtyUnitLabelSpan">매</span>
 
                 <span style="font-size: 14px; font-weight: bold; margin: 0 2px;">x</span>
                 <input type="number" id="setCountInput" value="1" min="1" max="50" onchange="updatePrice()" style="width: 45px; padding: 4px; text-align: center;"> 
@@ -1210,6 +1210,25 @@ window.enableMobileCustomPicker = function(selectEl) {
     // ---- 이 상품(192my)의 Firestore 문서. 페이지 진입 시 딱 1번만 불러와 여기에 보관합니다. ----
     const PRODUCT_ID = "192my";
     let productData = { productId: PRODUCT_ID, options: [] };
+
+    // [추가] "매개교체" — 관리자 엑셀 "품목" 시트에 이 상품의 매개교체 칸을 Y로 적어두면
+    // productData.qtyUnit이 "개"로 채워진다. 화면에 수량 단위를 표시하는 모든 곳에서
+    // 이 함수를 통해 "매" 대신 "개"를 쓰도록 한다. 안 적어두면(기존 상품들) 항상 "매".
+    function qtyUnitLabel() {
+        return productData.qtyUnit === "개" ? "개" : "매";
+    }
+
+    // [추가] "매개교체" 적용 — 화면에 이미 그려져 있는 수량 단위 표시(입력창 옆 단위 글자,
+    // 입력창 placeholder)를 지금 상품의 단위("매" 또는 "개")로 맞춘다. productData를
+    // 불러온 직후 한 번 호출하면 된다.
+    function applyQtyUnitLabel() {
+        const unit = qtyUnitLabel();
+        const span = document.getElementById("qtyUnitLabelSpan");
+        if (span) span.textContent = unit;
+        const qtyInput = document.getElementById("qtySelect");
+        if (qtyInput) qtyInput.placeholder = `구입희망 ${unit}수 입력`;
+    }
+    window.applyQtyUnitLabel = applyQtyUnitLabel;
 
     // ---- 가격/화면 계산 관련 참고사항 (중요) ----
     // 어드민 스키마(그룹 안에 여러 품목, 품목마다 price/margin/surcharge/weight/delivery)까지는
@@ -2220,7 +2239,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         modeSelect.innerHTML = "";
         const minOpt = document.createElement("option");
         minOpt.value = "min";
-        minOpt.textContent = `${minQty}매`;
+        minOpt.textContent = `${minQty}${qtyUnitLabel()}`;
         modeSelect.appendChild(minOpt);
 
         const customOpt = document.createElement("option");
@@ -2696,7 +2715,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
 
         summary.push(`가로 ${w}mm × 세로 ${h}mm`);
-        summary.push(`${enteredQty}매`);
+        summary.push(`${enteredQty}${qtyUnitLabel()}`);
         summary.push(`${count}건`);
         summaryEl.textContent = summary.filter(Boolean).join(" + ");
 
@@ -2889,7 +2908,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const maxQty = individualUnit * 10;
             const enteredQty = parseInt(qtyInput.value) || 0;
             if (enteredQty > maxQty) {
-                alert(`이 사이즈는 한 번에 주문 가능한 최대 매수가 ${maxQty.toLocaleString()}매입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
+                alert(`이 사이즈는 한 번에 주문 가능한 최대 ${qtyUnitLabel()}수가 ${maxQty.toLocaleString()}${qtyUnitLabel()}입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
                 qtyInput.value = maxQty;
                 updatePrice();
             }
@@ -2901,7 +2920,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         const maxQty = tiers[tiers.length - 1].qty;
         const enteredQty = parseInt(qtyInput.value) || 0;
         if (enteredQty > maxQty) {
-            alert(`한 번에 주문 가능한 최대 매수는 ${maxQty.toLocaleString()}매입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
+            alert(`한 번에 주문 가능한 최대 ${qtyUnitLabel()}수는 ${maxQty.toLocaleString()}${qtyUnitLabel()}입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
             qtyInput.value = maxQty;
             updatePrice();
         }
@@ -2951,6 +2970,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             const snap = await getDoc(doc(db, "products", PRODUCT_ID));
             productData = snap.exists() ? snap.data() : { productId: PRODUCT_ID, options: [] };
             if (!Array.isArray(productData.options)) productData.options = [];
+
+            // [추가] "매개교체" 반영 — 수량 단위 표시(입력창 옆 글자, placeholder)를
+            // 이 상품의 단위("매"/"개")에 맞춘다.
+            applyQtyUnitLabel();
 
             console.log("[192my] Firestore 상품 데이터 로드 완료:", productData);
 
