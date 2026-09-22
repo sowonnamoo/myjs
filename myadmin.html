@@ -91,7 +91,7 @@
             <input type="number" id="itemHeightInput" placeholder="세로 mm (규격 등록, 예: 50)">
         </div>
         <div class="hint">가로·세로를 입력하면 계산기 "규격사이즈" 목록(options02)에 자동으로 등록/반영됩니다.</div>
-        <input type="number" id="itemPriceInput" placeholder="가격(원가) (예: 15000)">
+        <input type="text" id="itemPriceInput" placeholder="가격(원가) (예: 15000, 품절이면 '품절'이라고 입력)">
         <input type="number" id="itemWeightInput" placeholder="종이 무게 g/㎡ (선택, 예: 90)">
         <input type="number" id="itemDeliveryInput" placeholder="배송일 (선택, 예: 1)">
         <input type="number" step="0.1" id="itemMarginInput" placeholder="마진율 % (선택, 예: 40 → 40%)">
@@ -455,7 +455,12 @@
             item.width = width;
             item.height = height;
         }
-        const price = $("itemPriceInput").value; if (price !== "") item.price = parseFloat(price);
+        // [수정] "품절" — 가격 칸에 "품절"이라고 적으면 품목을 품절 처리한다.
+        const priceRaw = $("itemPriceInput").value.trim();
+        if (priceRaw !== "") {
+            if (/품절/.test(priceRaw)) { item.soldOut = true; }
+            else { item.price = parseFloat(priceRaw); }
+        }
         const weight = $("itemWeightInput").value; if (weight !== "") item.weight = parseFloat(weight);
         const delivery = $("itemDeliveryInput").value; if (delivery !== "") item.delivery = parseFloat(delivery);
         const margin = $("itemMarginInput").value; if (margin !== "") item.margin = parseFloat(margin);
@@ -661,7 +666,7 @@
         $("itemNameInput").value = item.name || "";
         $("itemWidthInput").value = item.width ?? "";
         $("itemHeightInput").value = item.height ?? "";
-        $("itemPriceInput").value = item.price ?? "";
+        $("itemPriceInput").value = item.soldOut ? "품절" : (item.price ?? "");
         $("itemWeightInput").value = item.weight ?? "";
         $("itemDeliveryInput").value = item.delivery ?? "";
         $("itemMarginInput").value = item.margin ?? "";

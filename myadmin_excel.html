@@ -434,7 +434,15 @@
             const item = { name };
             const width = toNum(r["가로mm"]), height = toNum(r["세로mm"]);
             if (width !== undefined && height !== undefined) { item.width = width; item.height = height; }
-            const price = toNum(r["가격"]); if (price !== undefined) item.price = price;
+            // [추가] "품절" — 가격(E열)에 숫자 대신 "품절"이라고 적으면, 그 품목을 화면에서
+            // 선택할 수 없게 막고 "(품절)"로 표시한다. 가격 칸에 다른 값(숫자 등)이 같이
+            // 있어도 "품절"이라는 글자가 포함돼 있으면 품절로 처리한다.
+            const priceRawStr = String(r["가격"] ?? "").trim();
+            if (/품절/.test(priceRawStr)) {
+                item.soldOut = true;
+            } else {
+                const price = toNum(r["가격"]); if (price !== undefined) item.price = price;
+            }
             const weight = toNum(r["종이무게"]); if (weight !== undefined) item.weight = weight;
             const delivery = toNum(r["배송일"]); if (delivery !== undefined) item.delivery = delivery;
             const margin = toNum(r["마진율%"]); if (margin !== undefined) item.margin = margin;
@@ -654,7 +662,7 @@
                     const flags = [v.url && "URL", v.imageUrl && "이미지", v.nextPageUrl && "다음URL", v.priorityNextPageUrl && "최우선URL", v.openInNewWindow && "새창"].filter(Boolean).join(", ");
                     const sizeMarginText = v.sizeMargin ? (v.sizeMargin.type === "multiply" ? "×" + v.sizeMargin.value : "+" + v.sizeMargin.value) : "-";
                     const exceptionText = (v.exceptionQty !== undefined && v.exceptionPrice !== undefined) ? `${v.exceptionQty}미만→${v.exceptionPrice}원` : "-";
-                    html += `<tr><td>${v.name}</td><td>${orEmpty(v.price)}</td><td>${v.width !== undefined ? v.width + "×" + v.height : ""}</td><td>${flags}</td><td>${v.minSideMM !== undefined ? v.minSideMM + "mm↑" : "-"}</td><td>${v.maxSideMM !== undefined ? v.maxSideMM + "mm↓" : "-"}</td><td>${v.minWeightG !== undefined ? v.minWeightG + "g↑" : "-"}</td><td>${v.maxWeightG !== undefined ? v.maxWeightG + "g↓" : "-"}</td><td>${v.totalMultiplier !== undefined ? "×" + v.totalMultiplier : "-"}</td><td>${sizeMarginText}</td><td>${v.qtyMultiplierStep !== undefined ? v.qtyMultiplierStep + "장마다" : "-"}</td><td>${exceptionText}</td><td>${v.optionLocked ? "Y" : "-"}</td></tr>`;
+                    html += `<tr><td>${v.name}</td><td>${v.soldOut ? '<span style="color:#d33; font-weight:700;">품절</span>' : orEmpty(v.price)}</td><td>${v.width !== undefined ? v.width + "×" + v.height : ""}</td><td>${flags}</td><td>${v.minSideMM !== undefined ? v.minSideMM + "mm↑" : "-"}</td><td>${v.maxSideMM !== undefined ? v.maxSideMM + "mm↓" : "-"}</td><td>${v.minWeightG !== undefined ? v.minWeightG + "g↑" : "-"}</td><td>${v.maxWeightG !== undefined ? v.maxWeightG + "g↓" : "-"}</td><td>${v.totalMultiplier !== undefined ? "×" + v.totalMultiplier : "-"}</td><td>${sizeMarginText}</td><td>${v.qtyMultiplierStep !== undefined ? v.qtyMultiplierStep + "장마다" : "-"}</td><td>${exceptionText}</td><td>${v.optionLocked ? "Y" : "-"}</td></tr>`;
                 });
                 html += `</table>`;
             });
