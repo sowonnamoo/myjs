@@ -505,10 +505,10 @@
             </div>
         </div>
 
-        <div class="option-row">
-            <div class="label">사이즈</div>
+        <div class="option-row" id="sizeOptionRow">
+            <div class="label" id="sizeLabel">사이즈</div>
             <div style="flex:1;">
-                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <div style="display:flex; gap:8px; margin-bottom:8px;" id="sizeTypeToggleRow">
                     <button type="button" id="sizeTypeBtnStandard" onclick="setSizeTypeUI('standard')"
                         style="flex:1; padding:10px 8px; border:2px solid #2b7bc3; background:#2b7bc3; color:#fff; border-radius:8px; font-weight:bold; font-size:13px; cursor:pointer; transition:.15s;">
                         규격사이즈
@@ -2294,12 +2294,16 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 규격사이즈목록(options02)에 등록된 사이즈가 하나도 없으면(=엑셀 "규격사이즈목록"
         // 시트를 안 채우고 "품목" 시트에만 가로/세로를 적어둔 경우 등), "규격사이즈/희망사이즈"
         // 토글 버튼과 빈 "등록된 규격사이즈 없음" 드롭다운을 화면에서 아예 숨기고 자동으로
-        // "희망사이즈 입력(비규격)" 모드로 전환합니다. 나중에 규격사이즈목록에 사이즈를 채우면
-        // 별도 설정 없이 다시 토글 버튼과 드롭다운이 보입니다.
-        const sizeToggleRow = document.getElementById("sizeTypeBtnStandard")
-            ? document.getElementById("sizeTypeBtnStandard").parentElement
-            : null;
+        // "희망사이즈 입력(비규격)" 모드로 전환합니다. 이때 "사이즈"라는 라벨 글씨만 홀로 남아
+        // 어색해 보이지 않도록 라벨도 같이 숨기고, 그 줄은 padding을 최소화해서 구분선 한 줄만
+        // 남도록 처리합니다. 나중에 규격사이즈목록에 사이즈를 채우면 별도 설정 없이 라벨/토글
+        // 버튼/드롭다운/줄 간격이 전부 원래대로 돌아옵니다.
+        const sizeToggleRow = document.getElementById("sizeTypeToggleRow");
+        const sizeLabel = document.getElementById("sizeLabel");
+        const sizeOptionRow = document.getElementById("sizeOptionRow");
         if (sizeToggleRow) sizeToggleRow.style.display = hasStandardSizes ? "flex" : "none";
+        if (sizeLabel) sizeLabel.style.display = hasStandardSizes ? "" : "none";
+        if (sizeOptionRow) sizeOptionRow.style.padding = hasStandardSizes ? "" : "0";
         sizeList.style.display = hasStandardSizes ? "" : "none";
         if (!hasStandardSizes && typeof window.setSizeTypeUI === "function") {
             window.setSizeTypeUI("custom");
