@@ -1092,6 +1092,17 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
             return;
         }
+        // [추가] "품절" 처리된 품목이 지금 선택돼 있으면 재구입(장바구니 담기) 흐름에서도
+        // 진행되지 않도록 막습니다.
+        let hasSoldOutSelectedReorder = false;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelectedReorder = true;
+        });
+        if (hasSoldOutSelectedReorder) {
+            alert("품절상품입니다. 다른 옵션을 선택해주세요.");
+            return;
+        }
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
         if (hasFinishingMutualExclusionConflict()) {
             alert("재단, 비규격재단, 접지는 서로 중복 선택할 수 없습니다.");
@@ -1665,8 +1676,14 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
     function applyMobileFinishFileLabel(el) {
         const original = el.dataset.originalName || el.value || "";
-        if (!isMobileFinishFileTarget(original)) return;
-        el.textContent = isMobileViewport() ? MOBILE_FINISH_FILE_LABEL : original;
+        // [추가] "품절" 처리된 품목은 라벨 뒤에 "(품절)"을 붙여서 보여준다. 파일첨부용
+        // 라벨(모바일)이든 원래 이름이든 상관없이 항상 붙는다.
+        const soldOutSuffix = el.dataset.soldOut === "1" ? " (품절)" : "";
+        if (!isMobileFinishFileTarget(original)) {
+            el.textContent = original + soldOutSuffix;
+            return;
+        }
+        el.textContent = (isMobileViewport() ? MOBILE_FINISH_FILE_LABEL : original) + soldOutSuffix;
     }
     // 화면 크기가 바뀔 때(회전, 브라우저 리사이즈 등) 이미 만들어진 옵션들의 라벨도
     // 다시 맞춰주고, 그 결과에 맞춰 건수 잠금 상태도 재판단한다.
@@ -1683,6 +1700,13 @@ window.enableMobileCustomPicker = function(selectEl) {
         el.value = v.name;
         el.textContent = v.name;
         el.dataset.originalName = v.name;
+        // [추가] "품절" — 가격(E열)에 "품절"이라고 적어둔 품목은 화면에서 선택할 수 없게
+        // 막고(disabled), 이름 뒤에 "(품절)"을 붙여서 보여준다. 관리자 엑셀/관리자에서
+        // 가격 칸에 "품절"이라고만 적으면 된다(다른 값은 필요 없음).
+        if (v.soldOut) {
+            el.dataset.soldOut = "1";
+            el.disabled = true;
+        }
         applyMobileFinishFileLabel(el);
         el.dataset.price = v.price ?? 0;
         el.dataset.margin = v.margin ?? 0;
@@ -2630,6 +2654,32 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
 
         const summaryEl = document.getElementById("selectedOptionsSummary");
+
+        // [추가] "품절" — 지금 선택돼 있는 옵션(일반 옵션 + 후가공) 중에 품절 처리된
+        // 품목이 있으면, 가격 대신 "품절상품입니다"를 보여주고 주문 버튼을 막는다.
+        // 관리자 엑셀/관리자에서 그 품목의 가격 칸에 "품절"이라고만 적으면 된다.
+        let hasSoldOutSelected = false;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelected = true;
+        });
+        const orderBtnForSoldOut = document.getElementById("orderBtn");
+        if (hasSoldOutSelected) {
+            summaryEl.innerHTML = '<span style="color:red; font-size:16px; font-weight:700;">품절상품입니다.</span>';
+            document.getElementById("priceDisplay").textContent = "품절";
+            if (orderBtnForSoldOut) {
+                orderBtnForSoldOut.disabled = true;
+                orderBtnForSoldOut.style.opacity = "0.5";
+                orderBtnForSoldOut.style.cursor = "not-allowed";
+            }
+            return;
+        }
+        if (orderBtnForSoldOut) {
+            orderBtnForSoldOut.disabled = false;
+            orderBtnForSoldOut.style.opacity = "";
+            orderBtnForSoldOut.style.cursor = "";
+        }
+
         if (hasDuplicateFinishing) {
             summaryEl.innerHTML = '<span style="color:red; font-size:16px; font-weight:700;">동일한 후가공을 중복 선택할 수 없습니다.</span>';
             document.getElementById("priceDisplay").textContent = "0원";
@@ -3298,6 +3348,17 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
         if (hasDuplicateFinishingCheck) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
+            return;
+        }
+        // [추가] "품절" 처리된 품목이 지금 선택돼 있으면(주문 버튼이 원래 비활성화되어
+        // 있어야 정상이지만, 혹시 모를 경우를 대비해) 다음 페이지로 넘어가지 않도록 한 번 더 막습니다.
+        let hasSoldOutSelectedCheck = false;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelectedCheck = true;
+        });
+        if (hasSoldOutSelectedCheck) {
+            alert("품절상품입니다. 다른 옵션을 선택해주세요.");
             return;
         }
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
