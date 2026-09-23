@@ -494,7 +494,7 @@
                <select id="qtyModeSelect" onchange="handleQtyModeChange()" style="width:120px;">
                    <!-- 최소매수 옵션 / 수량 직접입력 옵션이 JS로 채워집니다 -->
                </select>
-               <input type="number" id="qtySelect" placeholder="구입희망 매수 입력" min="1" step="1" oninput="updatePrice()" onchange="updatePrice()" disabled style="flex:1; min-width:0; padding:4px; text-align:center;">
+               <input type="number" id="qtySelect" placeholder="구입희망 매수 입력" min="1" step="1" oninput="updatePrice()" onchange="refreshMaxOrderQtyGatedOptions(); updatePrice()" disabled style="flex:1; min-width:0; padding:4px; text-align:center;">
                <span style="font-size: 14px;" id="qtyUnitLabelSpan">매</span>
 
                 <span style="font-size: 14px; font-weight: bold; margin: 0 2px;">x</span>
@@ -1427,6 +1427,49 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
     window.refreshWeightGatedOptions = refreshWeightGatedOptions;
 
+    // [추가] "최대수량" — 이 품목은 주문 수량이 등록된 값 미만일 때만 선택할 수 있다.
+    // 매 입력(타이핑) 때마다는 alert 없이 그레이아웃 상태만 조용히 갱신하고,
+    // 값이 확정되는 시점(onchange)에만 이미 선택돼 있던 값이 막혔는지 확인해서
+    // 자동으로 되돌리고 안내한다(위 refreshWeightGatedOptions와 동일한 방식).
+    function updateMaxOrderQtyDisabledState(enteredQty) {
+        document.querySelectorAll('#dynamicOptionsContainer select, .finishing-select').forEach(sel => {
+            Array.from(sel.options).forEach(opt => {
+                const maxOrderQty = parseFloat(opt.dataset.maxOrderQty);
+                if (isNaN(maxOrderQty) || maxOrderQty <= 0) return;
+                opt.disabled = enteredQty >= maxOrderQty;
+            });
+        });
+    }
+    window.updateMaxOrderQtyDisabledState = updateMaxOrderQtyDisabledState;
+
+    function refreshMaxOrderQtyGatedOptions() {
+        const qtyInput = document.getElementById("qtySelect");
+        const enteredQty = Math.max(1, parseInt(qtyInput.value) || 0);
+        document.querySelectorAll('#dynamicOptionsContainer select, .finishing-select').forEach(sel => {
+            let needsReset = false;
+            let resetMessage = "";
+            Array.from(sel.options).forEach(opt => {
+                const maxOrderQty = parseFloat(opt.dataset.maxOrderQty);
+                if (isNaN(maxOrderQty) || maxOrderQty <= 0) return;
+                const blocked = enteredQty >= maxOrderQty;
+                opt.disabled = blocked;
+                if (blocked && sel.value === opt.value) {
+                    needsReset = true;
+                    resetMessage = `"${opt.dataset.originalName || opt.value}"은(는) 수량 ${maxOrderQty}${qtyUnitLabel()} 미만 선택 시에만 고를 수 있습니다.`;
+                }
+            });
+            if (needsReset) {
+                alert(resetMessage);
+                const fallback = Array.from(sel.options).find(o => !o.disabled);
+                sel.value = fallback ? fallback.value : "";
+                buildSubOptionSelect(sel);
+                sel.dataset.prevFinishingValue = sel.value;
+                if (typeof refreshFinishingExclusiveOptions === "function") refreshFinishingExclusiveOptions();
+            }
+        });
+    }
+    window.refreshMaxOrderQtyGatedOptions = refreshMaxOrderQtyGatedOptions;
+
     // [추가] "비규격재단" 후가공 select 밑에 작게 가로/세로(mm) 입력창을 만들어 붙인다.
     // 이미 만들어져 있으면(같은 select에 두 번 붙지 않도록) 기존 것을 그대로 재사용한다.
     function ensureCustomCutSizeBox(selectElement) {
@@ -1761,6 +1804,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 반대 기능. 관리자 엑셀의 "최대평량g" 값.
         if (v.maxWeightG !== undefined && v.maxWeightG !== null && v.maxWeightG !== "") {
             el.dataset.maxWeightG = v.maxWeightG;
+        }
+        // [추가] "최대수량" — 이 품목을 선택하려면, 지금 입력한 주문 수량(매수/개수)이
+        // 이 값 미만이어야 한다는 제한(예: 5를 적으면 수량 5 미만에서만 선택 가능, 즉
+        // 소량 주문 전용 옵션). 수량을 그 이상으로 올리면 자동으로 선택이 풀리고 안내가 뜹니다.
+        if (v.maxOrderQty !== undefined && v.maxOrderQty !== null && v.maxOrderQty !== "") {
+            el.dataset.maxOrderQty = v.maxOrderQty;
         }
         // [추가] 이 품목을 선택하면, 그 품목 자체 가격이 아니라 "지금까지 계산된 전체 금액"에
         // 이 배수를 곱합니다. 예: 코팅에 1.2를 적으면, 다른 옵션들 다 합친 금액이 1.2배가 됩니다.
@@ -2364,6 +2413,9 @@ window.enableMobileCustomPicker = function(selectEl) {
       try {
         const qtySelect = document.getElementById("qtySelect"); // 구입희망 매수 입력창 (input[type=number])
         const enteredQty = Math.max(1, parseInt(qtySelect.value) || 0);
+        // [추가] "최대수량" 그레이아웃 상태를 조용히 갱신(알림 없이) — 확정 시점 처리는
+        // qtySelect의 onchange에서 refreshMaxOrderQtyGatedOptions()가 담당한다.
+        updateMaxOrderQtyDisabledState(enteredQty);
         const qtyFactor = getQtyPricing(enteredQty).multi;
         const count = parseInt(document.getElementById("setCountInput").value) || 1;
 
@@ -3007,6 +3059,9 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 페이지가 처음 열렸을 때, 후가공에 있는 "코팅" 같은 최소평량g
             // 제한 품목도 기본 선택된 평량 기준으로 선택 가능 여부를 맞춰둔다.
             if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+            // [추가] "최대수량" 제한 품목도 초기 수량(qtySelect 기본값) 기준으로 선택 가능
+            // 여부를 맞춰둔다.
+            if (typeof refreshMaxOrderQtyGatedOptions === "function") refreshMaxOrderQtyGatedOptions();
 
             // [추가] 재구입 흐름이면 예전 사이즈를 자동으로 선택
             if (isReorderFlow && reorderWidth > 0 && reorderHeight > 0) {
@@ -3028,6 +3083,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 재구입 흐름으로 옵션들이 자동 선택된 뒤에도, "코팅" 같은 최소평량g
             // 제한 품목의 선택 가능 여부를 최신 평량 기준으로 다시 맞춰둔다.
             if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+            // [추가] "최대수량" 제한 품목도 재구입으로 자동 선택된 수량 기준으로 다시 맞춰둔다.
+            if (typeof refreshMaxOrderQtyGatedOptions === "function") refreshMaxOrderQtyGatedOptions();
 
             // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
             // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
