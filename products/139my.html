@@ -1677,6 +1677,20 @@ window.enableMobileCustomPicker = function(selectEl) {
         return (!isNaN(margin) && margin !== 1) ? margin : undefined;
     }
 
+    // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "총액배수마진"(L열)이 적혀
+    // 있으면 그 값을 반환합니다. 후가공 등 모든 옵션이 적용된 총액에 곱해지는 배수입니다.
+    // 값이 없거나 1이면 undefined.
+    function getStandardSizeTotalMultiplierMargin(w, h) {
+        const g = standardSizeConfig();
+        if (!g || !Array.isArray(g.sizes)) return undefined;
+        const match = g.sizes.find(s => {
+            const sw = parseFloat(s.width), sh = parseFloat(s.height);
+            return (sw === w && sh === h) || (sw === h && sh === w);
+        });
+        const m = match ? parseFloat(match.totalMultiplierMargin) : NaN;
+        return (!isNaN(m) && m > 0 && m !== 1) ? m : undefined;
+    }
+
     // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "매수배수제외" 표시가
     // 되어 있는지 확인합니다. 엑셀/관리자 화면에서 이 사이즈 행에 표시해두면, 이 사이즈를
     // 쓸 때는 매수별배수(options00)를 곱하지 않고 등록된 가격을 그대로 씁니다.
@@ -2434,6 +2448,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 el.dataset.price = s.price !== undefined ? s.price : "";
                 el.dataset.margin = s.margin !== undefined ? s.margin : "";
                 el.dataset.skipQtyMulti = s.skipQtyMulti ? "1" : "";
+                // [추가] "총액배수마진"(L열) — 규격사이즈를 직접 고른 경우에도 이 줄의 값을 그대로 씀
+                const totalMultiplierMargin = parseFloat(s.totalMultiplierMargin);
+                el.dataset.totalMultiplierMargin = (!isNaN(totalMultiplierMargin) && totalMultiplierMargin > 0) ? totalMultiplierMargin : "";
                 // [추가] "개별매수배수"(H열)가 등록돼 있으면 이 옵션에도 저장해서, 규격사이즈를
                 // 드롭다운으로 직접 고른 경우 가로/세로로 다시 찾지 않고 이 값을 그대로 씀.
                 const individualQtyUnit = parseFloat(s.individualQtyUnit);
@@ -2522,6 +2539,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 price: selectedSizeOpt.dataset.price !== "" ? parseFloat(selectedSizeOpt.dataset.price) : undefined,
                 margin: selectedSizeOpt.dataset.margin !== "" ? parseFloat(selectedSizeOpt.dataset.margin) : undefined,
                 skipQtyMulti: selectedSizeOpt.dataset.skipQtyMulti === "1",
+                totalMultiplierMargin: selectedSizeOpt.dataset.totalMultiplierMargin !== "" ? parseFloat(selectedSizeOpt.dataset.totalMultiplierMargin) : undefined,
                 individualQtyUnit: selectedSizeOpt.dataset.individualQtyUnit !== "" ? parseFloat(selectedSizeOpt.dataset.individualQtyUnit) : undefined,
                 progressiveQtyRule: selectedSizeOpt.dataset.progressiveQtyRule !== "" ? (() => { try { return JSON.parse(selectedSizeOpt.dataset.progressiveQtyRule); } catch (e) { return undefined; } })() : undefined
             }
@@ -2688,7 +2706,8 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             totalWeight += weight;
             if (!isNaN(delivery)) totalDeliveryDays += delivery;
-            if (opt.value) summary.push(itemLabel + (applyDoublePricingHere ? ' (양면 할증 2배)' : ''));
+            // 배수/할증 정보는 고객에게 노출하지 않는다(가격에만 반영).
+            if (opt.value) summary.push(itemLabel);
         });
 
         // 규격 사이즈 목록(options02)에 사이즈별로 등록해둔 추가 가격이 있으면 더합니다.
@@ -2719,8 +2738,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 : getStandardSizeMargin(w, h);
             if (standardSizeMargin !== undefined) {
                 sum *= standardSizeMargin;
-                const pct = Math.round((standardSizeMargin - 1) * 100);
-                summary.push(`규격사이즈 마진 x${standardSizeMargin} (${pct > 0 ? "+" : ""}${pct}%)`);
+                // 마진 배수(x1.1, +10% 등)는 고객에게 노출하지 않는다(가격에만 반영).
             }
         }
 
@@ -2877,6 +2895,18 @@ window.enableMobileCustomPicker = function(selectEl) {
             weightDisplay.textContent = "0kg";
         }
 
+        // [추가] 규격사이즈의 "총액배수마진"(L열) — 후가공 등 모든 옵션이 적용된 총액에
+        // 곱해지는 배수. 예: 총액 10000원 × 2 = 20000원. 아래에서 총액배수/후가공 합산 후 적용.
+        let sizeTotalMarginMultiplier = 1;
+        if (useStandardPricing) {
+            const tm = standardSizeFromSelection
+                ? standardSizeFromSelection.totalMultiplierMargin
+                : getStandardSizeTotalMultiplierMargin(w, h);
+            if (tm !== undefined && !isNaN(tm) && tm > 0 && tm !== 1) {
+                // 단가 규칙이 손님에게 노출되지 않도록 견적 요약(summary)에는 표시하지 않는다.
+                sizeTotalMarginMultiplier = tm;
+            }
+        }
         summary.push(`가로 ${w}mm × 세로 ${h}mm`);
         summary.push(`${enteredQty}${qtyUnitLabel()}`);
         summary.push(`${count}건`);
@@ -2894,6 +2924,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (!isNaN(m) && m > 0) totalPriceMultiplier *= m;
         });
         sum = sum * totalPriceMultiplier + finishingSum;
+        // [추가] 후가공까지 모두 더해진 총액에 규격사이즈의 "총액배수마진"을 곱한다.
+        sum *= sizeTotalMarginMultiplier;
 
         // 100원 단위로 반올림하면 소수점 끝자리가 50 이상일 때 위로 올라가서
         // 실제 계산값보다 최대 100원 더 비싸게 보일 수 있어 내림으로 처리합니다.
