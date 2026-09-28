@@ -858,6 +858,10 @@ function openCustomSelectModal(selectEl) {
                     alert(sizeConflict.message);
                     return;
                 }
+                if (!opt.value && selectEl.dataset.lockedValue) {
+                    alert("필수 선택 옵션은 해제할 수 없습니다.");
+                    return;
+                }
                 alert("지금은 선택할 수 없는 옵션입니다.");
             });
         } else {
@@ -1303,7 +1307,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         const selects = document.querySelectorAll(".finishing-select");
         selects.forEach(sel => {
             Array.from(sel.options).forEach(opt => {
-                if (!opt.value || opt.value === sel.value) {
+                if (!opt.value) {
+                    // [추가] 옵션고정(필수선택) 줄은 "선택안함"도 고를 수 없게 막는다.
+                    opt.disabled = !!sel.dataset.lockedValue;
+                    return;
+                }
+                if (opt.value === sel.value) {
                     opt.disabled = false;
                     return;
                 }
@@ -2013,6 +2022,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (lockedValue) {
             selectElement.value = lockedValue.name;
             selectElement.dataset.prevFinishingValue = lockedValue.name;
+            // [추가] 필수선택 줄에서는 "선택안함"을 클릭할 수 없게 비활성화
+            const noneOpt = selectElement.options[0];
+            if (noneOpt && !noneOpt.value) noneOpt.disabled = true;
         }
     }
 
@@ -3140,6 +3152,16 @@ window.enableMobileCustomPicker = function(selectEl) {
             window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
             window.enableMobileCustomPicker(document.getElementById("sizeList"));
             window.enableMobileCustomPicker(document.querySelector(".finishing-select"));
+            // [추가] 첫 번째 줄이 옵션고정(필수선택) 품목이고 서브옵션이 있으면, change 이벤트가
+            // 없어서 서브옵션 select가 안 만들어지던 문제를 해결한다. 만든 뒤 가격도 다시 계산.
+            {
+                const firstFinishing = document.querySelector(".finishing-select");
+                if (firstFinishing && firstFinishing.dataset.lockedValue) {
+                    buildSubOptionSelect(firstFinishing);
+                    if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+                    updatePrice();
+                }
+            }
         } catch (err) {
             // 초기화 중 어디서든 에러가 나면 조용히 0원으로 남지 않고, 콘솔 + 화면에 바로 표시합니다.
             console.error("[141my] 초기화 중 오류가 발생했습니다:", err);
