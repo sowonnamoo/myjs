@@ -1313,7 +1313,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const minSizeConflict = !isNaN(minSide) && minSide > 0 && shortSide !== null && shortSide < minSide;
                 // [추가] 최소사이즈mm(한변)의 반대 기능. 긴 변이 최대사이즈를 넘으면 선택 불가.
                 const maxSizeConflict = !isNaN(maxSide) && maxSide > 0 && longSide !== null && longSide > maxSide;
-                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict;
+                // [추가] 옵션고정 품목은 자기 고정 줄에만 있어야 하므로, 다른 줄에서는 선택 불가
+                const lockedElsewhere = (window.__lockedFinishingNames || []).includes(opt.value) && sel.dataset.lockedValue !== opt.value;
+                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict || lockedElsewhere;
             });
         });
     }
@@ -1427,7 +1429,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
     window.refreshWeightGatedOptions = refreshWeightGatedOptions;
 
-    // [추가] "최대수량" — 이 품목은 주문 수량이 등록된 값 미만일 때만 선택할 수 있다.
+    // [추가] "최대수량" — 이 품목은 주문 수량이 등록된 값 이하일 때만 선택할 수 있다.
     // 매 입력(타이핑) 때마다는 alert 없이 그레이아웃 상태만 조용히 갱신하고,
     // 값이 확정되는 시점(onchange)에만 이미 선택돼 있던 값이 막혔는지 확인해서
     // 자동으로 되돌리고 안내한다(위 refreshWeightGatedOptions와 동일한 방식).
@@ -1436,7 +1438,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             Array.from(sel.options).forEach(opt => {
                 const maxOrderQty = parseFloat(opt.dataset.maxOrderQty);
                 if (isNaN(maxOrderQty) || maxOrderQty <= 0) return;
-                opt.disabled = enteredQty >= maxOrderQty;
+                opt.disabled = enteredQty > maxOrderQty;
             });
         });
     }
@@ -1451,11 +1453,11 @@ window.enableMobileCustomPicker = function(selectEl) {
             Array.from(sel.options).forEach(opt => {
                 const maxOrderQty = parseFloat(opt.dataset.maxOrderQty);
                 if (isNaN(maxOrderQty) || maxOrderQty <= 0) return;
-                const blocked = enteredQty >= maxOrderQty;
+                const blocked = enteredQty > maxOrderQty;
                 opt.disabled = blocked;
                 if (blocked && sel.value === opt.value) {
                     needsReset = true;
-                    resetMessage = `"${opt.dataset.originalName || opt.value}"은(는) 수량 ${maxOrderQty}${qtyUnitLabel()} 미만 선택 시에만 고를 수 있습니다.`;
+                    resetMessage = `"${opt.dataset.originalName || opt.value}"은(는) 수량 ${maxOrderQty}${qtyUnitLabel()}까지만 선택 가능한 옵션입니다.`;
                 }
             });
             if (needsReset) {
@@ -1806,7 +1808,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             el.dataset.maxWeightG = v.maxWeightG;
         }
         // [추가] "최대수량" — 이 품목을 선택하려면, 지금 입력한 주문 수량(매수/개수)이
-        // 이 값 미만이어야 한다는 제한(예: 5를 적으면 수량 5 미만에서만 선택 가능, 즉
+        // 이 값 이하여야 한다는 제한(예: 5를 적으면 수량 5까지만 선택 가능, 즉
         // 소량 주문 전용 옵션). 수량을 그 이상으로 올리면 자동으로 선택이 풀리고 안내가 뜹니다.
         if (v.maxOrderQty !== undefined && v.maxOrderQty !== null && v.maxOrderQty !== "") {
             el.dataset.maxOrderQty = v.maxOrderQty;
@@ -1992,12 +1994,21 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 적용합니다. 드롭다운 목록 자체는 그대로 다 보여주되(선택안함 포함), 실제로 다른 값을
     // 고르면 setupFinishingListener에서 원래 값으로 되돌리고 "추가하기" 줄로 옮겨줍니다.
     // "추가하기"로 늘어난 추가 select는 이 잠금을 적용하지 않습니다(중복 선택 오류 방지).
-    function loadFinishingOptions(selectElement, isPrimary = true) {
+    // [수정] 옵션고정(Y)이 여러 개여도 모두 고정되도록, 고정 품목마다 각자의 줄(select)을
+    // 갖습니다. 첫 줄은 첫 번째 고정 품목, 나머지 고정 품목은 addLockedFinishingRows()가
+    // 만드는 별도 줄에 하나씩 고정됩니다. forcedLocked가 넘어오면 그 품목으로 고정합니다.
+    function getLockedFinishingItems() {
         const g = finishingGroup();
-        const lockedValue = isPrimary && g && Array.isArray(g.values) ? g.values.find(v => v.optionLocked) : null;
+        return g && Array.isArray(g.values) ? g.values.filter(v => v.optionLocked) : [];
+    }
+    function loadFinishingOptions(selectElement, isPrimary = true, forcedLocked = null) {
+        const g = finishingGroup();
+        const lockedValue = forcedLocked
+            || (isPrimary && g && Array.isArray(g.values) ? g.values.find(v => v.optionLocked) : null);
         selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
         if (!g) return;
         (g.values || []).forEach(v => selectElement.appendChild(buildOptionEl(v)));
+        window.__lockedFinishingNames = getLockedFinishingItems().map(v => v.name);
         selectElement.dataset.lockedValue = lockedValue ? lockedValue.name : "";
         if (lockedValue) {
             selectElement.value = lockedValue.name;
@@ -2153,6 +2164,29 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
             updatePrice();
             updateDeliveryDisplay();
+        });
+    }
+
+    // [추가] 옵션고정(Y) 품목이 2개 이상일 때, 첫 줄에 고정된 품목을 제외한 나머지 고정 품목을
+    // 각각 별도의 줄로 만들어 그 품목에 고정합니다. 고정 줄에는 삭제 버튼을 두지 않습니다.
+    function addLockedFinishingRows() {
+        const lockedItems = getLockedFinishingItems();
+        if (lockedItems.length < 2) return;
+        const container = document.getElementById("finishingContainer");
+        lockedItems.slice(1).forEach(item => {
+            const newRow = document.createElement("div");
+            newRow.className = "option-row";
+            newRow.innerHTML = `
+                <div class="label">후가공 추가</div>
+                <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option value="">선택안함</option></select>
+            `;
+            container.appendChild(newRow);
+            const sel = newRow.querySelector(".finishing-select");
+            loadFinishingOptions(sel, false, item);
+            setupFinishingListener(sel);
+            window.enableMobileCustomPicker(sel);
+            // 고정 품목의 서브옵션(색상 등)이 있으면 함께 표시
+            buildSubOptionSelect(sel);
         });
     }
 
@@ -3056,6 +3090,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             updateFinishingVisibility();
             loadFinishingOptions(document.querySelector(".finishing-select"));
             setupFinishingListener(document.querySelector(".finishing-select"));
+            // [추가] 옵션고정 품목이 여러 개면 나머지도 각자 줄을 만들어 고정
+            addLockedFinishingRows();
             // [추가] 페이지가 처음 열렸을 때, 후가공에 있는 "코팅" 같은 최소평량g
             // 제한 품목도 기본 선택된 평량 기준으로 선택 가능 여부를 맞춰둔다.
             if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
