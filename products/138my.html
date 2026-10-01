@@ -1318,6 +1318,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     function refreshFinishingExclusiveOptions() {
         const shortSide = getCurrentShortSideMM();
         const longSide = getCurrentLongSideMM();
+        const currentHeight = getCurrentHeightMM();
         const selects = document.querySelectorAll(".finishing-select");
         selects.forEach(sel => {
             Array.from(sel.options).forEach(opt => {
@@ -1336,9 +1337,12 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const minSizeConflict = !isNaN(minSide) && minSide > 0 && shortSide !== null && shortSide < minSide;
                 // [추가] 최소사이즈mm(한변)의 반대 기능. 긴 변이 최대사이즈를 넘으면 선택 불가.
                 const maxSizeConflict = !isNaN(maxSide) && maxSide > 0 && longSide !== null && longSide > maxSide;
+                // [추가] "고정세로사이즈mm" — 세로가 정확히 일치하지 않으면 선택 불가(가로는 무관)
+                const fixedHeight = parseFloat(opt.dataset.fixedHeightMm);
+                const fixedHeightConflict = !isNaN(fixedHeight) && fixedHeight > 0 && currentHeight !== null && currentHeight !== fixedHeight;
                 // [추가] 옵션고정 품목은 자기 고정 줄에만 있어야 하므로, 다른 줄에서는 선택 불가
                 const lockedElsewhere = (window.__lockedFinishingNames || []).includes(opt.value) && sel.dataset.lockedValue !== opt.value;
-                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict || lockedElsewhere;
+                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict || fixedHeightConflict || lockedElsewhere;
             });
         });
     }
@@ -1362,15 +1366,25 @@ window.enableMobileCustomPicker = function(selectEl) {
         return Math.max(w, h);
     }
 
+    // [추가] 가로/세로를 뒤섞지 않고, 지금 입력된 "세로(mm)" 값 그대로를 돌려준다.
+    // "고정세로사이즈mm" 제한(세로만 정확히 일치해야 함)을 확인할 때 쓴다.
+    function getCurrentHeightMM() {
+        const h = parseFloat(document.getElementById("heightInput")?.value);
+        if (!h || isNaN(h)) return null;
+        return h;
+    }
+
     // 특정 후가공 <option>이 최소/최대사이즈(한 변) 제한 때문에 지금 선택할 수 없는
     // 상태인지 확인한다. 선택 불가면 { name, minSide 또는 maxSide, message }를, 가능하면 null을 돌려준다.
     function checkFinishingSizeConflict(optionEl) {
         if (!optionEl) return null;
         const minSide = parseFloat(optionEl.dataset.minSideMm);
         const maxSide = parseFloat(optionEl.dataset.maxSideMm);
+        const fixedHeight = parseFloat(optionEl.dataset.fixedHeightMm);
         const hasMin = !isNaN(minSide) && minSide > 0;
         const hasMax = !isNaN(maxSide) && maxSide > 0;
-        if (!hasMin && !hasMax) return null;
+        const hasFixedHeight = !isNaN(fixedHeight) && fixedHeight > 0;
+        if (!hasMin && !hasMax && !hasFixedHeight) return null;
         const name = optionEl.dataset.originalName || optionEl.value;
         if (hasMin) {
             const shortSide = getCurrentShortSideMM();
@@ -1383,6 +1397,13 @@ window.enableMobileCustomPicker = function(selectEl) {
             const longSide = getCurrentLongSideMM();
             if (longSide !== null && longSide > maxSide) {
                 return { name, maxSide, message: `${name}은(는) ${maxSide}mm 이하로 선택해 주세요.` };
+            }
+        }
+        // [추가] "고정세로사이즈mm" — 세로가 정확히 이 값일 때만 선택 가능 (가로는 보지 않음)
+        if (hasFixedHeight) {
+            const curHeight = getCurrentHeightMM();
+            if (curHeight !== null && curHeight !== fixedHeight) {
+                return { name, fixedHeight, message: `${name}은(는) 세로 ${fixedHeight}mm 사이즈에서만 선택 가능합니다.` };
             }
         }
         return null;
@@ -1837,6 +1858,11 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 넘으면 이 품목을 선택할 수 없다는 제한. 관리자 엑셀의 "최대사이즈mm(한변)" 값.
         if (v.maxSideMM !== undefined && v.maxSideMM !== null && v.maxSideMM !== "") {
             el.dataset.maxSideMm = v.maxSideMM;
+        }
+        // [추가] "고정세로사이즈mm" — 재단/작업 사이즈의 세로가 정확히 이 값(mm)일 때만
+        // 선택 가능. 가로는 보지 않는다. 관리자 엑셀의 "고정세로사이즈mm" 값.
+        if (v.fixedHeightMM !== undefined && v.fixedHeightMM !== null && v.fixedHeightMM !== "") {
+            el.dataset.fixedHeightMm = v.fixedHeightMM;
         }
         // [추가] 이 품목을 선택하려면, 다른 옵션에서 고른 종이 평량(무게, g)이 최소
         // 이 값 이상이어야 한다는 제한 (예: 코팅=150 → 150g 이상 용지에서만 선택 가능).
