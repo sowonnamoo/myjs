@@ -3058,6 +3058,18 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert(`설정할 수 없는 사이즈입니다. \n가로: ${wIn.min}mm~${wIn.max}mm, 세로: ${hIn.min}mm~${hIn.max}mm 범위로 입력 가능합니다.`);
             input.value = defaultVal;
         }
+        // [추가] "고정배율mm"(비규격설정) — 희망사이즈의 가로/세로를 이 값(mm)의 배수
+        // 단위로만 쓸 수 있게, 가장 가까운 배수로 반올림해 보정한다. (예: 100 → 1150을 1200으로)
+        const c = customConfig();
+        const step = c ? parseFloat(c.sizeStep) : NaN;
+        if (!isNaN(step) && step > 0) {
+            const v = parseFloat(input.value);
+            if (!isNaN(v)) {
+                let rounded = Math.round(v / step) * step;
+                rounded = Math.min(Math.max(rounded, min), max);
+                input.value = rounded;
+            }
+        }
         workW.value = parseFloat(wIn.value) + 4;
         workH.value = parseFloat(hIn.value) + 4;
         // [추가] 비규격사이즈를 직접 입력한 뒤에도, 미싱 등 최소사이즈 제한이 걸린
