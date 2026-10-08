@@ -559,10 +559,11 @@
         </div>
 
         <div class="option-row" id="weightColorRow">
-            <div class="label">무게, 컬러</div>
-            <span style="margin-right:2px; font-size:13px; color:#666;">약</span>
-            <span id="weightDisplay" style="margin-right:10px; font-size:13px; color:#666;">0kg</span>
-            <span class="fixed-option" style="font-size:13px; color:#666;">(무게는 오차가 있을수 있습니다.) / CMYK (컬러인쇄)</span>
+            <div class="label" id="weightColorLabel">컬러</div>
+            <!-- 무게 관련 요소는 평량(종이무게)이 입력된 제품에서만 보인다. 기본은 숨김(초기화면 포함). -->
+            <span class="weight-part" style="display:none; margin-right:2px; font-size:13px; color:#666;">약</span>
+            <span id="weightDisplay" class="weight-part" style="display:none; margin-right:10px; font-size:13px; color:#666;">0kg</span>
+            <span class="fixed-option" style="font-size:13px; color:#666;"><span class="weight-part" style="display:none;">(무게는 오차가 있을수 있습니다.) / </span>CMYK (컬러인쇄)</span>
         </div>
 
         <div class="option-row">
@@ -2945,6 +2946,16 @@ window.enableMobileCustomPicker = function(selectEl) {
             weightDisplay.textContent = totalWeightKg < 1 ? Math.round(totalWeightKg * 1000) + "g" : totalWeightKg.toFixed(2) + "kg";
         } else {
             weightDisplay.textContent = "0kg";
+        }
+        // [추가] 평량(무게)이 입력되지 않은 제품은 "무게," 라벨, "약 ○○g", 무게 안내문구를 모두 숨기고
+        // "컬러"만 보여준다. (weightDisplay 값은 배송 무게 계산에 쓰이므로 텍스트는 그대로 유지)
+        {
+            const showWeight = totalWeight > 0;
+            document.querySelectorAll("#weightColorRow .weight-part").forEach(el => {
+                el.style.display = showWeight ? "" : "none";
+            });
+            const wcLabel = document.getElementById("weightColorLabel");
+            if (wcLabel) wcLabel.textContent = showWeight ? "무게, 컬러" : "컬러";
         }
 
         // [추가] 규격사이즈의 "총액배수마진"(L열) — 후가공 등 모든 옵션이 적용된 총액에
