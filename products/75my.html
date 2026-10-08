@@ -126,7 +126,7 @@
     #addFinishingBtn { background: #ddd; }
     /* 후가공 서브옵션(색상 등) select는 추가하기/삭제 버튼과 같은 클래스를 쓰지만
        텍스트는 가운데가 아니라 좌측 정렬이 되어야 자연스럽다 */
-    .finishing-sub-select {
+    .finishing-sub-select, .finishing-sub-select2 {
         text-align: left;
     }
     .total-price { text-align: right; font-size: 1.3em; font-weight: bold; margin-top: 10px; }
@@ -241,7 +241,7 @@
         min-width: 0;
         flex: 1 1 0;
     }
-    #finishingContainer .finishing-sub-select {
+    #finishingContainer .finishing-sub-select, #finishingContainer .finishing-sub-select2 {
         flex: 0 0 90px !important;
         width: 90px !important;
     }
@@ -494,8 +494,8 @@
                <select id="qtyModeSelect" onchange="handleQtyModeChange()" style="width:120px;">
                    <!-- 최소매수 옵션 / 수량 직접입력 옵션이 JS로 채워집니다 -->
                </select>
-               <input type="number" id="qtySelect" placeholder="구입희망 매수 입력" min="1" step="1" oninput="updatePrice()" onchange="updatePrice()" disabled style="flex:1; min-width:0; padding:4px; text-align:center;">
-               <span style="font-size: 14px;">매</span>
+               <input type="number" id="qtySelect" placeholder="구입희망 매수 입력" min="1" step="1" oninput="updatePrice()" onchange="refreshMaxOrderQtyGatedOptions(); updatePrice()" disabled style="flex:1; min-width:0; padding:4px; text-align:center;">
+               <span style="font-size: 14px;" id="qtyUnitLabelSpan">매</span>
 
                 <span style="font-size: 14px; font-weight: bold; margin: 0 2px;">x</span>
                 <input type="number" id="setCountInput" value="1" min="1" max="50" onchange="updatePrice()" style="width: 45px; padding: 4px; text-align: center;"> 
@@ -557,10 +557,11 @@
         </div>
 
         <div class="option-row" id="weightColorRow">
-            <div class="label">무게, 컬러</div>
-            <span style="margin-right:2px; font-size:13px; color:#666;">약</span>
-            <span id="weightDisplay" style="margin-right:10px; font-size:13px; color:#666;">0kg</span>
-            <span class="fixed-option" style="font-size:13px; color:#666;">(무게는 오차가 있을수 있습니다.) / CMYK (컬러인쇄)</span>
+            <div class="label" id="weightColorLabel">컬러</div>
+            <!-- 무게 관련 요소는 평량(종이무게)이 입력된 제품에서만 보인다. 기본은 숨김(초기화면 포함). -->
+            <span class="weight-part" style="display:none; margin-right:2px; font-size:13px; color:#666;">약</span>
+            <span id="weightDisplay" class="weight-part" style="display:none; margin-right:10px; font-size:13px; color:#666;">0kg</span>
+            <span class="fixed-option" style="font-size:13px; color:#666;"><span class="weight-part" style="display:none;">(무게는 오차가 있을수 있습니다.) / </span>CMYK (컬러인쇄)</span>
         </div>
 
         <div class="option-row">
@@ -858,6 +859,10 @@ function openCustomSelectModal(selectEl) {
                     alert(sizeConflict.message);
                     return;
                 }
+                if (!opt.value && selectEl.dataset.lockedValue) {
+                    alert("필수 선택 옵션은 해제할 수 없습니다.");
+                    return;
+                }
                 alert("지금은 선택할 수 없는 옵션입니다.");
             });
         } else {
@@ -1074,6 +1079,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         document.querySelectorAll('#dynamicOptionsContainer select').forEach(lockSelectToPurchasedOptions);
         document.querySelectorAll('.finishing-select').forEach(lockSelectToPurchasedOptions);
         document.querySelectorAll('.finishing-sub-select').forEach(lockSelectToPurchasedOptions);
+        document.querySelectorAll('.finishing-sub-select2').forEach(lockSelectToPurchasedOptions);
     }
 
     // 재구입 흐름일 때: 시안 업로드 없이 바로 장바구니에 담고 cart.html로 이동
@@ -1088,6 +1094,17 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
         if (hasDuplicateFinishingCheck) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
+            return;
+        }
+        // [추가] "품절" 처리된 품목이 지금 선택돼 있으면 재구입(장바구니 담기) 흐름에서도
+        // 진행되지 않도록 막습니다.
+        let hasSoldOutSelectedReorder = false;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelectedReorder = true;
+        });
+        if (hasSoldOutSelectedReorder) {
+            alert("품절상품입니다. 다른 옵션을 선택해주세요.");
             return;
         }
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
@@ -1120,6 +1137,13 @@ window.enableMobileCustomPicker = function(selectEl) {
                 return;
             }
         }
+        // [추가] "후가공강제"(Y)가 적힌 품목들 중 최소 1개는 선택되어 있어야 함 (재구입 흐름도 동일)
+        const forceRequiredMsgReorder = findForceRequiredFinishingViolation();
+        if (forceRequiredMsgReorder) {
+            alert(forceRequiredMsgReorder);
+            document.querySelector(".finishing-select")?.focus();
+            return;
+        }
 
         const count = document.getElementById("setCountInput").value;
         const width = document.getElementById("widthInput").value;
@@ -1143,7 +1167,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const opt = sel.options[sel.selectedIndex];
             if (!opt || !opt.value) return;
             const subSelect = getFinishingSubSelect(sel);
-            const label = (subSelect && subSelect.value) ? `${opt.value}(${subSelect.value})` : opt.value;
+            const label = buildOptionLabelWithSubs(sel, opt);
             combinedGroupText += (combinedGroupText ? " " : "") + label;
         });
 
@@ -1153,7 +1177,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (sel.value) {
                 const subSelect = getFinishingSubSelect(sel);
                 const subValue = subSelect ? subSelect.value : "";
-                finishings.push(buildFinishingLabel(sel, subValue, customCutReorder.width, customCutReorder.height));
+                finishings.push(buildFinishingLabel(sel, subValue, customCutReorder.width, customCutReorder.height, (getFinishingSubSelect2(sel) || {}).value || ""));
             }
         });
 
@@ -1198,6 +1222,25 @@ window.enableMobileCustomPicker = function(selectEl) {
     const PRODUCT_ID = "75my";
     let productData = { productId: PRODUCT_ID, options: [] };
 
+    // [추가] "매개교체" — 관리자 엑셀 "품목" 시트에 이 상품의 매개교체 칸을 Y로 적어두면
+    // productData.qtyUnit이 "개"로 채워진다. 화면에 수량 단위를 표시하는 모든 곳에서
+    // 이 함수를 통해 "매" 대신 "개"를 쓰도록 한다. 안 적어두면(기존 상품들) 항상 "매".
+    function qtyUnitLabel() {
+        return productData.qtyUnit === "개" ? "개" : "매";
+    }
+
+    // [추가] "매개교체" 적용 — 화면에 이미 그려져 있는 수량 단위 표시(입력창 옆 단위 글자,
+    // 입력창 placeholder)를 지금 상품의 단위("매" 또는 "개")로 맞춘다. productData를
+    // 불러온 직후 한 번 호출하면 된다.
+    function applyQtyUnitLabel() {
+        const unit = qtyUnitLabel();
+        const span = document.getElementById("qtyUnitLabelSpan");
+        if (span) span.textContent = unit;
+        const qtyInput = document.getElementById("qtySelect");
+        if (qtyInput) qtyInput.placeholder = `구입희망 ${unit}수 입력`;
+    }
+    window.applyQtyUnitLabel = applyQtyUnitLabel;
+
     // ---- 가격/화면 계산 관련 참고사항 (중요) ----
     // 어드민 스키마(그룹 안에 여러 품목, 품목마다 price/margin/surcharge/weight/delivery)까지는
     // 엑셀·문서 구조로 명확했지만, "규격 마진율(margin)"과 "비규격 추가마진율(surcharge)"을
@@ -1224,6 +1267,19 @@ window.enableMobileCustomPicker = function(selectEl) {
     function getFinishingSubSelect(sel) {
         const row = sel.closest('.option-row') || sel.parentElement;
         return row ? row.querySelector('.finishing-sub-select') : null;
+    }
+    // [추가] 서브옵션2 select를 찾는다(서브옵션 select 바로 옆에 붙는 두 번째 드롭다운).
+    function getFinishingSubSelect2(sel) {
+        const row = sel.closest('.option-row') || sel.parentElement;
+        return row ? row.querySelector('.finishing-sub-select2') : null;
+    }
+    // [추가] "품목(서브옵션)(서브옵션2)" 형태의 라벨을 만든다. 없는 값은 생략.
+    function buildOptionLabelWithSubs(sel, opt) {
+        const s1 = getFinishingSubSelect(sel), s2 = getFinishingSubSelect2(sel);
+        let label = opt.value;
+        if (s1 && s1.value) label += `(${s1.value})`;
+        if (s2 && s2.value) label += `(${s2.value})`;
+        return label;
     }
     function valueGroups() {
         return productData.options.filter(o => Array.isArray(o.values));
@@ -1270,10 +1326,16 @@ window.enableMobileCustomPicker = function(selectEl) {
     function refreshFinishingExclusiveOptions() {
         const shortSide = getCurrentShortSideMM();
         const longSide = getCurrentLongSideMM();
+        const currentHeight = getCurrentHeightMM();
         const selects = document.querySelectorAll(".finishing-select");
         selects.forEach(sel => {
             Array.from(sel.options).forEach(opt => {
-                if (!opt.value || opt.value === sel.value) {
+                if (!opt.value) {
+                    // [추가] 옵션고정(필수선택) 줄은 "선택안함"도 고를 수 없게 막는다.
+                    opt.disabled = !!sel.dataset.lockedValue;
+                    return;
+                }
+                if (opt.value === sel.value) {
                     opt.disabled = false;
                     return;
                 }
@@ -1283,7 +1345,12 @@ window.enableMobileCustomPicker = function(selectEl) {
                 const minSizeConflict = !isNaN(minSide) && minSide > 0 && shortSide !== null && shortSide < minSide;
                 // [추가] 최소사이즈mm(한변)의 반대 기능. 긴 변이 최대사이즈를 넘으면 선택 불가.
                 const maxSizeConflict = !isNaN(maxSide) && maxSide > 0 && longSide !== null && longSide > maxSide;
-                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict;
+                // [추가] "고정세로사이즈mm" — 세로가 정확히 일치하지 않으면 선택 불가(가로는 무관)
+                const fixedHeight = parseFloat(opt.dataset.fixedHeightMm);
+                const fixedHeightConflict = !isNaN(fixedHeight) && fixedHeight > 0 && currentHeight !== null && currentHeight !== fixedHeight;
+                // [추가] 옵션고정 품목은 자기 고정 줄에만 있어야 하므로, 다른 줄에서는 선택 불가
+                const lockedElsewhere = (window.__lockedFinishingNames || []).includes(opt.value) && sel.dataset.lockedValue !== opt.value;
+                opt.disabled = exclusiveConflict || minSizeConflict || maxSizeConflict || fixedHeightConflict || lockedElsewhere;
             });
         });
     }
@@ -1307,15 +1374,25 @@ window.enableMobileCustomPicker = function(selectEl) {
         return Math.max(w, h);
     }
 
+    // [추가] 가로/세로를 뒤섞지 않고, 지금 입력된 "세로(mm)" 값 그대로를 돌려준다.
+    // "고정세로사이즈mm" 제한(세로만 정확히 일치해야 함)을 확인할 때 쓴다.
+    function getCurrentHeightMM() {
+        const h = parseFloat(document.getElementById("heightInput")?.value);
+        if (!h || isNaN(h)) return null;
+        return h;
+    }
+
     // 특정 후가공 <option>이 최소/최대사이즈(한 변) 제한 때문에 지금 선택할 수 없는
     // 상태인지 확인한다. 선택 불가면 { name, minSide 또는 maxSide, message }를, 가능하면 null을 돌려준다.
     function checkFinishingSizeConflict(optionEl) {
         if (!optionEl) return null;
         const minSide = parseFloat(optionEl.dataset.minSideMm);
         const maxSide = parseFloat(optionEl.dataset.maxSideMm);
+        const fixedHeight = parseFloat(optionEl.dataset.fixedHeightMm);
         const hasMin = !isNaN(minSide) && minSide > 0;
         const hasMax = !isNaN(maxSide) && maxSide > 0;
-        if (!hasMin && !hasMax) return null;
+        const hasFixedHeight = !isNaN(fixedHeight) && fixedHeight > 0;
+        if (!hasMin && !hasMax && !hasFixedHeight) return null;
         const name = optionEl.dataset.originalName || optionEl.value;
         if (hasMin) {
             const shortSide = getCurrentShortSideMM();
@@ -1328,6 +1405,13 @@ window.enableMobileCustomPicker = function(selectEl) {
             const longSide = getCurrentLongSideMM();
             if (longSide !== null && longSide > maxSide) {
                 return { name, maxSide, message: `${name}은(는) ${maxSide}mm 이하로 선택해 주세요.` };
+            }
+        }
+        // [추가] "고정세로사이즈mm" — 세로가 정확히 이 값일 때만 선택 가능 (가로는 보지 않음)
+        if (hasFixedHeight) {
+            const curHeight = getCurrentHeightMM();
+            if (curHeight !== null && curHeight !== fixedHeight) {
+                return { name, fixedHeight, message: `${name}은(는) 세로 ${fixedHeight}mm 사이즈에서만 선택 가능합니다.` };
             }
         }
         return null;
@@ -1396,6 +1480,49 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
     }
     window.refreshWeightGatedOptions = refreshWeightGatedOptions;
+
+    // [추가] "최대수량" — 이 품목은 주문 수량이 등록된 값 이하일 때만 선택할 수 있다.
+    // 매 입력(타이핑) 때마다는 alert 없이 그레이아웃 상태만 조용히 갱신하고,
+    // 값이 확정되는 시점(onchange)에만 이미 선택돼 있던 값이 막혔는지 확인해서
+    // 자동으로 되돌리고 안내한다(위 refreshWeightGatedOptions와 동일한 방식).
+    function updateMaxOrderQtyDisabledState(enteredQty) {
+        document.querySelectorAll('#dynamicOptionsContainer select, .finishing-select').forEach(sel => {
+            Array.from(sel.options).forEach(opt => {
+                const maxOrderQty = parseFloat(opt.dataset.maxOrderQty);
+                if (isNaN(maxOrderQty) || maxOrderQty <= 0) return;
+                opt.disabled = enteredQty > maxOrderQty;
+            });
+        });
+    }
+    window.updateMaxOrderQtyDisabledState = updateMaxOrderQtyDisabledState;
+
+    function refreshMaxOrderQtyGatedOptions() {
+        const qtyInput = document.getElementById("qtySelect");
+        const enteredQty = Math.max(1, parseInt(qtyInput.value) || 0);
+        document.querySelectorAll('#dynamicOptionsContainer select, .finishing-select').forEach(sel => {
+            let needsReset = false;
+            let resetMessage = "";
+            Array.from(sel.options).forEach(opt => {
+                const maxOrderQty = parseFloat(opt.dataset.maxOrderQty);
+                if (isNaN(maxOrderQty) || maxOrderQty <= 0) return;
+                const blocked = enteredQty > maxOrderQty;
+                opt.disabled = blocked;
+                if (blocked && sel.value === opt.value) {
+                    needsReset = true;
+                    resetMessage = `"${opt.dataset.originalName || opt.value}"은(는) 수량 ${maxOrderQty}${qtyUnitLabel()}까지만 선택 가능한 옵션입니다.`;
+                }
+            });
+            if (needsReset) {
+                alert(resetMessage);
+                const fallback = Array.from(sel.options).find(o => !o.disabled);
+                sel.value = fallback ? fallback.value : "";
+                buildSubOptionSelect(sel);
+                sel.dataset.prevFinishingValue = sel.value;
+                if (typeof refreshFinishingExclusiveOptions === "function") refreshFinishingExclusiveOptions();
+            }
+        });
+    }
+    window.refreshMaxOrderQtyGatedOptions = refreshMaxOrderQtyGatedOptions;
 
     // [추가] "비규격재단" 후가공 select 밑에 작게 가로/세로(mm) 입력창을 만들어 붙인다.
     // 이미 만들어져 있으면(같은 select에 두 번 붙지 않도록) 기존 것을 그대로 재사용한다.
@@ -1499,12 +1626,14 @@ window.enableMobileCustomPicker = function(selectEl) {
 
     // [추가] finishings 배열에 넣을 라벨을 만든다. "비규격재단"이면 입력한 사이즈를 괄호로 붙여서
     // "비규격재단(120x80mm)" 형태로 만들고, 그 외에는 원래 값을 그대로 쓴다.
-    function buildFinishingLabel(sel, subValue, customCutWidth, customCutHeight) {
+    function buildFinishingLabel(sel, subValue, customCutWidth, customCutHeight, subValue2) {
         let base = sel.value;
         if (sel.value === CUSTOM_CUT_FINISHING_NAME && customCutWidth && customCutHeight) {
             base = `${CUSTOM_CUT_FINISHING_NAME}(${customCutWidth}x${customCutHeight}mm)`;
         }
-        return subValue ? `${base}(${subValue})` : base;
+        let label = subValue ? `${base}(${subValue})` : base;
+        if (subValue2) label += `(${subValue2})`;
+        return label;
     }
     window.buildFinishingLabel = buildFinishingLabel;
 
@@ -1575,6 +1704,20 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
         const margin = match ? parseFloat(match.margin) : NaN;
         return (!isNaN(margin) && margin !== 1) ? margin : undefined;
+    }
+
+    // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "총액배수마진"(L열)이 적혀
+    // 있으면 그 값을 반환합니다. 후가공 등 모든 옵션이 적용된 총액에 곱해지는 배수입니다.
+    // 값이 없거나 1이면 undefined.
+    function getStandardSizeTotalMultiplierMargin(w, h) {
+        const g = standardSizeConfig();
+        if (!g || !Array.isArray(g.sizes)) return undefined;
+        const match = g.sizes.find(s => {
+            const sw = parseFloat(s.width), sh = parseFloat(s.height);
+            return (sw === w && sh === h) || (sw === h && sh === w);
+        });
+        const m = match ? parseFloat(match.totalMultiplierMargin) : NaN;
+        return (!isNaN(m) && m > 0 && m !== 1) ? m : undefined;
     }
 
     // [추가] 가로/세로에 해당하는 등록된 규격 사이즈(options02)에 "매수배수제외" 표시가
@@ -1663,8 +1806,14 @@ window.enableMobileCustomPicker = function(selectEl) {
     }
     function applyMobileFinishFileLabel(el) {
         const original = el.dataset.originalName || el.value || "";
-        if (!isMobileFinishFileTarget(original)) return;
-        el.textContent = isMobileViewport() ? MOBILE_FINISH_FILE_LABEL : original;
+        // [추가] "품절" 처리된 품목은 라벨 뒤에 "(품절)"을 붙여서 보여준다. 파일첨부용
+        // 라벨(모바일)이든 원래 이름이든 상관없이 항상 붙는다.
+        const soldOutSuffix = el.dataset.soldOut === "1" ? " (품절)" : "";
+        if (!isMobileFinishFileTarget(original)) {
+            el.textContent = original + soldOutSuffix;
+            return;
+        }
+        el.textContent = (isMobileViewport() ? MOBILE_FINISH_FILE_LABEL : original) + soldOutSuffix;
     }
     // 화면 크기가 바뀔 때(회전, 브라우저 리사이즈 등) 이미 만들어진 옵션들의 라벨도
     // 다시 맞춰주고, 그 결과에 맞춰 건수 잠금 상태도 재판단한다.
@@ -1681,6 +1830,13 @@ window.enableMobileCustomPicker = function(selectEl) {
         el.value = v.name;
         el.textContent = v.name;
         el.dataset.originalName = v.name;
+        // [추가] "품절" — 가격(E열)에 "품절"이라고 적어둔 품목은 화면에서 선택할 수 없게
+        // 막고(disabled), 이름 뒤에 "(품절)"을 붙여서 보여준다. 관리자 엑셀/관리자에서
+        // 가격 칸에 "품절"이라고만 적으면 된다(다른 값은 필요 없음).
+        if (v.soldOut) {
+            el.dataset.soldOut = "1";
+            el.disabled = true;
+        }
         applyMobileFinishFileLabel(el);
         el.dataset.price = v.price ?? 0;
         el.dataset.margin = v.margin ?? 0;
@@ -1697,6 +1853,10 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (Array.isArray(v.subOptions) && v.subOptions.length) {
             el.dataset.subOptions = JSON.stringify(v.subOptions);
         }
+        // [추가] 서브옵션2 — 서브옵션으로 계산된 가격에 한 번 더 적용되는 두 번째 서브옵션
+        if (Array.isArray(v.subOptions2) && v.subOptions2.length) {
+            el.dataset.subOptions2 = JSON.stringify(v.subOptions2);
+        }
         // [추가] 이 품목을 선택하려면 재단사이즈의 짧은 변이 최소 이만큼(mm)은
         // 되어야 한다는 제한 (예: 미싱=100). 관리자 엑셀의 "최소사이즈mm(한변)" 값.
         if (v.minSideMM !== undefined && v.minSideMM !== null && v.minSideMM !== "") {
@@ -1706,6 +1866,15 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 넘으면 이 품목을 선택할 수 없다는 제한. 관리자 엑셀의 "최대사이즈mm(한변)" 값.
         if (v.maxSideMM !== undefined && v.maxSideMM !== null && v.maxSideMM !== "") {
             el.dataset.maxSideMm = v.maxSideMM;
+        }
+        // [추가] "고정세로사이즈mm" — 재단/작업 사이즈의 세로가 정확히 이 값(mm)일 때만
+        // 선택 가능. 가로는 보지 않는다. 관리자 엑셀의 "고정세로사이즈mm" 값.
+        if (v.fixedHeightMM !== undefined && v.fixedHeightMM !== null && v.fixedHeightMM !== "") {
+            el.dataset.fixedHeightMm = v.fixedHeightMM;
+        }
+        // [추가] "후가공강제" — 이 품목이 Y로 지정된, 최소 1개 선택 강제 대상인지 표시
+        if (v.forceRequired) {
+            el.dataset.forceRequired = "1";
         }
         // [추가] 이 품목을 선택하려면, 다른 옵션에서 고른 종이 평량(무게, g)이 최소
         // 이 값 이상이어야 한다는 제한 (예: 코팅=150 → 150g 이상 용지에서만 선택 가능).
@@ -1718,6 +1887,12 @@ window.enableMobileCustomPicker = function(selectEl) {
         // 반대 기능. 관리자 엑셀의 "최대평량g" 값.
         if (v.maxWeightG !== undefined && v.maxWeightG !== null && v.maxWeightG !== "") {
             el.dataset.maxWeightG = v.maxWeightG;
+        }
+        // [추가] "최대수량" — 이 품목을 선택하려면, 지금 입력한 주문 수량(매수/개수)이
+        // 이 값 이하여야 한다는 제한(예: 5를 적으면 수량 5까지만 선택 가능, 즉
+        // 소량 주문 전용 옵션). 수량을 그 이상으로 올리면 자동으로 선택이 풀리고 안내가 뜹니다.
+        if (v.maxOrderQty !== undefined && v.maxOrderQty !== null && v.maxOrderQty !== "") {
+            el.dataset.maxOrderQty = v.maxOrderQty;
         }
         // [추가] 이 품목을 선택하면, 그 품목 자체 가격이 아니라 "지금까지 계산된 전체 금액"에
         // 이 배수를 곱합니다. 예: 코팅에 1.2를 적으면, 다른 옵션들 다 합친 금액이 1.2배가 됩니다.
@@ -1900,16 +2075,41 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 적용합니다. 드롭다운 목록 자체는 그대로 다 보여주되(선택안함 포함), 실제로 다른 값을
     // 고르면 setupFinishingListener에서 원래 값으로 되돌리고 "추가하기" 줄로 옮겨줍니다.
     // "추가하기"로 늘어난 추가 select는 이 잠금을 적용하지 않습니다(중복 선택 오류 방지).
-    function loadFinishingOptions(selectElement, isPrimary = true) {
+    // [수정] 옵션고정(Y)이 여러 개여도 모두 고정되도록, 고정 품목마다 각자의 줄(select)을
+    // 갖습니다. 첫 줄은 첫 번째 고정 품목, 나머지 고정 품목은 addLockedFinishingRows()가
+    // 만드는 별도 줄에 하나씩 고정됩니다. forcedLocked가 넘어오면 그 품목으로 고정합니다.
+    function getLockedFinishingItems() {
         const g = finishingGroup();
-        const lockedValue = isPrimary && g && Array.isArray(g.values) ? g.values.find(v => v.optionLocked) : null;
+        return g && Array.isArray(g.values) ? g.values.filter(v => v.optionLocked) : [];
+    }
+    // [추가] "후가공강제"(Y)가 적힌 품목 이름 목록. 이 중 최소 1개는 반드시 선택해야 한다.
+    function getForceRequiredFinishingNames() {
+        const g = finishingGroup();
+        return g && Array.isArray(g.values) ? g.values.filter(v => v.forceRequired).map(v => v.name) : [];
+    }
+    // [추가] "후가공강제" 대상 품목이 하나도 선택 안 돼 있으면 안내 메시지를, 문제없으면
+    // null을 돌려준다. (대상 품목이 아예 없으면 항상 null) 주문/재구입 제출 직전에 호출한다.
+    function findForceRequiredFinishingViolation() {
+        const names = getForceRequiredFinishingNames();
+        if (!names.length) return null;
+        const selected = Array.from(document.querySelectorAll(".finishing-select")).some(sel => names.includes(sel.value));
+        return selected ? null : "옵션에서 후가공 1개를 필수로 선택해주세요.";
+    }
+    function loadFinishingOptions(selectElement, isPrimary = true, forcedLocked = null) {
+        const g = finishingGroup();
+        const lockedValue = forcedLocked
+            || (isPrimary && g && Array.isArray(g.values) ? g.values.find(v => v.optionLocked) : null);
         selectElement.innerHTML = '<option value="" data-price="0">선택안함</option>';
         if (!g) return;
         (g.values || []).forEach(v => selectElement.appendChild(buildOptionEl(v)));
+        window.__lockedFinishingNames = getLockedFinishingItems().map(v => v.name);
         selectElement.dataset.lockedValue = lockedValue ? lockedValue.name : "";
         if (lockedValue) {
             selectElement.value = lockedValue.name;
             selectElement.dataset.prevFinishingValue = lockedValue.name;
+            // [추가] 필수선택 줄에서는 "선택안함"을 클릭할 수 없게 비활성화
+            const noneOpt = selectElement.options[0];
+            if (noneOpt && !noneOpt.value) noneOpt.disabled = true;
         }
     }
 
@@ -1917,61 +2117,75 @@ window.enableMobileCustomPicker = function(selectEl) {
         // finishingSelect는 모바일에서 enableMobileCustomPicker에 의해 .select-wrap
         // (select + 탭 오버레이)으로 감싸져 있을 수 있다. 서브옵션(색상 등) select를
         // "afterend"로 넣을 기준점은 finishingSelect 자신이 아니라 이 바깥 wrap이어야 한다.
-        // 그렇지 않으면 새 서브옵션 select가 메인 select의 오버레이 영역 안쪽에 갇혀서,
-        // 탭을 해도 전부 메인 후가공 select 쪽 모달이 열리고 서브옵션 자체는 선택이
-        // 안 되는 문제가 생긴다 (금박 색상 선택 등 추가옵션이 모바일에서 안 먹히는 버그).
         const anchor = finishingSelect.closest('.select-wrap') || finishingSelect;
         const row = anchor.parentElement; // .option-row
 
         // 이미 있으면 (모바일 피커용 래퍼까지 포함해서) 완전히 제거 후 다시 생성.
-        // row 전체에서 찾아야 위 문제로 엉뚱한 곳에 들어간 예전 서브옵션도 확실히 제거된다.
-        const old = row ? row.querySelector(".finishing-sub-select") : null;
-        if (old) {
+        // [수정] 서브옵션과 서브옵션2 둘 다 지운다.
+        [".finishing-sub-select", ".finishing-sub-select2"].forEach(cls => {
+            const old = row ? row.querySelector(cls) : null;
+            if (!old) return;
             const oldWrap = old.closest('.select-wrap');
             if (oldWrap && oldWrap !== anchor) {
                 oldWrap.remove();
             } else {
                 old.remove();
             }
-        }
+        });
 
         const opt = finishingSelect.options[finishingSelect.selectedIndex];
-        if (!opt || !opt.dataset.subOptions) return;
+        if (!opt) return;
 
-        const subOptions = JSON.parse(opt.dataset.subOptions);
-        const subSelect = document.createElement("select");
-        subSelect.className = "finishing-sub-select finishing-btn";
-        subSelect.style.marginLeft = "5px";
-        subSelect.style.flex = "0 0 130px";
-        subSelect.style.width = "130px";
-        subOptions.forEach(so => {
-            const el = document.createElement("option");
-            el.value = so.color;
-            const isMultiply = so.priceType === "multiply";
-            el.dataset.priceType = isMultiply ? "multiply" : "add";
-            el.dataset.priceExtra = so.priceExtra || 0;
-            el.textContent = so.color;
-            subSelect.appendChild(el);
-        });
-        subSelect.addEventListener("change", () => {
-            // [추가] 서브옵션(예: 평량 "70g"/"150g")이 바뀌면, 그 평량에 따라
-            // 선택 가능 여부가 갈리는 다른 품목(예: "코팅")도 다시 확인한다.
-            if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
-            updatePrice();
-        });
-        anchor.insertAdjacentElement("afterend", subSelect); // wrap 바로 뒤, row의 직계 자식으로 삽입
-        // [추가] 재구입 흐름이면, 방금 새로 만들어진 서브옵션(색상 등)도 예전에
-        // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
-        lockSelectToPurchasedOptions(subSelect);
-        window.enableMobileCustomPicker(subSelect);
-        // enableMobileCustomPicker가 subSelect를 flex:1짜리 .select-wrap div로 감싸는데,
-        // 그대로 두면 메인 후가공 select(flex:1)와 폭을 나눠 가지면서 계속 좁아집니다.
-        // 래퍼 폭을 subSelect가 원래 갖던 고정폭(130px)으로 고정합니다.
-        const subWrap = subSelect.parentElement;
-        if (subWrap && subWrap.classList.contains("select-wrap")) {
-            subWrap.classList.add("finishing-sub-wrap");
-            subWrap.style.marginLeft = "5px";
-            subSelect.style.marginLeft = "0";
+        // 서브옵션 / 서브옵션2 select를 만들어 insertAfterEl 바로 뒤에 붙이고,
+        // 붙인 select(또는 모바일 래퍼)를 돌려준다.
+        const makeSubSelect = (rawJson, className, insertAfterEl, onChange) => {
+            const list = JSON.parse(rawJson);
+            const subSelect = document.createElement("select");
+            subSelect.className = className + " finishing-btn";
+            subSelect.style.marginLeft = "5px";
+            subSelect.style.flex = "0 0 130px";
+            subSelect.style.width = "130px";
+            list.forEach(so => {
+                const el = document.createElement("option");
+                el.value = so.color;
+                const isMultiply = so.priceType === "multiply";
+                el.dataset.priceType = isMultiply ? "multiply" : "add";
+                el.dataset.priceExtra = so.priceExtra || 0;
+                el.textContent = so.color;
+                subSelect.appendChild(el);
+            });
+            subSelect.addEventListener("change", onChange);
+            insertAfterEl.insertAdjacentElement("afterend", subSelect);
+            // [추가] 재구입 흐름이면, 방금 새로 만들어진 서브옵션도 예전에
+            // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
+            lockSelectToPurchasedOptions(subSelect);
+            window.enableMobileCustomPicker(subSelect);
+            // enableMobileCustomPicker가 select를 flex:1짜리 .select-wrap div로 감싸는데,
+            // 그대로 두면 메인 select와 폭을 나눠 가지면서 계속 좁아집니다. 고정폭으로 맞춥니다.
+            const subWrap = subSelect.parentElement;
+            if (subWrap && subWrap.classList.contains("select-wrap")) {
+                subWrap.classList.add("finishing-sub-wrap");
+                subWrap.style.marginLeft = "5px";
+                subSelect.style.marginLeft = "0";
+                return subWrap;
+            }
+            return subSelect;
+        };
+
+        let lastEl = anchor;
+        if (opt.dataset.subOptions) {
+            lastEl = makeSubSelect(opt.dataset.subOptions, "finishing-sub-select", anchor, () => {
+                // 서브옵션(예: 평량 "70g"/"150g")이 바뀌면, 그 평량에 따라
+                // 선택 가능 여부가 갈리는 다른 품목(예: "코팅")도 다시 확인한다.
+                if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+                updatePrice();
+            });
+        }
+        // [추가] 서브옵션2 — 서브옵션 드롭다운 바로 옆(서브옵션이 없으면 메인 옆)에 붙는다.
+        if (opt.dataset.subOptions2) {
+            makeSubSelect(opt.dataset.subOptions2, "finishing-sub-select2", lastEl, () => {
+                updatePrice();
+            });
         }
     }
 
@@ -2061,6 +2275,29 @@ window.enableMobileCustomPicker = function(selectEl) {
             }
             updatePrice();
             updateDeliveryDisplay();
+        });
+    }
+
+    // [추가] 옵션고정(Y) 품목이 2개 이상일 때, 첫 줄에 고정된 품목을 제외한 나머지 고정 품목을
+    // 각각 별도의 줄로 만들어 그 품목에 고정합니다. 고정 줄에는 삭제 버튼을 두지 않습니다.
+    function addLockedFinishingRows() {
+        const lockedItems = getLockedFinishingItems();
+        if (lockedItems.length < 2) return;
+        const container = document.getElementById("finishingContainer");
+        lockedItems.slice(1).forEach(item => {
+            const newRow = document.createElement("div");
+            newRow.className = "option-row";
+            newRow.innerHTML = `
+                <div class="label">후가공 추가</div>
+                <select class="finishing-select" style="flex:1 1 90px; min-width:90px;"><option value="">선택안함</option></select>
+            `;
+            container.appendChild(newRow);
+            const sel = newRow.querySelector(".finishing-select");
+            loadFinishingOptions(sel, false, item);
+            setupFinishingListener(sel);
+            window.enableMobileCustomPicker(sel);
+            // 고정 품목의 서브옵션(색상 등)이 있으면 함께 표시
+            buildSubOptionSelect(sel);
         });
     }
 
@@ -2194,7 +2431,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         modeSelect.innerHTML = "";
         const minOpt = document.createElement("option");
         minOpt.value = "min";
-        minOpt.textContent = `${minQty}매`;
+        minOpt.textContent = `${minQty}${qtyUnitLabel()}`;
         modeSelect.appendChild(minOpt);
 
         const customOpt = document.createElement("option");
@@ -2262,6 +2499,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 el.dataset.price = s.price !== undefined ? s.price : "";
                 el.dataset.margin = s.margin !== undefined ? s.margin : "";
                 el.dataset.skipQtyMulti = s.skipQtyMulti ? "1" : "";
+                // [추가] "총액배수마진"(L열) — 규격사이즈를 직접 고른 경우에도 이 줄의 값을 그대로 씀
+                const totalMultiplierMargin = parseFloat(s.totalMultiplierMargin);
+                el.dataset.totalMultiplierMargin = (!isNaN(totalMultiplierMargin) && totalMultiplierMargin > 0) ? totalMultiplierMargin : "";
                 // [추가] "개별매수배수"(H열)가 등록돼 있으면 이 옵션에도 저장해서, 규격사이즈를
                 // 드롭다운으로 직접 고른 경우 가로/세로로 다시 찾지 않고 이 값을 그대로 씀.
                 const individualQtyUnit = parseFloat(s.individualQtyUnit);
@@ -2321,6 +2561,9 @@ window.enableMobileCustomPicker = function(selectEl) {
       try {
         const qtySelect = document.getElementById("qtySelect"); // 구입희망 매수 입력창 (input[type=number])
         const enteredQty = Math.max(1, parseInt(qtySelect.value) || 0);
+        // [추가] "최대수량" 그레이아웃 상태를 조용히 갱신(알림 없이) — 확정 시점 처리는
+        // qtySelect의 onchange에서 refreshMaxOrderQtyGatedOptions()가 담당한다.
+        updateMaxOrderQtyDisabledState(enteredQty);
         const qtyFactor = getQtyPricing(enteredQty).multi;
         const count = parseInt(document.getElementById("setCountInput").value) || 1;
 
@@ -2347,6 +2590,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 price: selectedSizeOpt.dataset.price !== "" ? parseFloat(selectedSizeOpt.dataset.price) : undefined,
                 margin: selectedSizeOpt.dataset.margin !== "" ? parseFloat(selectedSizeOpt.dataset.margin) : undefined,
                 skipQtyMulti: selectedSizeOpt.dataset.skipQtyMulti === "1",
+                totalMultiplierMargin: selectedSizeOpt.dataset.totalMultiplierMargin !== "" ? parseFloat(selectedSizeOpt.dataset.totalMultiplierMargin) : undefined,
                 individualQtyUnit: selectedSizeOpt.dataset.individualQtyUnit !== "" ? parseFloat(selectedSizeOpt.dataset.individualQtyUnit) : undefined,
                 progressiveQtyRule: selectedSizeOpt.dataset.progressiveQtyRule !== "" ? (() => { try { return JSON.parse(selectedSizeOpt.dataset.progressiveQtyRule); } catch (e) { return undefined; } })() : undefined
             }
@@ -2454,6 +2698,20 @@ window.enableMobileCustomPicker = function(selectEl) {
                 }
                 itemLabel = `${opt.textContent}(${subOpt.value})`;
             }
+            // [추가] 서브옵션2 — 서브옵션까지 적용된 가격에 한 번 더 배수(x)/추가금액을 적용한다.
+            // 예: 2000원 + 서브옵션 x2 = 4000원 → 서브옵션2 x2 = 8000원
+            let subExtra2 = 0;
+            let subMultiplier2 = 1;
+            const subSelect2 = getFinishingSubSelect2(sel);
+            if (subSelect2 && subSelect2.value) {
+                const subOpt2 = subSelect2.options[subSelect2.selectedIndex];
+                if (subOpt2.dataset.priceType === "multiply") {
+                    subMultiplier2 = parseFloat(subOpt2.dataset.priceExtra) || 1;
+                } else {
+                    subExtra2 = (parseFloat(subOpt2.dataset.priceExtra) || 0) * effectiveItemQtyFactor;
+                }
+                itemLabel = `${itemLabel}(${subOpt2.value})`;
+            }
 
             // [추가] 가격(E열)을 비워둔 품목이면(=이 품목 자체 가격은 0으로 계산되어
             // 아래 itemPrice가 어차피 0이 됨), 이 품목의 "사이즈마진"과 —혹시 함께 고른
@@ -2467,6 +2725,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 }
                 if (subMultiplier !== 1) {
                     sizeMarginSteps.push({ type: "multiply", value: subMultiplier });
+                }
+                if (subMultiplier2 !== 1) {
+                    sizeMarginSteps.push({ type: "multiply", value: subMultiplier2 });
                 }
             }
 
@@ -2484,6 +2745,9 @@ window.enableMobileCustomPicker = function(selectEl) {
                 if (applyDoublePricingHere) itemPrice *= 2;
                 itemPrice += subExtra;
                 itemPrice *= subMultiplier;
+                // [추가] 서브옵션2는 서브옵션까지 적용된 뒤에 마지막으로 적용
+                itemPrice *= subMultiplier2;
+                itemPrice += subExtra2;
                 // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
                 // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
                 const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
@@ -2493,7 +2757,8 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             totalWeight += weight;
             if (!isNaN(delivery)) totalDeliveryDays += delivery;
-            if (opt.value) summary.push(itemLabel + (applyDoublePricingHere ? ' (양면 할증 2배)' : ''));
+            // 배수/할증 정보는 고객에게 노출하지 않는다(가격에만 반영).
+            if (opt.value) summary.push(itemLabel);
         });
 
         // 규격 사이즈 목록(options02)에 사이즈별로 등록해둔 추가 가격이 있으면 더합니다.
@@ -2524,8 +2789,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 : getStandardSizeMargin(w, h);
             if (standardSizeMargin !== undefined) {
                 sum *= standardSizeMargin;
-                const pct = Math.round((standardSizeMargin - 1) * 100);
-                summary.push(`규격사이즈 마진 x${standardSizeMargin} (${pct > 0 ? "+" : ""}${pct}%)`);
+                // 마진 배수(x1.1, +10% 등)는 고객에게 노출하지 않는다(가격에만 반영).
             }
         }
 
@@ -2571,6 +2835,19 @@ window.enableMobileCustomPicker = function(selectEl) {
                     }
                 }
                 label = `${opt.value}(${subOpt.value})`;
+            }
+            // [추가] 서브옵션2 — 서브옵션까지 적용된 가격에 한 번 더 배수(x)/추가금액을 적용
+            const subSelect2 = getFinishingSubSelect2(sel);
+            if (subSelect2 && subSelect2.value) {
+                const subOpt2 = subSelect2.options[subSelect2.selectedIndex];
+                if (!useException) {
+                    if (subOpt2.dataset.priceType === "multiply") {
+                        itemPrice *= parseFloat(subOpt2.dataset.priceExtra) || 1;
+                    } else {
+                        itemPrice += (parseFloat(subOpt2.dataset.priceExtra) || 0) * finishingQtyFactor;
+                    }
+                }
+                label = `${label}(${subOpt2.value})`;
             }
 
             // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
@@ -2628,6 +2905,32 @@ window.enableMobileCustomPicker = function(selectEl) {
         });
 
         const summaryEl = document.getElementById("selectedOptionsSummary");
+
+        // [추가] "품절" — 지금 선택돼 있는 옵션(일반 옵션 + 후가공) 중에 품절 처리된
+        // 품목이 있으면, 가격 대신 "품절상품입니다"를 보여주고 주문 버튼을 막는다.
+        // 관리자 엑셀/관리자에서 그 품목의 가격 칸에 "품절"이라고만 적으면 된다.
+        let hasSoldOutSelected = false;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelected = true;
+        });
+        const orderBtnForSoldOut = document.getElementById("orderBtn");
+        if (hasSoldOutSelected) {
+            summaryEl.innerHTML = '<span style="color:red; font-size:16px; font-weight:700;">품절상품입니다.</span>';
+            document.getElementById("priceDisplay").textContent = "품절";
+            if (orderBtnForSoldOut) {
+                orderBtnForSoldOut.disabled = true;
+                orderBtnForSoldOut.style.opacity = "0.5";
+                orderBtnForSoldOut.style.cursor = "not-allowed";
+            }
+            return;
+        }
+        if (orderBtnForSoldOut) {
+            orderBtnForSoldOut.disabled = false;
+            orderBtnForSoldOut.style.opacity = "";
+            orderBtnForSoldOut.style.cursor = "";
+        }
+
         if (hasDuplicateFinishing) {
             summaryEl.innerHTML = '<span style="color:red; font-size:16px; font-weight:700;">동일한 후가공을 중복 선택할 수 없습니다.</span>';
             document.getElementById("priceDisplay").textContent = "0원";
@@ -2642,9 +2945,31 @@ window.enableMobileCustomPicker = function(selectEl) {
         } else {
             weightDisplay.textContent = "0kg";
         }
+        // [추가] 평량(무게)이 입력되지 않은 제품은 "무게," 라벨, "약 ○○g", 무게 안내문구를 모두 숨기고
+        // "컬러"만 보여준다. (weightDisplay 값은 배송 무게 계산에 쓰이므로 텍스트는 그대로 유지)
+        {
+            const showWeight = totalWeight > 0;
+            document.querySelectorAll("#weightColorRow .weight-part").forEach(el => {
+                el.style.display = showWeight ? "" : "none";
+            });
+            const wcLabel = document.getElementById("weightColorLabel");
+            if (wcLabel) wcLabel.textContent = showWeight ? "무게, 컬러" : "컬러";
+        }
 
+        // [추가] 규격사이즈의 "총액배수마진"(L열) — 후가공 등 모든 옵션이 적용된 총액에
+        // 곱해지는 배수. 예: 총액 10000원 × 2 = 20000원. 아래에서 총액배수/후가공 합산 후 적용.
+        let sizeTotalMarginMultiplier = 1;
+        if (useStandardPricing) {
+            const tm = standardSizeFromSelection
+                ? standardSizeFromSelection.totalMultiplierMargin
+                : getStandardSizeTotalMultiplierMargin(w, h);
+            if (tm !== undefined && !isNaN(tm) && tm > 0 && tm !== 1) {
+                // 단가 규칙이 손님에게 노출되지 않도록 견적 요약(summary)에는 표시하지 않는다.
+                sizeTotalMarginMultiplier = tm;
+            }
+        }
         summary.push(`가로 ${w}mm × 세로 ${h}mm`);
-        summary.push(`${enteredQty}매`);
+        summary.push(`${enteredQty}${qtyUnitLabel()}`);
         summary.push(`${count}건`);
         summaryEl.textContent = summary.filter(Boolean).join(" + ");
 
@@ -2660,6 +2985,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (!isNaN(m) && m > 0) totalPriceMultiplier *= m;
         });
         sum = sum * totalPriceMultiplier + finishingSum;
+        // [추가] 후가공까지 모두 더해진 총액에 규격사이즈의 "총액배수마진"을 곱한다.
+        sum *= sizeTotalMarginMultiplier;
 
         // 100원 단위로 반올림하면 소수점 끝자리가 50 이상일 때 위로 올라가서
         // 실제 계산값보다 최대 100원 더 비싸게 보일 수 있어 내림으로 처리합니다.
@@ -2766,6 +3093,18 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert(`설정할 수 없는 사이즈입니다. \n가로: ${wIn.min}mm~${wIn.max}mm, 세로: ${hIn.min}mm~${hIn.max}mm 범위로 입력 가능합니다.`);
             input.value = defaultVal;
         }
+        // [추가] "고정배율mm"(비규격설정) — 희망사이즈의 가로/세로를 이 값(mm)의 배수
+        // 단위로만 쓸 수 있게, 가장 가까운 배수로 반올림해 보정한다. (예: 100 → 1150을 1200으로)
+        const c = customConfig();
+        const step = c ? parseFloat(c.sizeStep) : NaN;
+        if (!isNaN(step) && step > 0) {
+            const v = parseFloat(input.value);
+            if (!isNaN(v)) {
+                let rounded = Math.round(v / step) * step;
+                rounded = Math.min(Math.max(rounded, min), max);
+                input.value = rounded;
+            }
+        }
         workW.value = parseFloat(wIn.value) + 4;
         workH.value = parseFloat(hIn.value) + 4;
         // [추가] 비규격사이즈를 직접 입력한 뒤에도, 미싱 등 최소사이즈 제한이 걸린
@@ -2837,7 +3176,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const maxQty = individualUnit * 10;
             const enteredQty = parseInt(qtyInput.value) || 0;
             if (enteredQty > maxQty) {
-                alert(`이 사이즈는 한 번에 주문 가능한 최대 매수가 ${maxQty.toLocaleString()}매입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
+                alert(`이 사이즈는 한 번에 주문 가능한 최대 ${qtyUnitLabel()}수가 ${maxQty.toLocaleString()}${qtyUnitLabel()}입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
                 qtyInput.value = maxQty;
                 updatePrice();
             }
@@ -2849,7 +3188,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         const maxQty = tiers[tiers.length - 1].qty;
         const enteredQty = parseInt(qtyInput.value) || 0;
         if (enteredQty > maxQty) {
-            alert(`한 번에 주문 가능한 최대 매수는 ${maxQty.toLocaleString()}매입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
+            alert(`한 번에 주문 가능한 최대 ${qtyUnitLabel()}수는 ${maxQty.toLocaleString()}${qtyUnitLabel()}입니다.\n그 이상 필요하시면 건 수를 늘려서 구입 바랍니다.`);
             qtyInput.value = maxQty;
             updatePrice();
         }
@@ -2900,6 +3239,10 @@ window.enableMobileCustomPicker = function(selectEl) {
             productData = snap.exists() ? snap.data() : { productId: PRODUCT_ID, options: [] };
             if (!Array.isArray(productData.options)) productData.options = [];
 
+            // [추가] "매개교체" 반영 — 수량 단위 표시(입력창 옆 글자, placeholder)를
+            // 이 상품의 단위("매"/"개")에 맞춘다.
+            applyQtyUnitLabel();
+
             console.log("[75my] Firestore 상품 데이터 로드 완료:", productData);
 
             // [추가] 상품 문서에 미리 계산되어 있는 리뷰 통계(reviewStats)로 별점 배지를 채움.
@@ -2931,9 +3274,14 @@ window.enableMobileCustomPicker = function(selectEl) {
             updateFinishingVisibility();
             loadFinishingOptions(document.querySelector(".finishing-select"));
             setupFinishingListener(document.querySelector(".finishing-select"));
+            // [추가] 옵션고정 품목이 여러 개면 나머지도 각자 줄을 만들어 고정
+            addLockedFinishingRows();
             // [추가] 페이지가 처음 열렸을 때, 후가공에 있는 "코팅" 같은 최소평량g
             // 제한 품목도 기본 선택된 평량 기준으로 선택 가능 여부를 맞춰둔다.
             if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+            // [추가] "최대수량" 제한 품목도 초기 수량(qtySelect 기본값) 기준으로 선택 가능
+            // 여부를 맞춰둔다.
+            if (typeof refreshMaxOrderQtyGatedOptions === "function") refreshMaxOrderQtyGatedOptions();
 
             // [추가] 재구입 흐름이면 예전 사이즈를 자동으로 선택
             if (isReorderFlow && reorderWidth > 0 && reorderHeight > 0) {
@@ -2955,6 +3303,8 @@ window.enableMobileCustomPicker = function(selectEl) {
             // [추가] 재구입 흐름으로 옵션들이 자동 선택된 뒤에도, "코팅" 같은 최소평량g
             // 제한 품목의 선택 가능 여부를 최신 평량 기준으로 다시 맞춰둔다.
             if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+            // [추가] "최대수량" 제한 품목도 재구입으로 자동 선택된 수량 기준으로 다시 맞춰둔다.
+            if (typeof refreshMaxOrderQtyGatedOptions === "function") refreshMaxOrderQtyGatedOptions();
 
             // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
             // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
@@ -2974,6 +3324,16 @@ window.enableMobileCustomPicker = function(selectEl) {
             window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
             window.enableMobileCustomPicker(document.getElementById("sizeList"));
             window.enableMobileCustomPicker(document.querySelector(".finishing-select"));
+            // [추가] 첫 번째 줄이 옵션고정(필수선택) 품목이고 서브옵션이 있으면, change 이벤트가
+            // 없어서 서브옵션 select가 안 만들어지던 문제를 해결한다. 만든 뒤 가격도 다시 계산.
+            {
+                const firstFinishing = document.querySelector(".finishing-select");
+                if (firstFinishing && firstFinishing.dataset.lockedValue) {
+                    buildSubOptionSelect(firstFinishing);
+                    if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
+                    updatePrice();
+                }
+            }
         } catch (err) {
             // 초기화 중 어디서든 에러가 나면 조용히 0원으로 남지 않고, 콘솔 + 화면에 바로 표시합니다.
             console.error("[75my] 초기화 중 오류가 발생했습니다:", err);
@@ -3298,6 +3658,17 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
             return;
         }
+        // [추가] "품절" 처리된 품목이 지금 선택돼 있으면(주문 버튼이 원래 비활성화되어
+        // 있어야 정상이지만, 혹시 모를 경우를 대비해) 다음 페이지로 넘어가지 않도록 한 번 더 막습니다.
+        let hasSoldOutSelectedCheck = false;
+        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelectedCheck = true;
+        });
+        if (hasSoldOutSelectedCheck) {
+            alert("품절상품입니다. 다른 옵션을 선택해주세요.");
+            return;
+        }
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
         if (hasFinishingMutualExclusionConflict()) {
             alert("재단, 비규격재단, 접지는 서로 중복 선택할 수 없습니다.");
@@ -3330,6 +3701,13 @@ window.enableMobileCustomPicker = function(selectEl) {
                 return;
             }
         }
+        // [추가] "후가공강제"(Y)가 적힌 품목들 중 최소 1개는 선택되어 있어야 함
+        const forceRequiredMsg = findForceRequiredFinishingViolation();
+        if (forceRequiredMsg) {
+            alert(forceRequiredMsg);
+            document.querySelector(".finishing-select")?.focus();
+            return;
+        }
 
         const count = document.getElementById("setCountInput").value;
         const width = document.getElementById("widthInput").value;
@@ -3359,7 +3737,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             const groupId = sel.dataset.groupId;
             if (opt && groupId) {
                 const subSelect = getFinishingSubSelect(sel);
-                const label = (subSelect && subSelect.value) ? `${opt.value}(${subSelect.value})` : opt.value;
+                const label = buildOptionLabelWithSubs(sel, opt);
                 groupSelections[groupId] = label;
                 combinedGroupText += (combinedGroupText ? " " : "") + label;
             }
@@ -3383,7 +3761,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             if (sel.value) {
                 const subSelect = getFinishingSubSelect(sel);
                 const subValue = subSelect ? subSelect.value : "";
-                finishings.push(buildFinishingLabel(sel, subValue, customCutResult.width, customCutResult.height));
+                finishings.push(buildFinishingLabel(sel, subValue, customCutResult.width, customCutResult.height, (getFinishingSubSelect2(sel) || {}).value || ""));
             }
             const fOpt = sel.options[sel.selectedIndex];
             if (!nextPageUrl && fOpt && fOpt.dataset.nextPageUrl && fOpt.dataset.nextPageUrl.startsWith("http")) {
