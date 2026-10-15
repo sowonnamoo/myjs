@@ -276,12 +276,8 @@
         min-width: 70px;
     }
 
-    /* [추가] 엑셀 "수량건수사이즈"=Y 품목을 고르면 수량/건수 줄과 사이즈 줄을 통째로 숨김 */
-    body.hide-qty-count-size #qtyOptionRow,
-    body.hide-qty-count-size #sizeOptionRow,
-    body.hide-qty-count-size #cutWorkSizeBox {
-        display: none !important;
-    }
+    /* [추가] 엑셀 비규격설정의 "수량건수숨김"=Y 이면 수량/건수 줄을 숨김(값은 그대로 유지되어 다음 페이지로 전달) */
+    body.hide-qty-count #qtyOptionRow { display: none !important; }
 
     /* 7. 무게,컬러 안내문구: 줄바꿈 허용해서 옆으로 삐져나가지 않게 */
     #weightColorRow {
@@ -1925,10 +1921,6 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (v.qtyMultiplierCeil) {
             el.dataset.qtyMultiplierCeil = "1";
         }
-        // [추가] "수량건수사이즈"=Y — 이 품목을 고르면 수량/건수·사이즈 줄을 숨김
-        if (v.hideQtySize) {
-            el.dataset.hideQtySize = "1";
-        }
         if (v.qtyMultiplierStep !== undefined && v.qtyMultiplierStep !== null && v.qtyMultiplierStep !== "") {
             el.dataset.qtyMultiplierStep = v.qtyMultiplierStep;
         }
@@ -1999,44 +1991,12 @@ window.enableMobileCustomPicker = function(selectEl) {
     // [변경] 모바일에서 "완성파일 접수 (jpeg, png)" 옵션이 "폰사진, 폰이미지 접수"라는
     // 글자로 바뀌어 표시되는 경우에도(=모바일에서 이 옵션이 선택된 경우) 동일하게
     // 건수 1개 고정을 적용한다.
-    // [추가] 지금 선택된 일반 옵션(품목 등) 중 하나라도 "수량건수사이즈"=Y 이면
-    // "수량/건수" 줄과 "사이즈" 줄을 숨긴다(CSS 클래스 hide-qty-count-size). 숨기는 순간에는
-    // 값을 기본으로 되돌려서, 손님이 숨기기 전에 바꿔둔 값이 보이지 않게 남아 가격에 반영되는
-    // 일이 없게 한다: 수량=최소구간매수, 건수=1, 사이즈=규격사이즈 첫 번째 항목.
-    function applyHideQtyCountSizeBySelection() {
-        let hide = false;
-        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
-            const opt = sel.options[sel.selectedIndex];
-            if (opt && opt.dataset.hideQtySize === "1") hide = true;
-        });
-        const body = document.body;
-        const wasHidden = body.classList.contains("hide-qty-count-size");
-        body.classList.toggle("hide-qty-count-size", hide);
-        if (!hide || wasHidden) return;
-
-        const countInput = document.getElementById("setCountInput");
-        if (countInput) countInput.value = "1";
-
-        const modeSelect = document.getElementById("qtyModeSelect");
-        if (modeSelect && !modeSelect.disabled && modeSelect.value === "custom") {
-            modeSelect.value = "min";
-            if (typeof window.handleQtyModeChange === "function") window.handleQtyModeChange();
-        }
-
-        const sizeList = document.getElementById("sizeList");
-        const hasStandard = sizeList && sizeList.options.length && sizeList.options[0].value;
-        if (hasStandard && typeof window.setSizeTypeUI === "function") {
-            window.setSizeTypeUI("standard");
-            sizeList.selectedIndex = 0;
-            sizeList.dispatchEvent(new Event("change"));
-        }
-        if (typeof updatePrice === "function") updatePrice();
-    }
-
     function updateCountLockByEditOption() {
         const countInput = document.getElementById("setCountInput");
         if (!countInput) return;
-        applyHideQtyCountSizeBySelection();
+        // [추가] 엑셀 비규격설정의 "수량건수숨김"=Y 이면 수량/건수 줄을 숨긴다.
+        const cc = customConfig();
+        document.body.classList.toggle("hide-qty-count", !!(cc && cc.hideQtyCount));
         const selects = document.querySelectorAll('#dynamicOptionsContainer select');
         let hasPreDesignSelected = false;
         selects.forEach(sel => {
