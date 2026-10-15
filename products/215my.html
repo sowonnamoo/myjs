@@ -276,6 +276,13 @@
         min-width: 70px;
     }
 
+    /* [추가] 엑셀 "수량건수사이즈"=Y 품목을 고르면 수량/건수 줄과 사이즈 줄을 통째로 숨김 */
+    body.hide-qty-count-size #qtyOptionRow,
+    body.hide-qty-count-size #sizeOptionRow,
+    body.hide-qty-count-size #cutWorkSizeBox {
+        display: none !important;
+    }
+
     /* 7. 무게,컬러 안내문구: 줄바꿈 허용해서 옆으로 삐져나가지 않게 */
     #weightColorRow {
         flex-wrap: wrap;
@@ -1915,6 +1922,13 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         // [추가] "감가배수" — 주문 수량(매수)이 이 값의 배수에 도달할 때마다 이 품목의
         // 가격(서브옵션 추가금액 포함)에 곱해줄 배수를 계산하기 위한 기준값(예: 500).
+        if (v.qtyMultiplierCeil) {
+            el.dataset.qtyMultiplierCeil = "1";
+        }
+        // [추가] "수량건수사이즈"=Y — 이 품목을 고르면 수량/건수·사이즈 줄을 숨김
+        if (v.hideQtySize) {
+            el.dataset.hideQtySize = "1";
+        }
         if (v.qtyMultiplierStep !== undefined && v.qtyMultiplierStep !== null && v.qtyMultiplierStep !== "") {
             el.dataset.qtyMultiplierStep = v.qtyMultiplierStep;
         }
@@ -1985,9 +1999,44 @@ window.enableMobileCustomPicker = function(selectEl) {
     // [변경] 모바일에서 "완성파일 접수 (jpeg, png)" 옵션이 "폰사진, 폰이미지 접수"라는
     // 글자로 바뀌어 표시되는 경우에도(=모바일에서 이 옵션이 선택된 경우) 동일하게
     // 건수 1개 고정을 적용한다.
+    // [추가] 지금 선택된 일반 옵션(품목 등) 중 하나라도 "수량건수사이즈"=Y 이면
+    // "수량/건수" 줄과 "사이즈" 줄을 숨긴다(CSS 클래스 hide-qty-count-size). 숨기는 순간에는
+    // 값을 기본으로 되돌려서, 손님이 숨기기 전에 바꿔둔 값이 보이지 않게 남아 가격에 반영되는
+    // 일이 없게 한다: 수량=최소구간매수, 건수=1, 사이즈=규격사이즈 첫 번째 항목.
+    function applyHideQtyCountSizeBySelection() {
+        let hide = false;
+        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.hideQtySize === "1") hide = true;
+        });
+        const body = document.body;
+        const wasHidden = body.classList.contains("hide-qty-count-size");
+        body.classList.toggle("hide-qty-count-size", hide);
+        if (!hide || wasHidden) return;
+
+        const countInput = document.getElementById("setCountInput");
+        if (countInput) countInput.value = "1";
+
+        const modeSelect = document.getElementById("qtyModeSelect");
+        if (modeSelect && !modeSelect.disabled && modeSelect.value === "custom") {
+            modeSelect.value = "min";
+            if (typeof window.handleQtyModeChange === "function") window.handleQtyModeChange();
+        }
+
+        const sizeList = document.getElementById("sizeList");
+        const hasStandard = sizeList && sizeList.options.length && sizeList.options[0].value;
+        if (hasStandard && typeof window.setSizeTypeUI === "function") {
+            window.setSizeTypeUI("standard");
+            sizeList.selectedIndex = 0;
+            sizeList.dispatchEvent(new Event("change"));
+        }
+        if (typeof updatePrice === "function") updatePrice();
+    }
+
     function updateCountLockByEditOption() {
         const countInput = document.getElementById("setCountInput");
         if (!countInput) return;
+        applyHideQtyCountSizeBySelection();
         const selects = document.querySelectorAll('#dynamicOptionsContainer select');
         let hasPreDesignSelected = false;
         selects.forEach(sel => {
@@ -2395,10 +2444,14 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 곱해줄 배수를 계산한다. step(엑셀 U/V열 "감가배수" 값)으로 나눈 몫만큼 배수가 오르되,
     // 최소 1배(수량이 step 미만이면 가격 변동 없음). 예) step=500이면 500장=1배, 1000장=2배,
     // 1500장=3배, 2000장=4배.
-    function qtyTierMultiplier(step, qty) {
+    // 감가배수 계산. 기본은 "수량 ÷ 감가배수"의 몫(내림)이고, 엑셀 "감가올림"에 Y를 적은
+    // 품목(ceil=true)만 매수별배수(options00)처럼 "구간 올림"으로 계산한다.
+    // 예: 감가배수 1000 → 내림: 1500장 1배 / 올림: 1~1000장 1배, 1001~2000장 2배, 2001~3000장 3배
+    function qtyTierMultiplier(step, qty, ceil) {
         const s = parseFloat(step);
         if (!s || s <= 0) return 1;
-        return Math.max(1, Math.floor((parseInt(qty) || 0) / s));
+        const ratio = (parseInt(qty) || 0) / s;
+        return Math.max(1, ceil ? Math.ceil(ratio) : Math.floor(ratio));
     }
 
     function getQtyPricing(enteredQty) {
@@ -2752,7 +2805,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 itemPrice += subExtra2;
                 // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
                 // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
-                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty, opt.dataset.qtyMultiplierCeil === "1");
                 if (qtyMult !== 1) itemPrice *= qtyMult;
                 sum += itemPrice;
             }
@@ -2856,7 +2909,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 가격(서브옵션 추가금액 포함해서 계산된 itemPrice 전체)에 배수를 곱한다.
             // (단, 예외가격이 적용된 경우에는 감가배수를 적용하지 않고 예외가격을 그대로 씁니다)
             if (!useException) {
-                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty, opt.dataset.qtyMultiplierCeil === "1");
                 if (qtyMult !== 1) itemPrice *= qtyMult;
             }
 
