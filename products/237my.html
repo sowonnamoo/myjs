@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 
 <!-- ▼▼▼ SEO 설정: 이 블록 안의 내용만 바꾸면 됩니다 (237my 전용) ▼▼▼ -->
-<title>미니 배너 제작 | 현수막/배너 제작 전문 - 에코그래픽스</title>
-<meta name="description" content="미니 배너가 PET250μ 재질로 필요하신가요? 에코그래픽스에서 PET250μ 재질로 정성껏 제작하는 미니 배너, 합리적인 가격과 빠른 제작으로 만나보세요. 지금 바로 견적을 확인해보세요.">
-<meta name="keywords" content="미니 배너, 미니X배너, 행사용미니배너, 배너 제작, 현수막 제작, 실사출력, 미니 배너 당일발송, 미니 배너 가격, 미니 배너 견적, 에코그래픽스 미니 배너, 미니 배너 소량제작">
+<title>미니배너 제작 | 현수막/배너 제작 전문 - 인쇄답</title>
+<meta name="description" content="미니배너 제작이 필요하신가요? 인쇄답은 휴대하기 편한 미니 사이즈를 살려 합리적인 가격으로 제작합니다.">
+<meta name="keywords" content="미니배너, 미니배너 제작, 미니배너 주문제작, 현수막 제작, 배너 제작, 현수막 배너 주문, 미니배너 가격, 미니배너 견적, 소량 미니배너, 미니배너 제작 업체, 인쇄답 미니배너, 미니배너 주문 방법">
 <meta property="og:type" content="product">
-<meta property="og:title" content="미니 배너 제작 | 현수막/배너 제작 전문 - 에코그래픽스">
-<meta property="og:description" content="미니 배너가 PET250μ 재질로 필요하신가요? 에코그래픽스에서 PET250μ 재질로 정성껏 제작하는 미니 배너, 합리적인 가격과 빠른 제작으로 만나보세요. 지금 바로 견적을 확인해보세요.">
+<meta property="og:title" content="미니배너 제작 | 현수막/배너 제작 전문 - 인쇄답">
+<meta property="og:description" content="미니배너 제작이 필요하신가요? 인쇄답은 휴대하기 편한 미니 사이즈를 살려 합리적인 가격으로 제작합니다.">
 <meta property="og:image" content="https://sowonnamoo1005.cafe24.com/2/mini-banner-2.jpg">
 <meta property="og:url" content="https://sowonnamoo.github.io/myjs/products/237my">
 <link rel="canonical" href="https://sowonnamoo.github.io/myjs/products/237my">
@@ -17,8 +17,8 @@
 {
   "@context": "https://schema.org",
   "@type": "Product",
-  "name": "미니 배너 제작 | 현수막/배너 제작 전문 - 에코그래픽스",
-  "description": "미니 배너가 PET250μ 재질로 필요하신가요? 에코그래픽스에서 PET250μ 재질로 정성껏 제작하는 미니 배너, 합리적인 가격과 빠른 제작으로 만나보세요. 지금 바로 견적을 확인해보세요.",
+  "name": "미니배너 제작 | 현수막/배너 제작 전문 - 인쇄답",
+  "description": "미니배너 제작이 필요하신가요? 인쇄답은 휴대하기 편한 미니 사이즈를 살려 합리적인 가격으로 제작합니다.",
   "url": "https://sowonnamoo.github.io/myjs/products/237my",
   "image": [
     "https://sowonnamoo1005.cafe24.com/2/mini-banner-2.jpg"
@@ -43,18 +43,18 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "미니 배너는 최소 몇 개부터 주문할 수 있나요?",
+      "name": "미니배너 최소 주문 수량은 몇 개인가요?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "미니 배너는 상품 페이지에 안내된 최소 수량부터 주문 가능하며, 옵션에서 수량을 선택하면 자동으로 가격이 계산됩니다."
+        "text": "최소 수량은 상품 페이지에 안내되어 있으며, 옵션에서 원하는 수량을 선택하면 가격이 자동으로 계산됩니다."
       }
     },
     {
       "@type": "Question",
-      "name": "미니 배너 제작 기간은 얼마나 걸리나요?",
+      "name": "미니배너 제작 기간은 얼마나 걸리나요?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "옵션(재질, 후가공, 수량)에 따라 제작 기간이 달라지며, 상품 페이지의 예상 출고일 안내를 통해 정확한 발송일을 확인하실 수 있습니다."
+        "text": "옵션(재질, 후가공, 수량)에 따라 제작 기간이 달라지며, 상품 페이지의 예상 출고일 안내에서 정확한 발송일을 확인하실 수 있습니다."
       }
     }
   ]
@@ -274,6 +274,9 @@
         min-width: 70px;
     }
 
+    /* [추가] 엑셀 비규격설정의 "수량건수숨김"=Y 이면 수량/건수 줄을 숨김(값은 그대로 유지되어 다음 페이지로 전달) */
+    body.hide-qty-count #qtyOptionRow { display: none !important; }
+
     /* 7. 무게,컬러 안내문구: 줄바꿈 허용해서 옆으로 삐져나가지 않게 */
     #weightColorRow {
         flex-wrap: wrap;
@@ -472,7 +475,7 @@
 
 
 <div class="product-container">
-    <img id="mainProductImage" src="https://sowonnamoo1005.cafe24.com/2/mini-banner-2.jpg" style="width: 600px; height: 600px; object-fit: cover; flex-shrink: 0;" alt="미니 배너 제작 예시 - PET250μ">
+    <img id="mainProductImage" src="https://sowonnamoo1005.cafe24.com/2/mini-banner-2.jpg" style="width: 600px; height: 600px; object-fit: cover; flex-shrink: 0;" alt="인쇄답 미니배너 제작 예시">
     <div class="options-section">
         <h1 style="margin: 0 0 10px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:1.5em;">
             <span id="productTitleText">미니배너</span>
@@ -632,22 +635,22 @@
         <div id="detailExpandContent">
             <div id="detailExpandInner">
                 
-                <div style="max-width:640px; margin:0 auto 20px;"><img src="https://sowonnamoo1005.cafe24.com/3/mini-banner-2-detail.jpg" alt="미니 배너 제작 예시 - PET250μ 1" loading="lazy" style="display:block; width:100%; height:auto; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.09);"></div>
+                <div style="max-width:640px; margin:0 auto 20px;"><img src="https://sowonnamoo1005.cafe24.com/3/mini-banner-2-detail.jpg" alt="인쇄답 미니배너 제작 예시 1" loading="lazy" style="display:block; width:100%; height:auto; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.09);"></div>
                 
-                <div style="max-width:640px; margin:0 auto 24px; padding:16px 20px; background:#f4f8fb; border-left:4px solid #2b7bc3; border-radius:8px; text-align:left;"><p style="margin:0 0 6px; font-size:13px; font-weight:700; color:#2b7bc3;">한눈에 보기</p><p style="margin:0; font-size:14px; line-height:1.7; color:#333;">미니 배너는 에코그래픽스에서 제작하는 현수막/배너 제작 상품으로, PET250μ 재질로 만들어지며 온라인으로 옵션을 선택해 소량부터 주문할 수 있는 인쇄물입니다.</p></div>
+                <div style="max-width:640px; margin:0 auto 24px; padding:16px 20px; background:#f4f8fb; border-left:4px solid #2b7bc3; border-radius:8px; text-align:left;"><p style="margin:0 0 6px; font-size:13px; font-weight:700; color:#2b7bc3;">한눈에 보기</p><p style="margin:0; font-size:14px; line-height:1.7; color:#333;">미니배너는 인쇄답에서 소량부터 대량까지 주문제작할 수 있는 맞춤 인쇄 상품입니다. 재질과 규격은 상품 본문페이지에서 확인할 수 있으며 휴대하기 편한 미니 사이즈가 특징입니다. 온라인에서 옵션을 선택하고 디자인 파일을 업로드해 주문하며, 매장·행사 안내, 전시·박람회 부스, 프로모션 홍보 등에 활용됩니다.</p></div>
                 <p style="text-align:center; line-height:1.85;">
-                    미니 배너는 다양한 용도로 폭넓게 활용되는 현수막/배너 제작 상품입니다. PET250μ 재질로 제작되어 실용성과 완성도를 모두 갖췄으며, 에코그래픽스는 소량 주문부터 대량 제작까지 폭넓게 대응합니다. 온라인에서 옵션을 선택하고 파일을 업로드하면 별도 상담 없이도 손쉽게 미니 배너를 주문할 수 있고, 합리적인 가격과 빠른 제작 프로세스로 초보자도 어렵지 않게 진행할 수 있습니다.
+                    미니배너는 매장·행사·전시장에서 안내와 홍보를 한 번에 해결하는 배너입니다. 휴대하기 편한 미니 사이즈가 특징이며, 재질은 본문페이지 참고 후 규격·수량 등 옵션을 선택해 주문할 수 있습니다. 수량에 따라 견적이 자동 계산되어 합리적인 가격으로 주문할 수 있고, 빠른 제작 프로세스로 일정에 맞춰 받아볼 수 있어 매장·행사 안내, 전시·박람회 부스 용도로 추천합니다.
                 </p>
                 <ul style="max-width:640px; margin:16px auto 0; line-height:1.8; color:#444;">
-                    <li>PET250μ 등 엄선된 소재로 제작하는 미니 배너</li>
-                    <li>온라인 견적 후 바로 진행되는 셀프 주문 시스템</li>
-                    <li>소량부터 대량까지 유연하게 대응하는 제작 수량</li>
-                    <li>빠른 제작·발송으로 일정에 맞춰 받아보는 미니 배너</li>
+                    <li>재질은 본문페이지 참고, 규격·수량·색상 옵션 선택 가능</li>
+                    <li>휴대하기 편한 미니 사이즈</li>
+                    <li>간편한 설치와 보관</li>
+                    <li>온라인 견적 확인 후 바로 주문하는 셀프 주문 시스템</li>
                 </ul>
                 
                 <div style="max-width:640px; margin:24px auto 0; text-align:left;"><h3 style="font-size:16px; margin-bottom:10px;">자주 묻는 질문</h3>
-                    <details style="margin-bottom:8px; border:1px solid #eee; border-radius:8px; padding:10px 14px;"><summary style="cursor:pointer; font-weight:600;">미니 배너는 최소 몇 개부터 주문할 수 있나요?</summary><p style="margin:8px 0 0; color:#444; line-height:1.6;">미니 배너는 상품 페이지에 안내된 최소 수량부터 주문 가능하며, 옵션에서 수량을 선택하면 자동으로 가격이 계산됩니다.</p></details>
-                    <details style="margin-bottom:8px; border:1px solid #eee; border-radius:8px; padding:10px 14px;"><summary style="cursor:pointer; font-weight:600;">미니 배너 제작 기간은 얼마나 걸리나요?</summary><p style="margin:8px 0 0; color:#444; line-height:1.6;">옵션(재질, 후가공, 수량)에 따라 제작 기간이 달라지며, 상품 페이지의 예상 출고일 안내를 통해 정확한 발송일을 확인하실 수 있습니다.</p></details>
+                    <details style="margin-bottom:8px; border:1px solid #eee; border-radius:8px; padding:10px 14px;"><summary style="cursor:pointer; font-weight:600;">미니배너 최소 주문 수량은 몇 개인가요?</summary><p style="margin:8px 0 0; color:#444; line-height:1.6;">최소 수량은 상품 페이지에 안내되어 있으며, 옵션에서 원하는 수량을 선택하면 가격이 자동으로 계산됩니다.</p></details>
+                    <details style="margin-bottom:8px; border:1px solid #eee; border-radius:8px; padding:10px 14px;"><summary style="cursor:pointer; font-weight:600;">미니배너 제작 기간은 얼마나 걸리나요?</summary><p style="margin:8px 0 0; color:#444; line-height:1.6;">옵션(재질, 후가공, 수량)에 따라 제작 기간이 달라지며, 상품 페이지의 예상 출고일 안내에서 정확한 발송일을 확인하실 수 있습니다.</p></details>
                 </div>
             </div>
         </div>
@@ -1913,6 +1916,9 @@ window.enableMobileCustomPicker = function(selectEl) {
         }
         // [추가] "감가배수" — 주문 수량(매수)이 이 값의 배수에 도달할 때마다 이 품목의
         // 가격(서브옵션 추가금액 포함)에 곱해줄 배수를 계산하기 위한 기준값(예: 500).
+        if (v.qtyMultiplierCeil) {
+            el.dataset.qtyMultiplierCeil = "1";
+        }
         if (v.qtyMultiplierStep !== undefined && v.qtyMultiplierStep !== null && v.qtyMultiplierStep !== "") {
             el.dataset.qtyMultiplierStep = v.qtyMultiplierStep;
         }
@@ -1986,6 +1992,9 @@ window.enableMobileCustomPicker = function(selectEl) {
     function updateCountLockByEditOption() {
         const countInput = document.getElementById("setCountInput");
         if (!countInput) return;
+        // [추가] 엑셀 비규격설정의 "수량건수숨김"=Y 이면 수량/건수 줄을 숨긴다.
+        const cc = customConfig();
+        document.body.classList.toggle("hide-qty-count", !!(cc && cc.hideQtyCount));
         const selects = document.querySelectorAll('#dynamicOptionsContainer select');
         let hasPreDesignSelected = false;
         selects.forEach(sel => {
@@ -2393,10 +2402,14 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 곱해줄 배수를 계산한다. step(엑셀 U/V열 "감가배수" 값)으로 나눈 몫만큼 배수가 오르되,
     // 최소 1배(수량이 step 미만이면 가격 변동 없음). 예) step=500이면 500장=1배, 1000장=2배,
     // 1500장=3배, 2000장=4배.
-    function qtyTierMultiplier(step, qty) {
+    // 감가배수 계산. 기본은 "수량 ÷ 감가배수"의 몫(내림)이고, 엑셀 "감가올림"에 Y를 적은
+    // 품목(ceil=true)만 매수별배수(options00)처럼 "구간 올림"으로 계산한다.
+    // 예: 감가배수 1000 → 내림: 1500장 1배 / 올림: 1~1000장 1배, 1001~2000장 2배, 2001~3000장 3배
+    function qtyTierMultiplier(step, qty, ceil) {
         const s = parseFloat(step);
         if (!s || s <= 0) return 1;
-        return Math.max(1, Math.floor((parseInt(qty) || 0) / s));
+        const ratio = (parseInt(qty) || 0) / s;
+        return Math.max(1, ceil ? Math.ceil(ratio) : Math.floor(ratio));
     }
 
     function getQtyPricing(enteredQty) {
@@ -2750,7 +2763,7 @@ window.enableMobileCustomPicker = function(selectEl) {
                 itemPrice += subExtra2;
                 // [추가] "감가배수"가 등록돼 있으면, 주문 수량(enteredQty)에 따라 이 품목의
                 // 가격에도 동일한 규칙으로 배수를 곱한다(후가공 품목과 동일한 계산 방식).
-                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty, opt.dataset.qtyMultiplierCeil === "1");
                 if (qtyMult !== 1) itemPrice *= qtyMult;
                 sum += itemPrice;
             }
@@ -2854,7 +2867,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 가격(서브옵션 추가금액 포함해서 계산된 itemPrice 전체)에 배수를 곱한다.
             // (단, 예외가격이 적용된 경우에는 감가배수를 적용하지 않고 예외가격을 그대로 씁니다)
             if (!useException) {
-                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty);
+                const qtyMult = qtyTierMultiplier(opt.dataset.qtyMultiplierStep, enteredQty, opt.dataset.qtyMultiplierCeil === "1");
                 if (qtyMult !== 1) itemPrice *= qtyMult;
             }
 
