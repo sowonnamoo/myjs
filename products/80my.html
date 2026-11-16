@@ -74,7 +74,7 @@
     {
       "@type": "ListItem",
       "position": 2,
-      "name": "기타"
+      "name": "음식점홍보물"
     },
     {
       "@type": "ListItem",
@@ -454,6 +454,29 @@
     background: #0064d6;
 }
 
+
+/* ===== 화면 폭에 맞춰 줄어들게 (고정폭 1195px/600px/1200px 때문에 좌우가 잘리던 문제 보정) ===== */
+.product-container { width: 100%; max-width: 1195px; box-sizing: border-box; }
+div[style*="width:1195px"], div[style*="width: 1195px"] { width: 100% !important; max-width: 1195px; box-sizing: border-box; }
+#bottomProductImage { width: 100% !important; max-width: 1200px; }
+@media (min-width: 1001px) and (max-width: 1220px) {
+    .product-container { padding: 0 10px; }
+    #mainProductImage { width: 48% !important; height: auto !important; aspect-ratio: 1 / 1; flex-shrink: 1 !important; }
+    div[style*="width:1195px"], div[style*="width: 1195px"] { padding-left: 10px; padding-right: 10px; }
+    #bottomProductImage { height: auto !important; aspect-ratio: 6 / 5; }
+}
+@media (min-width: 769px) and (max-width: 1000px) {
+    .product-container { flex-direction: column; padding: 0 10px; }
+    #mainProductImage { width: 100% !important; max-width: 600px; height: auto !important; aspect-ratio: 1 / 1; margin: 0 auto; }
+    .options-section { width: 100%; }
+    div[style*="width:1195px"], div[style*="width: 1195px"] { padding-left: 10px; padding-right: 10px; }
+    #bottomProductImage { height: auto !important; aspect-ratio: 6 / 5; }
+}
+@media (max-width: 768px) {
+    /* 세로로 쌓일 때 옵션 영역이 내용 폭만큼만 차지해 오른쪽이 비던 문제: 가로 전체로 늘림 */
+    .product-container { align-items: stretch !important; }
+    .options-section { width: 100%; box-sizing: border-box; }
+}
 </style>
 
 <div id="printable-quote" style="display:none;">
