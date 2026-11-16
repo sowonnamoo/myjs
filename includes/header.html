@@ -3,7 +3,7 @@
 <style>
 /* 1. 기본 스타일 */
 * { box-sizing: border-box; }
-.header-component { width: 1199px; margin: 0 auto; padding: 0; font-family: sans-serif; }
+.header-component { width: 100%; max-width: 1199px; margin: 0 auto; padding: 0; font-family: sans-serif; }
 .header-top { display: flex; align-items: center; justify-content: space-between; height: 80px; width: 100%; padding: 0 10px; }
 .logo img { display: block; max-width: 240px; height: auto; }
 .header-right-wrap { display: flex; align-items: center; gap: 15px; }
@@ -59,7 +59,8 @@
 
 /* 메가메뉴 */
 .mega-menu-wrap {
-    width: 1199px;
+    width: 100%;
+    max-width: 1199px;
     margin: 0 auto;
     margin-bottom: 40px;
     position: relative;
@@ -96,7 +97,7 @@
     position: absolute;
     top: 100%;
     left: 0;
-    width: 1199px;
+    width: 100%;
     max-height: 70vh;
     overflow-y: auto;
     background: #fff;
@@ -148,6 +149,16 @@
 .mobile-group-title { font-weight: 600; color: #333; cursor: pointer; }
 .mobile-leaf-link { display: block; text-decoration: none; font-size: 13px; }
 .mobile-sub-menu { display: none; }
+
+/* 769px~1200px 화면: 고정폭(1199px)으로 좌우가 잘리지 않도록 화면 폭에 맞춰 줄어들게 함 */
+@media(min-width: 769px) and (max-width: 1200px) {
+    .header-top { gap: 10px; }
+    .logo img { max-width: 190px; }
+    .search-container { width: 200px; }
+    .header-btn { padding: 0 10px; font-size: 13px; }
+    .mega-menu-list { flex-wrap: wrap; }
+    .menu-item { padding: 12px 12px; font-size: 14px; }
+}
 
 @media(max-width: 768px) {
     .header-component { width: 100%; padding: 15px; }
