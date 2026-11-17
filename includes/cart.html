@@ -412,7 +412,8 @@
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
@@ -423,9 +424,72 @@
             appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
         };
         const app = initializeApp(firebaseConfig);
-        window.db = getFirestore(app);
-        window.addDoc = addDoc;
-        window.collection = collection;
+        const db = getFirestore(app);
+        window.db = db;
+
+        // ================= 보안 저장 (index1.html / app.js 와 동일한 방식) =================
+        // 1) 방문자마다 익명 로그인으로 uid 발급 -> 문서에 uid를 같이 저장 (본인/관리자만 접근하도록 규칙에서 검사)
+        // 2) 공개 문서(orders/{id})에는 전화번호/주소를 절대 넣지 않음
+        // 3) 전화번호/주소는 orders/{id}/private/{secretId} 에만 저장
+        //    secretId = SHA-256(주문ID::이름::전화번호 뒷4자리) -> 이름+뒷4자리를 아는 사람만 조회 가능
+        // 4) 관리자 조회용으로 adminOrders/{id} 에도 동일한 개인정보를 저장
+        const auth = getAuth(app);
+        let resolveAuthReady;
+        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveAuthReady(user);
+            } else {
+                signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+            }
+        });
+        // 익명 로그인이 실패하면(예: 콘솔에서 익명 로그인 미사용) 영원히 대기하지 않도록 10초 후 오류 처리
+        window.ensureAnonymousLogin = () => Promise.race([
+            authReadyPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("익명 로그인 시간 초과")), 10000))
+        ]);
+
+        async function sha256Hex(text) {
+            const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+        }
+        // app.js 의 computeSecretId 와 반드시 같은 정규화/조합 방식이어야 같은 secretId가 나옵니다.
+        function normalizeName(name) { return String(name || "").trim(); }
+        function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+        async function computeSecretId(orderId, name, phone) {
+            return sha256Hex(`${orderId}::${normalizeName(name)}::${normalizePhoneLast4(phone)}`);
+        }
+
+        // 주문 1건을 공개/비공개/관리자용 3개 문서로 나눠서 한 번에(원자적으로) 저장합니다.
+        // 하나라도 실패하면 전부 저장되지 않으므로 "일부만 저장된" 상태가 생기지 않습니다.
+        window.saveSecureOrder = async function(orderData) {
+            const user = await window.ensureAnonymousLogin();
+            const { phone, address, ...publicData } = orderData; // 개인정보는 공개 문서에서 제외
+
+            const orderRef = doc(collection(db, "orders"));
+            const orderDocId = orderRef.id;
+            const secretId = await computeSecretId(orderDocId, orderData.name, phone);
+
+            const batch = writeBatch(db);
+            batch.set(orderRef, {
+                ...publicData,
+                uid: user.uid,
+                isDeleted: false
+            });
+            batch.set(doc(db, "orders", orderDocId, "private", secretId), {
+                phone: phone,
+                address: address,
+                uid: user.uid
+            });
+            batch.set(doc(db, "adminOrders", orderDocId), {
+                name: orderData.name,
+                phone: phone,
+                address: address,
+                uid: user.uid
+            });
+            await batch.commit();
+            return orderDocId;
+        };
 
         // [추가] IP 차단 확인 — mng_x92a.html(관리자 보안 페이지)에서 차단한 IP는
         // 게시판뿐 아니라 이 장바구니 페이지도 접속 못 하게 막음. 차단 목록은
@@ -923,16 +987,19 @@ async function fetchClientIp() {
     }
 }
 
+// 반환값: 저장 성공 true / 실패 false (실패를 조용히 넘기면 결제만 되고 주문이 사라질 수 있어서 호출하는 쪽에서 확인합니다)
 async function saveOrderToFirestore(orderData) {
     try {
         const ip = await fetchClientIp();
-        await addDoc(collection(window.db, "orders"), {
+        await window.saveSecureOrder({
             ...orderData,
             ip,
             status: (orderData.payment === "무통장입금") ? "입금대기" : "결제완료"
         });
+        return true;
     } catch (e) {
         console.error("Firestore 저장 실패:", e);
+        return false;
     }
 }
 
@@ -1007,7 +1074,12 @@ async function processPayment(paymentType, payMethod, currency, channelKey, stor
 
         if(response.code != null){ alert("결제 실패: " + response.message); return; }
 
-        await saveOrderToFirestore(orderData);
+        const saved = await saveOrderToFirestore(orderData);
+        if(!saved){
+            // 결제는 이미 끝난 상태 -> 장바구니는 지우지 않고, 결제번호를 안내해서 관리자 문의로 이어지게 함
+            alert("결제는 완료되었으나 주문 저장 중 오류가 발생했습니다.\n결제번호: " + paymentId + "\n이 번호를 관리자에게 알려주세요. (다시 결제하지 마세요)");
+            return;
+        }
         await idbDelete(CART_KEY);
         await idbDelete(CART_EXPIRY_KEY);
         location.href = "success.html";
@@ -1046,7 +1118,11 @@ window.goBankTransfer = async function(){
         if(btn) btn.textContent = '주문 저장 중...';
         const orderId = "BANK_" + Date.now();
         const orderData = saveOrder("무통장입금", orderId);
-        await saveOrderToFirestore(orderData);
+        const saved = await saveOrderToFirestore(orderData);
+        if(!saved){
+            alert("주문 저장 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요. (무통장입금은 아직 접수되지 않았습니다)");
+            return;
+        }
         await idbDelete(CART_KEY);
         await idbDelete(CART_EXPIRY_KEY);
         location.href = "/myjs/success2";
