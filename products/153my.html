@@ -74,7 +74,7 @@
     {
       "@type": "ListItem",
       "position": 2,
-      "name": "현수막배너"
+      "name": "배너"
     },
     {
       "@type": "ListItem",
@@ -454,6 +454,29 @@
     background: #0064d6;
 }
 
+
+/* ===== 화면 폭에 맞춰 줄어들게 (고정폭 1195px/600px/1200px 때문에 좌우가 잘리던 문제 보정) ===== */
+.product-container { width: 100%; max-width: 1195px; box-sizing: border-box; }
+div[style*="width:1195px"], div[style*="width: 1195px"] { width: 100% !important; max-width: 1195px; box-sizing: border-box; }
+#bottomProductImage { width: 100% !important; max-width: 1200px; }
+@media (min-width: 1001px) and (max-width: 1220px) {
+    .product-container { padding: 0 10px; }
+    #mainProductImage { width: 48% !important; height: auto !important; aspect-ratio: 1 / 1; flex-shrink: 1 !important; }
+    div[style*="width:1195px"], div[style*="width: 1195px"] { padding-left: 10px; padding-right: 10px; }
+    #bottomProductImage { height: auto !important; aspect-ratio: 6 / 5; }
+}
+@media (min-width: 769px) and (max-width: 1000px) {
+    .product-container { flex-direction: column; padding: 0 10px; }
+    #mainProductImage { width: 100% !important; max-width: 600px; height: auto !important; aspect-ratio: 1 / 1; margin: 0 auto; }
+    .options-section { width: 100%; }
+    div[style*="width:1195px"], div[style*="width: 1195px"] { padding-left: 10px; padding-right: 10px; }
+    #bottomProductImage { height: auto !important; aspect-ratio: 6 / 5; }
+}
+@media (max-width: 768px) {
+    /* 세로로 쌓일 때 옵션 영역이 내용 폭만큼만 차지해 오른쪽이 비던 문제: 가로 전체로 늘림 */
+    .product-container { align-items: stretch !important; }
+    .options-section { width: 100%; box-sizing: border-box; }
+}
 </style>
 
 <div id="printable-quote" style="display:none;">
@@ -1991,12 +2014,38 @@ window.enableMobileCustomPicker = function(selectEl) {
     // [변경] 모바일에서 "완성파일 접수 (jpeg, png)" 옵션이 "폰사진, 폰이미지 접수"라는
     // 글자로 바뀌어 표시되는 경우에도(=모바일에서 이 옵션이 선택된 경우) 동일하게
     // 건수 1개 고정을 적용한다.
+    // [추가] 편집옵션(일반 옵션 그룹)에서 "부자재"가 선택되어 있으면 주문 버튼 글자를
+    // "셀프편집 & 주문하기" 대신 "구입하기"로 바꾼다. (재구입 흐름의 버튼 글자는 건드리지 않음)
+    function isBujajaeSelected() {
+        let found = false;
+        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && String(opt.value || "").includes("부자재")) found = true;
+        });
+        return found;
+    }
+    function updateOrderButtonLabel() {
+        // [추가] "부자재"를 고른 옵션 줄은 인쇄/편집을 하지 않는 상품이므로, 줄 제목("편집" 등)을
+        // "제품"으로 바꿔 보여준다. 다른 값을 고르면 원래 제목으로 되돌린다.
+        document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
+            const row = sel.closest('.option-row');
+            const labelEl = row ? row.querySelector('.label') : null;
+            if (!labelEl) return;
+            if (labelEl.dataset.origTitle === undefined) labelEl.dataset.origTitle = labelEl.textContent;
+            const opt = sel.options[sel.selectedIndex];
+            labelEl.textContent = (opt && String(opt.value || "").includes("부자재")) ? "제품" : labelEl.dataset.origTitle;
+        });
+        const btn = document.getElementById("orderBtn");
+        if (!btn || isReorderFlow) return;
+        btn.textContent = isBujajaeSelected() ? "구입하기" : "셀프편집 & 주문하기";
+    }
+
     function updateCountLockByEditOption() {
         const countInput = document.getElementById("setCountInput");
         if (!countInput) return;
         // [추가] 엑셀 비규격설정의 "수량건수숨김"=Y 이면 수량/건수 줄을 숨긴다.
-        const cc = customConfig();
-        document.body.classList.toggle("hide-qty-count", !!(cc && cc.hideQtyCount));
+        document.body.classList.toggle("hide-qty-count", !!productData.hideQtyCount);
+        updateOrderButtonLabel();
         const selects = document.querySelectorAll('#dynamicOptionsContainer select');
         let hasPreDesignSelected = false;
         selects.forEach(sel => {
@@ -3655,7 +3704,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             alert(`${changedLabel} 바뀌어서 재구입모드가 해제되었습니다.\n새 시안 제작을 위해 기존 상품 주문 페이지로 이동합니다.`);
             isReorderFlow = false;
             const orderBtn = document.getElementById("orderBtn");
-            if (orderBtn) orderBtn.textContent = "셀프편집 & 주문하기";
+            updateOrderButtonLabel();
             const banner = document.getElementById("reorderBanner");
             if (banner) banner.remove();
             // 여기서 return하지 않고 아래 일반 주문 흐름을 그대로 이어서 실행함
@@ -3835,6 +3884,46 @@ window.enableMobileCustomPicker = function(selectEl) {
         const finalOpenNewWindow = priorityNextPageUrl ? priorityNextPageOpenNewWindow : nextPageOpenNewWindow;
         const finalNewWindowW = priorityNextPageUrl ? priorityNextPageNewWindowW : nextPageNewWindowW;
         const finalNewWindowH = priorityNextPageUrl ? priorityNextPageNewWindowH : nextPageNewWindowH;
+        // [추가] 다음페이지 URL이 장바구니 페이지이면: 장바구니 페이지는 주소 뒤에 붙은 값을 읽지 않고
+        // 브라우저 저장소(IndexedDB "ecogr_cart")만 읽으므로, 편집기가 담는 것과 같은 형식으로
+        // 먼저 담은 뒤 이동한다. (장바구니는 items 전체를 주문에 저장 → 아래 항목이 그대로 주문정보)
+        if (finalNextUrl && /\/myboard\/cart(\.html)?\/?$/i.test(finalNextUrl.split("?")[0].split("#")[0])) {
+            const productTitleEl = document.getElementById("productTitleText") || document.querySelector(".options-section h1");
+            const productTitleForCart = productTitleEl ? productTitleEl.textContent.trim() : "상품";
+            const combinedForSide = combinedGroupText + " " + finishings.join(" ");
+            const directItem = {
+                item: combinedGroupText ? `${productTitleForCart} (${combinedGroupText})` : productTitleForCart,
+                qty: qty || 1,
+                count: count || 1,
+                width: width || "",
+                height: height || "",
+                price: parseInt(String(price).replace(/[^0-9]/g, ""), 10) || 0,
+                paper: paperFallback,
+                // 장바구니 화면은 ink를 "편집: ○○"으로 보여주므로, 부자재(인쇄 안 함)는 비워둔다.
+                // (부자재 선택 내용은 상품명과 options에 그대로 남아 있음)
+                ink: String(inkFallback).includes("부자재") ? "" : (inkFallback || (combinedForSide.includes("양면") ? "양면" : "")),
+                // 배송비 계산(shipping.js)이 Number(item.weight)로 읽으므로 "kg" 글자 없이 숫자만
+                weight: weightValue ? String(weightValue) : "",
+                finishings: finishings.join(", "),
+                options: groupSelections,
+                customCutWidth: customCutResult.width || "",
+                customCutHeight: customCutResult.height || "",
+                originalImages: [], // 편집기를 거치지 않으므로 업로드할 원본 이미지 없음
+                productId: PRODUCT_ID
+            };
+            (async () => {
+                try {
+                    const cart = (await idbGet(CART_KEY)) || [];
+                    cart.push(directItem);
+                    await idbSet(CART_KEY, cart);
+                    location.href = finalNextUrl.split("?")[0];
+                } catch (e) {
+                    console.error("장바구니 담기 실패:", e);
+                    alert("장바구니에 담는 중 오류가 발생했습니다. 다시 시도해주세요.");
+                }
+            })();
+            return;
+        }
         if (finalNextUrl) {
             const targetUrl = `${finalNextUrl}?${params}`;
             if (finalOpenNewWindow) {
