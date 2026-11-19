@@ -96,6 +96,7 @@
             <p><b>매수별배수</b> 시트: 상품ID / 매수 / 배수</p>
             <p><b>비규격설정</b> 시트: 상품ID / 항목(베이스가격·배수·가로최소·가로최대·세로최소·세로최대·<b>최소가격</b>) / 값 — <b>최소가격</b>은 선택 사항으로, 적어두면 희망사이즈(비규격) 입력 시 계산된 금액이 이 값보다 낮을 때는 이 값으로, 이 값 이상이면 계산된 금액 그대로 보여줍니다(예: 30000을 적으면 30,000원 미만으로 계산돼도 30,000원으로 표시). 비워두면 지금처럼 계산된 값을 그대로 보여줍니다. <b>고정배율mm</b>도 선택 사항으로, 적어두면 희망사이즈의 가로/세로를 이 값(mm)의 배수 단위로만 입력할 수 있습니다(예: 100을 적으면 100mm, 200mm, 300mm... 단위로만 설정 가능). 배수가 아닌 값을 입력하면 가장 가까운 배수로 자동 반올림됩니다(예: 1150 입력 시 1200으로 보정, 1140 입력 시 1100으로 보정). 비워두면 지금처럼 1mm 단위로 자유롭게 입력됩니다. <b>수량건수숨김</b>도 선택 사항으로, 항목에 <code>수량건수숨김</code>, 값에 <code>Y</code>를 적으면 그 상품 화면에서 "수량/건수" 줄이 보이지 않습니다(수량은 최소구간매수, 건수는 1로 고정되어 다음 페이지로 넘어갑니다. 사이즈 줄과 가로/세로 값은 그대로입니다). 단, 이 시트의 베이스가격~세로최대 6개 항목이 모두 채워져 있어야 적용됩니다.</p>
             <p><b>규격사이즈목록</b> 시트: 상품ID / 가로mm / 세로mm / 가격 / 마진 / 옵션이름 / <b>매수배수제외</b> (계산기 화면의 "규격사이즈" 드롭다운에 나오는 목록입니다. 사이즈 하나당 한 행씩 적으세요. <b>가격</b>은 선택 사항이며, 값을 적으면 해당 규격사이즈를 선택했을 때 그 금액이 기존 옵션 가격에 추가로 더해집니다. <b>마진</b>도 선택 사항이며, 1.1처럼 적으면 그 사이즈 선택 시 계산된 가격에 곱해져서 10% 인상되고, 0.9처럼 적으면 10% 인하됩니다. <b>옵션이름</b>(F열)도 선택 사항이며, 값을 적으면 드롭다운에 "가로x세로 mm" 대신 여기 적은 이름이 표시됩니다(예: "엽서 사이즈"). 비워두면 기존처럼 "가로x세로 mm"로 표시됩니다. <b>매수배수제외</b>(G열)도 선택 사항이며, <code>Y</code>를 적으면 이 사이즈를 선택했을 때는 매수별배수(options00)가 적용되지 않고 등록해둔 가격을 그대로 씁니다(단, 후가공은 그대로 매수별배수가 적용됩니다). 비워두면 기존처럼 매수별배수가 적용됩니다) / <b>개별매수배수</b>(H열, 선택 사항. 이 사이즈만의 "장수 단위" 계단식 배수를 씁니다. 예를 들어 <code>50</code>을 적으면 1~50장은 등록해둔 가격 그대로(1배), 51~100장은 2배, 101~150장은 3배 ... 이렇게 50장씩 늘어날 때마다 1배씩 올라가서 최대 10배(=500장)까지 자동으로 계산됩니다. 500장을 넘게 입력하면 "한 번에 주문 가능한 최대 매수는 500매입니다"라는 안내와 함께 500장으로 되돌아가며, 그 이상은 건수를 늘려서 구입해야 합니다. 이 값을 적어두면 매수배수제외(G열)나 매수별배수(options00)보다 이 계단식 배수가 우선 적용됩니다. 비워두면 기존처럼 매수별배수(options00) 또는 매수배수제외(G열) 설정을 따릅니다) / <b>초기수량</b>(I열) / <b>점진매수</b>(J열) / <b>점진매수배수</b>(K열) — 이 세 칸이 한 세트로, 개별매수배수와 같은 자리를 쓰는 또 다른 계단식 배수 방식입니다(전부 선택 사항). <b>초기수량</b>에는 "여기까지는 등록해둔 가격 그대로(1배)"가 적용되는 기준 장수를, <b>점진매수</b>에는 몇 장 늘어날 때마다 배수를 올릴지(구간 단위), <b>점진매수배수</b>에는 그 구간마다 얼마씩 배수를 더할지를 적습니다. 예: 초기수량 <code>50</code>, 점진매수 <code>10</code>, 점진매수배수 <code>0.03</code>을 적으면 → 1~50장은 등록해둔 가격 그대로(1배), 51~60장은 1.03배, 61~70장은 1.06배, 71~80장은 1.09배 … 이렇게 10장 늘어날 때마다 0.03배씩 계속 올라가며, 구간 수에 제한이 없어 얼마든지 큰 수량까지 같은 규칙으로 자동 계산됩니다(개별매수배수처럼 딱 떨어지는 정수배가 아니라, 1.03·1.06처럼 자유로운 배수를 쓸 수 있는 점이 다릅니다). 세 칸 중 하나라도 비어 있거나 점진매수가 0 이하이면 이 기능은 적용되지 않습니다. 개별매수배수와 이 세 칸을 같은 사이즈에 동시에 적어두면 개별매수배수가 우선 적용됩니다. 비워두면 기존처럼 매수별배수(options00) 또는 매수배수제외(G열) 설정을 따릅니다) / <b>총액배수마진</b>(L열, 선택 사항. 후가공 등 <b>모든 옵션이 다 적용된 뒤의 총액</b>에 곱해지는 배수입니다. 예: 후가공까지 합친 총액이 10000원일 때 <code>2</code>를 적으면 20000원이 됩니다. 이 사이즈를 골랐을 때만 적용되며, 규격사이즈의 <b>마진</b>(E열)과는 별개이므로 마진 칸은 비워두고 여기에 적으시면 됩니다. 비워두거나 1을 적으면 아무 영향이 없습니다) / <b>고정세로사이즈mm</b>(맨 끝 열. 선택 사항. 재단/작업 사이즈의 <b>세로가 정확히 이 값(mm)일 때만</b> 이 품목을 선택할 수 있습니다. 가로 사이즈는 보지 않고 세로만 봅니다. 예: <code>900</code>을 적으면 세로가 900mm일 때만 선택 가능하고, 가로가 900이어도(세로가 다르면) 선택할 수 없습니다. 방향에 상관없이 긴 변/짧은 변으로 보는 기존 <b>최소/최대사이즈mm(한변)</b>과는 다른 기능입니다. 비워두면 아무 영향이 없습니다) / <b>후가공강제</b>(맨 끝 열. 선택 사항. <code>Y</code>를 적으면, 같은 그룹(보통 options2) 안에서 이 칸에 <code>Y</code>가 적힌 품목들 중 <b>최소 1개는 반드시 선택</b>해야 결제(다음 단계)로 넘어갈 수 있습니다. 하나도 선택하지 않고 버튼을 누르면 "옵션에서 후가공 1개를 필수로 선택해주세요."라는 안내가 뜨고 진행되지 않습니다. 그룹 전체를 강제하는 기존 <b>필수옵션</b>과 달리, <code>Y</code>가 적힌 특정 품목들로만 한정해서 강제합니다. 비워두면 아무 영향이 없습니다)</p>
+            <p><b>추천상품</b> 시트: 상품ID / 추천상품ID — 내려받으면 전체 상품ID가 A열에 미리 채워져 있으니 B칸에 추천할 상품ID를 쉼표로 구분해 적으세요(예: 01my 행에 <code>02my,03my,04my,05my,06my</code>). 해당 상품 페이지 하단 "이런 상품은 어떠세요?"에 이 중 최대 4개가 열 때마다 랜덤으로 뜹니다. B칸을 비우면 추천 영역이 나오지 않습니다.</p>
             <p><b>삭제</b> 시트: 상품ID 한 칸만 있습니다. 여기 적힌 상품ID는 Firestore 문서 자체가 통째로 삭제됩니다.</p>
             <p>상품ID나 품목명이 비어있는 행은 자동으로 무시됩니다. 새 상품ID를 적으면 새 문서가 만들어지고, 기존 상품ID를 적으면 그 문서 전체가 엑셀 내용으로 덮어써집니다.</p>
         </div>
@@ -333,6 +334,14 @@
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sizeRows), "규격사이즈목록");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["상품ID"], [""]]), "삭제");
 
+        // [추가] "추천상품" 시트: A열 상품ID(전체 상품이 미리 채워짐) / B열 추천상품ID(쉼표로 구분).
+        // 예) 01my 행의 B칸에 02my,03my,04my,05my,06my 라고 적으면 01my 페이지 하단
+        // "이런 상품은 어떠세요?"에 이 중 최대 4개가 랜덤으로 뜹니다.
+        const recommendRows = [["상품ID", "추천상품ID"]];
+        allProducts.forEach(p => recommendRows.push([p.id, Array.isArray(p.data.recommendIds) ? p.data.recommendIds.join(",") : ""]));
+        if (recommendRows.length === 1) recommendRows.push(["", ""]);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recommendRows), "추천상품");
+
         XLSX.writeFile(wb, `전체상품_옵션.xlsx`);
         statusBar.textContent = `전체 ${allProducts.length}개 상품을 엑셀로 내려받았습니다. 수정 후 ②에서 다시 업로드하세요.`;
     });
@@ -351,7 +360,7 @@
     // "품목" 시트 등 정해진 이름의 시트를 뺀 나머지는 전부 "그룹별 품목 탭"으로 취급합니다.
     // 예: "options2", "options3" 라는 이름의 시트를 만들면, 그 안의 행들은 자동으로
     // 그룹ID가 "options2"/"options3"인 품목으로 처리됩니다(그 시트 안에는 그룹ID 칸을 안 적어도 됩니다).
-    const RESERVED_SHEET_NAMES = ["그룹", "품목", "매수별배수", "비규격설정", "규격사이즈목록", "삭제"];
+    const RESERVED_SHEET_NAMES = ["그룹", "품목", "매수별배수", "비규격설정", "규격사이즈목록", "삭제", "추천상품"];
 
     // 시트 이름이 "options10" 처럼 숫자가 클수록 뒤로, "options2" < "options3" 처럼 자연스럽게 정렬
     function naturalSheetCompare(a, b) {
@@ -664,6 +673,29 @@
         return result;
     }
 
+    // [추가] "추천상품" 시트의 B칸 텍스트("02my,03my ...")를 상품ID 배열로 바꿉니다.
+    // 쉼표(,) 세미콜론(;) 공백 줄바꿈 어느 것으로 구분해도 되고, 중복은 한 번만 씁니다.
+    function parseRecommendIds(raw) {
+        return String(raw === undefined || raw === null ? "" : raw)
+            .split(/[,;，；、\s]+/).map(s => s.trim()).filter(Boolean);
+    }
+    function readRecommendSheet(wb) {
+        const map = {};
+        rowsOf(wb, "추천상품").forEach(r => {
+            const pid = String(r["상품ID"] || "").trim();
+            if (!pid) return;
+            let raw = r["추천상품ID"];
+            if (raw === undefined) raw = r["추천상품"];
+            if (raw === undefined) { // 헤더 이름을 다르게 적었으면 상품ID 다음 칸을 사용
+                const keys = Object.keys(r).filter(k => k !== "상품ID");
+                raw = keys.length ? r[keys[0]] : "";
+            }
+            if (!map[pid]) map[pid] = [];
+            parseRecommendIds(raw).forEach(id => { if (id !== pid && !map[pid].includes(id)) map[pid].push(id); });
+        });
+        return map;
+    }
+
     function buildAllFromWorkbook(wb) {
         const groupRowsAll = rowsOf(wb, "그룹");
         const itemRowsAll = collectAllItemRows(wb);
@@ -698,7 +730,25 @@
             );
         });
 
-        return { products, deleteIds };
+        // [추가] 추천상품 시트가 있으면 모든 상품에 recommendIds(배열, 비어 있을 수도 있음)를 저장합니다.
+        // 시트가 아예 없는 예전 엑셀이면 이 값은 건드리지 않습니다(기존 값이 있으면 저장 시 사라질 수 있음).
+        const hasRecommendSheet = !!wb.Sheets["추천상품"];
+        const recommendMap = hasRecommendSheet ? readRecommendSheet(wb) : {};
+        const recommendWarnings = [];
+        if (hasRecommendSheet) {
+            Object.keys(products).forEach(pid => { products[pid].recommendIds = recommendMap[pid] ? [...recommendMap[pid]] : []; });
+            Object.keys(recommendMap).forEach(pid => {
+                if (!products[pid] && !deleteIds.includes(pid) && recommendMap[pid].length) {
+                    recommendWarnings.push(`추천상품 시트에만 있고 다른 시트에는 없는 상품ID라 무시됨: ${pid}`);
+                }
+            });
+            Object.keys(products).forEach(pid => {
+                (products[pid].recommendIds || []).forEach(rid => {
+                    if (!products[rid] && !existingProductIds.includes(rid)) recommendWarnings.push(`${pid}의 추천상품 ${rid}는 존재하지 않는 상품ID입니다`);
+                });
+            });
+        }
+        return { products, deleteIds, hasRecommendSheet, recommendWarnings };
     }
 
     function renderPreview(result) {
@@ -709,6 +759,8 @@
                 <div style="background:#eef4fb; padding:6px 10px; border-radius:4px;">등록/수정될 상품 ${productIds.length}개</div>
                 <div style="background:#fdeaea; padding:6px 10px; border-radius:4px; color:#c0392b;">삭제될 상품 ${result.deleteIds.length}개</div>
             </div>
+            ${result.hasRecommendSheet ? "" : `<div class="hint" style="color:#c0392b;">이 엑셀에는 "추천상품" 시트가 없어 추천상품 설정은 반영되지 않습니다(기존에 저장된 추천상품이 있으면 이번 저장으로 사라질 수 있어요).</div>`}
+            ${(result.recommendWarnings || []).length ? `<div class="hint" style="color:#c0392b;">${result.recommendWarnings.map(w => "⚠ " + w).join("<br>")}</div>` : ""}
         `;
 
         let html = "";
@@ -718,7 +770,7 @@
             const itemCount = groups.reduce((sum, g) => sum + (g.values || []).length, 0);
             const isNew = !existingProductIds.includes(pid);
             html += `<div class="product-card"><h4>${pid} <span class="badge ${isNew ? 'new' : 'update'}">${isNew ? '신규 생성' : '기존 수정'}</span></h4>
-                <div style="font-size:13px; color:#555;">그룹 ${groups.length}개 · 품목 ${itemCount}개</div>`;
+                <div style="font-size:13px; color:#555;">그룹 ${groups.length}개 · 품목 ${itemCount}개${Array.isArray(productData.recommendIds) && productData.recommendIds.length ? " · 추천상품 " + productData.recommendIds.join(", ") : ""}</div>`;
             groups.forEach(g => {
                 html += `<table class="mini"><tr><th colspan="13">${g.id} — ${g.title || "제목없음"}</th></tr>
                     <tr><th>품목명</th><th>가격</th><th>사이즈</th><th>URL/이미지/이동URL</th><th>최소사이즈(한변)</th><th>최대사이즈(한변)</th><th>최소평량</th><th>최대평량</th><th>총액배수</th><th>사이즈마진</th><th>감가배수</th><th>예외수량/가격</th><th>옵션고정</th></tr>`;
