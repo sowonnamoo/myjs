@@ -999,27 +999,16 @@ window.enableMobileCustomPicker = function(selectEl) {
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ---- [추가] search.html "재구입" 버튼에서 넘어온 경우 처리 ----
-    // 시안(파일업로드) 단계를 완전히 건너뛰고, 지금 화면에서 새로 고른 옵션으로
-    // 즉시 계산된 최신 가격 + 예전에 저장해둔 시안 이미지(카페24 경로)를 그대로
-    // 장바구니에 담아 바로 cart.html로 이동시킨다.
-    const reorderUrlParams = new URLSearchParams(window.location.search);
-    const reorderImage = reorderUrlParams.get('reorderImage') || '';
-    const reorderImageFallback = reorderUrlParams.get('reorderImageFallback') || '';
-    let isReorderFlow = !!reorderImage;
-    const reorderWidth = parseFloat(reorderUrlParams.get('reorderWidth')) || 0;
-    const reorderHeight = parseFloat(reorderUrlParams.get('reorderHeight')) || 0;
-    const reorderSide = reorderUrlParams.get('reorderSide') || ''; // 예: "단면"/"양면"
-    const reorderItemName = reorderUrlParams.get('reorderItemName') || ''; // 예전 상품명 원문
-    // "이전 주문에 '양면'이라는 글자가 들어있었는가" — ink 필드든 상품명이든 어디든 '양면'이
-    // 있었으면 true. 이후 지금 선택한 옵션들에도 '양면' 글자가 있는지와 비교함.
-    const reorderOriginalHadDouble = reorderSide.includes('양면') || reorderItemName.includes('양면');
-    // 사이즈를 자동 선택한 직후의 실제 값(표준 매칭 시 반올림 등 반영) — 나중에
-    // 고객이 사이즈를 직접 바꿨는지 비교하는 기준값. loadProductAndInit에서 채워짐.
-    let reorderOriginalWidth = 0;
-    let reorderOriginalHeight = 0;
-    // 단면/양면처럼 "인쇄면" 성격의 옵션 그룹을 자동 인식해서 기억해둠 (있으면 자동 선택용으로만 사용)
-    let reorderSideSelect = null;
+    // [변경] 리뷰는 board-291e3 프로젝트(reviews / reviewStats)에서 읽음. 읽기는 로그인 불필요.
+    const boardApp = initializeApp({
+        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    }, "boardApp");
+    const reviewDb = getFirestore(boardApp);
 
     // cart.html / sian.html과 동일한 IndexedDB(DB명/스토어명/키)를 사용해야
     // 서로 같은 장바구니를 읽고 쓸 수 있음
@@ -1051,218 +1040,6 @@ window.enableMobileCustomPicker = function(selectEl) {
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
-    }
-
-    // [추가] 재구입 흐름일 때 예전 인쇄면(단면/양면 등) 옵션을 자동으로 선택해둠.
-    // '단면'/'양면' 두 값을 모두 가진 select를 "인쇄면 그룹"으로 인식한다.
-    function applyReorderSide(sideValue) {
-        const selects = document.querySelectorAll('#dynamicOptionsContainer select');
-        for (const sel of selects) {
-            const optionValues = Array.from(sel.options).map(o => o.value);
-            const looksLikeSideGroup = optionValues.includes('단면') && optionValues.includes('양면');
-            if (looksLikeSideGroup) {
-                reorderSideSelect = sel;
-                if (sideValue && optionValues.includes(sideValue)) {
-                    sel.value = sideValue;
-                }
-                break;
-            }
-        }
-    }
-
-    // [추가] 재구입 흐름일 때 예전 사이즈를 자동으로 선택해둠 (등록된 규격사이즈와
-    // 일치하면 규격사이즈로, 아니면 비규격사이즈로 폭/높이를 직접 채움)
-    function applyReorderSize(w, h) {
-        const sizeTypeSel = document.getElementById("sizeType");
-        const sizeListSel = document.getElementById("sizeList");
-        const wIn = document.getElementById("widthInput");
-        const hIn = document.getElementById("heightInput");
-        if (!sizeTypeSel || !sizeListSel || !wIn || !hIn) return;
-
-        if (isMatchingStandardSize(w, h)) {
-            sizeTypeSel.value = "standard";
-            const match = Array.from(sizeListSel.options).find(opt => {
-                const [ow, oh] = (opt.value || "0,0").split(",").map(Number);
-                return (ow === w && oh === h) || (ow === h && oh === w);
-            });
-            if (match) sizeListSel.value = match.value;
-        } else {
-            sizeTypeSel.value = "custom";
-            wIn.value = w;
-            hIn.value = h;
-        }
-
-        // [추가] 방금 만든 토글 버튼(규격/비규격) 표시도 실제 값에 맞춰 동기화함
-        // (change 이벤트는 다시 안 쏨 — 이미 위에서 값들을 직접 정확히 채워놨기 때문)
-        if (window.syncSizeTypeButtons) window.syncSizeTypeButtons();
-    }
-
-    // [추가] 재구입 흐름일 때: 예전에 실제로 구입했던 옵션 값이 아니면 아예 선택하지
-    // 못하도록(옵션 자체를 disabled) 막는다. 예전 주문의 상품명 문구(예: "명함 (양면
-    // 무광)") 안에 그때 고른 옵션 값들이 공백으로 이어붙여져 그대로 들어있으므로,
-    // 이 문구(+ 인쇄면 값)에 포함된 값만 "구입했던 옵션"으로 인정한다.
-    const reorderPurchasedText = `${reorderItemName} ${reorderSide}`;
-
-    // select 하나를 받아서, 예전에 구입한 적 없는 값의 <option>은 disabled 처리하고
-    // 구입했던 값이 있으면 그 값으로 선택을 맞춰준다. (해당 그룹 자체가 예전엔 없던
-    // 새 옵션이라 일치하는 값이 하나도 없으면, 판단할 근거가 없으므로 그대로 둔다)
-    function lockSelectToPurchasedOptions(sel) {
-        if (!sel || !isReorderFlow) return;
-        let matchedValue = '';
-        Array.from(sel.options).forEach(opt => {
-            if (!opt.value) return; // "선택안함" 같은 빈 값 옵션은 항상 선택 가능하게 둠
-            if (reorderPurchasedText.includes(opt.value)) {
-                if (!matchedValue) matchedValue = opt.value;
-            } else {
-                opt.disabled = true;
-            }
-        });
-        if (matchedValue) sel.value = matchedValue;
-    }
-
-    // 지금 화면에 이미 만들어져 있는 옵션 select들(일반 옵션 + 후가공)을 한 번에 잠근다.
-    function restrictReorderOptionsToPurchased() {
-        if (!isReorderFlow) return;
-        document.querySelectorAll('#dynamicOptionsContainer select').forEach(lockSelectToPurchasedOptions);
-        document.querySelectorAll('.finishing-select').forEach(lockSelectToPurchasedOptions);
-        document.querySelectorAll('.finishing-sub-select').forEach(lockSelectToPurchasedOptions);
-        document.querySelectorAll('.finishing-sub-select2').forEach(lockSelectToPurchasedOptions);
-    }
-
-    // 재구입 흐름일 때: 시안 업로드 없이 바로 장바구니에 담고 cart.html로 이동
-    async function addReorderItemToCartAndGo() {
-        // 후가공 중복 선택 체크 (기존 handleOrder와 동일한 규칙)
-        const finishingValuesCheck = [];
-        let hasDuplicateFinishingCheck = false;
-        document.querySelectorAll(".finishing-select").forEach(sel => {
-            if (!sel.value) return;
-            if (finishingValuesCheck.includes(sel.value)) hasDuplicateFinishingCheck = true;
-            finishingValuesCheck.push(sel.value);
-        });
-        if (hasDuplicateFinishingCheck) {
-            alert("동일한 후가공을 중복 선택할 수 없습니다. 다시 확인해주세요.");
-            return;
-        }
-        // [추가] "품절" 처리된 품목이 지금 선택돼 있으면 재구입(장바구니 담기) 흐름에서도
-        // 진행되지 않도록 막습니다.
-        let hasSoldOutSelectedReorder = false;
-        document.querySelectorAll("#dynamicOptionsContainer select, .finishing-select").forEach(sel => {
-            const opt = sel.options[sel.selectedIndex];
-            if (opt && opt.dataset.soldOut === "1") hasSoldOutSelectedReorder = true;
-        });
-        if (hasSoldOutSelectedReorder) {
-            alert("품절상품입니다. 다른 옵션을 선택해주세요.");
-            return;
-        }
-        // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 후가공 조합인지 최종 확인
-        if (hasFinishingMutualExclusionConflict()) {
-            alert("재단, 비규격재단, 접지는 서로 중복 선택할 수 없습니다.");
-            return;
-        }
-        // [추가] 미싱 등 최소사이즈(한 변) 제한을 지금 사이즈가 못 지키는지 최종 확인
-        const sizeViolationReorder = findFinishingSizeRestrictionViolation();
-        if (sizeViolationReorder) {
-            alert(sizeViolationReorder.message);
-            return;
-        }
-
-        // [추가] "비규격재단" 선택 시 입력한 가로/세로(mm)가 유효한지 최종 확인
-        const customCutReorder = validateCustomCutSizeForSubmit();
-        if (!customCutReorder.ok) {
-            alert(customCutReorder.message);
-            return;
-        }
-
-        // [추가] 필수옵션으로 설정된 후가공 그룹은 재구입 흐름에서도 동일하게 검증함
-        const fGroupReorder = finishingGroup();
-        if (fGroupReorder && fGroupReorder.required) {
-            const anyFinishingSelectedReorder = Array.from(document.querySelectorAll(".finishing-select"))
-                .some(sel => sel.value);
-            if (!anyFinishingSelectedReorder) {
-                alert(`"${fGroupReorder.title || '후가공'}"은(는) 꼭 선택해야 하는 옵션이에요.\n원하시는 항목을 하나 선택해주세요 🙂`);
-                document.querySelector(".finishing-select")?.focus();
-                return;
-            }
-        }
-        // [추가] "후가공강제"(Y)가 적힌 품목들 중 최소 1개는 선택되어 있어야 함 (재구입 흐름도 동일)
-        const forceRequiredMsgReorder = findForceRequiredFinishingViolation();
-        if (forceRequiredMsgReorder) {
-            alert(forceRequiredMsgReorder);
-            document.querySelector(".finishing-select")?.focus();
-            return;
-        }
-
-        const count = document.getElementById("setCountInput").value;
-        const width = document.getElementById("widthInput").value;
-        const height = document.getElementById("heightInput").value;
-        const priceText = document.getElementById("priceDisplay").textContent;
-        const priceNumber = parseInt(priceText.replace(/[^0-9]/g, ''), 10) || 0;
-        const qty = document.getElementById("qtySelect").value;
-
-        // 무게 추출 (kg 단위 통일)
-        const weightText = document.getElementById("weightDisplay").textContent;
-        let weightValue = 0;
-        if (weightText.includes("kg")) {
-            weightValue = parseFloat(weightText);
-        } else if (weightText.includes("g")) {
-            weightValue = parseFloat(weightText) / 1000;
-        }
-
-        // 선택된 일반 옵션 값들을 이어붙여 상품명 구성 (예: "명함 (양면 금박)")
-        let combinedGroupText = "";
-        document.querySelectorAll("#dynamicOptionsContainer select").forEach(sel => {
-            const opt = sel.options[sel.selectedIndex];
-            if (!opt || !opt.value) return;
-            const subSelect = getFinishingSubSelect(sel);
-            const label = buildOptionLabelWithSubs(sel, opt);
-            combinedGroupText += (combinedGroupText ? " " : "") + label;
-        });
-
-        // 후가공 목록 (색상 등 서브옵션 포함)
-        const finishings = [];
-        document.querySelectorAll(".finishing-select").forEach(sel => {
-            if (sel.value) {
-                const subSelect = getFinishingSubSelect(sel);
-                const subValue = subSelect ? subSelect.value : "";
-                finishings.push(buildFinishingLabel(sel, subValue, customCutReorder.width, customCutReorder.height, (getFinishingSubSelect2(sel) || {}).value || ""));
-            }
-        });
-
-        const titleEl = document.getElementById("productTitleText") || document.querySelector(".options-section h1");
-        const productTitle = titleEl ? titleEl.textContent.trim() : "상품";
-
-        // "양면" 글자가 있으면 그대로 기록해서, 다음 재구입 때도 상품명 텍스트 비교가 이어지게 함
-        const combinedSelectionText = combinedGroupText + ' ' + finishings.join(' ');
-        const sideForItem = combinedSelectionText.includes('양면') ? '양면'
-            : (reorderSideSelect ? reorderSideSelect.value : '');
-
-        const newItem = {
-            item: combinedGroupText ? `${productTitle} (${combinedGroupText})` : productTitle,
-            qty: qty || 1,
-            count: count || 1,
-            width: width || '',
-            height: height || '',
-            price: priceNumber,
-            weight: weightValue ? `${weightValue}kg` : '',
-            finishings: finishings.join(', '),
-            customCutWidth: customCutReorder.width || '', // [추가] 비규격재단 선택 시 입력한 가로(mm)
-            customCutHeight: customCutReorder.height || '', // [추가] 비규격재단 선택 시 입력한 세로(mm)
-            ink: sideForItem, // 단면/양면 등 인쇄면 (다음 재구입 비교용)
-            compositeImage: reorderImage, // R2 원본이 살아있으면 그걸, 없으면 카페24 경로를 사용
-            compositeImageFallback: reorderImageFallback, // R2가 나중에 지워지면 대신 보여줄 카페24 경로
-            originalImages: [], // 재구입은 새로 업로드할 원본이 없음 (예전 시안 그대로 제작)
-            productId: PRODUCT_ID // [추가] 다음에 이 주문을 또 재구입할 때 정확한 상품 페이지로 바로 가도록 기록
-        };
-
-        try {
-            const cart = (await idbGet(CART_KEY)) || [];
-            cart.push(newItem);
-            await idbSet(CART_KEY, cart);
-            location.href = "https://sowonnamoo.github.io/myjs/includes/cart.html";
-        } catch (e) {
-            console.error("재구입 담기 실패:", e);
-            alert("장바구니에 담는 중 오류가 발생했습니다. 다시 시도해주세요.");
-        }
     }
 
     // ---- 이 상품(90my)의 Firestore 문서. 페이지 진입 시 딱 1번만 불러와 여기에 보관합니다. ----
@@ -2034,7 +1811,7 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 글자로 바뀌어 표시되는 경우에도(=모바일에서 이 옵션이 선택된 경우) 동일하게
     // 건수 1개 고정을 적용한다.
     // [추가] 편집옵션(일반 옵션 그룹)에서 "부자재"가 선택되어 있으면 주문 버튼 글자를
-    // "셀프편집 & 주문하기" 대신 "구입하기"로 바꾼다. (재구입 흐름의 버튼 글자는 건드리지 않음)
+    // "셀프편집 & 주문하기" 대신 "구입하기"로 바꾼다.
     function isBujajaeSelected() {
         let found = false;
         document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
@@ -2055,7 +1832,7 @@ window.enableMobileCustomPicker = function(selectEl) {
             labelEl.textContent = (opt && String(opt.value || "").includes("부자재")) ? "제품" : labelEl.dataset.origTitle;
         });
         const btn = document.getElementById("orderBtn");
-        if (!btn || isReorderFlow) return;
+        if (!btn) return;
         btn.textContent = isBujajaeSelected() ? "구입하기" : "셀프편집 & 주문하기";
     }
 
@@ -2167,7 +1944,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         return g && Array.isArray(g.values) ? g.values.filter(v => v.forceRequired).map(v => v.name) : [];
     }
     // [추가] "후가공강제" 대상 품목이 하나도 선택 안 돼 있으면 안내 메시지를, 문제없으면
-    // null을 돌려준다. (대상 품목이 아예 없으면 항상 null) 주문/재구입 제출 직전에 호출한다.
+    // null을 돌려준다. (대상 품목이 아예 없으면 항상 null) 주문 제출 직전에 호출한다.
     function findForceRequiredFinishingViolation() {
         const names = getForceRequiredFinishingNames();
         if (!names.length) return null;
@@ -2235,9 +2012,6 @@ window.enableMobileCustomPicker = function(selectEl) {
             });
             subSelect.addEventListener("change", onChange);
             insertAfterEl.insertAdjacentElement("afterend", subSelect);
-            // [추가] 재구입 흐름이면, 방금 새로 만들어진 서브옵션도 예전에
-            // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
-            lockSelectToPurchasedOptions(subSelect);
             window.enableMobileCustomPicker(subSelect);
             // enableMobileCustomPicker가 select를 flex:1짜리 .select-wrap div로 감싸는데,
             // 그대로 두면 메인 select와 폭을 나눠 가지면서 계속 좁아집니다. 고정폭으로 맞춥니다.
@@ -2397,9 +2171,6 @@ window.enableMobileCustomPicker = function(selectEl) {
         // [추가] 재단/접지처럼 서로 중복 선택할 수 없는 옵션은, 새로 추가된 줄에서도
         // 이미 다른 줄에서 선택된 상대 값이 있으면 바로 선택 못하게(회색 처리) 반영한다.
         refreshFinishingExclusiveOptions();
-        // [추가] 재구입 흐름이면, "추가하기"로 새로 늘어난 후가공 줄도 예전에
-        // 구입했던 값이 아니면 선택 못하게 똑같이 잠근다.
-        lockSelectToPurchasedOptions(newSelect);
         // [추가] 새로 추가된 줄에도 "코팅" 같은 최소평량g 제한을 바로 반영한다.
         if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
         window.enableMobileCustomPicker(newSelect);
@@ -3297,20 +3068,16 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 계산해서 캐시해둠 — count()는 저렴한 집계 쿼리라 부담 없고, 그 이후엔 다시 안 돌아감
     async function backfillReviewStats() {
         try {
-            const countSnap = await getCountFromServer(query(collection(db, 'reviews'), where('productId', '==', PRODUCT_ID)));
+            const countSnap = await getCountFromServer(query(collection(reviewDb, 'reviews'), where('productId', '==', PRODUCT_ID)));
             const count = countSnap.data().count;
             if (count === 0) return; // 진짜로 리뷰가 없으면 배지는 계속 숨겨둠
 
-            const snap = await getDocs(query(collection(db, 'reviews'), where('productId', '==', PRODUCT_ID), limit(2000)));
+            const snap = await getDocs(query(collection(reviewDb, 'reviews'), where('productId', '==', PRODUCT_ID), limit(2000)));
             const sum = snap.docs.reduce((s, d) => s + (d.data().rating || 0), 0);
             const avg = sum / count;
 
             renderRatingBadge(avg, count);
 
-            // 다음 방문자부터는 이 계산을 다시 안 하도록 상품 문서에 캐시
-            await updateDoc(doc(db, 'products', PRODUCT_ID), {
-                reviewStats: { count, sum, avg }
-            });
         } catch (err) {
             console.error('리뷰 통계 백필 실패:', err);
         }
@@ -3334,14 +3101,16 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             // [추가] 상품 문서에 미리 계산되어 있는 리뷰 통계(reviewStats)로 별점 배지를 채움.
             // 리뷰를 따로 조회하지 않음 — 이미 하고 있던 상품정보 조회 1번에 값이 같이 들어있음.
+            try {
+                const stSnap = await getDoc(doc(reviewDb, 'reviewStats', PRODUCT_ID));
+                if (stSnap.exists()) productData.reviewStats = stSnap.data();
+            } catch (e) { console.warn('리뷰 통계 로드 실패:', e); }
             const stats = productData.reviewStats;
             if (stats && stats.count > 0) {
                 renderRatingBadge(stats.avg || (stats.sum / stats.count), stats.count);
-            } else {
-                // 통계 캐시가 없는 경우 — 이 기능을 넣기 전부터 있던 리뷰일 수 있으니 한 번만
-                // 실제로 확인해서 계산 후 상품 문서에 캐시해둠(다음 방문자부터는 다시 안 함)
-                backfillReviewStats();
             }
+            // [변경] 통계 문서(reviewStats)는 리뷰 작성 때 항상 함께 생기므로, 없으면 리뷰가 없는 것으로 보고
+            // 별점 배지를 숨겨둠. (예전처럼 방문할 때마다 리뷰를 세거나 읽지 않음 → 읽기 비용 절약)
 
             renderOptionGroups();
 
@@ -3370,43 +3139,13 @@ window.enableMobileCustomPicker = function(selectEl) {
             // 여부를 맞춰둔다.
             if (typeof refreshMaxOrderQtyGatedOptions === "function") refreshMaxOrderQtyGatedOptions();
 
-            // [추가] 재구입 흐름이면 예전 사이즈를 자동으로 선택
-            if (isReorderFlow && reorderWidth > 0 && reorderHeight > 0) {
-                applyReorderSize(reorderWidth, reorderHeight);
-            }
-            // [추가] 재구입 흐름이면 예전 인쇄면(단면/양면 등)도 자동으로 선택
-            if (isReorderFlow) {
-                applyReorderSide(reorderSide);
-            }
-            // [추가] 재구입 흐름이면, 지금까지 만들어진 모든 옵션(일반 옵션 + 후가공)
-            // 중에서 예전에 실제로 구입했던 값이 아닌 옵션은 아예 선택하지 못하게 막는다.
-            restrictReorderOptionsToPurchased();
-            // [추가] 재구입 흐름으로 예전 후가공 값이 자동 선택된 경우에도, 재단/접지처럼
-            // 서로 중복 선택할 수 없는 옵션 상태를 최신으로 맞춰둔다.
-            refreshFinishingExclusiveOptions();
-            // [추가] 재구입 흐름으로 "비규격재단"이 자동 선택된 경우에도 입력창을 보여준다.
-            // (change 이벤트 없이 값만 채워졌을 수 있어 각 select마다 직접 토글해준다)
-            document.querySelectorAll(".finishing-select").forEach(sel => toggleCustomCutSizeBox(sel));
-            // [추가] 재구입 흐름으로 옵션들이 자동 선택된 뒤에도, "코팅" 같은 최소평량g
-            // 제한 품목의 선택 가능 여부를 최신 평량 기준으로 다시 맞춰둔다.
-            if (typeof refreshWeightGatedOptions === "function") refreshWeightGatedOptions();
-            // [추가] "최대수량" 제한 품목도 재구입으로 자동 선택된 수량 기준으로 다시 맞춰둔다.
-            if (typeof refreshMaxOrderQtyGatedOptions === "function") refreshMaxOrderQtyGatedOptions();
-
-            // [추가] 재구입 흐름 등으로 옵션 선택값이 바뀌었을 수 있으니, "선시안" 포함
+            // [추가] 옵션 선택값 기준으로 "선시안" 포함
             // 여부에 따른 건수 잠금 상태도 최신 선택값 기준으로 다시 판단해둔다.
             updateCountLockByEditOption();
 
             updateSizeMode();
             updatePrice();
             console.log("[90my] 초기 가격 계산 완료. priceDisplay =", document.getElementById("priceDisplay").textContent);
-
-            // 사이즈 자동 선택 직후의 실제 값을 기준값으로 저장 (나중에 고객이 직접
-            // 바꿨는지 비교하는 데 씀 — 표준사이즈 매칭 시 반올림 등이 반영된 최종값)
-            if (isReorderFlow) {
-                reorderOriginalWidth = parseFloat(document.getElementById("widthInput").value) || 0;
-                reorderOriginalHeight = parseFloat(document.getElementById("heightInput").value) || 0;
-            }
 
             window.enableMobileCustomPicker(document.getElementById("qtyModeSelect"));
             window.enableMobileCustomPicker(document.getElementById("sizeList"));
@@ -3580,7 +3319,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (!listEl) return;
         try {
             const q = query(
-                collection(db, 'reviews'),
+                collection(reviewDb, 'reviews'),
                 where('productId', '==', PRODUCT_ID),
                 orderBy('createdAt', 'desc'),
                 limit(REVIEW_PAGE_SIZE)
@@ -3625,7 +3364,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         loadMoreBtn.textContent = '불러오는 중...';
         try {
             const q = query(
-                collection(db, 'reviews'),
+                collection(reviewDb, 'reviews'),
                 where('productId', '==', PRODUCT_ID),
                 orderBy('createdAt', 'desc'),
                 startAfter(reviewLastDoc),
@@ -3674,65 +3413,8 @@ window.enableMobileCustomPicker = function(selectEl) {
     };
     // ---------------- 이용후기 끝 ----------------
 
-    // [추가] 재구입 모드 안내 — 옵션을 새로 골라야 하지만, 그만큼 가격은 항상
-    // 지금 시점 최신가로 계산되고, 시안 이미지는 예전 것을 그대로 사용한다는 걸 알려줌
-    if (isReorderFlow) {
-        const orderBtn = document.getElementById("orderBtn");
-        if (orderBtn) orderBtn.textContent = "이 옵션으로 재구입 담기";
-
-        const optionsSection = document.querySelector(".options-section");
-        if (optionsSection) {
-            const banner = document.createElement("div");
-            banner.id = "reorderBanner";
-            banner.style.cssText = "background:#fff7e6; border:1px solid #ffd591; color:#a15c00; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:10px; line-height:1.5;";
-            banner.textContent = "재구입 모드입니다. 옵션을 원하시는 대로 다시 선택해주세요 — 가격은 지금 이 순간의 최신 가격으로 계산됩니다. 시안 이미지는 예전에 제작하신 것을 그대로 사용합니다. (단, 사이즈나 인쇄면(단면/양면)을 변경하시면 새 시안이 필요해 재구입 모드가 해제됩니다)";
-            optionsSection.insertBefore(banner, optionsSection.firstChild);
-        }
-    }
-
     // ---- 주문하기: 다음 페이지로 선택 옵션 전달 ----
     window.handleOrder = function () {
-        // [추가] 재구입 흐름이면 시안(파일업로드) 단계를 건너뛰고 바로 장바구니로.
-        // 단, 고객이 사이즈를 예전과 다르게 바꿨다면 그 사이즈로는 예전 시안을 그대로
-        // 쓸 수 없으므로(작업사이즈가 달라짐) 재구입 모드를 해제하고 일반 주문 흐름으로 넘김.
-        if (isReorderFlow) {
-            const currentW = parseFloat(document.getElementById("widthInput").value) || 0;
-            const currentH = parseFloat(document.getElementById("heightInput").value) || 0;
-            const sameSize = (currentW === reorderOriginalWidth && currentH === reorderOriginalHeight) ||
-                              (currentW === reorderOriginalHeight && currentH === reorderOriginalWidth);
-
-            // 지금 선택된 옵션들(일반 옵션 + 후가공)을 전부 합친 텍스트 안에 "양면"이라는
-            // 글자가 있는지로 판단. 예전 주문에 "양면"이 있었는데 지금은 없거나,
-            // 반대로 예전엔 없었는데 지금 "양면"을 선택했으면 둘 다 재구입 모드 해제 대상.
-            let currentSelectionText = '';
-            document.querySelectorAll('#dynamicOptionsContainer select').forEach(sel => {
-                if (sel.value) currentSelectionText += ' ' + sel.value;
-            });
-            document.querySelectorAll('.finishing-select').forEach(sel => {
-                if (sel.value) currentSelectionText += ' ' + sel.value;
-            });
-            const currentHasDouble = currentSelectionText.includes('양면');
-            const sameSide = reorderOriginalHadDouble === currentHasDouble;
-
-            if (sameSize && sameSide) {
-                addReorderItemToCartAndGo();
-                return;
-            }
-
-            let changedLabel = '';
-            if (!sameSize && !sameSide) changedLabel = '사이즈와 인쇄면(단면/양면)이';
-            else if (!sameSize) changedLabel = '사이즈가';
-            else changedLabel = '인쇄면(단면/양면)이';
-
-            alert(`${changedLabel} 바뀌어서 재구입모드가 해제되었습니다.\n새 시안 제작을 위해 기존 상품 주문 페이지로 이동합니다.`);
-            isReorderFlow = false;
-            const orderBtn = document.getElementById("orderBtn");
-            updateOrderButtonLabel();
-            const banner = document.getElementById("reorderBanner");
-            if (banner) banner.remove();
-            // 여기서 return하지 않고 아래 일반 주문 흐름을 그대로 이어서 실행함
-        }
-
         // 동일한 후가공을 중복 선택한 상태면 다음 페이지로 이동하지 않고 경고만 띄웁니다.
         const finishingValuesCheck = [];
         let hasDuplicateFinishingCheck = false;

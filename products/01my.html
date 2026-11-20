@@ -999,6 +999,17 @@ window.enableMobileCustomPicker = function(selectEl) {
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // [변경] 리뷰는 board-291e3 프로젝트(reviews / reviewStats)에서 읽음. 읽기는 로그인 불필요.
+    const boardApp = initializeApp({
+        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    }, "boardApp");
+    const reviewDb = getFirestore(boardApp);
+
     // cart.html / sian.html과 동일한 IndexedDB(DB명/스토어명/키)를 사용해야
     // 서로 같은 장바구니를 읽고 쓸 수 있음
     const HANDOFF_DB_NAME = 'ecogrHandoff';
@@ -3057,20 +3068,16 @@ window.enableMobileCustomPicker = function(selectEl) {
     // 계산해서 캐시해둠 — count()는 저렴한 집계 쿼리라 부담 없고, 그 이후엔 다시 안 돌아감
     async function backfillReviewStats() {
         try {
-            const countSnap = await getCountFromServer(query(collection(db, 'reviews'), where('productId', '==', PRODUCT_ID)));
+            const countSnap = await getCountFromServer(query(collection(reviewDb, 'reviews'), where('productId', '==', PRODUCT_ID)));
             const count = countSnap.data().count;
             if (count === 0) return; // 진짜로 리뷰가 없으면 배지는 계속 숨겨둠
 
-            const snap = await getDocs(query(collection(db, 'reviews'), where('productId', '==', PRODUCT_ID), limit(2000)));
+            const snap = await getDocs(query(collection(reviewDb, 'reviews'), where('productId', '==', PRODUCT_ID), limit(2000)));
             const sum = snap.docs.reduce((s, d) => s + (d.data().rating || 0), 0);
             const avg = sum / count;
 
             renderRatingBadge(avg, count);
 
-            // 다음 방문자부터는 이 계산을 다시 안 하도록 상품 문서에 캐시
-            await updateDoc(doc(db, 'products', PRODUCT_ID), {
-                reviewStats: { count, sum, avg }
-            });
         } catch (err) {
             console.error('리뷰 통계 백필 실패:', err);
         }
@@ -3094,14 +3101,16 @@ window.enableMobileCustomPicker = function(selectEl) {
 
             // [추가] 상품 문서에 미리 계산되어 있는 리뷰 통계(reviewStats)로 별점 배지를 채움.
             // 리뷰를 따로 조회하지 않음 — 이미 하고 있던 상품정보 조회 1번에 값이 같이 들어있음.
+            try {
+                const stSnap = await getDoc(doc(reviewDb, 'reviewStats', PRODUCT_ID));
+                if (stSnap.exists()) productData.reviewStats = stSnap.data();
+            } catch (e) { console.warn('리뷰 통계 로드 실패:', e); }
             const stats = productData.reviewStats;
             if (stats && stats.count > 0) {
                 renderRatingBadge(stats.avg || (stats.sum / stats.count), stats.count);
-            } else {
-                // 통계 캐시가 없는 경우 — 이 기능을 넣기 전부터 있던 리뷰일 수 있으니 한 번만
-                // 실제로 확인해서 계산 후 상품 문서에 캐시해둠(다음 방문자부터는 다시 안 함)
-                backfillReviewStats();
             }
+            // [변경] 통계 문서(reviewStats)는 리뷰 작성 때 항상 함께 생기므로, 없으면 리뷰가 없는 것으로 보고
+            // 별점 배지를 숨겨둠. (예전처럼 방문할 때마다 리뷰를 세거나 읽지 않음 → 읽기 비용 절약)
 
             renderOptionGroups();
 
@@ -3310,7 +3319,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         if (!listEl) return;
         try {
             const q = query(
-                collection(db, 'reviews'),
+                collection(reviewDb, 'reviews'),
                 where('productId', '==', PRODUCT_ID),
                 orderBy('createdAt', 'desc'),
                 limit(REVIEW_PAGE_SIZE)
@@ -3355,7 +3364,7 @@ window.enableMobileCustomPicker = function(selectEl) {
         loadMoreBtn.textContent = '불러오는 중...';
         try {
             const q = query(
-                collection(db, 'reviews'),
+                collection(reviewDb, 'reviews'),
                 where('productId', '==', PRODUCT_ID),
                 orderBy('createdAt', 'desc'),
                 startAfter(reviewLastDoc),
