@@ -3564,8 +3564,13 @@ window.enableMobileCustomPicker = function(selectEl) {
         //   const price = params.get('price');
         //   const finishings = params.get('finishings'); // "후가공1,후가공2" 형태의 일반 문자열
         // 처럼 표준적인 방법으로만 꺼내 쓰면 됩니다. (다음페이지가 바뀌어도 이 부분은 그대로 유지)
+        // [추가] 다음페이지(에코프로3 편집기)의 "기본 레이아웃" 검색창이 읽을 사람이 읽는 제품명.
+        // paper는 "옵션 그룹 첫 번째 선택값(용지 등)"이라 제품명이 아니므로 따로 productName으로 보냄.
+        const productNameEl = document.getElementById("productTitleText") || document.querySelector(".options-section h1");
+        const productNameForNext = productNameEl ? productNameEl.textContent.trim() : "";
         const params = new URLSearchParams({
             productId: PRODUCT_ID,
+            productName: productNameForNext,
             options: JSON.stringify(groupSelections),
             paper: paperFallback,
             ink: inkFallback,
