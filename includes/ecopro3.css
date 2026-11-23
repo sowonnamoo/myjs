@@ -1928,3 +1928,16 @@ input[type=file]{display:none;}
 }
 .excel-quick-eye-btn:hover{ background:#f4f4f4; }
 .excel-quick-eye-btn.off{ opacity:.4; }
+
+
+/* ---------- 샘플디자인 / 다른디자인 버튼 ----------
+   처음에는 흰색, 한 번 누르면 "다른디자인"으로 바뀌며 주황색(.sample-design-next) */
+.sample-design-btn{background:#fff;border:1px solid var(--line);color:var(--ink);}
+.sample-design-btn:hover{background:#f6f7f9;}
+.sample-design-btn.sample-design-next{background:#f39c12;border-color:#f39c12;color:#fff;}
+.sample-design-btn.sample-design-next:hover{background:#e08e0b;border-color:#e08e0b;}
+.sample-design-btn.sample-design-busy{opacity:.6;pointer-events:none;}
+/* 모바일: 하단 바에 버튼 3개가 나란히 들어가므로 샘플디자인 버튼만 살짝 작게 */
+@media (max-width:900px){
+  .floating-action-bar .sample-design-btn{ padding:9px 10px; font-size:14.5px; }
+}

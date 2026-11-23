@@ -50,7 +50,7 @@
           <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="mobileRotateCanvasRightBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)">↻ 캔버스 90도 회전</button>
           <div class="dropdown-divider"></div>
-          <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기</label>
+          <label class="dropdown-item" for="imageInput">🖼 이미지 업로드</label>
           <label class="dropdown-item" for="projectInput">📂 파일 불러오기</label>
           <button type="button" class="dropdown-item" id="mobileSaveProjectBtn" title="지금까지 작업한 모든 디자인(앞/뒤 포함)과 주문 정보를 파일로 저장">💾 저장</button>
         </div>
@@ -70,7 +70,7 @@
           <button type="button" class="dropdown-item" id="mobileCustomAddMenuBtn" title="메뉴 이름과 가격을 붙여넣으면 정렬된 메뉴판을 만들어줘요">🧾 메뉴판 만들기</button>
           <button type="button" class="dropdown-item" id="mobileCustomAddBgFillBtn" title="캔버스 전체를 채우는 배경을 만들어요">🎨 바탕 채우기</button>
           <div class="dropdown-divider"></div>
-          <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기 (JPG·PNG)</label>
+          <label class="dropdown-item" for="imageInput">🖼 이미지 업로드 (JPG·PNG)</label>
           <label class="dropdown-item" for="fontInput">Aa 폰트 불러오기</label>
           <label class="dropdown-item" for="bgFillImageInput">🖼 배경채우기</label>
           <label class="dropdown-item" for="bgFixedImageInput">🖼 목형배경</label>
@@ -147,7 +147,7 @@
         <button type="button" class="dropdown-item" id="newCanvasBtn" title="캔버스에 흰색 바탕을 새로 깔아요">🆕 새로 만들기</button>
         <button type="button" class="dropdown-item" id="randomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 랜덤 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 랜덤 디자인 생성</button>
         <div class="dropdown-divider"></div>
-        <label class="dropdown-item" for="imageInput">🖼 이미지 불러오기 (JPG·PNG)</label>
+        <label class="dropdown-item" for="imageInput">🖼 이미지 업로드 (JPG·PNG)</label>
         <label class="dropdown-item hidden" for="svgInput">📄 SVG 불러오기</label>
         <label class="dropdown-item" for="fontInput">Aa 폰트 불러오기</label>
         <label class="dropdown-item" for="bgFillImageInput" title="캔버스 박스 주변(체커무늬 영역)을 이 사진으로 채워요 — 인쇄되는 디자인 파일에는 전혀 포함되지 않는 화면 안내용입니다">🖼 배경채우기</label>
@@ -168,10 +168,11 @@
       <input type="file" id="replaceImageInput" accept="image/jpeg,image/png,image/jpg">
     </div>
 
+
     <div class="toolbar-group dropdown megamenu">
       <button type="button" class="btn" id="shapeMenuBtn">✏️ 편집하기 ▾</button>
       <div class="dropdown-menu hidden" id="shapeMenu">
-        <label class="dropdown-item hidden" for="imageInput" style="cursor:pointer;">🖼 이미지 불러오기</label>
+        <label class="dropdown-item hidden" for="imageInput" style="cursor:pointer;">🖼 이미지 업로드</label>
         <button type="button" class="dropdown-item hidden" id="quickMarqueeEraseBtn" title="이미지를 선택한 상태에서 누르면, 지우고 싶은 영역을 드래그로 지정해서 워터마크나 글씨를 지울 수 있어요">🧹 워터마크, 글씨영역 삭제하기</button>
         <button type="button" class="dropdown-item" id="addTextBtn">🅣 텍스트</button>
         <button type="button" class="dropdown-item" id="fixTextShapeBtn" title="가로로 늘어난 글자는 세로도 그만큼 늘리고, 세로로 늘어난 글자는 자간을 절반으로 줄이고 세로 크기도 줄여서 정비율로 바로잡아요">🔧 늘어진글자교정</button>
@@ -2848,7 +2849,7 @@
 
 <!-- 브라우저 우측 하단 고정 플로팅 바 — 우측 오브젝트 속성 패널(140px)을 가리지 않도록
      그 패널 폭만큼 왼쪽으로 띄워서 배치함(.floating-action-bar의 right 값 참고).
-     왼쪽에 흰색 "이미지 불러오기", 오른쪽에 파란(주요) "상품담기/구입" 버튼 순서로 배치.
+     왼쪽에 흰색 "이미지 업로드", 오른쪽에 파란(주요) "상품담기/구입" 버튼 순서로 배치.
      상품담기/구입 버튼은 아직 아무 기능도 없는 자리표시 버튼임(나중에 실제 장바구니/결제
      연동이 정해지면 그때 기능을 붙일 예정) — PNG/JPG/SVG 저장은 상단 "🖼 이미지" 메뉴에서만 함. -->
 <div class="floating-action-bar" id="floatingActionBar">
@@ -2866,7 +2867,11 @@
     </div>
   </div>
   <div class="mobile-action-buttons">
-    <label class="btn" for="imageInput">이미지 불러오기</label>
+    <label class="btn" for="imageInput">이미지 업로드</label>
+    <!-- 샘플디자인: 우측 "기본 레이아웃" 중 하나를 불러오면서 랜덤디자인적용(#rollAllBtn)을 동시에 실행.
+         한 번 누른 뒤에는 "다른디자인"(주황)으로 바뀌고 계속 누르면 같은 동작을 반복 (ecopro3.js 18번 항목).
+         하단 고정 바는 PC·모바일 공통이라 이 버튼 하나로 양쪽 모두 동작함. -->
+    <button type="button" class="btn sample-design-btn" id="sampleDesignBtn" title="우측 기본 레이아웃 중 하나를 불러오면서 랜덤디자인을 동시에 적용해요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">샘플디자인</button>
     <button type="button" class="btn primary" id="floatingSaveBtn">상품담기/구입</button>
     <!-- 모바일 모드 전용 — 상품담기/구입 버튼 옆에 30px 간격을 두고 뜨는 작은 로고(링크 없음).
          PC에서는 .mobile-brand-logo 자체가 항상 숨겨져 있어서(ecopro3.css) 여기 같이 있어도 안 보임. -->
