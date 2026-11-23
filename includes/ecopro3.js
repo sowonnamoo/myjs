@@ -6132,6 +6132,18 @@
     searchInput.addEventListener('input', applySearchFilter);
     searchInput.addEventListener('click', (e) => e.stopPropagation());
 
+    // 샘플디자인이 기준으로 삼는 "제품명 검색어"(숫자가 안 붙은 이름과 정확히 같은 레이아웃만 대상)
+    let activeProductTerm = '';
+    function findAutoSearchTerm(term){
+      const base = String(term || '').trim();
+      if (!base) return base;
+      for (let s = 0; s <= base.length - 2; s++) {
+        const t = base.slice(s).toLowerCase();
+        if (templates.some((tpl) => tpl.name.toLowerCase().includes(t))) return base.slice(s);
+      }
+      return base;
+    }
+
     // 앞 페이지(photo-order.html 등)에서 쿼리로 넘어온 "실제 읽을 수 있는 상품명" — productId
     // 같은 코드(예: "01my")는 실사용자가 검색할 리 없으니 쓰지 않고, 사람이 읽는 한글 이름
     // (예: "명함")을 씀. 우선순위: orderData.paper(예: paper=명함) → orderData.options 안의
@@ -6180,7 +6192,11 @@
         renderGalleryList();
         updateGalleryVisibility();
         // 상품명을 알면 그걸로, 모르면 "기본"으로 자동 검색 — 사용자가 직접 입력 안 해도 바로 매칭 결과가 보임
-        searchInput.value = searchTerm;
+        // 검색은 "포함" 방식이라 "명함"을 찾으면 명함, 명함1, 명함2… 가 모두 목록에 뜸.
+        // 제품명이 "일반명함"처럼 더 길어서 "명함1"에 통째로 안 들어있으면, 앞글자를 하나씩
+        // 줄여서(일반명함 → 반명함 → 명함, 최소 2글자) 처음으로 결과가 나오는 검색어를 씀.
+        activeProductTerm = findAutoSearchTerm(searchTerm);
+        searchInput.value = activeProductTerm;
         applySearchFilter();
       })
       .catch(() => {
@@ -6220,12 +6236,13 @@
         return;
       }
       // 검색창이 비어 있으면 제품명으로 다시 검색해서 목록을 띄움
-      if (!searchInput.value.trim()) { searchInput.value = searchTerm; applySearchFilter(); }
-      let items = templates.filter((t) => t.itemEl && !t.itemEl.classList.contains('hidden'));
-      if (!items.length) return;
-      if (items.length > 1 && lastSampleName) {
-        const others = items.filter((t) => t.name !== lastSampleName);
-        if (others.length) items = others;
+      if (!searchInput.value.trim()) { searchInput.value = activeProductTerm || searchTerm; applySearchFilter(); }
+      // 샘플디자인은 숫자가 붙은 것(명함1, 명함2…)은 빼고, 이름이 제품명과 정확히 같은 레이아웃만 씀
+      const exactName = String(activeProductTerm || searchTerm || '').trim().toLowerCase();
+      const items = templates.filter((t) => t.itemEl && t.name.trim().toLowerCase() === exactName);
+      if (!items.length) {
+        if (EP.showBottomHintToast) EP.showBottomHintToast('제품명과 같은 이름의 레이아웃이 없어요.');
+        return;
       }
       const tpl = items[Math.floor(Math.random() * items.length)];
       lastSampleName = tpl.name;
