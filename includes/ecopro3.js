@@ -6211,60 +6211,43 @@
       sampleBtns.forEach((b) => b.classList.toggle('sample-design-busy', on));
     }
 
-    function pickSampleTemplate(){
-      if (!templates.length) return null;
-      const q = searchInput.value.trim().toLowerCase();
-      // 우측에 지금 보이는(=검색어에 매칭된) 레이아웃들이 후보. 검색어가 비어 있으면 처음 검색어
-      // (제품명)로, 그래도 없으면 전체에서 고름.
-      let pool = q ? templates.filter((t) => t.name.toLowerCase().includes(q)) : [];
-      if (!pool.length) {
-        const st = String(searchTerm || '').toLowerCase();
-        pool = st ? templates.filter((t) => t.name.toLowerCase().includes(st)) : [];
-      }
-      if (!pool.length) pool = templates;
-      if (pool.length > 1 && lastSampleName) {
-        const others = pool.filter((t) => t.name !== lastSampleName);
-        if (others.length) pool = others;
-      }
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-
+    // 샘플디자인 = (1) 우측 기본레이아웃 목록에 떠 있는 레이아웃 하나를 클릭 → (2) 랜덤디자인적용 버튼 클릭.
+    // 레이아웃 클릭은 json을 받아오는 비동기 작업이라, 불러오기가 끝난 뒤에 랜덤디자인 버튼을 누름.
     function applySampleDesign(){
       if (sampleBusy) return;
       if (!panelEnabled || !templates.length) {
         if (EP.showBottomHintToast) EP.showBottomHintToast('기본 레이아웃을 아직 불러오는 중이에요. 잠시 후 다시 눌러주세요.');
         return;
       }
-      const tpl = pickSampleTemplate();
-      if (!tpl) return;
+      // 검색창이 비어 있으면 제품명으로 다시 검색해서 목록을 띄움
+      if (!searchInput.value.trim()) { searchInput.value = searchTerm; applySearchFilter(); }
+      let items = templates.filter((t) => t.itemEl && !t.itemEl.classList.contains('hidden'));
+      if (!items.length) return;
+      if (items.length > 1 && lastSampleName) {
+        const others = items.filter((t) => t.name !== lastSampleName);
+        if (others.length) items = others;
+      }
+      const tpl = items[Math.floor(Math.random() * items.length)];
+      lastSampleName = tpl.name;
       sampleBusy = true;
       setSampleBtnsBusy(true);
       setSampleBtnsNextState(); // 누른 직후부터 "다른디자인"(주황)
-      fetch(tpl.jsonUrl)
-        .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then((raw) => {
-          const data = normalizeTemplateData(raw);
-          const scaled = rescaleSideDataToCurrentCanvas(data, data.canvasWidth, data.canvasHeight);
-          lastSampleName = tpl.name;
-          canvas.discardActiveObject();
-          loadCanvasObjects(scaled, () => {
-            resetHistory();
-            pushHistory();
-            // 불러온 직후 랜덤디자인적용을 동시에 실행(재사용 — 새 로직 아님)
+
+      tpl.itemEl.click(); // 1) 목록의 레이아웃 클릭
+      let waited = 0;
+      const timer = setInterval(() => {
+        waited += 100;
+        const loading = tpl.itemEl.classList.contains('template-gallery-item-loading');
+        if (!loading || waited > 10000) {
+          clearInterval(timer);
+          setTimeout(() => {
             const rollAllBtn = document.getElementById('rollAllBtn');
-            if (rollAllBtn) rollAllBtn.click();
-            canvas.requestRenderAll();
-            pushHistory();
+            if (rollAllBtn) rollAllBtn.click(); // 2) 랜덤디자인적용 클릭
             sampleBusy = false;
             setSampleBtnsBusy(false);
-          });
-        })
-        .catch((err) => {
-          console.error('샘플디자인 불러오기 실패:', err);
-          if (EP.showBottomHintToast) EP.showBottomHintToast('샘플 레이아웃을 불러오지 못했어요.');
-          sampleBusy = false;
-          setSampleBtnsBusy(false);
-        });
+          }, 300);
+        }
+      }, 100);
     }
     sampleBtns.forEach((b) => b.addEventListener('click', applySampleDesign));
   })();
