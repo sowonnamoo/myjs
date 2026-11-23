@@ -6137,6 +6137,9 @@
     // (예: "명함")을 씀. 우선순위: orderData.paper(예: paper=명함) → orderData.options 안의
     // options1 값(같은 예시 URL에서 명함으로 겹쳐 들어오는 필드) → 그래도 없으면 productId.
     function resolveReadableProductName(){
+      // 1순위: 앞 페이지가 명시적으로 보낸 제품명(예: 01my.html의 productName=일반명함)
+      if (orderData.productName && orderData.productName.trim()) return orderData.productName.trim();
+      // (구버전 링크 호환) 아래는 예전 방식 — paper는 용지 옵션 첫값일 수 있어 정확하지 않음
       if (orderData.paper) return orderData.paper.trim();
       if (orderData.options) {
         try {
