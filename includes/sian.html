@@ -727,6 +727,7 @@
   const downloadBtn = document.getElementById('downloadBtn');
   const CROP_RATIO = 0.95;   // 화면과 동일하게 상하좌우 2.5%씩(총 5%) 크롭
   const COMPOSITE_WIDTH = 700;
+  const COMPOSITE_SIDE = 10; // 좌우 여백(회색 배경과 동일색) — 최종 이미지 가로 = 700 + 10*2 = 720px
   const COMPOSITE_GAP = 70;  // 화면의 고정 간격(gap)과 동일
   const COMPOSITE_SAT = 58;  // 화면 채도(--sat)와 동일하게 맞춤
 
@@ -789,7 +790,7 @@
       tipBlockHeight;
 
     const canvas = document.createElement('canvas');
-    canvas.width = COMPOSITE_WIDTH;
+    canvas.width = COMPOSITE_WIDTH + COMPOSITE_SIDE * 2;
     canvas.height = Math.round(totalHeight);
 
     const ctx = canvas.getContext('2d');
@@ -799,7 +800,7 @@
     let y = COMPOSITE_GAP;
     items.forEach(it => {
       ctx.filter = `saturate(${COMPOSITE_SAT}%)`;
-      ctx.drawImage(it.img, it.sx, it.sy, it.sw, it.sh, 0, y, COMPOSITE_WIDTH, it.destH);
+      ctx.drawImage(it.img, it.sx, it.sy, it.sw, it.sh, COMPOSITE_SIDE, y, COMPOSITE_WIDTH, it.destH);
       y += it.destH + COMPOSITE_GAP;
     });
     ctx.filter = 'none';
@@ -811,7 +812,7 @@
     ctx.textBaseline = 'top';
     let tipY = y + 16;
     tipLines.forEach(line => {
-      ctx.fillText(line, TIP_PADDING_X, tipY);
+      ctx.fillText(line, COMPOSITE_SIDE + TIP_PADDING_X, tipY);
       tipY += TIP_LINE_HEIGHT;
     });
 
@@ -827,7 +828,7 @@
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = '시안모음_700px.jpg';
+      a.download = '시안모음_720px.jpg';
       document.body.appendChild(a);
       a.click();
       a.remove();
