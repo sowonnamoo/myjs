@@ -6213,19 +6213,45 @@
     // 검색창 — 다시 fetch하지 않고, 이미 불러온 파일명 목록을 이름 기준으로 걸러서
     // 보이기/숨기기만 함. 평소(검색어 없음)에는 아무것도 안 보이고, 뭔가 입력했을 때만
     // 매칭되는 것만 나타남.
+    // 이름이 검색어(제품명)와 어떤 관계인지 분류 — 우측 목록 정렬과 샘플디자인 후보 선정에 같이 씀
+    //   0: 이름이 정확히 같음            (명함)
+    //   1: 뒤에 숫자 등이 붙음            (명함1, 명함2 …)
+    //   2: 그 밖에 이름 중간/끝에 포함됨   (일반명함 등)
+    //   3: 앞에 숫자가 붙음              (1명함, 2명함 …)  ← 목록 맨 아래
+    function escapeRegExpLocal(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function templateNameKind(name, term){
+      const n = String(name || '').trim().toLowerCase();
+      const t = String(term || '').trim().toLowerCase();
+      if (!t) return 2;
+      if (n === t) return 0;
+      if (new RegExp('^\\d+[\\s._\\-]*' + escapeRegExpLocal(t) + '$').test(n)) return 3;
+      if (n.startsWith(t)) return 1;
+      return 2;
+    }
+
     function applySearchFilter(){
       const q = searchInput.value.trim().toLowerCase();
+      const visible = [];
       templates.forEach((tpl) => {
         if (!tpl.itemEl) return;
         const match = !!q && tpl.name.toLowerCase().includes(q);
         tpl.itemEl.classList.toggle('hidden', !match);
+        if (match) visible.push(tpl);
       });
+      // 정렬: 이름 정확히 같음 → 뒤에 숫자(명함1~) → 그 밖 → 앞에 숫자(1명함~)는 맨 아래.
+      // 같은 그룹 안에서는 숫자 크기순(명함2가 명함10보다 앞).
+      visible.sort((a, b) => {
+        const ka = templateNameKind(a.name, q), kb = templateNameKind(b.name, q);
+        if (ka !== kb) return ka - kb;
+        return a.name.localeCompare(b.name, 'ko', { numeric: true });
+      });
+      visible.forEach((tpl) => listEl.appendChild(tpl.itemEl)); // 보이는 항목만 정렬된 순서로 재배치
       hintEl.classList.toggle('hidden', !!q);
     }
     searchInput.addEventListener('input', applySearchFilter);
     searchInput.addEventListener('click', (e) => e.stopPropagation());
 
-    // 샘플디자인이 기준으로 삼는 "제품명 검색어"(숫자가 안 붙은 이름과 정확히 같은 레이아웃만 대상)
+    // 샘플디자인이 기준으로 삼는 "제품명 검색어"(정확히 같은 이름 + 앞에 숫자가 붙은 이름이 샘플디자인 대상)
     let activeProductTerm = '';
     function findAutoSearchTerm(term){
       const base = String(term || '').trim();
@@ -6330,12 +6356,22 @@
       }
       // 검색창이 비어 있으면 제품명으로 다시 검색해서 목록을 띄움
       if (!searchInput.value.trim()) { searchInput.value = activeProductTerm || searchTerm; applySearchFilter(); }
-      // 샘플디자인은 숫자가 붙은 것(명함1, 명함2…)은 빼고, 이름이 제품명과 정확히 같은 레이아웃만 씀
-      const exactName = String(activeProductTerm || searchTerm || '').trim().toLowerCase();
-      const items = templates.filter((t) => t.itemEl && t.name.trim().toLowerCase() === exactName);
+      // 샘플디자인 후보: 이름이 제품명과 정확히 같은 것(명함) + 앞에 숫자가 붙은 것(1명함, 2명함 …).
+      // 뒤에 숫자가 붙은 것(명함1, 명함2 …)은 쓰지 않음.
+      const term = String(activeProductTerm || searchTerm || '').trim();
+      let items = templates.filter((t) => {
+        if (!t.itemEl) return false;
+        const k = templateNameKind(t.name, term);
+        return k === 0 || k === 3;
+      });
       if (!items.length) {
-        if (EP.showBottomHintToast) EP.showBottomHintToast('제품명과 같은 이름의 레이아웃이 없어요.');
+        if (EP.showBottomHintToast) EP.showBottomHintToast('제품명과 같거나 앞에 숫자가 붙은 이름의 레이아웃이 없어요.');
         return;
+      }
+      // 여러 개면 직전에 쓴 것은 피해서 매번 다르게 뽑음
+      if (items.length > 1 && lastSampleName) {
+        const others = items.filter((t) => t.name !== lastSampleName);
+        if (others.length) items = others;
       }
       const tpl = items[Math.floor(Math.random() * items.length)];
       lastSampleName = tpl.name;
