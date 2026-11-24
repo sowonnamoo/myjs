@@ -6230,12 +6230,22 @@
               const scaled = rescaleSideDataToCurrentCanvas(data, data.canvasWidth, data.canvasHeight);
               // 레이아웃을 고르거나 샘플디자인/다른디자인을 누르면, 잠금 처리된 오브젝트까지 포함해
               // 기존 디자인을 전부 지우고 새 레이아웃으로 완전히 교체함(요청).
+              // 실행취소로 이전 디자인을 되돌릴 수 있게: 예전에는 여기서 기록을 통째로 초기화(resetHistory)해서
+              // 이전 디자인으로 돌아갈 수 없었음. 이제는 불러오기 전 현재 상태를 기록 맨 위에 확실히 남겨두고,
+              // 불러온 결과를 새 기록 한 단계로 추가함.
+              clearTimeout(saveTimer);
+              const beforeSnap = snapshot();
+              if (undoStack[undoStack.length - 1] !== beforeSnap) undoStack.push(beforeSnap);
               loadCanvasObjects(scaled, () => {
-                resetHistory();
-                pushHistory();
+                if (sampleHistoryMerge) {
+                  sampleLoadState = 'done'; // 샘플디자인 중이면 아래 샘플 적용까지 묶어서 한 단계로 기록
+                } else {
+                  pushHistoryNowIfChanged();
+                }
               });
             })
             .catch((err) => {
+              if (sampleHistoryMerge) sampleLoadState = 'failed';
               console.error('템플릿 불러오기 실패:', err);
               if (EP.showBottomHintToast) EP.showBottomHintToast('이 레이아웃을 불러오지 못했어요.');
             })
@@ -6371,6 +6381,17 @@
     const sampleBtns = [document.getElementById('sampleDesignBtn')].filter(Boolean);
     let sampleBusy = false;
     let lastSampleName = null;
+    // 샘플디자인 중에는 "레이아웃 불러오기 + 샘플 적용"을 실행취소 한 단계로 묶음
+    let sampleHistoryMerge = false;
+    let sampleLoadState = 'idle'; // 'pending' | 'done' | 'failed'
+    function pushHistoryNowIfChanged(){
+      const s = snapshot();
+      if (undoStack[undoStack.length - 1] === s) return;
+      undoStack.push(s);
+      if (undoStack.length > 60) undoStack.shift();
+      redoStack = [];
+      updateHistoryButtons();
+    }
 
     function setSampleBtnsNextState(){
       sampleBtns.forEach((b) => {
@@ -6415,20 +6436,24 @@
       setSampleBtnsBusy(true);
       setSampleBtnsNextState(); // 누른 직후부터 "다른디자인"(주황)
 
+      sampleHistoryMerge = true;
+      sampleLoadState = 'pending';
       tpl.itemEl.click(); // 1) 목록의 레이아웃 클릭
       let waited = 0;
       const timer = setInterval(() => {
         waited += 100;
-        const loading = tpl.itemEl.classList.contains('template-gallery-item-loading');
-        if (!loading || waited > 10000) {
-          clearInterval(timer);
-          setTimeout(() => {
-            const rollAllBtn = document.getElementById('rollAllBtn');
-            if (rollAllBtn) rollAllBtn.click(); // 2) 샘플디자인적용 클릭
-            sampleBusy = false;
-            setSampleBtnsBusy(false);
-          }, 300);
-        }
+        if (sampleLoadState === 'pending' && waited <= 10000) return; // 불러오기가 끝날 때까지 대기
+        clearInterval(timer);
+        sampleHistoryMerge = false;
+        const finish = () => { sampleBusy = false; setSampleBtnsBusy(false); };
+        if (sampleLoadState !== 'done') { finish(); return; } // 실패하면 기존 디자인에 샘플을 덮지 않음
+        setTimeout(() => {
+          const rollAllBtn = document.getElementById('rollAllBtn');
+          if (rollAllBtn) rollAllBtn.click(); // 2) 샘플디자인적용 클릭
+          // 불러오기 + 샘플 적용 결과가 실행취소 기록 한 단계로 남도록 마무리(이미 기록됐으면 아무것도 안 함)
+          setTimeout(pushHistoryNowIfChanged, 700);
+          finish();
+        }, 150);
       }, 100);
     }
     sampleBtns.forEach((b) => b.addEventListener('click', applySampleDesign));
