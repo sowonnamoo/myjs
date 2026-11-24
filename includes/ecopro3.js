@@ -2525,6 +2525,7 @@
         canvas.add(img);
         bringGuideToFront();
         canvas.setActiveObject(img);
+        reassertLocks(); // 잠긴 오브젝트는 이미지를 불러와도 그대로 잠금 유지
         canvas.renderAll();
         refreshEmptyHint();
       }, { crossOrigin: 'anonymous' });
@@ -2956,7 +2957,7 @@
     canvas.skipTargetFind = false;
     canvas.defaultCursor = 'default';
     canvas.hoverCursor = 'move';
-    canvas.forEachObject(o => { if (!o.isGuide) o.selectable = true; });
+    canvas.forEachObject(o => { if (!o.isGuide && !o.imageLocked) o.selectable = true; }); // 잠긴 것은 그대로 둠
   });
 
   // ---- 텍스트 도구(포토샵 방식): 버튼을 누르면 커서가 I자(텍스트) 모양으로 바뀌는 "무장" 상태가
@@ -3714,6 +3715,32 @@
     pushHistory();
   }
   EP.lockImage = lockImage;     // 모바일 잠금 버튼(ecopro3mobiletools.js)에서 재사용
+
+  // 잠긴 오브젝트의 잠금 속성을 다시 확실하게 걸어줌 — 이미지 업로드·선택 도구 전환 등
+  // 다른 동작 중에 잠금이 풀려 보이는 일이 없도록 하는 안전장치.
+  function reassertLocks(){
+    canvas.getObjects().forEach((o) => {
+      if (o && o.imageLocked && !o.isGuide) {
+        o.set({ selectable: false, evented: true, hasControls: false, hasBorders: false,
+                lockMovementX: true, lockMovementY: true, hoverCursor: 'pointer' });
+      }
+    });
+  }
+  // 레이아웃 교체(캔버스 통째로 다시 불러오기) 전에, 잠긴 오브젝트를 직렬화해서 따로 챙겨둠.
+  function collectLockedObjectsForReload(){
+    const under = [], over = [];
+    let seenUnlocked = false;
+    canvas.getObjects().forEach((o) => {
+      if (!o || o.isGuide) return;
+      if (o.imageLocked) {
+        (seenUnlocked ? over : under).push(o.toObject(getCustomObjectProps()));
+      } else {
+        seenUnlocked = true;
+      }
+    });
+    return { under: under, over: over };
+  }
+  EP.reassertLocks = reassertLocks;
   EP.unlockImage = unlockImage; // 위와 동일
 
   let longPressTimer = null;
@@ -6176,7 +6203,13 @@
             .then((raw) => {
               const data = normalizeTemplateData(raw);
               const scaled = rescaleSideDataToCurrentCanvas(data, data.canvasWidth, data.canvasHeight);
-              loadCanvasObjects(scaled, () => {
+              // 잠금 상태인 오브젝트는 레이아웃을 불러와도 지워지거나 풀리지 않게 그대로 유지함(요청).
+              // 원래 맨 아래쪽에 깔려 있던 잠금 오브젝트는 새 레이아웃 아래에, 그 외는 위에 다시 얹음.
+              const locked = collectLockedObjectsForReload();
+              const merged = Object.assign({}, scaled, {
+                objects: locked.under.concat(scaled.objects || [], locked.over)
+              });
+              loadCanvasObjects(merged, () => {
                 resetHistory();
                 pushHistory();
               });
