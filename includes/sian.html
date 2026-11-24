@@ -773,7 +773,7 @@
 
     // 하단에 넣을 안내문구 — 작은 글씨로 줄바꿈해서 표시(요청: "시안 다운로드 했을때 밑에
     // 글 지우고... Tip 문구도 넣어줘")
-    const TIP_TEXT = 'Tip. 위 아래 흰 여백은 인쇄되지 않사오며 작업사이즈에 맞춰 재단후 출고됩니다. 시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.';
+    const TIP_TEXT = 'Tip. 위 아래 회색 여백은 인쇄되지 않사오며 작업사이즈에 맞춰 재단후 출고됩니다. 시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.';
     const TIP_FONT = '11px -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
     const TIP_LINE_HEIGHT = 17;
     const TIP_PADDING_X = 20;
@@ -793,7 +793,7 @@
     canvas.height = Math.round(totalHeight);
 
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#cccccc'; // 시안 저장 배경: 회색
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let y = COMPOSITE_GAP;
