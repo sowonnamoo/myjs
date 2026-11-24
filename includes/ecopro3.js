@@ -430,7 +430,8 @@
   EP.customObjectProps = EP.customObjectProps || new Set([
     'selectable', 'evented', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders',
     'lockMovementX', 'lockMovementY', 'hoverCursor', 'isGuide',
-    'fromTemplateLayout', 'userLocked' // 레이아웃에서 온 오브젝트인지 / 사용자가 직접 잠갔는지 (샘플디자인 중복 방지용)
+    'fromTemplateLayout', 'userLocked', // 레이아웃에서 온 오브젝트인지 / 사용자가 직접 잠갔는지 (샘플디자인 중복 방지용)
+    'isCanvasBgFill' // 🎨 바탕 채우기로 만든 배경 사각형 표식 (다시 만들 때 기존 것을 찾아 지우려면 저장돼야 함)
   ]);
   EP.registerCustomObjectProps = function(names){
     (names || []).forEach((n) => EP.customObjectProps.add(n));
@@ -4007,7 +4008,8 @@
   // 있게 "수정하기"/"무시하고 진행하기" 두 버튼을 보여줌 — 어느 쪽을 눌렀는지에 따라
   // 'fix' 또는 'proceed' 문자열로 resolve됨(요청: "경고창에 수정하기 버튼... 무시하고
   // 진행하기 두 버튼"). 바깥 클릭은 "수정하기"(더 안전한 쪽)로 취급함.
-  function showWarningChoiceModal(html){
+  function showWarningChoiceModal(html, opts){
+    const withFill = !!(opts && opts.showFillWhite);
     return new Promise((resolve) => {
       const overlay = document.createElement('div');
       overlay.className = 'bold-alert-overlay';
@@ -4017,12 +4019,15 @@
         `<div class="bold-alert-msg">${html}</div>` +
         `<div class="bold-alert-choice-row">` +
           `<button type="button" class="bold-alert-choice-btn bold-alert-fix">✏ 수정하기</button>` +
+          (withFill ? `<button type="button" class="bold-alert-choice-btn bold-alert-fillwhite">⬜ 흰색배경 채우기</button>` : '') +
           `<button type="button" class="bold-alert-choice-btn bold-alert-proceed">무시하고 진행하기</button>` +
         `</div>`;
       overlay.appendChild(box);
       document.body.appendChild(overlay);
       function close(result){ overlay.remove(); resolve(result); }
       box.querySelector('.bold-alert-fix').addEventListener('click', () => close('fix'));
+      const fillBtn = box.querySelector('.bold-alert-fillwhite');
+      if (fillBtn) fillBtn.addEventListener('click', () => close('fill'));
       box.querySelector('.bold-alert-proceed').addEventListener('click', () => close('proceed'));
       overlay.addEventListener('click', (e) => { if (e.target === overlay) close('fix'); });
     });
@@ -4523,8 +4528,39 @@
           if (!isFullyBled()) {
             const choice = await showWarningChoiceModal(
               `<b>사각박스 가장자리 회색선 까지 이미지가 채워지지 않은 주문입니다.</b><br>` +
-              `가급적 배경을 채워주신후 상품담기 해주세요.`
+              `가급적 배경을 채워주신후 상품담기 해주세요.`,
+              { showFillWhite: true }
             );
+            if (choice === 'fill') {
+              // 🎨 바탕채우기 > "바탕생성(흰 바탕)"과 같은 방식: 캔버스 전체 크기의 흰 사각형을 만들어
+              // 맨 뒤로 보냄(이 기능으로 만든 기존 배경이 있으면 먼저 지움). 지금 검사 중인 장에 적용하고
+              // 그 장을 편집 화면에 띄워서 결과를 확인한 뒤 다시 상품담기를 누르게 함.
+              canvas.getObjects().filter((o) => o && o.isCanvasBgFill).forEach((o) => canvas.remove(o));
+              const whiteBg = new fabric.Rect({
+                left: 0, top: 0, originX: 'left', originY: 'top',
+                width: CANVAS_W, height: CANVAS_H,
+                fill: '#ffffff', stroke: '', strokeWidth: 0
+              });
+              whiteBg.isCanvasBgFill = true;
+              canvas.add(whiteBg);
+              canvas.sendToBack(whiteBg);
+              designData[i][side] = serializeCurrentCanvas();
+              currentIdx = i;
+              currentSide = side;
+              await new Promise((resolve) => {
+                loadCanvasObjects(designData[i][side], () => {
+                  resetHistory();
+                  guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
+                  canvas.renderAll();
+                  renderTabs();
+                  resolve();
+                });
+              });
+              floatingSaveBtn.disabled = false;
+              floatingSaveBtn.textContent = originalBtnText;
+              showBottomHintToast(`${label}에 흰색 배경을 채웠어요. 확인 후 다시 상품담기를 눌러주세요.`);
+              return;
+            }
             if (choice === 'fix') {
               await loadDesignForExport(originalIdx, originalSide);
               guideRect.visible = wasBoxVisible; outerGuideRect.visible = wasBoxVisible; gridGuide.visible = wasGridVisible;
