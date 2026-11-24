@@ -3731,6 +3731,38 @@
   });
   canvas.on('mouse:up', () => { clearTimeout(longPressTimer); longPressTarget = null; });
 
+  // 잠긴 오브젝트를 "짧게 좌클릭(터치는 탭)"해도 우클릭과 같은 메뉴(잠금 해제 / 이미지 교체 / 삭제)가
+  // 바로 뜨게 함(요청). 드래그하거나(8px 이상 이동) 오래 누른 경우는 제외 — 오래 누르면 기존처럼
+  // 선택(550ms)·길게 누르기 메뉴(1초)가 동작함. 메뉴는 마우스를 뗄 때 열어서, mousedown 때
+  // 메뉴를 닫는 기존 로직과 부딪히지 않음.
+  let lockedClickStart = null;
+  canvas.on('mouse:down', (opt) => {
+    lockedClickStart = null;
+    const t = opt.target;
+    if (!t || !t.imageLocked || !opt.e) return;
+    const pt = clientPointOf(opt.e);
+    lockedClickStart = { target: t, x: pt.clientX, y: pt.clientY, time: Date.now(), e: opt.e };
+  });
+  canvas.on('mouse:up', (opt) => {
+    const s = lockedClickStart;
+    lockedClickStart = null;
+    if (!s || !s.target.imageLocked || !s.target.canvas) return;
+    const endPt = (opt.e && ((opt.e.changedTouches && opt.e.changedTouches[0]) || opt.e)) || null;
+    if (endPt && endPt.clientX != null) {
+      const dx = endPt.clientX - s.x, dy = endPt.clientY - s.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 8) return;
+    }
+    if (Date.now() - s.time > 500) return;
+    if (!ctxMenu.classList.contains('hidden')) return;
+    if (isTouchEvent(s.e)) {
+      // 터치: 터치 지점 위쪽에 메뉴를 띄움
+      openContextMenu(null, { explicitTarget: s.target, anchorRect: { left: s.x, top: s.y } });
+    } else {
+      // 마우스: 우클릭처럼 클릭한 자리에서 메뉴가 열림
+      openContextMenu(s.e);
+    }
+  });
+
   /* ============================================================
      9d. 이미지 교체
   ============================================================ */
