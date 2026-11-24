@@ -429,7 +429,8 @@
   ============================================================ */
   EP.customObjectProps = EP.customObjectProps || new Set([
     'selectable', 'evented', 'imageLocked', 'isPenToolPath', 'hasControls', 'hasBorders',
-    'lockMovementX', 'lockMovementY', 'hoverCursor', 'isGuide'
+    'lockMovementX', 'lockMovementY', 'hoverCursor', 'isGuide',
+    'fromTemplateLayout', 'userLocked' // 레이아웃에서 온 오브젝트인지 / 사용자가 직접 잠갔는지 (샘플디자인 중복 방지용)
   ]);
   EP.registerCustomObjectProps = function(names){
     (names || []).forEach((n) => EP.customObjectProps.add(n));
@@ -3695,6 +3696,7 @@
       hoverCursor: 'pointer'
     });
     img.imageLocked = true;
+    img.userLocked = true; // 사용자가 직접 잠금 → 레이아웃을 바꿔도 유지 대상
     canvas.discardActiveObject();
     canvas.requestRenderAll();
     pushHistory();
@@ -3710,6 +3712,7 @@
       hoverCursor: 'move'
     });
     img.imageLocked = false;
+    img.userLocked = false;
     canvas.setActiveObject(img);
     canvas.requestRenderAll();
     pushHistory();
@@ -3733,12 +3736,25 @@
     canvas.getObjects().forEach((o) => {
       if (!o || o.isGuide) return;
       if (o.imageLocked) {
-        (seenUnlocked ? over : under).push(o.toObject(getCustomObjectProps()));
+        // 레이아웃 파일 자체가 잠가둔 오브젝트(fromTemplateLayout)는 새 레이아웃에도 이미 들어 있으니
+        // 다시 얹으면 같은 자리에 겹쳐 복사됨 → 제외. 사용자가 직접 잠근 것(userLocked)과
+        // 레이아웃과 무관하게 올려둔 것만 유지함.
+        if (!o.fromTemplateLayout || o.userLocked) {
+          (seenUnlocked ? over : under).push(o.toObject(getCustomObjectProps()));
+        }
       } else {
         seenUnlocked = true;
       }
     });
     return { under: under, over: over };
+  }
+  // 같은 자리·같은 내용의 오브젝트가 이미 있는지 비교하기 위한 키(1px 반올림)
+  function objectDupKey(o){
+    const r = (v) => Math.round(Number(v) || 0);
+    const srcKey = o.src ? (String(o.src).length + ':' + String(o.src).slice(-40)) : '';
+    return [o.type, r(o.left), r(o.top), r(o.width), r(o.height),
+            Math.round((Number(o.scaleX) || 1) * 100), Math.round((Number(o.scaleY) || 1) * 100),
+            r(o.angle), o.text || '', srcKey].join('|');
   }
   EP.reassertLocks = reassertLocks;
   EP.unlockImage = unlockImage; // 위와 동일
@@ -6205,9 +6221,13 @@
               const scaled = rescaleSideDataToCurrentCanvas(data, data.canvasWidth, data.canvasHeight);
               // 잠금 상태인 오브젝트는 레이아웃을 불러와도 지워지거나 풀리지 않게 그대로 유지함(요청).
               // 원래 맨 아래쪽에 깔려 있던 잠금 오브젝트는 새 레이아웃 아래에, 그 외는 위에 다시 얹음.
+              const tplObjs = scaled.objects || [];
+              tplObjs.forEach((o) => { o.fromTemplateLayout = true; }); // 이 레이아웃에서 온 오브젝트 표시
               const locked = collectLockedObjectsForReload();
+              const tplKeys = new Set(tplObjs.map(objectDupKey));
+              const notDup = (o) => !tplKeys.has(objectDupKey(o)); // 새 레이아웃에 이미 같은 게 있으면 또 얹지 않음
               const merged = Object.assign({}, scaled, {
-                objects: locked.under.concat(scaled.objects || [], locked.over)
+                objects: locked.under.filter(notDup).concat(tplObjs, locked.over.filter(notDup))
               });
               loadCanvasObjects(merged, () => {
                 resetHistory();
