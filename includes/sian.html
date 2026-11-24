@@ -772,17 +772,31 @@
       return { img: im, sx, sy, sw: cropW, sh: cropH, destH };
     });
 
-    // 하단에 넣을 안내문구 — 작은 글씨로 줄바꿈해서 표시(요청: "시안 다운로드 했을때 밑에
-    // 글 지우고... Tip 문구도 넣어줘")
-    const TIP_TEXT = 'Tip. 위 아래 회색 여백은 인쇄되지 않사오며 작업사이즈에 맞춰 재단후 출고됩니다. 시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.';
-    const TIP_FONT = '11px -apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
+    // 하단 안내문구 — 사각 테두리 박스 안에 정돈된 목록(제목 + 불릿 항목)으로 표시
+    const TIP_TITLE = 'Tip';
+    const TIP_ITEMS = [
+      '위 아래 회색 여백은 인쇄되지 않사오며 작업사이즈에 맞춰 재단후 출고됩니다.',
+      '시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.'
+    ];
+    const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
+    const TIP_TITLE_FONT = '700 12px ' + FONT_FAMILY;
+    const TIP_FONT = '11px ' + FONT_FAMILY;
     const TIP_LINE_HEIGHT = 17;
-    const TIP_PADDING_X = 20;
+    const TIP_TITLE_HEIGHT = 22;  // 제목 줄 높이(아래 간격 포함)
+    const TIP_ITEM_GAP = 5;       // 항목 사이 간격
+    const TIP_BOX_PAD = 16;       // 박스 안쪽 여백
+    const TIP_BULLET_INDENT = 12; // 불릿(•) 뒤 들여쓰기
+    const TIP_BOTTOM_MARGIN = 24; // 박스 아래 여백
 
     const measureCtx = document.createElement('canvas').getContext('2d');
     measureCtx.font = TIP_FONT;
-    const tipLines = wrapText(measureCtx, TIP_TEXT, COMPOSITE_WIDTH - TIP_PADDING_X * 2);
-    const tipBlockHeight = tipLines.length * TIP_LINE_HEIGHT + 24; // 위아래 여유 포함
+    const tipWrapped = TIP_ITEMS.map(t =>
+      wrapText(measureCtx, t, COMPOSITE_WIDTH - TIP_BOX_PAD * 2 - TIP_BULLET_INDENT));
+    const tipBoxHeight =
+      TIP_BOX_PAD * 2 + TIP_TITLE_HEIGHT +
+      tipWrapped.reduce((sum, ls) => sum + ls.length * TIP_LINE_HEIGHT, 0) +
+      TIP_ITEM_GAP * (tipWrapped.length - 1);
+    const tipBlockHeight = tipBoxHeight + TIP_BOTTOM_MARGIN;
 
     const totalHeight =
       items.reduce((sum, it) => sum + it.destH, 0) +
@@ -805,15 +819,30 @@
     });
     ctx.filter = 'none';
 
-    // 하단 안내 문구(Tip) — 작은 글씨, 여러 줄로 자동 줄바꿈되어 표시됨
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.font = TIP_FONT;
+    // 하단 안내 문구(Tip) — 사각 테두리 박스 + 정돈된 목록
+    const boxX = COMPOSITE_SIDE;
+    const boxY = y;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX + 0.5, boxY + 0.5, COMPOSITE_WIDTH - 1, tipBoxHeight - 1);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    let tipY = y + 16;
-    tipLines.forEach(line => {
-      ctx.fillText(line, COMPOSITE_SIDE + TIP_PADDING_X, tipY);
-      tipY += TIP_LINE_HEIGHT;
+
+    let ty = boxY + TIP_BOX_PAD;
+    ctx.font = TIP_TITLE_FONT;
+    ctx.fillText(TIP_TITLE, boxX + TIP_BOX_PAD, ty);
+    ty += TIP_TITLE_HEIGHT;
+
+    ctx.font = TIP_FONT;
+    tipWrapped.forEach(lines => {
+      ctx.fillText('\u2022', boxX + TIP_BOX_PAD, ty);               // 불릿
+      lines.forEach(line => {
+        ctx.fillText(line, boxX + TIP_BOX_PAD + TIP_BULLET_INDENT, ty);
+        ty += TIP_LINE_HEIGHT;
+      });
+      ty += TIP_ITEM_GAP;
     });
 
     return canvas;
