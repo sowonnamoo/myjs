@@ -4,6 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- ===== 검색봇 차단 =====
+     1) robots 메타: 구글·빙·네이버 등 정상적인 검색엔진은 이 페이지를 검색결과에 올리지 않고
+        (noindex), 링크를 따라가지 않으며(nofollow), 캐시·미리보기·이미지 수집도 안 함.
+     2) 아래 스크립트: 알려진 크롤러/수집봇의 User-Agent로 접속하면 편집기를 로딩하지 않고
+        빈 페이지로 바꿔버림(사람이 쓰는 일반 브라우저는 영향 없음).
+     3) 사이트 루트에 robots.txt(같이 드린 파일)를 올리면 크롤링 자체도 막음. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
+<script>
+(function(){
+  var ua = (navigator.userAgent || '');
+  var BOT = /bot\b|bot\/|crawl|spider|slurp|yeti|daumoa|baiduspider|duckduck|semrush|ahrefs|mj12|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|perplexity|amazonbot|applebot|facebookexternalhit|archive\.org|ia_archiver|python-requests|scrapy|curl\/|wget\//i;
+  if (BOT.test(ua)) {
+    try { window.stop(); } catch (e) {}
+    document.open();
+    document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="robots" content="noindex,nofollow"><title></title></head><body></body></html>');
+    document.close();
+  }
+})();
+</script>
 <!-- 예전엔 기기 종류(UA)를 판별해서 모바일이면 <html class="ep-mobile-mode">를 붙이고,
      화면 좌하단에 수동 토글 버튼도 있었는데, 그러면 "지금 내가 PC 화면을 보고 있는지
      모바일 화면을 보고 있는지" 헷갈리는 문제가 있어서 전부 없앰. 이제는 순수하게 화면
