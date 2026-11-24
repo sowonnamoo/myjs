@@ -1,10 +1,10 @@
 /* ecopro3bg.js — "🎨 바탕 채우기" 툴바 버튼 + 캔버스 배경 생성 모달
    로딩 순서: ecopro3.js -> ... -> ecopro3m.js -> ecopro3j.js -> ecopro3bg.js -> ecopro3text.js -> ...
-   (M의 랜덤 적용 로직인 EP.rollShapeDice를 그대로 재사용하므로 ecopro3m.js보다 뒤에 로드돼야 함)
+   (M의 샘플 적용 로직인 EP.rollShapeDice를 그대로 재사용하므로 ecopro3m.js보다 뒤에 로드돼야 함)
 
    동작: 툴바의 "🎨 바탕 채우기"를 누르면 캔버스 정가운데에 작은 모달이 뜨고, 그 안에 버튼 2개:
      - "바탕생성 (흰 바탕)": 캔버스 전체 크기의 흰색 사각형을 만들어 맨 뒤로 보냄
-     - "랜덤 바탕생성": 캔버스 전체 크기 사각형을 만들고 M의 랜덤 적용(1~3개 모양필터 겹치기)을
+     - "샘플 바탕생성": 캔버스 전체 크기 사각형을 만들고 M의 샘플 적용(1~3개 모양필터 겹치기)을
        그대로 적용함. 누를 때마다 기존에 만들어둔 배경 사각형을 지우고 새로 만듦.
    두 버튼 모두 "기존 배경(이 기능으로 만든 것)"이 있으면 먼저 지우고 새로 만들어서, 배경이
    여러 겹 쌓이지 않게 함. */
@@ -98,7 +98,7 @@
     if (EP.bringGuideToFront) EP.bringGuideToFront();
     EP.canvas.setActiveObject(rect);
     EP.canvas.requestRenderAll();
-    // M의 "랜덤 적용"(1~3개 모양필터를 랜덤 투명도·회전으로 겹치기)을 그대로 재사용
+    // M의 "샘플 적용"(1~3개 모양필터를 샘플 투명도·회전으로 겹치기)을 그대로 재사용
     if (EP.rollShapeDice) EP.rollShapeDice(rect);
     // 모달은 열어둔 채로 둬서 마음에 들 때까지 계속 다시 뽑을 수 있게 함
   });

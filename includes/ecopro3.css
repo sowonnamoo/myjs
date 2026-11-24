@@ -1519,7 +1519,7 @@ input[type=file]{display:none;}
   .tab-sidebar{width:80vw;}
 }
 
-/* ---------- 자유모양 갤러리 모달 — 랜덤 생성 대신 눈으로 보고 바로 고르는 방식 ---------- */
+/* ---------- 자유모양 갤러리 모달 — 샘플 생성 대신 눈으로 보고 바로 고르는 방식 ---------- */
 .free-shape-modal{
   position:fixed;inset:0;display:none;align-items:center;justify-content:center;
   background:rgba(0,0,0,.45);z-index:1300;

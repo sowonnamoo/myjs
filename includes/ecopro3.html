@@ -40,7 +40,7 @@
         <!-- 기본모드(회색 "메뉴" 버튼)일 때 보이는 지금까지의 기존 메뉴 그대로 -->
         <div class="mobile-menu-group" id="mobileMenuBasicGroup">
           <button type="button" class="dropdown-item" id="mobileNewCanvasBtn" title="캔버스에 흰색 바탕을 새로 깔아요">🆕 새로 만들기</button>
-          <button type="button" class="dropdown-item" id="mobileRandomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 랜덤 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 랜덤 디자인 생성</button>
+          <button type="button" class="dropdown-item" id="mobileRandomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 샘플 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 샘플 디자인 생성</button>
           <button type="button" class="dropdown-item" id="mobileBasicBgFillBtn" title="캔버스 전체를 채우는 배경을 만들어요">🎨 바탕 채우기</button>
           <div class="dropdown-divider"></div>
           <button type="button" class="dropdown-item" id="mobileShapePickerBtn" title="사각형·원·삼각형·별·하트·자유모양 등 원하는 모양을 골라 만들어요 (PC의 '편집하기 > 모양 만들기'와 동일한 기능)">◆ 모양 만들기</button>
@@ -64,7 +64,7 @@
           <button type="button" class="dropdown-item" id="mobileCustomTiltFixBtn" title="선택한 오브젝트의 기울기를 캔버스 회전 각도에 맞춰 반듯하게(0도) 되돌려요">📏 기울기 교정</button>
           <button type="button" class="dropdown-item" id="mobileCustomShapePickerBtn" title="사각형·원·삼각형·별·하트 등 원하는 모양을 골라 만들어요">◆ 모양 만들기</button>
           <button type="button" class="dropdown-item" id="mobileCustomPenToolBtn" title="펜 도구 — 손가락으로 점을 찍어 자유로운 모양을 그려요">✒ 펜 도구</button>
-          <button type="button" class="dropdown-item" id="mobileCustomAddTableBtn" title="표를 만들어요 — 기본/랜덤/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
+          <button type="button" class="dropdown-item" id="mobileCustomAddTableBtn" title="표를 만들어요 — 기본/샘플/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
           <button type="button" class="dropdown-item" id="mobileCustomAddMapBtn" title="주소를 입력하면 그 위치의 지도 이미지가 캔버스에 들어와요">🗺 지도 만들기</button>
           <button type="button" class="dropdown-item" id="mobileCustomAddLogoBtn" title="한글 이름을 입력하면 영문 이니셜로 로고를 만들어줘요">🔤 로고 만들기</button>
           <button type="button" class="dropdown-item" id="mobileCustomAddMenuBtn" title="메뉴 이름과 가격을 붙여넣으면 정렬된 메뉴판을 만들어줘요">🧾 메뉴판 만들기</button>
@@ -145,7 +145,7 @@
       <button type="button" class="btn" id="fileMenuBtn">🖼 이미지 ▾</button>
       <div class="dropdown-menu hidden" id="fileMenu">
         <button type="button" class="dropdown-item" id="newCanvasBtn" title="캔버스에 흰색 바탕을 새로 깔아요">🆕 새로 만들기</button>
-        <button type="button" class="dropdown-item" id="randomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 랜덤 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 랜덤 디자인 생성</button>
+        <button type="button" class="dropdown-item" id="randomDesignBtn" title="흰 배경에 인사말 문구를 넣고 전체 샘플 필터를 한 번 적용해서 새 디자인을 만들어요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">🎲 샘플 디자인 생성</button>
         <div class="dropdown-divider"></div>
         <label class="dropdown-item" for="imageInput">🖼 이미지 업로드 (JPG·PNG)</label>
         <label class="dropdown-item hidden" for="svgInput">📄 SVG 불러오기</label>
@@ -178,7 +178,7 @@
         <button type="button" class="dropdown-item" id="fixTextShapeBtn" title="가로로 늘어난 글자는 세로도 그만큼 늘리고, 세로로 늘어난 글자는 자간을 절반으로 줄이고 세로 크기도 줄여서 정비율로 바로잡아요">🔧 늘어진글자교정</button>
         <button type="button" class="dropdown-item" id="openShapePickerBtn" title="사각형·원·삼각형·별·하트 등 원하는 모양을 골라 만들어요">◆ 모양 만들기</button>
         <button type="button" class="dropdown-item" id="penToolBtn" title="펜 도구 — 클릭으로 점 추가, 드래그하면 곡선 핸들 생성 (더블클릭/Enter: 완료, 시작점 클릭: 닫힌 도형, Esc: 취소)">✒ 펜 도구</button>
-        <button type="button" class="dropdown-item" id="addTableBtn" title="표를 만들어요 — 기본/랜덤/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
+        <button type="button" class="dropdown-item" id="addTableBtn" title="표를 만들어요 — 기본/샘플/정석 표 중 골라 만들 수 있어요">▦ 표 만들기</button>
         <button type="button" class="dropdown-item" id="addMapBtn" title="주소를 입력하면 그 위치의 지도 이미지가 캔버스에 들어와요">🗺 지도 만들기</button>
         <button type="button" class="dropdown-item" id="addLogoBtn" title="한글 이름을 입력하면 영문 이니셜로 로고를 만들어줘요 (예: 대신 일렉트로닉스 → DI)">🔤 로고 만들기</button>
         <button type="button" class="dropdown-item" id="addMenuBtn" title="메뉴 이름과 가격을 붙여넣으면 정렬된 메뉴판을 만들어줘요">🧾 메뉴판 만들기</button>
@@ -201,7 +201,7 @@
     </div>
 
     <div class="toolbar-group">
-      <button type="button" class="btn" id="rollAllBtn" title="랜덤필터를 한번에 적용합니다. 기존 이 문구들 다 지우고 임의의 디자인을 생성합니다.">🎲 랜덤디자인적용</button>
+      <button type="button" class="btn" id="rollAllBtn" title="샘플필터를 한번에 적용합니다. 기존 이 문구들 다 지우고 임의의 디자인을 생성합니다.">🎲 샘플디자인적용</button>
     </div>
 
     <div class="toolbar-group dropdown megamenu">
@@ -317,7 +317,7 @@
         <span class="crop-toolbar-hint" id="tableInputToolbarHint">스페이스로 칸, 엔터로 줄을 구분해 입력하세요</span>
         <textarea id="tableInputArea" rows="8" style="width:420px;font-size:13px;padding:8px;" placeholder="예)&#10;스티커 100 500&#10;배너 2 30000"></textarea>
         <div class="table-toolbar-row">
-          <button type="button" class="btn primary" id="applyRandomTableBtn" title="첫 줄에 스페이스가 없으면 첫 줄 전체가 하나로 합쳐진 제목 칸이 되고, 같은 열에 같은 값이 연속으로 반복되면 세로로 자동 합쳐져요">🎲 랜덤 표 만들기</button>
+          <button type="button" class="btn primary" id="applyRandomTableBtn" title="첫 줄에 스페이스가 없으면 첫 줄 전체가 하나로 합쳐진 제목 칸이 되고, 같은 열에 같은 값이 연속으로 반복되면 세로로 자동 합쳐져요">🎲 샘플 표 만들기</button>
           <button type="button" class="btn" id="applyStandardTableBtn" title="색상 없이 흑백으로: 병합칸은 연한 회색, 공통칸은 흰색, 테두리/글씨는 검정, 제목만 볼드">📐 정석 표 만들기</button>
           <button type="button" class="btn" id="applyTableBtn" title="스페이스로 칸, 엔터로 줄을 구분해 입력하면 표가 만들어져요">▦ 기본 표 만들기</button>
           <button type="button" class="btn" id="cancelTableBtn">✕ 닫기</button>
@@ -331,7 +331,7 @@
         </div>
         <div class="table-toolbar-row">
           <button type="button" class="btn primary" id="applyMapBtn" disabled>🗺 지도 만들기</button>
-          <button type="button" class="btn" id="randomMapBtn" disabled title="등록된 지도 필터 중 하나를 무작위로 골라 적용해서 만들어요">🎲 랜덤 지도 만들기</button>
+          <button type="button" class="btn" id="randomMapBtn" disabled title="등록된 지도 필터 중 하나를 무작위로 골라 적용해서 만들어요">🎲 샘플 지도 만들기</button>
           <button type="button" class="btn" id="cancelMapBtn">✕ 닫기</button>
         </div>
       </div>
@@ -341,7 +341,7 @@
           <input type="text" id="logoNameInput" style="width:340px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;" placeholder="예: 대신 일렉트로닉스" maxlength="40">
         </div>
         <div class="table-toolbar-row">
-          <button type="button" class="btn primary" id="randomLogoBtn" disabled title="큰 이니셜 뒤에 금속(메탈) 그라디언트 원형 배지를 무작위 색상으로 넣어서 만들어요 — 누를 때마다 새 조합으로 계속 바뀝니다">🎲 랜덤로고만들기 (연속클릭)</button>
+          <button type="button" class="btn primary" id="randomLogoBtn" disabled title="큰 이니셜 뒤에 금속(메탈) 그라디언트 원형 배지를 무작위 색상으로 넣어서 만들어요 — 누를 때마다 새 조합으로 계속 바뀝니다">🎲 샘플로고만들기 (연속클릭)</button>
           <button type="button" class="btn" id="cancelLogoBtn">✕ 닫기</button>
         </div>
       </div>
@@ -358,7 +358,7 @@
         </div>
         <div class="table-toolbar-row">
           <button type="button" class="btn primary" id="applyMenuBtn" disabled>🧾 메뉴판 만들기</button>
-          <button type="button" class="btn" id="randomMenuBtn" disabled title="미니멀/손글씨/컬러 일러스트 등 여러 메뉴판 스타일 중 하나를 무작위로 골라 만들어요">🎲 랜덤 메뉴판 만들기</button>
+          <button type="button" class="btn" id="randomMenuBtn" disabled title="미니멀/손글씨/컬러 일러스트 등 여러 메뉴판 스타일 중 하나를 무작위로 골라 만들어요">🎲 샘플 메뉴판 만들기</button>
           <button type="button" class="btn" id="applyStandardMenuBtn" disabled title="'/'만 쓰면 새 열(좌·중·우로 옆에), '~'만 쓰면 지금 열 안에서 아래로 이어붙여요 — '~'로 한 열이 길어져도 다른 열은 그대로 맨 위에서 나란히 배치돼요">📐 정메뉴 만들기</button>
           <button type="button" class="btn" id="cancelMenuBtn">✕ 닫기</button>
         </div>
@@ -518,9 +518,9 @@
             <input type="range" id="textColorHueSlider" class="hue-slider" min="0" max="360" step="1" title="막대를 움직여서 색상을 바로 바꿀 수 있어요">
           </div>
           <div class="row" style="margin-bottom:0;gap:4px;flex-direction:row;">
-            <button type="button" class="small-btn tone-varied" id="textColorVariedBrightBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도는 0~100%, 명도는 밝은 쪽(72~100%) 범위에서 랜덤으로 붙어요 — 파스텔~밝은 원색 위주">밝은</button>
-            <button type="button" class="small-btn tone-varied" id="textColorVariedMediumBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도·명도가 중간~높은(55~100%, 55~95%) 범위에서 랜덤으로 붙어요 — 쨍한 원색 위주">중간</button>
-            <button type="button" class="small-btn tone-varied" id="textColorVariedDarkBtn" style="flex:1;" title="켜두면 채도·명도가 0~100% 전체 범위에서 랜덤으로 붙어요 — 어둡고 차분한 톤도 자주 섞여 나옴">어두운</button>
+            <button type="button" class="small-btn tone-varied" id="textColorVariedBrightBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도는 0~100%, 명도는 밝은 쪽(72~100%) 범위에서 샘플로 붙어요 — 파스텔~밝은 원색 위주">밝은</button>
+            <button type="button" class="small-btn tone-varied" id="textColorVariedMediumBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도·명도가 중간~높은(55~100%, 55~95%) 범위에서 샘플로 붙어요 — 쨍한 원색 위주">중간</button>
+            <button type="button" class="small-btn tone-varied" id="textColorVariedDarkBtn" style="flex:1;" title="켜두면 채도·명도가 0~100% 전체 범위에서 샘플로 붙어요 — 어둡고 차분한 톤도 자주 섞여 나옴">어두운</button>
           </div>
           <div class="row">
             <label>스타일</label>
@@ -630,9 +630,9 @@
             <input type="range" id="fillColorHueSlider" class="hue-slider" min="0" max="360" step="1" title="막대를 움직여서 채우기 색을 바로 바꿀 수 있어요">
           </div>
           <div class="row" id="fillColorVariedRow" style="margin-bottom:0;gap:4px;flex-direction:row;">
-            <button type="button" class="small-btn tone-varied" id="fillColorVariedBrightBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도는 0~100%, 명도는 밝은 쪽(72~100%) 범위에서 랜덤으로 붙어요 — 파스텔~밝은 원색 위주">밝은</button>
-            <button type="button" class="small-btn tone-varied" id="fillColorVariedMediumBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도·명도가 중간~높은(55~100%, 55~95%) 범위에서 랜덤으로 붙어요 — 쨍한 원색 위주">중간</button>
-            <button type="button" class="small-btn tone-varied" id="fillColorVariedDarkBtn" style="flex:1;" title="켜두면 채도·명도가 0~100% 전체 범위에서 랜덤으로 붙어요 — 어둡고 차분한 톤도 자주 섞여 나옴">어두운</button>
+            <button type="button" class="small-btn tone-varied" id="fillColorVariedBrightBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도는 0~100%, 명도는 밝은 쪽(72~100%) 범위에서 샘플로 붙어요 — 파스텔~밝은 원색 위주">밝은</button>
+            <button type="button" class="small-btn tone-varied" id="fillColorVariedMediumBtn" style="flex:1;" title="켜두면 막대를 움직일 때마다 채도·명도가 중간~높은(55~100%, 55~95%) 범위에서 샘플로 붙어요 — 쨍한 원색 위주">중간</button>
+            <button type="button" class="small-btn tone-varied" id="fillColorVariedDarkBtn" style="flex:1;" title="켜두면 채도·명도가 0~100% 전체 범위에서 샘플로 붙어요 — 어둡고 차분한 톤도 자주 섞여 나옴">어두운</button>
           </div>
           <div class="row">
             <label>테두리</label>
@@ -697,7 +697,7 @@
 
 <div class="qa-popover hidden" id="qaPopover">
   <button type="button" class="font-popover-close" id="qaPopoverCloseBtn" title="닫기">✕</button>
-  <button type="button" class="qa-btn hidden" id="qaDiceBtn" title="랜덤으로 필터 1~5개 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <button type="button" class="qa-btn hidden" id="qaDiceBtn" title="샘플로 필터 1~5개 적용" style="margin-bottom:6px;">🎲 샘플 적용</button>
   <button type="button" class="qa-btn" id="qaDetailToggleBtn" style="margin-bottom:6px;" aria-expanded="false">상세조정하기 ▾</button>
   <div class="row hidden" id="qaRollNav" style="align-items:center;gap:6px;">
     <button type="button" class="qa-btn" id="qaRollPrevBtn" style="flex:0 0 auto;width:auto;padding:6px 10px;">◀</button>
@@ -706,7 +706,7 @@
   </div>
   <select id="qaFilterSelect">
     <option value="" disabled selected>필터 선택...</option>
-    <optgroup label="공통 효과 (직접 선택만 가능 · 랜덤 미적용)">
+    <optgroup label="공통 효과 (직접 선택만 가능 · 샘플 미적용)">
       <option value="shadow">그림자</option>
       <option value="glow">외부광선</option>
       <option value="gradient">그라디언트</option>
@@ -785,7 +785,7 @@
     <option value="inktrap">잉크트랩 스타일</option>
     <option value="leafvine">나뭇잎 덩굴 효과</option>
     <option value="sakura">벚꽃 효과</option>
-    <option value="randomTypo">랜덤 타이포</option>
+    <option value="randomTypo">샘플 타이포</option>
     <option value="zebra">얼룩말 무늬</option>
     <option value="tote">토트 무늬</option>
     <option value="translate">번역(영/중/일)</option>
@@ -950,7 +950,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailTear">
     <div class="row">
       <div class="seg" id="qaTearDirectionSeg" title="찢는 방향">
-        <button type="button" class="on" data-dir="random">랜덤</button>
+        <button type="button" class="on" data-dir="random">샘플</button>
         <button type="button" data-dir="horizontal">가로</button>
         <button type="button" data-dir="vertical">세로</button>
         <button type="button" data-dir="diagonal">대각선</button>
@@ -1048,7 +1048,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailTile">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaTileIntensity" min="0" max="100" step="1" title="같은 색상계열 안에서 밝기만 랜덤(최대 20%차)한 직사각형 타일이 글자 모양대로 붙습니다. 강도가 높을수록 타일이 잘게 쪼개집니다">
+      <input type="range" id="qaTileIntensity" min="0" max="100" step="1" title="같은 색상계열 안에서 밝기만 샘플(최대 20%차)한 직사각형 타일이 글자 모양대로 붙습니다. 강도가 높을수록 타일이 잘게 쪼개집니다">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaTileShuffleBtn" style="flex:1;">🎲 다시 붙이기</button>
@@ -1092,7 +1092,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailFruitVeg">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaFruitVegIntensity" min="0" max="100" step="1" title="과일(사과·바나나·딸기·포도·오렌지) 또는 채소(당근·브로콜리·토마토·옥수수·가지) 중 하나만 골라 실물 색 그대로(명암만 살짝 랜덤) 흩뿌려집니다">
+      <input type="range" id="qaFruitVegIntensity" min="0" max="100" step="1" title="과일(사과·바나나·딸기·포도·오렌지) 또는 채소(당근·브로콜리·토마토·옥수수·가지) 중 하나만 골라 실물 색 그대로(명암만 살짝 샘플) 흩뿌려집니다">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaFruitVegShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
@@ -1103,7 +1103,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailHeart">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaHeartIntensity" min="0" max="100" step="1" title="랜덤 크기의 붉은~핑크 계열 하트가 흩뿌려집니다">
+      <input type="range" id="qaHeartIntensity" min="0" max="100" step="1" title="샘플 크기의 붉은~핑크 계열 하트가 흩뿌려집니다">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaHeartShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
@@ -1114,7 +1114,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailCoffee">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaCoffeeIntensity" min="0" max="100" step="1" title="랜덤 크기의 커피색(라이트~다크로스트) 원두가 흩뿌려집니다">
+      <input type="range" id="qaCoffeeIntensity" min="0" max="100" step="1" title="샘플 크기의 커피색(라이트~다크로스트) 원두가 흩뿌려집니다">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaCoffeeShuffleBtn" style="flex:1;">🎲 다시 흩뿌리기</button>
@@ -1125,7 +1125,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailSports">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaSportsIntensity" min="0" max="100" step="1" title="축구공·농구공·야구공·테니스공·배구공이 랜덤 크기·위치로 흩뿌려집니다">
+      <input type="range" id="qaSportsIntensity" min="0" max="100" step="1" title="축구공·농구공·야구공·테니스공·배구공이 샘플 크기·위치로 흩뿌려집니다">
     </div>
     <div class="row">
       <button type="button" class="qa-btn" id="qaSportsShuffleBtn" style="flex:1;">🎲 다시 뿌리기</button>
@@ -1136,7 +1136,7 @@
   <div class="qa-filter-detail hidden" id="qaDetailClub">
     <div class="row">
       <label>강도</label>
-      <input type="range" id="qaClubIntensity" min="0" max="100" step="1" title="글자 중간 아래쪽 부근에 사람들이 산발적으로 흩어져 있는 모습이 생깁니다(인원수는 랜덤)">
+      <input type="range" id="qaClubIntensity" min="0" max="100" step="1" title="글자 중간 아래쪽 부근에 사람들이 산발적으로 흩어져 있는 모습이 생깁니다(인원수는 샘플)">
     </div>
     <div class="row">
       <label>사람 크기</label>
@@ -2108,7 +2108,7 @@
      <option>과 qa-filter-detail로 추가해나감 -->
 <div class="qa-popover hidden" id="qaMPopover">
   <button type="button" class="font-popover-close" id="qaMPopoverCloseBtn" title="닫기">✕</button>
-  <button type="button" class="qa-btn hidden" id="qaMDiceBtn" title="모양필터 1~3개를 랜덤으로 겹쳐 적용" style="margin-bottom:6px;">🎲 랜덤 적용</button>
+  <button type="button" class="qa-btn hidden" id="qaMDiceBtn" title="모양필터 1~3개를 샘플로 겹쳐 적용" style="margin-bottom:6px;">🎲 샘플 적용</button>
   <button type="button" class="qa-btn" id="qaMDetailToggleBtn" style="margin-bottom:6px;" aria-expanded="false">상세조정하기 ▾</button>
   <select id="qaMFilterSelect">
     <option value="" disabled selected>모양 필터 선택...</option>
@@ -2186,7 +2186,7 @@
 </div>
 
 <!-- 도형 전용 J버튼 팝업 — P의 공통필터(그림자/외부광선/그라디언트/엠보스/테두리/배경) 6개만
-     골라 도형에 적용하는 창. 인터페이스는 P와 비슷하지만 랜덤(주사위) 기능은 없음. -->
+     골라 도형에 적용하는 창. 인터페이스는 P와 비슷하지만 샘플(주사위) 기능은 없음. -->
 <div class="qa-popover hidden" id="qaJPopover">
   <button type="button" class="font-popover-close" id="qaJPopoverCloseBtn" title="닫기">✕</button>
   <select id="qaJFilterSelect">
@@ -2562,7 +2562,7 @@
       <div class="sg-row"><span class="sg-key">R</span><span>누르면 10px 격자 안내선 표시</span></div>
       <div class="sg-row"><span class="sg-key">Space</span><span>100%로 맞춤(확대/축소 초기화)</span></div>
       <div class="sg-row"><span class="sg-key">F2</span><span>화면의 작은 인터페이스 창(폰트/필터 설정 등) 전부 닫기</span></div>
-      <div class="sg-row"><span class="sg-key">F3</span><span>랜덤디자인적용</span></div>
+      <div class="sg-row"><span class="sg-key">F3</span><span>샘플디자인적용</span></div>
       <div class="sg-row"><span class="sg-key">F4</span><span>90도 회전</span></div>
       <div class="sg-row"><span class="sg-key">Ctrl+Shift+&lt;</span><span>글자 크기 작게</span></div>
       <div class="sg-row"><span class="sg-key">Ctrl+Shift+&gt;</span><span>글자 크기 크게</span></div>
@@ -2595,9 +2595,9 @@
   <button type="button" class="font-popover-close" id="bgFillModalCloseBtn" title="닫기">✕</button>
   <div style="text-align:center;font-weight:700;font-size:13.5px;margin:2px 0 2px;">캔버스 바탕 만들기</div>
   <button type="button" class="qa-btn" id="bgFillWhiteBtn" style="padding:10px 6px;">⬜ 바탕생성 (흰 바탕)</button>
-  <button type="button" class="qa-btn" id="bgFillRandomBtn" style="padding:10px 6px;">🎲 랜덤 바탕생성</button>
-  <button type="button" class="qa-btn" id="bgFillRandomColorBtn" style="padding:10px 6px;">🌈 랜덤 색상 생성</button>
-  <div style="text-align:center;font-size:11px;color:#8a93a3;">랜덤은 누를 때마다 새로 바뀌어요</div>
+  <button type="button" class="qa-btn" id="bgFillRandomBtn" style="padding:10px 6px;">🎲 샘플 바탕생성</button>
+  <button type="button" class="qa-btn" id="bgFillRandomColorBtn" style="padding:10px 6px;">🌈 샘플 색상 생성</button>
+  <div style="text-align:center;font-size:11px;color:#8a93a3;">샘플은 누를 때마다 새로 바뀌어요</div>
 </div>
 
 <!-- 둥근 사각형 만들기 모달 — 캔버스 정가운데에 뜸 -->
@@ -2640,7 +2640,7 @@
 </div>
 
 <!-- 자유모양 갤러리 모달 — 기하학적 도형(정다각형/별/기어/화살표 등)과 실용 아이콘(전화기/명함/봉투/
-     지구본 등)을 한눈에 보고 클릭 한 번으로 캔버스에 바로 추가할 수 있음(랜덤 방식 아님) -->
+     지구본 등)을 한눈에 보고 클릭 한 번으로 캔버스에 바로 추가할 수 있음(샘플 방식 아님) -->
 <div class="free-shape-modal" id="freeShapeGalleryModal">
   <div class="free-shape-modal-inner">
     <div class="free-shape-modal-header">
@@ -2856,7 +2856,7 @@
   <!-- 모바일 전용: 손바닥(화면 이동) 아이콘 + 이미지 확대 게이지. PC에서는 항상 숨김
        (PC는 기존처럼 상단 🔍 확대 메뉴/Ctrl+휠을 그대로 씀). 자세한 동작은 ecopro3mobiletools.js 참고. -->
   <div class="mobile-canvas-tools" id="mobileCanvasTools">
-    <button type="button" class="btn icon" id="mobileFocusToggleBtn" title="랜덤디자인적용 — 랜덤필터를 한번에 적용합니다. 기존 이 문구들 다 지우고 임의의 디자인을 생성합니다. (PC의 '🎲 랜덤디자인적용'과 동일한 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.4" fill="currentColor" stroke="none"/></svg></button>
+    <button type="button" class="btn icon" id="mobileFocusToggleBtn" title="샘플디자인적용 — 샘플필터를 한번에 적용합니다. 기존 이 문구들 다 지우고 임의의 디자인을 생성합니다. (PC의 '🎲 샘플디자인적용'과 동일한 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.4" fill="currentColor" stroke="none"/></svg></button>
     <button type="button" class="btn icon" id="mobileRotateCanvasBtn" title="캔버스 전체를 시계 방향으로 90도 회전 (안의 모든 오브젝트가 캔버스와 함께 회전) (PC의 '회전 > 캔버스 90도 회전'과 동일한 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2.5"/><line x1="18.5" y1="12" x2="19.5" y2="12"/></svg></button>
     <button type="button" class="btn icon" id="mobilePanBtn" title="화면 이동 — 켜두면 오브젝트를 선택하는 대신 손가락으로 화면을 끌어서 움직일 수 있어요 (확대했을 때 유용해요. 포토샵의 스페이스바 이동과 같은 기능)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-4.53a1.87 1.87 0 0 1 2.6-2.66L6 13"/></svg></button>
     <div class="mobile-zoom-gauge">
@@ -2868,10 +2868,10 @@
   </div>
   <div class="mobile-action-buttons">
     <label class="btn" for="imageInput">이미지 업로드</label>
-    <!-- 샘플디자인: 우측 "기본 레이아웃" 중 하나를 불러오면서 랜덤디자인적용(#rollAllBtn)을 동시에 실행.
+    <!-- 샘플디자인: 우측 "기본 레이아웃" 중 하나를 불러오면서 샘플디자인적용(#rollAllBtn)을 동시에 실행.
          한 번 누른 뒤에는 "다른디자인"(주황)으로 바뀌고 계속 누르면 같은 동작을 반복 (ecopro3.js 18번 항목).
          하단 고정 바는 PC·모바일 공통이라 이 버튼 하나로 양쪽 모두 동작함. -->
-    <button type="button" class="btn sample-design-btn" id="sampleDesignBtn" title="우측 기본 레이아웃 중 하나를 불러오면서 랜덤디자인을 동시에 적용해요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">샘플디자인</button>
+    <button type="button" class="btn sample-design-btn" id="sampleDesignBtn" title="우측 기본 레이아웃 중 하나를 불러오면서 샘플디자인을 동시에 적용해요 — 누를 때마다 기존 디자인은 지우고 새로 만듭니다">샘플디자인</button>
     <button type="button" class="btn primary" id="floatingSaveBtn">상품담기/구입</button>
     <!-- 모바일 모드 전용 — 상품담기/구입 버튼 옆에 30px 간격을 두고 뜨는 작은 로고(링크 없음).
          PC에서는 .mobile-brand-logo 자체가 항상 숨겨져 있어서(ecopro3.css) 여기 같이 있어도 안 보임. -->
