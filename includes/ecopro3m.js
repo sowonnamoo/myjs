@@ -72,7 +72,7 @@
     mouseUpHandler: function(eventData, transformData){
       const target = transformData && transformData.target;
       if (!target || isTableRelatedTarget(target)) return true;
-      // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 랜덤 모양필터를 다시 뽑음(토글로
+      // 이제 이 버튼 자체가 "주사위"라서 누를 때마다 곧바로 샘플 모양필터를 다시 뽑음(토글로
       // 닫히던 예전 동작은 제거) — 팝업이 이미 열려있으면 위치는 그대로 두고(드래그해둔 자리
       // 유지), 처음 여는 거면 도형 바로 아래에 새로 자리잡음. 그 안의 게이지들로 세부 조절 가능.
       const alreadyOpen = !qaMPopover.classList.contains('hidden');
@@ -96,7 +96,7 @@
   if (EP.registerPopoverPositionMemory) EP.registerPopoverPositionMemory(qaMPopover);
   const qaMFilterSelect = document.getElementById('qaMFilterSelect');
   const qaShapeDetails = {}; // 앞으로 모양필터를 추가할 때: qaShapeDetails[id] = document.getElementById(...)
-  // "랜덤 적용"(주사위) 버튼이 여러 필터를 겹쳐 쓸 때 참고할 등록부 — 각 필터가 자기 build 함수와
+  // "샘플 적용"(주사위) 버튼이 여러 필터를 겹쳐 쓸 때 참고할 등록부 — 각 필터가 자기 build 함수와
   // 타일 방식을 여기 등록해두면, 주사위가 그걸 그대로 재사용해서 합성 이미지를 만듦.
   EP.shapeComboFilters = EP.shapeComboFilters || [];
 
@@ -125,7 +125,7 @@
   }
   // 콤보에 들어있는 레이어들을 전부 다시 그려서 하나의 합성 이미지로 만들고 fill에 앉힘.
   // 레이어마다: 타일 반복형이면 <pattern>으로 감싸고, 도형 전체 크기형(가장자리/모서리 장식류)이면
-  // 그대로 그 크기로 그림. 둘 다 랜덤 회전(rotate)과 투명도(opacity)를 <g>로 감쌈.
+  // 그대로 그 크기로 그림. 둘 다 샘플 회전(rotate)과 투명도(opacity)를 <g>로 감쌈.
   function renderShapeCombo(t){
     const layers = t._comboLayers;
     if (!layers || !layers.length) return;
@@ -156,7 +156,7 @@
     });
   }
 
-  // ---- 주사위(랜덤 적용) 버튼 + P처럼 "◀ 1/3 ▶" 순환 네비게이션 ----
+  // ---- 주사위(샘플 적용) 버튼 + P처럼 "◀ 1/3 ▶" 순환 네비게이션 ----
   const qaMDiceBtn = document.getElementById('qaMDiceBtn');
   const qaMRollNav = document.getElementById('qaMRollNav');
   const qaMRollCounter = document.getElementById('qaMRollCounter');
@@ -178,7 +178,7 @@
   }
 
   // "상세조정하기"를 펼쳤을 때 ◀1/3▶ 바로 아래 드롭다운에는 82개(도형은 그보다 적은 전체
-  // 목록) 대신 "지금 이 도형에 실제로 랜덤 적용된 필터들"만 좁혀서 보여줌. P쪽의
+  // 목록) 대신 "지금 이 도형에 실제로 샘플 적용된 필터들"만 좁혀서 보여줌. P쪽의
   // EP.applyFilteredFilterDropdown과 동일한 역할.
   var qaMFilterSelectOriginalHTML = qaMFilterSelect.innerHTML;
   function applyFilteredShapeFilterDropdown(anchor){
@@ -233,7 +233,7 @@
           hueB: Math.floor(Math.random() * 360),
           intensity: Math.round(35 + Math.random() * 55),
           opacity: Math.round(10 + Math.random() * 40), // 요청대로 10~50 사이만
-          rotation: Math.round(Math.random() * 360) // 요청대로 무늬 자체를 0~360도 랜덤 회전
+          rotation: Math.round(Math.random() * 360) // 요청대로 무늬 자체를 0~360도 샘플 회전
         };
       });
       renderShapeCombo(t);
@@ -285,7 +285,7 @@
   function hideQaMPopover(){ qaMPopover.classList.add('hidden'); EP.qaShapeTargets = []; setQaMDetailExpanded(false); }
   if (EP.registerFilterPopover) EP.registerFilterPopover(qaMPopover);
 
-  // "상세조정하기" 접기/펼치기 — P팝업과 동일한 방식. 주사위(M버튼)로 랜덤 모양필터를 적용한
+  // "상세조정하기" 접기/펼치기 — P팝업과 동일한 방식. 주사위(M버튼)로 샘플 모양필터를 적용한
   // 직후에는 ◀1/3▶ 이동과 필터 게이지들을 다 숨기고 이 버튼 하나만 도형 아래에 보이게 함.
   // ⚠️ 규칙: 이 함수를 true로 호출하는 곳은 아래 토글 버튼 클릭 리스너 단 한 곳이어야 함
   // (P팝업의 같은 규칙과 동일 — 새 모양필터를 추가하더라도 예외 두지 말 것).
@@ -335,7 +335,7 @@
     EP.shapeFilterRegistry.forEach(function(def){
       if (def.populate) { try { def.populate(anchor); } catch(e) { console.error('shape populate error:', def.id, e); } }
     });
-    applyFilteredShapeFilterDropdown(anchor); // 드롭다운을 이 도형의 랜덤 적용 이력에 맞춰 좁힘(이력 없으면 전체 목록)
+    applyFilteredShapeFilterDropdown(anchor); // 드롭다운을 이 도형의 샘플 적용 이력에 맞춰 좁힘(이력 없으면 전체 목록)
 
     if (wasHidden) {
       qaMFilterSelect.value = '';
@@ -374,7 +374,7 @@
   // P쪽과 동일한 이유: 이미 모양필터가 적용돼있는 도형을 선택하면 M버튼(주사위)을 따로 안
   // 눌러도 자동으로 "상세조정하기" 팝업이 (접힌 상태로) 뜨게 함.
   function autoOpenQaMPopoverIfHasEffect(){
-    if (EP.rollAllInProgress) return; // "전체 랜덤 적용" 배치가 진행 중이면 자동으로 안 뜨게 함
+    if (EP.rollAllInProgress) return; // "전체 샘플 적용" 배치가 진행 중이면 자동으로 안 뜨게 함
     if (!qaMPopover.classList.contains('hidden')) return;
     const active = EP.canvas.getActiveObject();
     if (!active || isTableRelatedTarget(active)) return;
@@ -1019,7 +1019,7 @@
       boxes.forEach(function(t){
         const layer = getComboLayer(t, id);
         if (layer) {
-          // 콤보(랜덤 적용) 안에 있는 레이어면, 이 레이어만 갱신하고 합성 전체를 다시 그림
+          // 콤보(샘플 적용) 안에 있는 레이어면, 이 레이어만 갱신하고 합성 전체를 다시 그림
           if (intensity <= 0) {
             t._comboLayers = t._comboLayers.filter(function(l){ return l.id !== id; });
             if (!t._comboLayers.length) {
@@ -1443,7 +1443,7 @@
   EP.setActiveShapeFilterMenu = setActiveShapeFilterMenu;
   EP.qaShapeDetails = qaShapeDetails;
   EP.qaMFilterSelect = qaMFilterSelect;
-  EP.rollShapeDice = rollShapeDice; // M의 "랜덤 적용" 로직을 다른 기능(예: 캔버스 바탕 랜덤 생성)에서도 재사용
+  EP.rollShapeDice = rollShapeDice; // M의 "샘플 적용" 로직을 다른 기능(예: 캔버스 바탕 샘플 생성)에서도 재사용
 
   // 이 파일이 쓰는 도형 필터 커스텀 속성을 중앙 레지스트리에 등록 — 실행취소·저장·SVG내보내기·
   // 복제에 자동으로 반영됨(ecopro3text.js와 동일한 이유).

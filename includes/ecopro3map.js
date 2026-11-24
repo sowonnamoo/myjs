@@ -63,34 +63,84 @@
   // 사용자가 직접 텍스트를 입력하지 못하게(readonly) 막아두고, 이 팝업에서 실제 존재하는
   // 도로명/지번 주소를 검색해서 고른 결과만 입력창에 채워넣도록 해서 임의의 이상한 주소를
   // 입력할 수 없도록 유도함.
+  // [다시 적용] 새 창 팝업(.open())은 팝업 차단/모바일/iframe에서 자주 막혀서, 페이지 안에
+  // 레이어를 띄워 그 안에 검색창을 끼워넣는 방식(.embed())으로 바꿈 → 차단될 일이 없음.
+  // 또 postcode 스크립트가 아직 안 불러와졌으면(느린 네트워크·file:// 등) 여기서 https로 직접
+  // 다시 불러온 뒤 엶.
+  var POSTCODE_SRC = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+  var postcodeLoading = null;
+  function ensurePostcodeScript(){
+    if (typeof daum !== 'undefined' && daum.Postcode) return Promise.resolve(true);
+    if (postcodeLoading) return postcodeLoading;
+    postcodeLoading = new Promise(function(resolve){
+      var s = document.createElement('script');
+      var timer = setTimeout(function(){ resolve(false); }, 8000);
+      s.src = POSTCODE_SRC;
+      s.async = true;
+      s.onload = function(){ clearTimeout(timer); resolve(typeof daum !== 'undefined' && !!daum.Postcode); };
+      s.onerror = function(){ clearTimeout(timer); resolve(false); };
+      document.head.appendChild(s);
+    }).then(function(ok){ if (!ok) postcodeLoading = null; return ok; });
+    return postcodeLoading;
+  }
+
+  function closeAddressLayer(){
+    var old = document.getElementById('mapAddressLayer');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+  }
+
   function openAddressSearchPopup(){
-    if (typeof daum === 'undefined' || !daum.Postcode) {
-      mapInputToolbarHint.textContent = '주소검색 서비스를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 열어주세요.';
-      return;
-    }
-    new daum.Postcode({
-      oncomplete: function(data){
-        // 도로명 주소가 있으면 그걸 우선 쓰고, 없으면 지번 주소를 씀. 건물명이 있으면 뒤에 덧붙여서
-        // 지오코딩(geocodeAddress)이 더 정확한 좌표를 찾도록 도움.
-        var addr = data.roadAddress || data.jibunAddress || '';
-        if (data.buildingName && data.buildingName.trim() && addr.indexOf(data.buildingName) === -1) {
-          addr += ' (' + data.buildingName + ')';
-        }
-        if (!addr) return;
-        mapAddressInput.value = addr;
-        setAddressButtonsEnabled(true);
-        mapInputToolbarHint.textContent = '선택한 주소로 지도를 만들 수 있어요. 주소를 바꾸려면 입력창을 다시 눌러주세요.';
-        applyMapBtn.focus();
-      },
-      onclose: function(state){
-        // 검색창을 그냥 닫아버려서(state === 'FORCE_CLOSE') 아직 주소를 못 골랐으면 버튼을 계속 꺼둠
-        if (state === 'FORCE_CLOSE' && !mapAddressInput.value) {
-          mapInputToolbarHint.textContent = '지도에 표시할 주소를 검색해서 선택해주세요.';
-        }
-      },
-      width: '100%',
-      height: '100%'
-    }).open();
+    ensurePostcodeScript().then(function(ok){
+      if (!ok) {
+        mapInputToolbarHint.textContent = '주소검색 서비스를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러주세요.';
+        return;
+      }
+      closeAddressLayer();
+      var overlay = document.createElement('div');
+      overlay.id = 'mapAddressLayer';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px;';
+      var box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:12px;width:min(480px,96vw);height:min(560px,86vh);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);';
+      var head = document.createElement('div');
+      head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #e3e6ec;font-weight:700;font-size:14px;';
+      head.textContent = '🔍 주소 검색';
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '✕';
+      closeBtn.style.cssText = 'border:0;background:transparent;font-size:18px;cursor:pointer;padding:2px 8px;';
+      head.appendChild(closeBtn);
+      var holder = document.createElement('div');
+      holder.style.cssText = 'flex:1;min-height:0;';
+      box.appendChild(head); box.appendChild(holder); overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      function closeLayer(){
+        closeAddressLayer();
+        if (!mapAddressInput.value) mapInputToolbarHint.textContent = '지도에 표시할 주소를 검색해서 선택해주세요.';
+      }
+      closeBtn.addEventListener('click', closeLayer);
+      overlay.addEventListener('mousedown', function(e){ if (e.target === overlay) closeLayer(); });
+
+      new daum.Postcode({
+        oncomplete: function(data){
+          // 도로명 주소가 있으면 그걸 우선 쓰고, 없으면 지번 주소를 씀. 건물명은 표시용으로만 덧붙이고
+          // (좌표 검색할 때는 geocodeAddress가 괄호 부분을 빼고 먼저 시도함).
+          var addr = data.roadAddress || data.jibunAddress || data.address || '';
+          if (data.buildingName && data.buildingName.trim() && addr.indexOf(data.buildingName) === -1) {
+            addr += ' (' + data.buildingName + ')';
+          }
+          closeAddressLayer();
+          if (!addr) return;
+          mapAddressInput.value = addr;
+          mapAddressInput.dataset.jibun = data.jibunAddress || '';
+          setAddressButtonsEnabled(true);
+          mapInputToolbarHint.textContent = '선택한 주소로 지도를 만들 수 있어요. 주소를 바꾸려면 입력창을 다시 눌러주세요.';
+          applyMapBtn.focus();
+        },
+        width: '100%',
+        height: '100%'
+      }).embed(holder);
+    });
   }
 
   // 입력창(readonly)을 눌러도 같은 검색 팝업이 뜨도록 해서, 주소를 바꾸고 싶을 때 자연스럽게
@@ -177,18 +227,32 @@
     });
   }
 
-  function geocodeAddress(address){
-    return geocodeViaVWorld(address).then(function(hit){
+  function geocodeOne(addr){
+    return geocodeViaVWorld(addr).then(function(hit){
       if (hit) return hit;
-      return geocodeViaGeoapify(address);
+      return geocodeViaGeoapify(addr);
     }).catch(function(err){
       console.warn('VWorld 지오코딩 실패(차단/장애 등), Geoapify로 대체 시도:', err);
-      return geocodeViaGeoapify(address);
+      return geocodeViaGeoapify(addr);
     });
+  }
+  function geocodeAddress(address){
+    var original = String(address || '').trim();
+    var clean = original.replace(/\s*\([^)]*\)\s*$/, '').trim(); // 끝의 "(건물명)" 제거
+    var tries = [];
+    if (clean) tries.push(clean);
+    if (original && original !== clean) tries.push(original);
+    var jibun = (mapAddressInput && mapAddressInput.dataset && mapAddressInput.dataset.jibun) || '';
+    if (jibun && tries.indexOf(jibun) === -1) tries.push(jibun);
+    var chain = Promise.resolve(null);
+    tries.forEach(function(a){
+      chain = chain.then(function(hit){ return hit || geocodeOne(a); });
+    });
+    return chain;
   }
 
   // ---------- 지도 필터(색상/두께/글자/마커를 통째로 바꾸는 프리셋) ----------
-  // "랜덤 지도 만들기"를 누르면 이 목록에서 하나를 무작위로 골라 적용함.
+  // "샘플 지도 만들기"를 누르면 이 목록에서 하나를 무작위로 골라 적용함.
   // 새 필터를 추가하고 싶으면 MAP_FILTERS 배열에 { id, name, build() } 객체만 추가하면 됨.
   function clamp255(v){ return Math.max(0, Math.min(255, Math.round(v))); }
   function rgbToHexLocal(r, g, b){
@@ -405,7 +469,7 @@
     return { stroke: minorStroke, width: minorWidth, dash: null, casing: minorCasing, casingWidth: minorWidth + 9 * mult, major: false }; // 주거/기타 도로
   }
 
-  // 건물 모양 마커 — "랜덤 지도 만들기" 필터에서 위치 마커로 사용. 뾰족한 핀 대신 작은 빌딩
+  // 건물 모양 마커 — "샘플 지도 만들기" 필터에서 위치 마커로 사용. 뾰족한 핀 대신 작은 빌딩
   // 실루엣(창문 몇 개 + 문)으로, 바닥 중앙이 정확한 위치 지점에 오도록 함(핀의 뾰족한 끝과 같은 기준)
   function buildBuildingMarkerSvg(cx, cy, color){
     var s = 5.9;
@@ -449,7 +513,7 @@
 
   // Overpass 응답(elements)을 카테고리별로 나눈 뒤 SVG 문자열로 조립.
   // 레이어 순서(아래→위): 배경 → 물/공원 → 건물(사각형) → 작은 길 → 큰 길 → 글자 라벨 → 위치 마커
-  // styleConfig가 있으면(랜덤 지도 만들기) 색상/두께/글자/마커를 그 값으로 덮어씀
+  // styleConfig가 있으면(샘플 지도 만들기) 색상/두께/글자/마커를 그 값으로 덮어씀
 
   function buildVectorMapSvg(elements, centerLat, centerLon, styleConfig){
     var metersPerDegLat = 111320;
@@ -564,7 +628,7 @@
     };
   }
 
-  // 같은 주소로 스타일만 바꿔 다시 만들 때(특히 "랜덤 지도 만들기" 반복 클릭) VWorld·Overpass를
+  // 같은 주소로 스타일만 바꿔 다시 만들 때(특히 "샘플 지도 만들기" 반복 클릭) VWorld·Overpass를
   // 매번 다시 부르지 않도록, 마지막으로 성공한 좌표+원본 벡터 데이터를 주소별로 기억해둠.
   // 주소가 바뀌면 자동으로 새로 가져오고, 같은 주소면 그 자리에서 바로 스타일만 다시 그림.
   var locationCache = null; // { address, lat, lon, elements }
