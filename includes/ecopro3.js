@@ -4360,6 +4360,47 @@
     });
   }
 
+  // "아직 작업되지 않은 디자인" 안내창 — 기본 alert(확인만 있음) 대신 [확인] [편집하기] 두 버튼.
+  // 편집하기: 작업하지 않은 첫 장(앞/뒷면 포함)으로 화면을 전환해 바로 편집할 수 있게 함.
+  function showUnworkedDesignDialog(labels, target){
+    const old = document.getElementById('unworkedDesignDialog');
+    if (old) old.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'unworkedDesignDialog';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:14px;max-width:360px;width:100%;padding:22px 20px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3);font-size:15px;line-height:1.6;color:#222;';
+    const title = document.createElement('div');
+    title.textContent = '아직 작업되지 않은 디자인이 있습니다.';
+    title.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:10px;';
+    const list = document.createElement('div');
+    list.textContent = labels.join('\n');
+    list.style.cssText = 'white-space:pre-line;max-height:30vh;overflow:auto;margin-bottom:10px;';
+    const msg = document.createElement('div');
+    msg.textContent = '모든 디자인을 작업해주세요.';
+    const hint = document.createElement('div');
+    hint.textContent = '(좌측이나 상단의 앞 뒤 선택후 전환 가능합니다.)';
+    hint.style.cssText = 'color:#666;font-size:13px;margin-top:4px;';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:16px;';
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button'; okBtn.className = 'btn'; okBtn.textContent = '확인';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button'; editBtn.className = 'btn primary'; editBtn.textContent = '편집하기';
+    function close(){ overlay.remove(); }
+    okBtn.addEventListener('click', close);
+    editBtn.addEventListener('click', () => {
+      close();
+      if (target) switchTo(target.idx, target.side);
+    });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    row.appendChild(okBtn); row.appendChild(editBtn);
+    [title, list, msg, hint, row].forEach((el) => box.appendChild(el));
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    editBtn.focus();
+  }
+
   const floatingSaveBtn = document.getElementById('floatingSaveBtn');
   floatingSaveBtn.addEventListener('click', async () => {
     if (designData[currentIdx]) designData[currentIdx][currentSide] = serializeCurrentCanvas();
@@ -4367,17 +4408,19 @@
     // 1) 건수/앞뒤면 누락 검사 — 캔버스를 건드리기 전에 저장된 데이터만으로 빠르게 확인
     const sidesToCheck = isDouble ? ['front', 'back'] : ['front'];
     const missingLabels = [];
+    let firstMissing = null; // 편집하기 버튼이 이동할 "작업하지 않은 첫 장" {idx, side}
     for (let i = 0; i < count; i++) {
       for (const side of sidesToCheck) {
         const data = designData[i][side];
         const hasContent = data && Array.isArray(data.objects) && data.objects.length > 0;
         if (!hasContent) {
+          if (!firstMissing) firstMissing = { idx: i, side: side };
           missingLabels.push(`디자인 ${i + 1}` + (isDouble ? (side === 'front' ? ' 앞면' : ' 뒷면') : ''));
         }
       }
     }
     if (missingLabels.length > 0) {
-      alert('아직 작업되지 않은 디자인이 있습니다.\n\n' + missingLabels.join('\n') + '\n\n모든 디자인을 작업해주세요.');
+      showUnworkedDesignDialog(missingLabels, firstMissing);
       return;
     }
 
