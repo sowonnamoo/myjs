@@ -67,7 +67,7 @@
   // 레이어를 띄워 그 안에 검색창을 끼워넣는 방식(.embed())으로 바꿈 → 차단될 일이 없음.
   // 또 postcode 스크립트가 아직 안 불러와졌으면(느린 네트워크·file:// 등) 여기서 https로 직접
   // 다시 불러온 뒤 엶.
-  var POSTCODE_SRC = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+  var POSTCODE_SRC = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
   var postcodeLoading = null;
   function ensurePostcodeScript(){
     if (typeof daum !== 'undefined' && daum.Postcode) return Promise.resolve(true);
@@ -342,22 +342,38 @@
       + ');out geom;';
   }
 
-  function fetchOverpass(query, timeoutMs){
+  // overpass-api.de 하나만 쓰면 혼잡/제한(429·504)으로 자주 실패해서 → 대체 서버(미러)를 차례로 시도함.
+  var OVERPASS_ENDPOINTS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter'
+  ];
+  function fetchOverpassOne(endpoint, query, timeoutMs){
     var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timer = controller ? setTimeout(function(){ controller.abort(); }, timeoutMs) : null;
-    return fetch('https://overpass-api.de/api/interpreter', {
+    return fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'data=' + encodeURIComponent(query),
       signal: controller ? controller.signal : undefined
     }).then(function(res){
       if (timer) clearTimeout(timer);
-      if (!res.ok) throw new Error('overpass http ' + res.status);
+      if (!res.ok) throw new Error('overpass http ' + res.status + ' (' + endpoint + ')');
       return res.json();
     }).catch(function(err){
       if (timer) clearTimeout(timer);
       throw err;
     });
+  }
+  function fetchOverpass(query, timeoutMs){
+    var chain = Promise.reject(new Error('start'));
+    OVERPASS_ENDPOINTS.forEach(function(ep){
+      chain = chain.catch(function(prevErr){
+        if (prevErr && prevErr.message !== 'start') console.warn('Overpass 실패, 다음 서버 시도:', prevErr.message);
+        return fetchOverpassOne(ep, query, Math.round(timeoutMs / 2));
+      });
+    });
+    return chain;
   }
 
   function project(lat, lon, centerLat, centerLon, metersPerDegLat, metersPerDegLon){
@@ -655,11 +671,11 @@
   }
 
   // ---------- 3) 대체용 Geoapify 고해상도 사진식 지도(래스터) ----------
-  function buildStaticMapUrl(lat, lon){
+  function buildStaticMapUrl(lat, lon, light){
     return 'https://maps.geoapify.com/v1/staticmap'
       + '?style=osm-bright'
-      + '&width=900&height=650'
-      + '&scaleFactor=3'
+      + '&width=' + (light ? 800 : 900) + '&height=' + (light ? 600 : 650)
+      + '&scaleFactor=' + (light ? 1 : 3) // 큰 이미지가 요금제/크기 제한에 걸릴 수 있어, 실패하면 작은 사이즈로 한 번 더 시도
       + '&format=png'
       + '&center=lonlat:' + lon + ',' + lat
       + '&zoom=16.5'
@@ -676,28 +692,53 @@
     img.applyFilters();
   }
 
-  function insertRasterMapToCanvas(url, label, reasonPrefix){
+  // 이미지를 못 받았을 때 "왜"인지 알려주기 위해 같은 주소를 fetch로 한 번 찔러서 HTTP 상태를 확인함
+  function diagnoseRasterFailure(url){
+    return fetch(url, { mode: 'cors' }).then(function(res){
+      if (res.status === 401 || res.status === 403) return '지도 서비스(Geoapify) 이용 키가 거부됐어요(코드 ' + res.status + '). 키가 만료됐거나 허용 도메인이 안 맞을 수 있어요.';
+      if (res.status === 429) return '지도 서비스(Geoapify) 무료 사용량을 초과했어요(코드 429). 내일 다시 시도하거나 키를 교체해야 해요.';
+      if (!res.ok) return '지도 서비스(Geoapify)가 오류를 돌려줬어요(코드 ' + res.status + ').';
+      return '지도 이미지를 받았지만 화면에 넣지 못했어요. (이미지 형식/크기 문제일 수 있어요)';
+    }).catch(function(){
+      return '지도 서비스(Geoapify)에 연결하지 못했어요. 광고차단 프로그램·방화벽·네트워크가 막고 있을 수 있어요.';
+    });
+  }
+
+  function insertRasterMapToCanvas(urls, label, reasonPrefix){
     var canvas = EP.canvas;
     if (!canvas) { setBusy(false); alert('캔버스를 찾을 수 없어요.'); return; }
+    if (typeof urls === 'string') urls = [urls];
 
-    var finished = false;
-    var timeoutId = setTimeout(function(){
-      if (finished) return;
-      finished = true;
-      setBusy(false);
-      alert('지도 이미지를 불러오는 데 시간이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
-    }, 15000);
-
-    fabric.Image.fromURL(url, function(img){
-      if (finished) return;
-      finished = true;
-      clearTimeout(timeoutId);
-
-      if (!img || !img.width || !img.height) {
+    function tryLoad(idx){
+      var url = urls[idx];
+      var finished = false;
+      var timeoutId = setTimeout(function(){
+        if (finished) return;
+        finished = true;
+        if (idx + 1 < urls.length) { tryLoad(idx + 1); return; }
         setBusy(false);
-        alert('지도 이미지를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
-        return;
-      }
+        alert('지도 이미지를 불러오는 데 시간이 너무 오래 걸려요. 잠시 후 다시 시도해주세요.');
+      }, 15000);
+
+      fabric.Image.fromURL(url, function(img){
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeoutId);
+
+        if (!img || !img.width || !img.height) {
+          if (idx + 1 < urls.length) { tryLoad(idx + 1); return; } // 가벼운 버전으로 재시도
+          console.error('지도 이미지 로딩 실패:', url.replace(/apiKey=[^&]+/, 'apiKey=***'));
+          diagnoseRasterFailure(url).then(function(msg){
+            setBusy(false);
+            alert('지도 이미지를 불러오지 못했어요.\n\n' + msg);
+          });
+          return;
+        }
+        placeRasterImage(img);
+      }, { crossOrigin: 'anonymous' });
+    }
+
+    function placeRasterImage(img){
       var zoom = canvas.getZoom() || 1;
       var vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
       var viewW = (canvas.getWidth() || 0) / zoom, viewH = (canvas.getHeight() || 0) / zoom;
@@ -726,7 +767,9 @@
       setBusy(false);
       mapInputToolbarHint.textContent = (reasonPrefix ? (reasonPrefix + ' 사진식 지도로 대신 넣었어요. ') : '')
         + '오른쪽 "이미지" 패널에서 밝기·대비·채도 보정도 할 수 있어요.';
-    }, { crossOrigin: 'anonymous' });
+    }
+
+    tryLoad(0);
   }
 
   function geocodeAndBuild(address, styleConfig){
@@ -740,7 +783,7 @@
 
       function fallbackToRaster(reasonPrefix){
         setBusy(true, '🗺 대체 지도 불러오는 중...');
-        insertRasterMapToCanvas(buildStaticMapUrl(loc.lat, loc.lon), address, reasonPrefix);
+        insertRasterMapToCanvas([buildStaticMapUrl(loc.lat, loc.lon, false), buildStaticMapUrl(loc.lat, loc.lon, true)], address, reasonPrefix);
       }
 
       if (loc.elements && loc.elements.length && EP.importSvgIntoCanvas) {
