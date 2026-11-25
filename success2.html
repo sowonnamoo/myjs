@@ -376,7 +376,8 @@ if(order){
 }
 
 // ---- 구입했던 제품 페이지로 이동 ----
-// 브라우저 기록(뒤로가기)은 쓰지 않고, 주문에 담긴 상품마다 제품 페이지 주소를 구해서 이동합니다.
+// 1순위: 브라우저 기록을 4칸 뒤로 돌아가 처음 보던 제품(시작) 페이지로 이동합니다.
+// 2순위(기록이 부족할 때): 주문에 담긴 상품마다 제품 페이지 주소를 구해서 이동합니다.
 // 상품별 주소 규칙(조회 페이지 search.html 의 "제품바로가기"와 동일):
 //  0) 주문에 저장된 제품 페이지 주소(items[].productUrl) 그대로
 //  1) productId 가 있으면  https://sowonnamoo.github.io/myjs/products/{productId}
@@ -417,12 +418,15 @@ function guessProductUrl(itemName, flat){
 }
 
 // 저장된 주소가 이 사이트(또는 현재 페이지와 같은 호스트)의 http(s) 주소일 때만 사용
+// 제품(구입) 페이지로 인정하는 도메인. 구입 페이지가 다른 도메인이면 여기에 추가하세요.
+// 예) ['sowonnamoo.github.io', 'www.내도메인.com']
+const PRODUCT_PAGE_HOSTS = ["sowonnamoo.github.io"];
 function safeProductUrl(u){
     try{
         if(!u) return "";
         const x = new URL(u, location.href);
         if(!/^https?:$/.test(x.protocol)) return "";
-        return (x.hostname === "sowonnamoo.github.io" || x.hostname === location.hostname) ? x.href : "";
+        return (PRODUCT_PAGE_HOSTS.includes(x.hostname) || x.hostname === location.hostname) ? x.href : "";
     }catch(e){ return ""; }
 }
 
@@ -469,7 +473,21 @@ function pageButtonLabel(p){
         : p.names[0] + " 제품 페이지로 이동";
 }
 
+// ---- 4단계 이전 페이지로 이동 ----
+// 이동 순서: 제품(시작) 페이지 → 에코프로3 → 시안 → 카트 → 이 페이지
+// 그래서 브라우저 기록에서 4칸 뒤로 가면 시작 페이지로 돌아갑니다.
+const BACK_STEPS = 4;
+// 기록이 5개 미만이면(새로고침/직접 접속 등) history.go(-4)가 아무 일도 하지 않으므로 사용하지 않음
+function canGoBackToStart(){
+    return history.length > BACK_STEPS;
+}
+
 (async function initProductButtons(){
+    if(canGoBackToStart()){
+        document.getElementById("home-btn").textContent = "구입했던 제품 페이지로 이동";
+        return;
+    }
+    // 뒤로 갈 기록이 없을 때만 아래 주소 규칙으로 대체
     if(!order) return;
     const pages = await collectProductPages();
     if(!pages.length) return;                       // 못 찾으면 "홈으로 이동" 그대로
@@ -495,7 +513,11 @@ function pageButtonLabel(p){
 })();
 
 function goHome(){
-    location.href = productPageUrl || HOME_URL;     // 제품 페이지를 모르면 홈
+    if(canGoBackToStart()){
+        history.go(-BACK_STEPS);                    // 시작 페이지로 4칸 뒤로
+        return;
+    }
+    location.href = productPageUrl || HOME_URL;     // 기록이 없으면 주소 규칙 → 그래도 없으면 홈
 }
 
 </script>
