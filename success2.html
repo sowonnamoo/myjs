@@ -287,6 +287,7 @@
     </div>
 
     <button class="home-btn" id="home-btn" onclick="goHome()">홈으로 이동</button>
+    <div id="product-links"></div>
 
 </div>
 
@@ -375,15 +376,17 @@ if(order){
 }
 
 // ---- 구입했던 제품 페이지로 이동 ----
-// 조회 페이지(search.html)의 "제품바로가기"와 같은 규칙을 씁니다.
-//  0) 주문에 저장된 제품 페이지 주소(items[].productUrl)가 있으면 그 주소 그대로
-//  1) 상품에 productId가 있으면  https://sowonnamoo.github.io/myjs/products/{productId}
-//  2) 없으면 헤더 메뉴(/myjs/includes/header)의 menuData에서 상품명이 겹치는 항목의 주소
-//  3) 그래도 못 찾으면 기존처럼 홈(index.html)
+// 브라우저 기록(뒤로가기)은 쓰지 않고, 주문에 담긴 상품마다 제품 페이지 주소를 구해서 이동합니다.
+// 상품별 주소 규칙(조회 페이지 search.html 의 "제품바로가기"와 동일):
+//  0) 주문에 저장된 제품 페이지 주소(items[].productUrl) 그대로
+//  1) productId 가 있으면  https://sowonnamoo.github.io/myjs/products/{productId}
+//  2) 없으면 헤더 메뉴(/myjs/includes/header)에서 상품명이 겹치는 항목의 주소
+//  3) 어느 상품도 못 찾으면 홈(index.html)
+// 서로 다른 제품 페이지가 1곳이면 버튼 하나, 여러 곳이면 제품 페이지마다 버튼을 만들어 줍니다.
 const SITE = "https://sowonnamoo.github.io";
 const HEADER_URL = SITE + "/myjs/includes/header";
 const HOME_URL = "index.html";
-let productPageUrl = "";
+let productPageUrl = "";   // 제품 페이지가 1곳일 때 홈 버튼이 이동할 주소
 
 function extractMenuData(headerText){
     const startMarker = "const menuData = [";
@@ -423,57 +426,76 @@ function safeProductUrl(u){
     }catch(e){ return ""; }
 }
 
-async function resolveProductPageUrl(){
+// 헤더 메뉴는 한 번만 불러옴(상품명으로 추정해야 하는 예전 주문일 때만 사용)
+let menuFlatPromise = null;
+function getMenuFlat(){
+    if(!menuFlatPromise){
+        menuFlatPromise = fetch(HEADER_URL)
+            .then(r => r.text())
+            .then(t => flattenMenu(extractMenuData(t)))
+            .catch(e => { console.error("헤더 메뉴를 불러오지 못했습니다:", e); return []; });
+    }
+    return menuFlatPromise;
+}
+
+// 상품 하나의 제품 페이지 주소 (못 찾으면 빈 문자열)
+async function resolveItemPageUrl(it){
+    if(!it) return "";
+    const saved = safeProductUrl(it.productUrl);
+    if(saved) return saved;
+    if(it.productId) return SITE + "/myjs/products/" + encodeURIComponent(it.productId);
+    return guessProductUrl(it.item, await getMenuFlat());
+}
+
+// 주문 상품들의 제품 페이지를 주소별로 묶음: [{ url, names: [상품명...] }]
+async function collectProductPages(){
     const list = (order && Array.isArray(order.items)) ? order.items : [];
-    // 0) 저장된 제품 페이지 주소 그대로
+    const pages = [];
     for(const it of list){
-        const saved = it && safeProductUrl(it.productUrl);
-        if(saved) return saved;
+        const url = await resolveItemPageUrl(it);
+        if(!url) continue;
+        const name = String((it && it.item) || "").trim();
+        const found = pages.find(p => p.url === url);
+        if(found){ if(name && !found.names.includes(name)) found.names.push(name); }
+        else pages.push({ url, names: name ? [name] : [] });
     }
-    // 1) productId 가 있는 첫 상품
-    for(const it of list){
-        if(it && it.productId) return SITE + "/myjs/products/" + encodeURIComponent(it.productId);
-    }
-    // 2) productId 가 없는 예전 주문 → 상품명으로 헤더 메뉴에서 추정
-    try{
-        const res = await fetch(HEADER_URL);
-        const flat = flattenMenu(extractMenuData(await res.text()));
-        for(const it of list){
-            const url = guessProductUrl(it && it.item, flat);
-            if(url) return url;
-        }
-    }catch(e){ console.error("헤더 메뉴를 불러오지 못했습니다:", e); }
-    return "";
+    return pages;
 }
 
-// ---- 4단계 이전 페이지로 이동 ----
-// 이동 순서: 제품(시작) 페이지 → 에코프로3 → 시안 → 카트 → success2(이 페이지)
-// 그래서 브라우저 기록에서 4칸 뒤로 가면 시작 페이지로 돌아갑니다.
-const BACK_STEPS = 4;
-// 기록이 5개 미만이면(새로고침/직접 접속 등) history.go(-4)가 아무 일도 하지 않으므로 사용하지 않음
-function canGoBackToStart(){
-    return history.length > BACK_STEPS;
+function pageButtonLabel(p){
+    if(!p.names.length) return "구입했던 제품 페이지로 이동";
+    return p.names.length > 1
+        ? p.names[0] + " 외 " + (p.names.length - 1) + "건 제품 페이지로 이동"
+        : p.names[0] + " 제품 페이지로 이동";
 }
 
-(async function initProductButton(){
-    if(canGoBackToStart()){
-        document.getElementById("home-btn").textContent = "구입했던 제품 페이지로 이동";
+(async function initProductButtons(){
+    if(!order) return;
+    const pages = await collectProductPages();
+    if(!pages.length) return;                       // 못 찾으면 "홈으로 이동" 그대로
+
+    const homeBtn = document.getElementById("home-btn");
+    if(pages.length === 1){                         // 제품 페이지가 한 곳 → 버튼 하나
+        productPageUrl = pages[0].url;
+        homeBtn.textContent = "구입했던 제품 페이지로 이동";
         return;
     }
-    // 뒤로 갈 기록이 없을 때만 주소 규칙(productId / 헤더 메뉴)으로 대체
-    if(!order) return;
-    productPageUrl = await resolveProductPageUrl();
-    if(productPageUrl){
-        document.getElementById("home-btn").textContent = "구입했던 제품 페이지로 이동";
-    }
+    // 서로 다른 제품 페이지가 여러 곳 → 페이지마다 버튼
+    const box = document.getElementById("product-links");
+    pages.forEach((p, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "home-btn";
+        if(i > 0) b.style.marginTop = "10px";
+        b.textContent = pageButtonLabel(p);
+        b.onclick = () => { location.href = p.url; };
+        box.appendChild(b);
+    });
+    homeBtn.style.display = "none";
 })();
 
 function goHome(){
-    if(canGoBackToStart()){
-        history.go(-BACK_STEPS);                   // 시작 페이지로 4칸 뒤로
-        return;
-    }
-    location.href = productPageUrl || HOME_URL;    // 기록이 없으면 주소 규칙 → 그래도 없으면 홈
+    location.href = productPageUrl || HOME_URL;     // 제품 페이지를 모르면 홈
 }
 
 </script>
