@@ -31,7 +31,38 @@
     orderData[key] = decoded;
     if (decoded.includes('양면')) hasDouble = true;
   }
-  const count = Math.max(1, parseInt(orderData.count, 10) || 1);
+  /* ------------------------------------------------------------
+   구입했던 제품 페이지 주소 저장
+   - ecopro1 은 쓰지 않고 제품 페이지 → ecopro3(이 에디터)로 바로 넘어오므로,
+     넘어온 직후의 document.referrer 가 곧 제품 페이지 주소임.
+   - sessionStorage('ecogr_product_url') 에 보관해 두면 에디터를 새로고침하거나
+     시안 페이지에서 되돌아와도 값이 유지됨(되돌아온 경우 referrer 는 sian 이라 무시).
+   - 시안 페이지로 넘어갈 때 쿼리(productUrl)로도 실어 보내고, sian.html 이 장바구니 상품
+     (items[].productUrl)에 저장 → 조회(search)/주문완료(success2)의 제품바로가기가 사용.
+   - 제품 페이지가 쿼리로 productUrl 을 직접 보내면 그 값을 우선 사용.
+   ------------------------------------------------------------ */
+const ecogrProductPageUrl = (function () {
+  const KEY = 'ecogr_product_url';
+  function okUrl(u) {
+    try {
+      if (!u) return '';
+      const x = new URL(u, location.href);
+      if (!/^https?:$/.test(x.protocol)) return '';
+      if (x.hostname !== location.hostname && x.hostname !== 'sowonnamoo.github.io') return '';   // 이 사이트 주소만
+      if (x.origin + x.pathname === location.origin + location.pathname) return '';               // 에디터 자신
+      if (/\/(ecopro\d*|sian|cart|success\d*|search)(\.html)?\/?$/i.test(x.pathname)) return ''; // 주문 흐름 안의 다른 페이지
+      x.hash = '';
+      return x.href;
+    } catch (e) { return ''; }
+  }
+  const found = okUrl(orderData.productUrl) || okUrl(document.referrer);
+  try {
+    if (found) sessionStorage.setItem(KEY, found);
+    return sessionStorage.getItem(KEY) || found || '';
+  } catch (e) { return found; }
+})();
+
+const count = Math.max(1, parseInt(orderData.count, 10) || 1);
   const isDouble = hasDouble;
   let ratioW = parseInt(orderData.width, 10) || 16;
   let ratioH = parseInt(orderData.height, 10) || 9;
@@ -4630,7 +4661,13 @@
       }
 
       // 현재 쿼리(count/width/height 등)를 그대로 이어서 시안보기 페이지로 이동
-      window.location.href = SIAN_PAGE_URL + window.location.search;
+      // 제품 페이지 주소(productUrl)도 같이 실어 보냄 — sian.html 이 장바구니 상품에 저장
+      // (sian.html 의 getOrderValue 가 값을 한 번 더 decode 하므로 두 번 인코딩해서 보냄)
+      let sianQuery = window.location.search;
+      if (ecogrProductPageUrl && !/[?&]productUrl=/.test(sianQuery)) {
+        sianQuery += (sianQuery ? '&' : '?') + 'productUrl=' + encodeURIComponent(encodeURIComponent(ecogrProductPageUrl));
+      }
+      window.location.href = SIAN_PAGE_URL + sianQuery;
 
     } catch (err) {
       console.error(err);
