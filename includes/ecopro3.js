@@ -1206,8 +1206,19 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
   ============================================================ */
   let guideRect, outerGuideRect, gridGuide, guideState = 0; // 0=붉은 박스만, 1=붉은 박스+모눈, 2=숨김
   // [추가] 제품명·옵션·용지·후가공 등에 "도무송" 또는 "원형"이 있으면 붉은 재단선을 원형으로 표시
-  const isRoundCutProduct = ['productName', 'options', 'paper', 'ink', 'finishings']
-    .some(k => /도무송|원형/.test(String(orderData[k] || '')));
+  // 쿼리의 모든 값(제품명·옵션·용지·후가공 등) + 주소창 쿼리 원문(디코딩) + 이전 페이지 주소 +
+  // 문서 제목까지 한꺼번에 훑어서 찾는다. (제품 페이지마다 제품명을 실어 보내는 키 이름이 달라도 잡히도록)
+  const isRoundCutProduct = (function(){
+    const safeDecode = (t) => { try { return decodeURIComponent(String(t || '')); } catch (e) { return String(t || ''); } };
+    const haystack = [
+      ...Object.values(orderData).map(v => String(v || '')),
+      safeDecode(window.location.search),
+      safeDecode(document.referrer),
+      safeDecode(ecogrProductPageUrl),
+      document.title || ''
+    ].join(' ');
+    return /도무송|원형/.test(haystack);
+  })();
   const GRID_SPACING = 10; // 모눈 간격(px) — 요청대로 기존(5)의 2배로 넓힘
 
   function buildGridGuide(){
