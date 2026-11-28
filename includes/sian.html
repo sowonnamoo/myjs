@@ -435,6 +435,8 @@
   ※ 문구, 이미지, 레이아웃 등 시안 내용을 꼼꼼히 확인 후 결제해 주세요.<br>
   ※ 인쇄 진행 후 발생하는 오탈자 및 디자인 오류에 대한 책임은 고객에게 있습니다.<br><br>
   Tip. 작업사이즈에 맞춰 재단후 출고됩니다. 시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.
+  <!-- [추가] 원형/도무송 제품일 때만 스크립트에서 보여줌 -->
+  <div id="roundCutNotice" style="display:none; margin-top:6px;"></div>
 </div>
 
 <div class="agree-wrap">
@@ -724,6 +726,26 @@
 
   const orderParams = resolveOrderParams();
 
+  // [추가] 제품명/옵션/후가공 등 넘어온 주문정보에 "도무송" 또는 "원형"이 있으면 원형·도무송 제품으로 본다.
+  // (에디터 ecopro3.js의 붉은 원형 재단선 적용 기준과 같음)
+  const isRoundCutProduct = (function(){
+    const safeDecode = (t) => { try { return decodeURIComponent(String(t || '')); } catch(e){ return String(t || ''); } };
+    const parts = [];
+    orderParams.forEach((v) => { parts.push(safeDecode(v)); });
+    return /도무송|원형/.test(parts.join(' '));
+  })();
+  const ROUND_CUT_NOTICE_ITEMS = [
+    '붉은선은 칼집 선이며 출력되지 않습니다.',
+    '모양이 들어간 스티커의 경우 붉은선(칼선) 밖의 사이즈는 지금보다 더 클 수 있사오며 이는 재작업 사유에 해당되지 않습니다.'
+  ];
+  if(isRoundCutProduct){
+    const noticeEl = document.getElementById('roundCutNotice');
+    if(noticeEl){
+      noticeEl.innerHTML = ROUND_CUT_NOTICE_ITEMS.map(t => 'Tip. ' + t).join('<br>');
+      noticeEl.style.display = 'block';
+    }
+  }
+
   // 제품 페이지 주소 검증: http(s) 이면서 이 사이트(또는 지금 페이지와 같은 호스트)의 주소만 허용
   // (쿼리로 넘어온 값이라 누군가 엉뚱한 외부 주소를 끼워 넣어도 저장되지 않게 함)
   // 제품(구입) 페이지로 인정하는 도메인. 구입 페이지가 다른 도메인이면 여기에 추가하세요.
@@ -808,6 +830,8 @@
       '위 아래 회색 여백은 인쇄되지 않사오며 작업사이즈에 맞춰 재단후 출고됩니다.',
       '시안과 실출력물은 색상차이가 발생할 가능성도 있으며 이 경우 재작업 사유에 해당되지 않습니다.'
     ];
+    // [추가] 원형/도무송 제품이면 시안모음 JPG의 주의사항(Tip)에도 붉은선(칼선) 안내를 추가
+    if(isRoundCutProduct) TIP_ITEMS.push(...ROUND_CUT_NOTICE_ITEMS);
     const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Pretendard", "Malgun Gothic", sans-serif';
     const TIP_TITLE_FONT = '700 12px ' + FONT_FAMILY;
     const TIP_FONT = '11px ' + FONT_FAMILY;
