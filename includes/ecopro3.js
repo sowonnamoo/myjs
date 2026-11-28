@@ -1205,6 +1205,9 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
      - 항상 canvas 맨 위에 떠 있고, 선택/저장 대상에서는 제외됨
   ============================================================ */
   let guideRect, outerGuideRect, gridGuide, guideState = 0; // 0=붉은 박스만, 1=붉은 박스+모눈, 2=숨김
+  // [추가] 제품명·옵션·용지·후가공 등에 "도무송" 또는 "원형"이 있으면 붉은 재단선을 원형으로 표시
+  const isRoundCutProduct = ['productName', 'options', 'paper', 'ink', 'finishings']
+    .some(k => /도무송|원형/.test(String(orderData[k] || '')));
   const GRID_SPACING = 10; // 모눈 간격(px) — 요청대로 기존(5)의 2배로 넓힘
 
   function buildGridGuide(){
@@ -1232,12 +1235,18 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
     // 커지는 문제가 있었음. min(W,H)는 회전으로 W/H가 서로 바뀌어도 값이 절대 안 바뀌므로,
     // 몇 번을 회전해도 여백이 항상 정확히 같게 유지됨(요청: "회전 전과 크기 매칭 안되는 문제").
     const padding = Math.min(CANVAS_W, CANVAS_H) * 0.03;
-    guideRect = new fabric.Rect({
+    /* [추가] 제품명/옵션/후가공 등 전달받은 주문정보에 "도무송" 또는 "원형"이 들어 있으면
+       붉은 재단선을 사각형 대신 원(가로≠세로면 타원) 모양으로 그린다. 크기·위치는 사각형일 때와
+       똑같이(여백 padding 안쪽 영역에 꼭 맞게) 잡아서 회전/저장/내보내기 로직은 그대로 동작한다. */
+    const guideW = CANVAS_W - padding * 2, guideH = CANVAS_H - padding * 2;
+    const guideCommon = {
       left: padding, top: padding,
-      width: CANVAS_W - padding * 2, height: CANVAS_H - padding * 2,
       fill: 'transparent', stroke: '#ff0000', strokeWidth: 2,
       selectable: false, evented: false, visible: guideState !== 2
-    });
+    };
+    guideRect = isRoundCutProduct
+      ? new fabric.Ellipse(Object.assign({ rx: guideW / 2, ry: guideH / 2 }, guideCommon))
+      : new fabric.Rect(Object.assign({ width: guideW, height: guideH }, guideCommon));
     guideRect.isGuide = true;
 
     // 예전엔 얇은 테두리선(stroke)으로 그렸는데, stroke는 기준선 위에 "가운데 정렬"로 그려지는
