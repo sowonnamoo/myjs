@@ -66,6 +66,17 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
   const isDouble = hasDouble;
   let ratioW = parseInt(orderData.width, 10) || 16;
   let ratioH = parseInt(orderData.height, 10) || 9;
+  /* [추가] 제품 페이지에서 후가공 "비규격재단"을 선택하고 가로/세로(mm)를 입력했다면
+     (쿼리 customCutWidth / customCutHeight), 붉은 재단선 기준 사이즈를 규격사이즈(width/height)
+     대신 그 값으로 사용한다. 값이 비었거나 숫자가 아니면 기존대로 width/height를 쓴다. */
+  (function applyCustomCutSize(){
+    const cw = parseFloat(orderData.customCutWidth);
+    const ch = parseFloat(orderData.customCutHeight);
+    if (cw > 0 && ch > 0) {
+      ratioW = cw;
+      ratioH = ch;
+    }
+  })();
 
   /* ============================================================
      2. 캔버스 초기화 (쿼리의 가로:세로 비율에 맞춰 크기 결정)
