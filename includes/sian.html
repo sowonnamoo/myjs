@@ -945,6 +945,9 @@ function generateUniqueFileName(prefix, i, ext) {
   // 읽어옴. 이 페이지를 에디터를 거치지 않고 단독으로 열었거나 간단 업로드(ecopro1)
   // 경로로 왔을 때는 비어있는 게 정상.
   const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';
+  // [추가] 원형/도무송 제품일 때 에디터(ecopro3)가 따로 넘겨주는 "붉은선 없는" 고해상도 원본 JPG 목록.
+  // (화면에 보이는 시안/시안모음 이미지에는 붉은선이 들어 있으므로, 원본으로는 이쪽을 사용)
+  const ORIGINAL_JPG_KEY = 'ecogr_original_jpgs';
   async function loadOriginalAssetsFromSession(key){
     try{
       const parsed = await idbGet(key);
@@ -955,7 +958,15 @@ function generateUniqueFileName(prefix, i, ext) {
 async function buildUploadManifest(){
     // 1. 기존처럼 URL 리스트를 가져옵니다. (에디터를 거쳤다면 이 목록 자체가 이미
     //    고해상도 JPEG 시안 이미지들이라 이게 곧 "원본"이기도 함)
-    const originalUrls = getOriginalImageUrls();
+    let originalUrls = getOriginalImageUrls();
+
+    // [추가] 에디터가 붉은선 없는 원본 JPG를 따로 넘겨줬다면(원형/도무송 제품), 쿼리로 images를
+    // 직접 지정한 경우가 아닌 한, 화면에 보이는 시안(붉은선 포함) 대신 그 원본을 원본으로 사용한다.
+    if(!orderParams.get('images')){
+      const cleanJpgs = await loadOriginalAssetsFromSession(ORIGINAL_JPG_KEY);
+      const cleanUrls = cleanJpgs.map(item => item && item.dataUrl).filter(Boolean);
+      if(cleanUrls.length > 0) originalUrls = cleanUrls;
+    }
 
     // 2. map을 돌릴 때 인덱스(i)를 받아서 파일명에 넣습니다.
     const originals = originalUrls.map((url, i) => ({

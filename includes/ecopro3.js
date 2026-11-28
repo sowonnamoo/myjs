@@ -4461,6 +4461,10 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
   ============================================================ */
   const PREVIEW_STORAGE_KEY = 'ecogr_preview_designs';       // sian.html이 그대로 읽는 키(포맷 동일: [{label, dataUrl}])
   const ORIGINAL_SVG_KEY = 'ecogr_original_svgs';            // [{label, svg}]
+  // [추가] 원형/도무송 제품 전용 — 붉은선이 "없는" 고해상도 원본 JPG 목록([{label, dataUrl}]).
+  // 시안보기(PREVIEW_STORAGE_KEY) 이미지에는 붉은선을 넣고, 따로 저장되는 원본에는 넣지 않기 위해
+  // 별도 키로 넘김. 원형 제품이 아니면 빈 배열을 넣어서(= sian.html이 기존 방식으로 동작) 이전 값이 남지 않게 함.
+  const ORIGINAL_JPG_KEY = 'ecogr_original_jpgs';
   const SIAN_PAGE_URL = 'sian';
 
   // switchTo()와 달리 히스토리 리셋 등 부수효과 없이, 내보내기 목적으로만 조용히 화면을 바꿔줌
@@ -4548,6 +4552,7 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
 
     const previews = [];
     const svgs = [];
+    const originalJpgs = []; // [추가] 원형/도무송 제품일 때만 채워짐 — 붉은선 없는 원본 JPG
 
     // 오브젝트 하나가 캔버스 전체(붉은선 바깥 회색선, 즉 도련까지)를 덮고 있는지 확인
     function isFullyBled(){
@@ -4657,7 +4662,21 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
           // 1) 고해상도 JPEG — 시안 미리보기와 인쇄용 원본을 겸함 (PNG는 무손실이라
           //    용량이 너무 커서 sessionStorage 한도를 쉽게 넘겨버려 JPEG로 통일함)
           const jpegDataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.95, multiplier });
-          previews.push({ label, dataUrl: jpegDataUrl });
+          if (isRoundCutProduct) {
+            // [추가] 원형/도무송 제품: 시안보기용 JPG에만 붉은(원형) 재단선을 넣고,
+            // 붉은선 없는 깨끗한 JPG는 원본(originalJpgs)으로 따로 보관한다.
+            originalJpgs.push({ label, dataUrl: jpegDataUrl });
+            const prevGuideVisible = guideRect.visible;
+            bringGuideToFront();
+            guideRect.visible = true;
+            canvas.renderAll();
+            const previewWithRedLine = canvas.toDataURL({ format: 'jpeg', quality: 0.95, multiplier });
+            guideRect.visible = prevGuideVisible; // 바로 아래 SVG 등 다른 내보내기에는 붉은선이 섞이지 않게 원래대로
+            canvas.renderAll();
+            previews.push({ label, dataUrl: previewWithRedLine });
+          } else {
+            previews.push({ label, dataUrl: jpegDataUrl });
+          }
 
           // 3) 원본 SVG — PNG/JPG 내보내기와 동일하게 임시 폰트만 이미지로 바꿔서 뽑음
           const flattened = await buildFontFlattenedClone();
@@ -4676,6 +4695,7 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
       // 넘길 데이터 총량이 500MB를 넘지 않는지 확인 (R2 업로드 한도와 동일하게 맞춤)
       const totalBytes =
         previews.reduce((sum, item) => sum + estimateDataUrlBytes(item.dataUrl), 0) +
+        originalJpgs.reduce((sum, item) => sum + estimateDataUrlBytes(item.dataUrl), 0) +
         svgs.reduce((sum, item) => sum + (item.svg ? item.svg.length : 0), 0);
       if (totalBytes > MAX_TRANSFER_BYTES) {
         alert('전달할 시안 데이터 용량이 500MB를 초과합니다.\n디자인 수를 줄이거나 이미지를 단순화해서 다시 시도해주세요. (현재 약 ' + (totalBytes / 1024 / 1024).toFixed(0) + 'MB)');
@@ -4685,6 +4705,7 @@ const count = Math.max(1, parseInt(orderData.count, 10) || 1);
       try {
         await idbSet(PREVIEW_STORAGE_KEY, previews);
         await idbSet(ORIGINAL_SVG_KEY, svgs);
+        await idbSet(ORIGINAL_JPG_KEY, originalJpgs); // 원형 제품이 아니면 빈 배열
       } catch (storageErr) {
         console.error('시안 데이터 저장 실패:', storageErr);
         alert('시안 데이터를 저장하지 못했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.');
